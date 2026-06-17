@@ -1,0 +1,159 @@
+name: Frontend CI/CD
+
+# 前端 Next.js 服务：lint + typecheck + build → Docker 镜像构建推送（dev / prod）。
+# 真实 API_URL 在容器启动时由 entrypoint.sh 写入 public/runtime-env.js，
+# 因此构建期只需占位值。
+#
+# Repository Variables：与 api-ci.yml 一致（ACR_*）。
+
+on:
+  push:
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+    branches:
+      - main
+      - develop
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '部署环境'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+env:
+  NODE_VERSION: '22'
+  REGISTRY: ${{ vars.ACR_REGISTRY || 'crpi-kz6w8hb0pa94yvgy.cn-hangzhou.personal.cr.aliyuncs.com' }}
+  IMAGE_NAME: ideaevo-web
+
+jobs:
+  # ========================================
+  # 构建（lint + typecheck + build）
+  # ========================================
+  build:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+        env:
+          # 构建期占位值；真实 API_URL 在容器启动时由 entrypoint 注入
+          API_URL: http://localhost:8080
+
+      - name: Deploy notification
+        run: |
+          echo "## ✅ Frontend Build" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Node | ${{ env.NODE_VERSION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+
+  # ========================================
+  # Docker 构建推送 - Develop
+  # ========================================
+  docker-develop:
+    name: Docker Build (Develop)
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    env:
+      TAG: dev
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Aliyun ACR
+        run: echo ${{ vars.ACR_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ vars.ACR_USERNAME }} --password-stdin
+
+      - name: Build & Push Docker image
+        run: |
+          docker build \
+            -f frontend/Dockerfile \
+            -t ${{ env.REGISTRY }}/ideaevo-dev/${{ env.IMAGE_NAME }}:${{ env.TAG }} \
+            ./frontend
+          docker push ${{ env.REGISTRY }}/ideaevo-dev/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+
+      - name: Deploy notification
+        run: |
+          echo "## 🚀 Development Docker Image - Web" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`${{ env.REGISTRY }}/ideaevo-dev/${{ env.IMAGE_NAME }}:dev\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | development |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ACR_REGISTRY: ${{ vars.ACR_REGISTRY && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
+
+  # ========================================
+  # Docker 构建推送 - Production
+  # ========================================
+  docker-production:
+    name: Docker Build (Production)
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
+    env:
+      TAG: prod
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Aliyun ACR
+        run: echo ${{ vars.ACR_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ vars.ACR_USERNAME }} --password-stdin
+
+      - name: Build & Push Docker image
+        run: |
+          docker build \
+            -f frontend/Dockerfile \
+            -t ${{ env.REGISTRY }}/ideaevo-prod/${{ env.IMAGE_NAME }}:${{ env.TAG }} \
+            ./frontend
+          docker push ${{ env.REGISTRY }}/ideaevo-prod/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+
+      - name: Deploy notification
+        run: |
+          echo "## 🚀 Production Docker Image - Web" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`${{ env.REGISTRY }}/ideaevo-prod/${{ env.IMAGE_NAME }}:prod\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | production |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ACR_REGISTRY: ${{ vars.ACR_REGISTRY && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY

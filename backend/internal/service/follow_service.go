@@ -1,0 +1,112 @@
+package service
+
+import (
+	"fmt"
+
+	"github.com/wanye/ideaevo/internal/model"
+	"gorm.io/gorm"
+)
+
+type FollowService struct {
+	db       *gorm.DB
+	notifSvc *NotificationService
+}
+
+func NewFollowService(db *gorm.DB, notifSvc *NotificationService) *FollowService {
+	return &FollowService{db: db, notifSvc: notifSvc}
+}
+
+func (s *FollowService) Follow(followerID, followingID string) error {
+	if followerID == followingID {
+		return fmt.Errorf("cannot follow yourself")
+	}
+
+	var count int64
+	s.db.Model(&model.User{}).Where("id = ?", followingID).Count(&count)
+	if count == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	follow := model.Follow{
+		FollowerID:  followerID,
+		FollowingID: followingID,
+	}
+	if err := s.db.Create(&follow).Error; err != nil {
+		return fmt.Errorf("already following or error: %w", err)
+	}
+
+	tx := s.db.Begin()
+	tx.Model(&model.User{}).Where("id = ?", followingID).
+		Update("follower_count", gorm.Expr("follower_count + 1"))
+	tx.Model(&model.User{}).Where("id = ?", followerID).
+		Update("following_count", gorm.Expr("following_count + 1"))
+	tx.Commit()
+
+	logActivity(s.db, "user", followerID, "follow", "user", followingID, nil)
+
+	var follower model.User
+	if err := s.db.Select("id, name").First(&follower, "id = ?", followerID).Error; err == nil {
+		_ = s.notifSvc.Create(followingID, "user", followerID, follower.Name, "follow", "user", followerID, "")
+	}
+	return nil
+}
+
+func (s *FollowService) Unfollow(followerID, followingID string) error {
+	result := s.db.Where("follower_id = ? AND following_id = ?", followerID, followingID).
+		Delete(&model.Follow{})
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("not following")
+	}
+
+	tx := s.db.Begin()
+	tx.Model(&model.User{}).Where("id = ?", followingID).
+		Update("follower_count", gorm.Expr("GREATEST(follower_count - 1, 0)"))
+	tx.Model(&model.User{}).Where("id = ?", followerID).
+		Update("following_count", gorm.Expr("GREATEST(following_count - 1, 0)"))
+	tx.Commit()
+
+	logActivity(s.db, "user", followerID, "unfollow", "user", followingID, nil)
+	return nil
+}
+
+func (s *FollowService) GetFollowers(userID string, limit, offset int) ([]model.User, int64, error) {
+	var total int64
+	s.db.Model(&model.Follow{}).Where("following_id = ?", userID).Count(&total)
+
+	var follows []model.Follow
+	s.db.Where("following_id = ?", userID).
+		Order("created_at DESC").
+		Limit(limit).Offset(offset).
+		Preload("Follower").
+		Find(&follows)
+
+	users := make([]model.User, 0, len(follows))
+	for _, f := range follows {
+		users = append(users, f.Follower)
+	}
+	return users, total, nil
+}
+
+func (s *FollowService) GetFollowing(userID string, limit, offset int) ([]model.User, int64, error) {
+	var total int64
+	s.db.Model(&model.Follow{}).Where("follower_id = ?", userID).Count(&total)
+
+	var follows []model.Follow
+	s.db.Where("follower_id = ?", userID).
+		Order("created_at DESC").
+		Limit(limit).Offset(offset).
+		Preload("Following").
+		Find(&follows)
+
+	users := make([]model.User, 0, len(follows))
+	for _, f := range follows {
+		users = append(users, f.Following)
+	}
+	return users, total, nil
+}
+
+func (s *FollowService) IsFollowing(followerID, followingID string) (bool, error) {
+	var count int64
+	s.db.Model(&model.Follow{}).Where("follower_id = ? AND following_id = ?", followerID, followingID).Count(&count)
+	return count > 0, nil
+}

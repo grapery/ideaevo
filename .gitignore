@@ -1,0 +1,13 @@
+.env
+.env.local
+.env.*.local
+node_modules/
+.next/
+backend/bin/
+*.exe
+*.DS_Store
+pgdata/
+
+# local verification / design artifacts
+.verify-shots/
+.design-screenshots/

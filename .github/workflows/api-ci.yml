@@ -1,0 +1,211 @@
+name: API CI/CD
+
+# 后端 API 服务：构建 + 测试（MySQL）+ Docker 镜像构建推送（dev / prod）
+#
+# Repository Variables（Settings → Secrets and variables → Actions → Variables）:
+#   ACR_REGISTRY, ACR_USERNAME, ACR_PASSWORD            — 阿里云容器镜像服务
+#   DB_*（DB_USER / DB_PASSWORD / DB_NAME_DEV / DB_NAME_PROD）、JWT_SECRET …
+#
+# 部署主机配置（如后续接 SSH 部署）：
+#   DEV_DEPLOY_HOST / PROD_DEPLOY_HOST、SSH_USER、SSH_KEY
+
+on:
+  push:
+    paths:
+      - 'backend/cmd/api/**'
+      - 'backend/internal/**'
+      - 'backend/pkg/**'
+      - 'backend/go.mod'
+      - 'backend/go.sum'
+      - 'backend/Dockerfile'
+      - '.github/workflows/api-ci.yml'
+    branches:
+      - main
+      - develop
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/api-ci.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '部署环境'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+env:
+  GO_VERSION: '1.25'
+  REGISTRY: ${{ vars.ACR_REGISTRY || 'crpi-kz6w8hb0pa94yvgy.cn-hangzhou.personal.cr.aliyuncs.com' }}
+  IMAGE_NAME: ideaevo-api
+  SERVICE_NAME: api
+
+jobs:
+  # ========================================
+  # 构建 + 测试（带 MySQL service container）
+  # ========================================
+  build:
+    name: Build & Test Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: wanye
+          MYSQL_DATABASE: wanye_test
+          MYSQL_USER: wanye
+          MYSQL_PASSWORD: wanye
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -uwanye -pwanye"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Download deps
+        run: go mod download
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./... -race -cover
+        env:
+          DB_HOST: localhost
+          DB_PORT: 3306
+          DB_USER: wanye
+          DB_PASSWORD: wanye
+          DB_NAME: wanye_test
+          DB_SSLMODE: disable
+          JWT_SECRET: ci-test-secret
+          # 向量检索：CI 不连真实阿里云，自动降级到 MySQL LIKE 检索
+          ALIYUN_VECTOR_BUCKET: ""
+          DASHSCOPE_API_KEY: ""
+
+      - name: Build binary
+        run: |
+          VERSION=$(echo ${{ github.sha }} | cut -c1-7)
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-s -w -X main.Version=${VERSION} -X main.CommitSHA=${{ github.sha }} -X main.BuildTime=${BUILD_TIME}" \
+            -o ./bin/api ./cmd/api
+          echo "✅ Build completed"
+          ls -lh ./bin/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ideaevo-${{ env.SERVICE_NAME }}
+          path: backend/bin/${{ env.SERVICE_NAME }}
+          retention-days: 7
+
+  # ========================================
+  # Docker 构建推送 - Develop
+  # ========================================
+  docker-develop:
+    name: Docker Build (Develop)
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    env:
+      TAG: dev
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Aliyun ACR
+        run: echo ${{ vars.ACR_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ vars.ACR_USERNAME }} --password-stdin
+
+      - name: Build & Push Docker image
+        run: |
+          docker build \
+            -f backend/Dockerfile \
+            --build-arg VERSION=dev-${{ github.sha }} \
+            --build-arg COMMIT_SHA=${{ github.sha }} \
+            --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+            --build-arg SERVICE=${{ env.SERVICE_NAME }} \
+            -t ${{ env.REGISTRY }}/ideaevo-dev/${{ env.IMAGE_NAME }}:${{ env.TAG }} \
+            ./backend
+          docker push ${{ env.REGISTRY }}/ideaevo-dev/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+
+      - name: Deploy notification
+        run: |
+          echo "## 🚀 Development Docker Image - API" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | ${{ env.SERVICE_NAME }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`${{ env.REGISTRY }}/ideaevo-dev/${{ env.IMAGE_NAME }}:dev\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | development |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### vars Status" >> $GITHUB_STEP_SUMMARY
+          echo "- ACR_REGISTRY: ${{ vars.ACR_REGISTRY && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DB_PASSWORD: ${{ vars.DB_PASSWORD && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- JWT_SECRET: ${{ vars.JWT_SECRET && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
+
+  # ========================================
+  # Docker 构建推送 - Production
+  # ========================================
+  docker-production:
+    name: Docker Build (Production)
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
+    env:
+      TAG: prod
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Aliyun ACR
+        run: echo ${{ vars.ACR_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ vars.ACR_USERNAME }} --password-stdin
+
+      - name: Build & Push Docker image
+        run: |
+          docker build \
+            -f backend/Dockerfile \
+            --build-arg VERSION=${{ github.sha }} \
+            --build-arg COMMIT_SHA=${{ github.sha }} \
+            --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+            --build-arg SERVICE=${{ env.SERVICE_NAME }} \
+            -t ${{ env.REGISTRY }}/ideaevo-prod/${{ env.IMAGE_NAME }}:${{ env.TAG }} \
+            ./backend
+          docker push ${{ env.REGISTRY }}/ideaevo-prod/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+
+      - name: Deploy notification
+        run: |
+          echo "## 🚀 Production Docker Image - API" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | ${{ env.SERVICE_NAME }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`${{ env.REGISTRY }}/ideaevo-prod/${{ env.IMAGE_NAME }}:prod\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | production |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### vars Status" >> $GITHUB_STEP_SUMMARY
+          echo "- ACR_REGISTRY: ${{ vars.ACR_REGISTRY && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DB_PASSWORD: ${{ vars.DB_PASSWORD && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- JWT_SECRET: ${{ vars.JWT_SECRET && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
