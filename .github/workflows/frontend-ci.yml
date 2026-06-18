@@ -171,3 +171,64 @@ jobs:
           echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- ACR_REGISTRY: ${{ vars.ACR_REGISTRY && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
+
+  # ========================================
+  # SSH 部署 - Develop（拉镜像 + docker compose up web）
+  # ========================================
+  deploy-develop:
+    name: Deploy Web to Development
+    runs-on: ubuntu-latest
+    needs: docker-develop
+    environment: development
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    env:
+      DEPLOY_DIR: /opt/ideaevo-dev
+      API_IMAGE: ${{ env.REGISTRY }}/grapery-dev/ideaevo-api:dev
+      WEB_IMAGE: ${{ env.REGISTRY }}/grapery-dev/ideaevo-web:dev
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy compose to server
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ vars.DEV_DEPLOY_HOST }}
+          username: ${{ vars.SSH_USER }}
+          key: ${{ vars.SSH_KEY }}
+          source: "docker-compose.server.yml"
+          target: ${{ env.DEPLOY_DIR }}
+          overwrite: true
+
+      - name: Deploy web via docker compose
+        uses: appleboy/ssh-action@v0.1.10
+        env:
+          API_IMAGE: ${{ env.API_IMAGE }}
+          WEB_IMAGE: ${{ env.WEB_IMAGE }}
+          ACR_REGISTRY: ${{ env.REGISTRY }}
+          ACR_USERNAME: ${{ vars.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ vars.ACR_PASSWORD }}
+        with:
+          host: ${{ vars.DEV_DEPLOY_HOST }}
+          username: ${{ vars.SSH_USER }}
+          key: ${{ vars.SSH_KEY }}
+          envs: API_IMAGE,WEB_IMAGE,ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD
+          script: |
+            mkdir -p ${{ env.DEPLOY_DIR }}
+            cd ${{ env.DEPLOY_DIR }}
+            echo "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" -u "$ACR_USERNAME" --password-stdin
+            export API_IMAGE="$API_IMAGE"
+            export WEB_IMAGE="$WEB_IMAGE"
+            docker compose -f docker-compose.server.yml -p ideaevo-dev pull web
+            docker compose -f docker-compose.server.yml -p ideaevo-dev up -d web
+            sleep 10
+            docker compose -f docker-compose.server.yml -p ideaevo-dev ps
+            curl -sf http://localhost:3001/ >/dev/null && echo "✅ web healthy" || echo "⚠️ web health check failed"
+
+      - name: Deploy notification
+        run: |
+          echo "## 🚀 Deployed Web to Development" >> $GITHUB_STEP_SUMMARY
+          echo "- Host: \`${{ vars.DEV_DEPLOY_HOST }}:3001\`" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: http://${{ vars.DEV_DEPLOY_HOST }}:3001" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ env.WEB_IMAGE }}\`" >> $GITHUB_STEP_SUMMARY

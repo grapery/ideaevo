@@ -1,0 +1,59 @@
+# 服务器部署用 compose（不含 MySQL，复用宿主机已有的 MySQL 实例）。
+# 与本地开发的 docker-compose.yml 区别：
+#   - 只起 api + web 两个服务
+#   - MySQL 走宿主机（DB_HOST 指向宿主机网关 host.docker.internal / 或宿主内网 IP）
+#   - 镜像 tag 由 CI 注入（${API_IMAGE} / ${WEB_IMAGE}）
+#   - 连接外部网络 ideaevo-network（首次部署会自动创建）
+#
+# 端口分配（避免与同机的 grapery 冲突）：
+#   api: 8090（宿主）  web: 3001（宿主）
+
+services:
+  api:
+    image: ${API_IMAGE:-crpi-kz6w8hb0pa94yvgy.cn-hangzhou.personal.cr.aliyuncs.com/grapery-dev/ideaevo-api:dev}
+    container_name: ideaevo-api
+    restart: unless-stopped
+    ports:
+      - "${IDEAEVO_API_PORT:-8090}:8080"
+    env_file:
+      - .env
+    environment:
+      # 宿主机 MySQL：容器内通过 host.docker.internal 访问（Linux 需 extra_hosts 映射）
+      - DB_HOST=${DB_HOST:-host.docker.internal}
+      - PORT=8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - ideaevo-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  web:
+    image: ${WEB_IMAGE:-crpi-kz6w8hb0pa94yvgy.cn-hangzhou.personal.cr.aliyuncs.com/grapery-dev/ideaevo-web:dev}
+    container_name: ideaevo-web
+    restart: unless-stopped
+    ports:
+      - "${IDEAEVO_WEB_PORT:-3001}:3000"
+    environment:
+      # 前端容器启动时 entrypoint.sh 会把 API_URL 写入 runtime-env.js
+      # 容器内通过服务名访问同网络的 api 容器
+      - API_URL=http://api:8080
+    depends_on:
+      - api
+    networks:
+      - ideaevo-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+networks:
+  ideaevo-network:
+    # 与 grapery-network 平行的独立网络；不存在时 docker compose 会创建
+    name: ideaevo-network
