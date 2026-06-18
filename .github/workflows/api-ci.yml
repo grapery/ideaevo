@@ -244,6 +244,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Format SSH key
+        # vars.SSH_KEY may be stored as a single line with space-separated PEM
+        # chunks (newlines lost on paste). Reconstruct a valid multi-line PEM.
+        env:
+          RAW_SSH_KEY: ${{ vars.SSH_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          raw = os.environ["RAW_SSH_KEY"].strip()
+          m = re.match(r"-----BEGIN ([A-Z ]+)-----\s+(.*?)\s+-----END ([A-Z ]+)-----", raw, re.S)
+          if not m:
+              # already multi-line or unknown; write as-is
+              open(os.environ["HOME"] + "/ssh_key", "w").write(raw + "\n")
+          else:
+              body = m.group(2).replace(" ", "").replace("\n", "")
+              wrapped = "\n".join(body[i:i+64] for i in range(0, len(body), 64))
+              pem = f"-----BEGIN {m.group(1).strip()}-----\n{wrapped}\n-----END {m.group(3).strip()}-----\n"
+              open(os.environ["HOME"] + "/ssh_key", "w").write(pem)
+          os.chmod(os.environ["HOME"] + "/ssh_key", 0o600)
+          PY
+
       - name: Generate .env for server
         env:
           DB_USERNAME: ${{ vars.DB_USERNAME }}
@@ -276,7 +297,7 @@ jobs:
         with:
           host: ${{ vars.DEV_DEPLOY_HOST }}
           username: ${{ vars.SSH_USER }}
-          key: ${{ vars.SSH_KEY }}
+          key_path: ~/ssh_key
           source: "docker-compose.server.yml,deploy/.env"
           target: ${{ env.DEPLOY_DIR }}
           overwrite: true
@@ -294,7 +315,7 @@ jobs:
         with:
           host: ${{ vars.DEV_DEPLOY_HOST }}
           username: ${{ vars.SSH_USER }}
-          key: ${{ vars.SSH_KEY }}
+          key_path: ~/ssh_key
           envs: API_IMAGE,WEB_IMAGE,ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,DB_ROOT_USER,DB_ROOT_PASSWORD
           script: |
             # 幂等创建独立库 ideaevo_dev（宿主机 MySQL 是原生服务，监听 127.0.0.1:3306）
