@@ -185,8 +185,9 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
     env:
       DEPLOY_DIR: /opt/ideaevo-dev
-      API_IMAGE: ${{ env.REGISTRY }}/grapery-dev/ideaevo-api:dev
-      WEB_IMAGE: ${{ env.REGISTRY }}/grapery-dev/ideaevo-web:dev
+      API_IMAGE: ${{ vars.ACR_REGISTRY }}/grapery-dev/ideaevo-api:dev
+      WEB_IMAGE: ${{ vars.ACR_REGISTRY }}/grapery-dev/ideaevo-web:dev
+      ACR_REGISTRY: ${{ vars.ACR_REGISTRY }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -206,7 +207,7 @@ jobs:
         env:
           API_IMAGE: ${{ env.API_IMAGE }}
           WEB_IMAGE: ${{ env.WEB_IMAGE }}
-          ACR_REGISTRY: ${{ env.REGISTRY }}
+          ACR_REGISTRY: ${{ vars.ACR_REGISTRY }}
           ACR_USERNAME: ${{ vars.ACR_USERNAME }}
           ACR_PASSWORD: ${{ vars.ACR_PASSWORD }}
         with:
