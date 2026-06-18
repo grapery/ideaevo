@@ -118,9 +118,9 @@ jobs:
             --build-arg COMMIT_SHA=${{ github.sha }} \
             --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
             --build-arg SERVICE=${{ env.SERVICE_NAME }} \
-            -t ${{ env.REGISTRY }}/ideaevo-dev/${{ env.IMAGE_NAME }}:${{ env.TAG }} \
+            -t ${{ env.REGISTRY }}/grapery-dev/${{ env.IMAGE_NAME }}:${{ env.TAG }} \
             ./backend
-          docker push ${{ env.REGISTRY }}/ideaevo-dev/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+          docker push ${{ env.REGISTRY }}/grapery-dev/${{ env.IMAGE_NAME }}:${{ env.TAG }}
 
       - name: Deploy notification
         run: |
@@ -129,7 +129,7 @@ jobs:
           echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Service | ${{ env.SERVICE_NAME }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Image | \`${{ env.REGISTRY }}/ideaevo-dev/${{ env.IMAGE_NAME }}:dev\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`${{ env.REGISTRY }}/grapery-dev/${{ env.IMAGE_NAME }}:dev\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Environment | development |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
 
@@ -167,9 +167,9 @@ jobs:
             --build-arg COMMIT_SHA=${{ github.sha }} \
             --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
             --build-arg SERVICE=${{ env.SERVICE_NAME }} \
-            -t ${{ env.REGISTRY }}/ideaevo-prod/${{ env.IMAGE_NAME }}:${{ env.TAG }} \
+            -t ${{ env.REGISTRY }}/grapery-prod/${{ env.IMAGE_NAME }}:${{ env.TAG }} \
             ./backend
-          docker push ${{ env.REGISTRY }}/ideaevo-prod/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+          docker push ${{ env.REGISTRY }}/grapery-prod/${{ env.IMAGE_NAME }}:${{ env.TAG }}
 
       - name: Deploy notification
         run: |
@@ -178,6 +178,6 @@ jobs:
           echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Service | ${{ env.SERVICE_NAME }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Image | \`${{ env.REGISTRY }}/ideaevo-prod/${{ env.IMAGE_NAME }}:prod\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`${{ env.REGISTRY }}/grapery-prod/${{ env.IMAGE_NAME }}:prod\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Environment | production |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
