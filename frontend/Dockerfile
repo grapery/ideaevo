@@ -13,7 +13,13 @@ COPY --from=builder /app/public ./public
 EXPOSE 3000
 COPY <<'EOF' /app/entrypoint.sh
 #!/bin/sh
-sed -i "s|__API_URL__|${API_URL:-http://localhost:8080}/api|g" /app/public/runtime-env.js
+API_BASE="${API_URL:-http://localhost:8080}"
+case "$API_BASE" in
+  */api) ;;
+  *) API_BASE="${API_BASE%/}/api" ;;
+esac
+export API_URL="$API_BASE"
+sed -i "s|__API_URL__|${API_BASE}|g" /app/public/runtime-env.js
 exec node server.js
 EOF
 RUN chmod +x /app/entrypoint.sh

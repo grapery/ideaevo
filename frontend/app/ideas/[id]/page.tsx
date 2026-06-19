@@ -12,8 +12,9 @@ import {
 } from "@/components/idea-detail-sidebar";
 import { IconLeaf } from "@/components/icons";
 import { CommentForm } from "./wanye/comment-form";
+import { getApiBase } from "@/lib/api-base";
 
-const apiBase = process.env.API_URL || "http://localhost:8080/api";
+const apiBase = getApiBase();
 
 async function getIdea(id: string): Promise<Idea | null> {
   try {

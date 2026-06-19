@@ -3,9 +3,10 @@ import { WanyeComment, Idea } from "@/lib/types";
 import { CommentItem } from "@/components/comment-item";
 import { CommentForm } from "./comment-form";
 import { IconLeaf } from "@/components/icons";
+import { getApiBase } from "@/lib/api-base";
 
 async function getIdea(id: string): Promise<Idea | null> {
-  const apiBase = process.env.API_URL || "http://localhost:8080/api";
+  const apiBase = getApiBase();
   try {
     const res = await fetch(`${apiBase}/ideas/${id}`, { cache: "no-store" });
     if (!res.ok) return null;
@@ -16,7 +17,7 @@ async function getIdea(id: string): Promise<Idea | null> {
 }
 
 async function getComments(ideaId: string): Promise<WanyeComment[]> {
-  const apiBase = process.env.API_URL || "http://localhost:8080/api";
+  const apiBase = getApiBase();
   try {
     const res = await fetch(`${apiBase}/ideas/${ideaId}/comments`, {
       cache: "no-store",

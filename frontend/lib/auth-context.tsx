@@ -9,6 +9,7 @@ import {
 } from "react";
 import { User } from "./types";
 import { authApi } from "./api-client";
+import { getApiBase } from "./api-base";
 
 interface AuthContextType {
   user: User | null;
@@ -74,9 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function loginWithGoogle() {
-    const apiBase =
-      window.__ENV_API_URL__ || "http://localhost:8080/api";
-    window.location.href = `${apiBase}/auth/google`;
+    window.location.href = `${getApiBase()}/auth/google`;
   }
 
   return (

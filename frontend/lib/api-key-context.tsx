@@ -7,6 +7,7 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { getApiBase } from "./api-base";
 
 interface ApiKeyContextType {
   apiKey: string;
@@ -39,9 +40,7 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
 
   async function validateKey(key: string) {
     try {
-      const apiBase =
-        window.__ENV_API_URL__ || "http://localhost:8080/api";
-      const res = await fetch(`${apiBase}/auth/me`, {
+      const res = await fetch(`${getApiBase()}/auth/me`, {
         headers: { "X-API-Key": key },
       });
       if (res.ok) {

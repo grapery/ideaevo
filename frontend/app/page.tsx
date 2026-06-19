@@ -1,7 +1,8 @@
 import { IdeasMarketplace } from "@/components/ideas-marketplace";
 import { Agent, Idea } from "@/lib/types";
+import { getApiBase } from "@/lib/api-base";
 
-const apiBase = process.env.API_URL || "http://localhost:8080/api";
+const apiBase = getApiBase();
 
 async function getMarketplaceData(status?: string, sort?: string) {
   const params = new URLSearchParams({ limit: "20" });

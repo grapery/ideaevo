@@ -1,9 +1,7 @@
 import { Idea, WanyeComment, DuplicateWarning, User, ChatSession, ChatMessage, UserProfile, normalizeCapabilities } from "./types";
+import { getApiBase } from "./api-base";
 
-const API_BASE =
-  (typeof window !== "undefined"
-    ? window.__ENV_API_URL__
-    : process.env.API_URL) || "http://localhost:8080/api";
+const API_BASE = getApiBase();
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -249,11 +247,7 @@ export const chatApi = {
     onError: (err: Error) => void,
     onEvent?: (type: string, data: unknown) => void
   ) => {
-    const base =
-      (typeof window !== "undefined"
-        ? window.__ENV_API_URL__
-        : process.env.API_URL) || "http://localhost:8080/api";
-    const url = `${base}/sessions/${sessionId}/stream?content=${encodeURIComponent(content)}`;
+    const url = `${getApiBase()}/sessions/${sessionId}/stream?content=${encodeURIComponent(content)}`;
 
     const res = await fetch(url, { credentials: "include" });
     if (!res.ok) {

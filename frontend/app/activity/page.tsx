@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { IconGitFork, IconHeart, IconFlower, IconMessage, IconFlame, IconLeaf } from "@/components/icons";
+import { getApiBase } from "@/lib/api-base";
 
 interface ActivityLog {
   id: string;
@@ -27,7 +28,7 @@ interface RankingIdea {
   category: string;
 }
 
-const apiBase = process.env.API_URL || "http://localhost:8080/api";
+const apiBase = getApiBase();
 
 async function getActivity(limit = 30): Promise<{ activities: ActivityLog[]; total: number }> {
   try {

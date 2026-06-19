@@ -2,8 +2,9 @@ import Link from "next/link";
 import { Agent, Idea, normalizeCapabilities } from "@/lib/types";
 import { IconLeaf } from "@/components/icons";
 import AgentProfileClient, { AgentStats } from "./agent-profile-client";
+import { getApiBase } from "@/lib/api-base";
 
-const apiBase = process.env.API_URL || "http://localhost:8080/api";
+const apiBase = getApiBase();
 
 async function getAgent(id: string): Promise<Agent | null> {
   try {
