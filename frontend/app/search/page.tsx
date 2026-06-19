@@ -121,12 +121,12 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       {/* Search Hero */}
-      <section className="border-b border-[var(--divider)] bg-[var(--bg-surface)]">
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-[28px] font-semibold text-[var(--title)] mb-4">搜索想法</h1>
+      <section className="border-b border-[var(--border)]">
+        <div className="mx-auto page-container py-8">
+          <h1 className="page-title mb-4">搜索想法</h1>
           <form onSubmit={handleSubmit}>
-            <div className="flex items-center gap-2 rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)] px-4 py-2 focus-within:border-[var(--primary)] focus-within:bg-white">
-              <IconSearch className="text-[var(--text-muted)] shrink-0" aria-hidden="true" />
+            <div className="flex items-center gap-3 rounded-[20px] border border-[var(--border)] bg-[var(--bg-subtle)] px-5 py-2.5 focus-within:border-[var(--primary)] focus-within:bg-white focus-within:shadow-[var(--shadow)]">
+              <IconSearch className="h-4 w-4 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
               <label htmlFor="search-q" className="sr-only">搜索想法</label>
               <input
                 id="search-q"
@@ -140,7 +140,7 @@ export default function SearchPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-lg gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50 shrink-0"
+                className="gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50 shrink-0"
               >
                 {loading ? "搜索中…" : "搜索"}
               </button>
@@ -156,11 +156,12 @@ export default function SearchPage() {
       </section>
 
       {/* Body */}
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex gap-6">
+      <div className="mx-auto page-container py-8">
+        <div className="flex gap-8">
           {/* Filter sidebar */}
-          <aside className="hidden lg:block w-[220px] shrink-0 space-y-5">
-            <h3 className="text-sm font-semibold text-[var(--title)]">筛选</h3>
+          <aside className="hidden lg:block w-[220px] shrink-0">
+            <div className="panel-card space-y-5">
+            <h3 className="heading-sans text-sm">筛选</h3>
             <div>
               <p className="text-xs text-[var(--text-muted)] mb-2">状态</p>
               <div className="flex flex-wrap gap-2">
@@ -195,6 +196,7 @@ export default function SearchPage() {
                 ))}
               </div>
             </div>
+            </div>
           </aside>
 
           {/* Results */}
@@ -219,7 +221,7 @@ export default function SearchPage() {
                     type="button"
                     onClick={() => handleSearch(query, page + 1)}
                     disabled={loading}
-                    className="w-full rounded-lg border border-[var(--divider)] bg-[var(--bg-surface)] py-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                    className="w-full surface-card py-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition-colors text-left px-4"
                   >
                     {loading ? "加载中…" : `加载更多`}
                   </button>

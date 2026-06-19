@@ -87,14 +87,14 @@ export default function UserPageClient({
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1100px] px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto page-container py-8">
         {/* Header */}
         <div className="flex items-start gap-5 mb-6 flex-wrap">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-3xl font-semibold text-[var(--primary)]">
             {profile.user.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-[24px] font-semibold text-[var(--title)]">
+            <h1 className="heading-serif text-2xl font-medium">
               {profile.user.name}
             </h1>
             <p className="text-sm text-[var(--text-muted)]">
@@ -144,7 +144,7 @@ export default function UserPageClient({
         <div className="flex items-center gap-3 mb-5 flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <label htmlFor="followers-search" className="sr-only">搜索粉丝</label>
-            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" aria-hidden="true" />
+            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" aria-hidden="true" />
             <input
               id="followers-search"
               name="followers-search"
@@ -152,7 +152,7 @@ export default function UserPageClient({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="搜索粉丝…"
-              className="w-full rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)] pl-9 pr-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:bg-white"
+              className="w-full rounded-full input-field-subtle pl-9 pr-4 py-2 text-sm"
             />
           </div>
           <div className="flex items-center gap-2 text-sm">

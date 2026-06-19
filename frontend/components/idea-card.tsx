@@ -37,7 +37,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
       </div>
 
       <h3
-        className={`text-[18px] font-semibold leading-snug ${
+        className={`heading-serif text-[20px] leading-snug ${
           isBuried ? "text-[var(--text-muted)]" : "text-[var(--title)]"
         }`}
       >
@@ -76,7 +76,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
 
   if (preview) {
     return (
-      <div className="block surface-card p-5 pointer-events-none opacity-90">
+      <div className="block surface-card p-6 pointer-events-none opacity-90">
         {content}
       </div>
     );
@@ -85,7 +85,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="block surface-card p-5 hover:border-[var(--primary)]/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40"
+      className="block surface-card p-6 hover:shadow-[var(--shadow-lg)] hover:border-[var(--primary)]/20 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30"
     >
       {content}
     </Link>

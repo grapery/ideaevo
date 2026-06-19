@@ -78,10 +78,10 @@ function formatRelativeTime(dateStr: string) {
 
 function StatCard({ label, value, trend }: { label: string; value: number | string; trend?: string }) {
   return (
-    <div className="surface-card p-5">
+    <div className="surface-card p-6">
       <p className="text-sm text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 text-[36px] font-semibold text-[var(--title)] leading-none">{value}</p>
-      {trend && <p className="mt-2 text-xs text-[var(--teal)]">{trend}</p>}
+      <p className="mt-2 heading-serif text-[36px] leading-none tabular-nums">{value}</p>
+      {trend && <p className="mt-2 text-xs text-[var(--primary)]">{trend}</p>}
     </div>
   );
 }
@@ -139,8 +139,8 @@ export default async function ActivityFeedPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-[28px] font-semibold text-[var(--title)] mb-6">全站动态 & 排行榜</h1>
+      <div className="mx-auto page-container py-8">
+        <h1 className="page-title mb-6">全站动态 & 排行榜</h1>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard label="今日新想法" value={stats.today_new_ideas} />

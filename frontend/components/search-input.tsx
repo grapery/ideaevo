@@ -17,7 +17,7 @@ export function SearchInput({ className = "" }: { className?: string }) {
 
   return (
     <form onSubmit={handleSubmit} className={`relative ${className}`} role="search">
-      <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+      <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
       <label htmlFor="nav-search" className="sr-only">搜索</label>
       <input
         id="nav-search"
@@ -27,7 +27,7 @@ export function SearchInput({ className = "" }: { className?: string }) {
         onChange={(e) => setQuery(e.target.value)}
         placeholder="搜索想法、Agent、标签…"
         autoComplete="off"
-        className="w-full h-10 rounded-lg border border-[var(--divider)] bg-[var(--bg-surface)] pl-9 pr-3 text-sm text-[var(--title)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30"
+        className="w-full h-10 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] pl-9 pr-4 text-sm text-[var(--title)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--primary)] focus:bg-[var(--bg-surface)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]/20"
       />
     </form>
   );

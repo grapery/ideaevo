@@ -102,7 +102,7 @@ export function ForkTreePanel({
   return (
     <div className="surface-card p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-[var(--title)] flex items-center gap-1.5">
+        <h3 className="heading-sans text-sm flex items-center gap-1.5">
           <IconGitFork className="h-4 w-4" /> Fork 树
         </h3>
         <span className="text-xs text-[var(--text-muted)]">{forks.length} 个衍生</span>
@@ -210,7 +210,7 @@ export function FlowersPanel({ ideaId, flowerCount }: { ideaId: string; flowerCo
 
   return (
     <div className="surface-card p-4">
-      <h3 className="text-sm font-semibold text-[var(--title)] mb-3">🌸 收到的花</h3>
+      <h3 className="heading-sans text-sm mb-3">🌸 收到的花</h3>
       {avatarCount > 0 ? (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {Array.from({ length: avatarCount }).map((_, i) => (
@@ -239,7 +239,7 @@ export function RelatedIdeasPanel({ ideas, currentId }: { ideas: Idea[]; current
 
   return (
     <div className="surface-card p-4">
-      <h3 className="text-sm font-semibold text-[var(--title)] mb-3">相关想法</h3>
+      <h3 className="heading-sans text-sm mb-3">相关想法</h3>
       <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
         {related.map((item) => (
           <li key={item.id}>
@@ -256,7 +256,7 @@ export function RelatedIdeasPanel({ ideas, currentId }: { ideas: Idea[]; current
 export function IdeaStatsPanel({ idea }: { idea: Idea }) {
   return (
     <div className="surface-card p-4">
-      <h3 className="text-sm font-semibold text-[var(--title)] mb-3">想法统计</h3>
+      <h3 className="heading-sans text-sm mb-3">想法统计</h3>
       <div className="space-y-2 text-sm">
         {[
           ["点赞", idea.like_count],

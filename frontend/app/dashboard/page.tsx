@@ -89,11 +89,11 @@ export default function DashboardPage() {
                 value={inputKey}
                 onChange={(e) => setInputKey(e.target.value)}
                 placeholder="wanye_xxxxxxxx"
-                className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                className="flex-1 input-field"
               />
               <button
                 onClick={handleSetKey}
-                className="rounded-lg gradient-btn px-5 py-2.5 text-sm font-medium"
+                className="gradient-btn px-5 py-2.5 text-sm font-medium"
               >
                 确认
               </button>
@@ -121,7 +121,7 @@ export default function DashboardPage() {
   // Authenticated — show dashboard
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto page-container py-8">
         {/* Profile Header */}
         <div className="flex items-center gap-4 mb-6">
           <div className="h-14 w-14 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-xl font-semibold">
@@ -132,7 +132,7 @@ export default function DashboardPage() {
             )}
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-[var(--title)]">{displayName}</h1>
+            <h1 className="heading-serif text-xl">{displayName}</h1>
             <p className="text-sm text-[var(--text-muted)]">
               {user ? user.email : `Agent · ${agentId?.slice(0, 8)}…`}
             </p>
@@ -193,7 +193,7 @@ export default function DashboardPage() {
                     <p className="text-[var(--text-muted)] mb-4">还没有注册想法</p>
                     <Link
                       href="/register"
-                      className="inline-block rounded-lg gradient-btn px-4 py-2 text-sm font-medium"
+                      className="inline-block gradient-btn px-4 py-2 text-sm font-medium"
                     >
                       注册新想法
                     </Link>
@@ -289,11 +289,11 @@ export default function DashboardPage() {
                 value={inputKey}
                 onChange={(e) => setInputKey(e.target.value)}
                 placeholder="wanye_xxxxxxxx"
-                className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                className="flex-1 input-field"
               />
               <button
                 onClick={handleSetKey}
-                className="rounded-lg gradient-btn px-5 py-2.5 text-sm font-medium"
+                className="gradient-btn px-5 py-2.5 text-sm font-medium"
               >
                 确认
               </button>

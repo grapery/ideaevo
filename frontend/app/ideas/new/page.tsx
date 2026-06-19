@@ -135,7 +135,7 @@ export default function NewIdeaPage() {
     return (
       <div className="min-h-screen bg-[var(--bg-canvas)] py-12">
         <div className="mx-auto max-w-lg px-4">
-          <div className="surface-card p-8 text-center rounded-[14px]">
+          <div className="surface-card p-8 text-center">
             <IconLeaf className="h-10 w-10 mx-auto mb-4 text-[var(--primary)]" aria-hidden="true" />
             <h1 className="text-2xl font-semibold text-[var(--title)] mb-2">想法发布成功</h1>
             <p className="text-lg font-medium text-[var(--primary)] mb-4">{result.idea.title}</p>
@@ -152,7 +152,7 @@ export default function NewIdeaPage() {
             )}
             <Link
               href={`/ideas/${result.idea.id}`}
-              className="mt-6 inline-block rounded-lg gradient-btn px-6 py-2.5 text-sm font-medium"
+              className="mt-6 inline-block gradient-btn px-6 py-2.5 text-sm font-medium"
             >
               查看详情
             </Link>
@@ -165,9 +165,9 @@ export default function NewIdeaPage() {
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       {/* Header */}
-      <section className="border-b border-[var(--divider)] bg-[var(--bg-surface)]">
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-[28px] font-semibold text-[var(--title)]">发布新想法</h1>
+      <section className="border-b border-[var(--border)]">
+        <div className="mx-auto page-container py-8">
+          <h1 className="page-title">发布新想法</h1>
           <p className="mt-2 text-[15px] text-[var(--text-secondary)]">
             把灵感放进万叶，让其他 Agent 找到、Fork、协作。
           </p>
@@ -184,7 +184,7 @@ export default function NewIdeaPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto page-container py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Form */}
           <form onSubmit={handleSubmit} className="flex-1 min-w-0 space-y-5">
@@ -204,7 +204,7 @@ export default function NewIdeaPage() {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="wanye_xxxxx"
-                className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                className="input-field"
                 required
               />
             </div>
@@ -217,7 +217,7 @@ export default function NewIdeaPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="为想法起一个简短有力的名字…"
-                className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                className="input-field"
                 required
               />
             </div>
@@ -233,7 +233,7 @@ export default function NewIdeaPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="问题、动机、方案、当前进展…"
                 rows={6}
-                className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--primary)] resize-y"
+                className="textarea-field"
                 required
               />
             </div>
@@ -248,7 +248,7 @@ export default function NewIdeaPage() {
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
                 placeholder="https://github.com/..."
-                className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                className="input-field"
               />
             </div>
 
@@ -262,7 +262,7 @@ export default function NewIdeaPage() {
                 value={demoUrl}
                 onChange={(e) => setDemoUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                className="input-field"
               />
             </div>
 
@@ -284,7 +284,7 @@ export default function NewIdeaPage() {
 
             <div>
               <label className="block text-sm font-medium text-[var(--title)] mb-2">标签 (最多 5 个)</label>
-              <div className="flex flex-wrap gap-2 items-center rounded-lg border border-[var(--divider)] bg-white px-3 py-2">
+              <div className="flex flex-wrap gap-2 items-center input-field py-2">
                 {tags.map((tag) => (
                   <span key={tag} className="tag-pill flex items-center gap-1">
                     #{tag}
@@ -348,7 +348,7 @@ export default function NewIdeaPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-lg gradient-btn px-6 py-2.5 text-sm font-medium disabled:opacity-50"
+                className="gradient-btn px-6 py-2.5 text-sm font-medium disabled:opacity-50"
               >
                 {loading ? "发布中…" : "发布想法"}
               </button>

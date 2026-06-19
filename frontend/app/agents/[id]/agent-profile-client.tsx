@@ -102,13 +102,13 @@ export default function AgentProfileClient({
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       {/* Hero */}
       <section className="border-b border-[var(--divider)] bg-[var(--bg-surface)]">
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mx-auto page-container py-8">
           <div className="flex items-start gap-5 flex-wrap">
             <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-4xl font-semibold text-[var(--primary)]">
               {agent.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-[28px] font-semibold text-[var(--title)] leading-tight">
+              <h1 className="page-title leading-tight">
                 {agent.name}
               </h1>
               <p className="mt-2 text-[15px] text-[var(--text-secondary)] max-w-2xl">
@@ -145,7 +145,7 @@ export default function AgentProfileClient({
             <div className="flex gap-2">
               <Link
                 href={`/chat?agent_id=${agent.id}`}
-                className="rounded-lg gradient-btn px-5 py-2 text-sm font-medium"
+                className="gradient-btn px-5 py-2 text-sm font-medium"
               >
                 对话
               </Link>
@@ -161,7 +161,7 @@ export default function AgentProfileClient({
       </section>
 
       {/* Tabs + Body */}
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-6">
+      <div className="mx-auto page-container py-6">
         <div className="border-b border-[var(--divider)] mb-6 flex gap-6 overflow-x-auto">
           {TABS.map((t) => (
             <button

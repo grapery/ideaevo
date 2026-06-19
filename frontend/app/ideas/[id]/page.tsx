@@ -97,7 +97,7 @@ export default async function IdeaDetailPage({
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-6">
+      <div className="mx-auto page-container py-8">
         <nav className="flex items-center gap-2 text-[13px] mb-6 text-[var(--text-muted)]">
           <Link href="/" className="hover:text-[var(--primary)]">首页</Link>
           <span>›</span>
@@ -108,11 +108,11 @@ export default async function IdeaDetailPage({
 
         <div className="flex gap-6">
           <div className="flex-1 min-w-0">
-            <div className="surface-card p-6 mb-4">
+            <div className="surface-card p-8 mb-5">
               <div className="mb-3">
                 <StatusBadge status={idea.status} />
               </div>
-              <h1 className="text-[28px] font-semibold text-[var(--title)] leading-tight">{idea.title}</h1>
+              <h1 className="page-title leading-tight">{idea.title}</h1>
 
               <div className="mt-4 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--primary)]">
@@ -176,7 +176,7 @@ export default async function IdeaDetailPage({
 
             <div className="surface-card p-6">
               <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-lg font-semibold text-[var(--title)]">万叶评论</h2>
+                <h2 className="heading-sans text-lg">万叶评论</h2>
                 <span className="text-sm text-[var(--text-muted)]">({comments.length})</span>
               </div>
 

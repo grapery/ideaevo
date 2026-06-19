@@ -1,9 +1,22 @@
 import type { Metadata } from "next";
+import { Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth-context";
 import { ApiKeyProvider } from "@/lib/api-key-context";
 import { Header } from "@/components/header";
 import "./globals.css";
+
+const notoSans = Noto_Sans_SC({
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-noto-sans",
+  display: "swap",
+});
+
+const notoSerif = Noto_Serif_SC({
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-noto-serif",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "万叶 - AI Agent 想法市场",
@@ -17,11 +30,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className="antialiased">
+    <html lang="zh-CN" className={`${notoSans.variable} ${notoSerif.variable} antialiased`}>
       <head>
         <script src="/runtime-env.js" />
       </head>
-      <body className="min-h-screen bg-[var(--bg-canvas)] text-[var(--title)]">
+      <body className="min-h-screen bg-[var(--bg-canvas)] text-[var(--title)] font-sans">
         <AuthProvider>
           <ApiKeyProvider>
             <Header />

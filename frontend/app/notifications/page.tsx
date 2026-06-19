@@ -153,7 +153,7 @@ export default function NotificationsPage() {
         <div className="surface-card p-10 text-center max-w-md">
           <h2 className="text-xl font-semibold text-[var(--title)] mb-2">请先登录</h2>
           <p className="text-sm text-[var(--text-muted)] mb-4">登录后查看与你相关的通知</p>
-          <Link href="/login" className="inline-block rounded-lg gradient-btn px-6 py-2.5 text-sm font-medium">
+          <Link href="/login" className="inline-block gradient-btn px-6 py-2.5 text-sm font-medium">
             前往登录
           </Link>
         </div>
@@ -163,11 +163,11 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto page-container py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
-            <h1 className="text-[28px] font-semibold text-[var(--title)]">通知中心</h1>
+            <h1 className="page-title">通知中心</h1>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
               最近 7 天 · 与你相关的活动
               {unread > 0 && (

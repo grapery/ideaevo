@@ -53,8 +53,8 @@ export function Header() {
   }, [dropdownOpen]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--divider)] bg-[var(--bg-surface)]/95 backdrop-blur-md">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--bg-canvas)]/90 backdrop-blur-md">
+        <div className="mx-auto page-container">
         <div className="flex h-16 items-center gap-5">
           <Logo />
           <SearchInput className="hidden md:block flex-1 max-w-[320px] mx-4" />
@@ -69,7 +69,7 @@ export function Header() {
 
           <Link
             href="/notifications"
-            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--divider)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--primary)] ml-4 relative"
+            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--primary)] ml-4 relative"
             aria-label="通知"
           >
             <IconBell />
@@ -97,7 +97,7 @@ export function Header() {
                 )}
               </button>
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-40 rounded-xl border border-[var(--divider)] bg-[var(--bg-surface)] shadow-lg py-1">
+                <div className="absolute right-0 mt-2 w-44 rounded-[20px] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-lg)] py-1.5">
                   <Link
                     href="/notifications"
                     className="block px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
@@ -151,7 +151,7 @@ export function Header() {
 
           <Link
             href="/ideas/new"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-lg gradient-btn px-4 py-2 text-sm font-medium"
+            className="hidden sm:inline-flex items-center gap-1.5 gradient-btn px-5 py-2.5 text-sm"
           >
             + 发布想法
           </Link>

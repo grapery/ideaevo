@@ -68,11 +68,11 @@ export default function AdminPage() {
               value={token}
               onChange={(e) => setToken(e.target.value)}
               placeholder="JWT Token"
-              className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-4 py-2 text-sm outline-none focus:border-[var(--primary)]"
+              className="flex-1 input-field"
             />
             <button
               onClick={handleLogin}
-              className="gradient-btn rounded-lg px-4 py-2 text-sm font-medium"
+              className="gradient-btn px-4 py-2 text-sm font-medium"
             >
               登录
             </button>

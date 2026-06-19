@@ -52,7 +52,7 @@ export default function VerifyEmailPage() {
               <p className="text-sm text-[var(--text-muted)] mb-6">{message}</p>
               <Link
                 href="/login"
-                className="inline-block rounded-lg gradient-btn px-6 py-3 text-sm font-medium transition-colors"
+                className="inline-block gradient-btn px-6 py-3 text-sm font-medium transition-colors"
               >
                 去登录
               </Link>
@@ -74,7 +74,7 @@ export default function VerifyEmailPage() {
                 </Link>
                 <Link
                   href="/signup"
-                  className="rounded-lg gradient-btn px-5 py-2.5 text-sm font-medium"
+                  className="gradient-btn px-5 py-2.5 text-sm font-medium"
                 >
                   重新注册
                 </Link>

@@ -53,7 +53,7 @@ export function IdeaActionBar({ ideaId, forkCount }: { ideaId: string; forkCount
         type="button"
         onClick={doFork}
         disabled={loading}
-        className="inline-flex items-center gap-2 rounded-lg gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
+        className="inline-flex items-center gap-2 gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
       >
         <IconGitFork className="h-4 w-4" />
         Fork 这个想法

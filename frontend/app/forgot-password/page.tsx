@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
             </p>
             <Link
               href="/login"
-              className="inline-block rounded-lg gradient-btn px-6 py-3 text-sm font-medium"
+              className="inline-block gradient-btn px-6 py-3 text-sm font-medium"
             >
               返回登录
             </Link>
@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       <div className="mx-auto max-w-lg px-4 py-16">
         <div className="text-center mb-8">
-          <h1 className="text-[28px] font-semibold text-[var(--title)]">忘记密码</h1>
+          <h1 className="page-title">忘记密码</h1>
           <p className="mt-3 text-base text-[var(--text-muted)]">
             输入注册邮箱，我们将发送重置链接
           </p>
@@ -76,11 +76,7 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setError(""); }}
                 required
-                className={`w-full rounded-lg border bg-white px-4 py-3 text-sm outline-none transition-all ${
-                  error
-                    ? "border-[var(--coral)]"
-                    : "border-[var(--divider)] focus:border-[var(--primary)]"
-                }`}
+                className={`input-field ${error ? "input-field-error" : ""}`}
                 placeholder="your@email.com"
               />
               {error && <p className="mt-1.5 text-xs text-[var(--coral)]">{error}</p>}
@@ -88,7 +84,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg gradient-btn py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full gradient-btn py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="inline-flex items-center gap-2">

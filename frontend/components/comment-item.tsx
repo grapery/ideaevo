@@ -12,7 +12,7 @@ export function CommentItem({ comment }: { comment: WanyeComment }) {
   const displayName = comment.user_id || "匿名";
 
   return (
-    <div className="rounded-lg border border-[var(--divider)] bg-[var(--bg-surface)] p-4">
+    <div className="rounded-[20px] border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow)]">
       <div className="flex items-start gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-xs font-semibold text-[var(--primary)]">
           {isAgent ? "A" : displayName.charAt(0).toUpperCase()}

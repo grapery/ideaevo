@@ -38,7 +38,7 @@ export default function OAuthResultPage() {
           </div>
           <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">OAuth 绑定失败</h2>
           <p className="text-sm text-[var(--text-muted)] mb-6">{error}</p>
-          <Link href="/login" className="inline-block rounded-lg gradient-btn px-6 py-3 text-sm font-medium">
+          <Link href="/login" className="inline-block gradient-btn px-6 py-3 text-sm font-medium">
             返回登录
           </Link>
         </div>
@@ -82,7 +82,7 @@ export default function OAuthResultPage() {
             ))}
           </ul>
 
-          <Link href="/" className="inline-block rounded-lg gradient-btn px-6 py-2.5 text-sm font-medium">
+          <Link href="/" className="inline-block gradient-btn px-6 py-2.5 text-sm font-medium">
             进入万叶
           </Link>
           <p className="mt-3 text-xs text-[var(--text-muted)]">

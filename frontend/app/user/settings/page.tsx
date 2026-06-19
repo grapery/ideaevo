@@ -156,7 +156,7 @@ export default function SettingsPage() {
         <div className="surface-card max-w-md w-full p-10 text-center">
           <h2 className="text-xl font-semibold text-[var(--title)] mb-2">请先登录</h2>
           <p className="text-sm text-[var(--text-muted)] mb-4">登录后管理你的账号设置</p>
-          <Link href="/login" className="inline-block rounded-lg gradient-btn px-6 py-2.5 text-sm font-medium">
+          <Link href="/login" className="inline-block gradient-btn px-6 py-2.5 text-sm font-medium">
             前往登录
           </Link>
         </div>
@@ -166,7 +166,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto page-container py-8">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left nav */}
           <aside className="w-full lg:w-[240px] shrink-0">
@@ -252,7 +252,7 @@ export default function SettingsPage() {
                       autoComplete="name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                      className="input-field"
                     />
                   </div>
                   <div>
@@ -267,7 +267,7 @@ export default function SettingsPage() {
                       value={avatarUrl}
                       onChange={(e) => setAvatarUrl(e.target.value)}
                       placeholder="https://..."
-                      className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                      className="input-field"
                     />
                     <p className="mt-1 text-xs text-[var(--text-muted)]">留空将使用首字母作为头像</p>
                   </div>
@@ -281,7 +281,7 @@ export default function SettingsPage() {
                       rows={3}
                       maxLength={200}
                       placeholder="一句话介绍自己 (例如：AI 研究者 / Agent 工具开发)"
-                      className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)] resize-none"
+                      className="input-field resize-none"
                     />
                     <p className="mt-1 text-xs text-[var(--text-muted)] text-right">
                       {bio.length} / 200 字符
@@ -299,7 +299,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={saveProfile}
                     disabled={savingProfile}
-                    className="rounded-lg gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
+                    className="gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
                   >
                     {savingProfile ? "保存中…" : "保存"}
                   </button>
@@ -344,7 +344,7 @@ export default function SettingsPage() {
                         autoComplete="current-password"
                         value={oldPwd}
                         onChange={(e) => setOldPwd(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                        className="input-field"
                       />
                     </div>
                     <div>
@@ -358,7 +358,7 @@ export default function SettingsPage() {
                         autoComplete="new-password"
                         value={newPwd}
                         onChange={(e) => setNewPwd(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                        className="input-field"
                       />
                     </div>
                     <div>
@@ -372,7 +372,7 @@ export default function SettingsPage() {
                         autoComplete="new-password"
                         value={confirmPwd}
                         onChange={(e) => setConfirmPwd(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                        className="input-field"
                       />
                     </div>
                     <div className="flex justify-end">
@@ -380,7 +380,7 @@ export default function SettingsPage() {
                         type="button"
                         onClick={changePwd}
                         disabled={savingPwd || !oldPwd || !newPwd}
-                        className="rounded-lg gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
+                        className="gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
                       >
                         {savingPwd ? "修改中…" : "修改密码"}
                       </button>
@@ -458,7 +458,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={savePrefs}
-                    className="rounded-lg gradient-btn px-5 py-2 text-sm font-medium"
+                    className="gradient-btn px-5 py-2 text-sm font-medium"
                   >
                     保存偏好
                   </button>
@@ -524,7 +524,7 @@ function ApiKeyDisplay() {
 
   return (
     <div>
-      <div className="flex items-center gap-2 rounded-lg border border-[var(--divider)] bg-white px-4 py-3">
+      <div className="flex items-center gap-2 input-field py-3">
         <code className="flex-1 font-mono text-sm text-[var(--title)]">{display}</code>
         <button
           type="button"

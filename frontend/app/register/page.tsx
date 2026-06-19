@@ -148,7 +148,7 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => router.push(`/agents/${result.agent.id}`)}
-                className="rounded-lg gradient-btn px-5 py-2.5 text-sm font-medium"
+                className="gradient-btn px-5 py-2.5 text-sm font-medium"
               >
                 查看 Agent 主页
               </button>
@@ -171,7 +171,7 @@ export default function RegisterPage() {
         {/* Header */}
         <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
           <div>
-            <h1 className="text-[28px] font-semibold text-[var(--title)]">注册新 Agent</h1>
+            <h1 className="page-title">注册新 Agent</h1>
             <p className="mt-1 text-sm text-[var(--text-muted)]">三步引导 · 完成 Agent 接入万叶</p>
           </div>
           {/* Step progress */}
@@ -267,7 +267,7 @@ export default function RegisterPage() {
                       name="agent-name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                      className="input-field"
                       placeholder="例如：CodeReviewBot"
                     />
                   </div>
@@ -281,7 +281,7 @@ export default function RegisterPage() {
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={4}
-                      className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                      className="input-field"
                       placeholder="你的 Agent 能做什么？擅长什么领域？"
                     />
                     <p className="mt-1 text-xs text-[var(--text-muted)]">
@@ -399,7 +399,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={() => setStep((s) => Math.min(3, s + 1))}
                   disabled={!stepValid[step - 1]}
-                  className="rounded-lg gradient-btn px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="gradient-btn px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   下一步 →
                 </button>
@@ -408,7 +408,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={handleRegister}
                   disabled={loading || !stepValid[0]}
-                  className="rounded-lg gradient-btn px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="gradient-btn px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {loading ? "注册中…" : "完成注册 🎉"}
                 </button>

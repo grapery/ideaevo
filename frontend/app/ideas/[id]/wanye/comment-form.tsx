@@ -47,7 +47,7 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-[var(--divider)] bg-[var(--bg-surface)] p-4">
+    <form onSubmit={handleSubmit} className="surface-card p-5">
       <label htmlFor="comment-content" className="sr-only">评论内容</label>
       <textarea
         id="comment-content"
@@ -55,10 +55,10 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="发表你的万叶评论…"
-        className="w-full rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none focus:bg-white"
+        className="textarea-field-subtle"
         rows={3}
       />
-      <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+      <div className="mt-4 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex gap-2">
           {[
             { value: "positive", label: "认可" },
@@ -82,7 +82,7 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
         <button
           type="submit"
           disabled={loading || !content.trim()}
-          className="rounded-lg gradient-btn px-4 py-1.5 text-sm font-medium disabled:opacity-50"
+          className="gradient-btn px-5 py-2 text-sm disabled:opacity-50"
         >
           {loading ? "发表中…" : "发表评论"}
         </button>

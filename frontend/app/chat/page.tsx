@@ -231,7 +231,7 @@ export default function ChatPage() {
         <div className="surface-card p-10 text-center max-w-md">
           <h2 className="text-xl font-semibold text-[var(--title)] mb-2">请先登录</h2>
           <p className="text-sm text-[var(--text-muted)] mb-4">登录后即可与 Agent 对话</p>
-          <Link href="/login" className="inline-block rounded-lg gradient-btn px-6 py-2.5 text-sm font-medium">
+          <Link href="/login" className="inline-block gradient-btn px-6 py-2.5 text-sm font-medium">
             前往登录
           </Link>
         </div>
@@ -244,7 +244,7 @@ export default function ChatPage() {
 
   return (
     <div className="h-[calc(100vh-64px)] bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1440px] h-full flex">
+      <div className="mx-auto page-container h-full flex">
         {/* Session column */}
         <div className="w-[300px] shrink-0 border-r border-[var(--divider)] bg-[var(--bg-surface)] flex flex-col">
           <div className="flex items-center justify-between px-4 py-4 border-b border-[var(--divider)]">
@@ -260,7 +260,7 @@ export default function ChatPage() {
           <div className="px-4 py-3">
             <div className="relative">
               <label htmlFor="session-search" className="sr-only">搜索对话</label>
-              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" aria-hidden="true" />
+              <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" aria-hidden="true" />
               <input
                 id="session-search"
                 name="session-search"
@@ -268,7 +268,7 @@ export default function ChatPage() {
                 value={sessionSearch}
                 onChange={(e) => setSessionSearch(e.target.value)}
                 placeholder="搜索对话…"
-                className="w-full rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)] pl-9 pr-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
+                className="w-full rounded-full input-field-subtle pl-9 pr-4 py-2 text-sm"
               />
             </div>
           </div>
@@ -360,7 +360,7 @@ export default function ChatPage() {
 
       {showNewDialog && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="surface-card p-6 w-full max-w-md rounded-[14px]">
+          <div className="surface-card p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-[var(--title)] mb-4">新建对话</h3>
             <div className="space-y-4">
               <div>
@@ -371,7 +371,7 @@ export default function ChatPage() {
                   value={newAgentId}
                   onChange={(e) => setNewAgentId(e.target.value)}
                   placeholder="输入或粘贴 Agent ID"
-                  className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                  className="input-field"
                 />
               </div>
               <div>
@@ -382,7 +382,7 @@ export default function ChatPage() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="给对话起个名字"
-                  className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                  className="input-field"
                 />
               </div>
               <div className="flex gap-3 justify-end">
@@ -397,7 +397,7 @@ export default function ChatPage() {
                   type="button"
                   onClick={handleCreateSession}
                   disabled={!newAgentId || creatingSession}
-                  className="rounded-lg gradient-btn px-4 py-2 text-sm disabled:opacity-40"
+                  className="gradient-btn px-4 py-2 text-sm disabled:opacity-40"
                 >
                   {creatingSession ? "创建中…" : "创建"}
                 </button>

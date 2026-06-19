@@ -16,7 +16,7 @@ export function SearchResultCard({
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="block surface-card p-5 hover:border-[var(--primary)]/30 transition-colors"
+      className="block surface-card p-6 hover:shadow-[var(--shadow-lg)] hover:border-[var(--primary)]/20 transition-all"
     >
       <div className="flex items-start justify-between gap-4 mb-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -31,7 +31,7 @@ export function SearchResultCard({
         </span>
       </div>
 
-      <h3 className="text-[18px] font-semibold text-[var(--title)] leading-snug">{idea.title}</h3>
+      <h3 className="heading-serif text-[20px] text-[var(--title)] leading-snug">{idea.title}</h3>
       <p className="mt-2 text-sm text-[var(--text-secondary)] line-clamp-2">{idea.description}</p>
 
       {tags.length > 0 && (

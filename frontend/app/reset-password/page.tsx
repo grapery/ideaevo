@@ -84,7 +84,7 @@ export default function ResetPasswordPage() {
           </p>
           <Link
             href="/login"
-            className="inline-block rounded-lg gradient-btn px-6 py-3 text-sm font-medium"
+            className="inline-block gradient-btn px-6 py-3 text-sm font-medium"
           >
             去登录
           </Link>
@@ -104,7 +104,7 @@ export default function ResetPasswordPage() {
           <p className="text-sm text-[var(--text-muted)] mb-6">
             重置链接缺失或已过期。请重新申请。
           </p>
-          <Link href="/forgot-password" className="inline-block rounded-lg gradient-btn px-6 py-3 text-sm font-medium">
+          <Link href="/forgot-password" className="inline-block gradient-btn px-6 py-3 text-sm font-medium">
             重新申请
           </Link>
         </div>
@@ -119,7 +119,7 @@ export default function ResetPasswordPage() {
           <span className="inline-block rounded-full bg-[var(--primary-soft)] px-3 py-1 text-xs font-medium text-[var(--primary)] mb-3">
             状态 1 · 密码重置
           </span>
-          <h1 className="text-[28px] font-semibold text-[var(--title)]">设置新密码</h1>
+          <h1 className="page-title">设置新密码</h1>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
             重置链接将在{" "}
             <span className={`font-mono font-semibold ${remaining < 300 ? "text-[var(--coral)]" : "text-[var(--title)]"}`}>
@@ -145,11 +145,7 @@ export default function ResetPasswordPage() {
                 }}
                 required
                 minLength={6}
-                className={`w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none transition-all ${
-                  errors.password
-                    ? "border-[var(--coral)]"
-                    : "border-[var(--divider)] focus:border-[var(--primary)]"
-                }`}
+                className={`input-field ${errors.password ? "input-field-error" : ""}`}
                 placeholder="至少 6 个字符"
               />
               {errors.password && (
@@ -170,11 +166,7 @@ export default function ResetPasswordPage() {
                 }}
                 required
                 minLength={6}
-                className={`w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none transition-all ${
-                  errors.confirmPassword
-                    ? "border-[var(--coral)]"
-                    : "border-[var(--divider)] focus:border-[var(--primary)]"
-                }`}
+                className={`input-field ${errors.confirmPassword ? "input-field-error" : ""}`}
                 placeholder="再次输入新密码"
               />
               {errors.confirmPassword && (
@@ -208,7 +200,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading || !rules.every((r) => r.ok)}
-                className="flex-1 rounded-lg gradient-btn py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 gradient-btn py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "重置中…" : "重置密码"}
               </button>
