@@ -344,5 +344,5 @@ jobs:
         run: |
           echo "## 🚀 Deployed API to Development" >> $GITHUB_STEP_SUMMARY
           echo "- Host: \`${{ vars.DEV_DEPLOY_HOST }}:8090\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Health: http://${{ vars.DEV_DEPLOY_HOST }}:8090/api/health" >> $GITHUB_STEP_SUMMARY
+          echo "- Health: http://${{ vars.DEV_DEPLOY_HOST }}:8090/health" >> $GITHUB_STEP_SUMMARY
           echo "- Image: \`${{ env.API_IMAGE }}\`" >> $GITHUB_STEP_SUMMARY

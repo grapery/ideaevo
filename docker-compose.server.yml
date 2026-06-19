@@ -5,8 +5,11 @@
 #   - 镜像 tag 由 CI 注入（${API_IMAGE} / ${WEB_IMAGE}）
 #   - 连接外部网络 ideaevo-network（首次部署会自动创建）
 #
-# 端口分配（避免与同机的 grapery 冲突）：
-#   api: 8090（宿主）  web: 3001（宿主）
+# 端口分配（避免与同机 grapery 冲突）：
+#   grapery 占用宿主 3000（creation）、8080（server）
+#   ideaevo 宿主映射：api → 8090，web → 3001
+#   容器内端口不变（api:8080, web:3000）；nginx 经 Docker 网络反代，不走宿主端口。
+#   可通过 IDEAEVO_API_PORT / IDEAEVO_WEB_PORT 覆盖宿主映射。
 
 services:
   api:
@@ -27,7 +30,7 @@ services:
       - ideaevo-network
       - grapery-network
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
