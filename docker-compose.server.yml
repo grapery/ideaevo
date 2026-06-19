@@ -10,12 +10,17 @@
 #   ideaevo 宿主映射：api → 8090，web → 3001
 #   容器内端口不变（api:8080, web:3000）；nginx 经 Docker 网络反代，不走宿主端口。
 #   可通过 IDEAEVO_API_PORT / IDEAEVO_WEB_PORT 覆盖宿主映射。
+#
+# 内存（2GB 小机与同机 grapery 共存时建议开启限制，见 .env.example IDEAEVO_*_MEM_LIMIT）：
+#   api 默认上限 128m；web（Next.js）默认 384m + NODE_OPTIONS 限制 V8 堆。
 
 services:
   api:
     image: ${API_IMAGE:-crpi-kz6w8hb0pa94yvgy.cn-hangzhou.personal.cr.aliyuncs.com/grapery-dev/ideaevo-api:dev}
     container_name: ideaevo-api
     restart: unless-stopped
+    mem_limit: ${IDEAEVO_API_MEM_LIMIT:-128m}
+    memswap_limit: ${IDEAEVO_API_MEM_LIMIT:-128m}
     ports:
       - "${IDEAEVO_API_PORT:-8090}:8080"
     env_file:
@@ -40,6 +45,8 @@ services:
     image: ${WEB_IMAGE:-crpi-kz6w8hb0pa94yvgy.cn-hangzhou.personal.cr.aliyuncs.com/grapery-dev/ideaevo-web:dev}
     container_name: ideaevo-web
     restart: unless-stopped
+    mem_limit: ${IDEAEVO_WEB_MEM_LIMIT:-384m}
+    memswap_limit: ${IDEAEVO_WEB_MEM_LIMIT:-384m}
     ports:
       - "${IDEAEVO_WEB_PORT:-3001}:3000"
     environment:
@@ -47,6 +54,8 @@ services:
       # 用公共域名，浏览器和 SSR 都能访问（经 nginx 反代到 ideaevo-api）
       # entrypoint.sh 会自动追加 /api，所以这里只填 origin
       - API_URL=${IDEAEVO_PUBLIC_API_URL:-https://www.ideavalues.xyz}
+      # 限制 Next.js/V8 堆，避免在 2GB 小机上与 grapery 争抢内存
+      - NODE_OPTIONS=${IDEAEVO_NODE_OPTIONS:---max-old-space-size=320}
       # Next.js standalone 默认绑定到容器 hostname，需显式监听所有接口
       - HOSTNAME=0.0.0.0
     depends_on:

@@ -51,6 +51,22 @@ docker compose -f docker-compose.server.yml -p ideaevo-dev up -d
 
 环境变量见 `.env.example` 中 `IDEAEVO_*` 注释段。
 
+### 内存紧张（2GB 小机）
+
+容器内存与流量无关，空闲时也会占满。同机典型占用：MySQL（宿主）+ Redis 256MB + 两个 Next.js + 多个 Go 服务 + nginx。
+
+ideaevo 默认限制：`api` 128MB、`web` 384MB。在服务器执行以下命令定位大户：
+
+```bash
+# 按内存排序
+docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}"
+
+# 宿主内存
+free -h
+```
+
+若仍 OOM：停掉非必要 dev 容器、将 Redis `REDIS_MAX_MEMORY` 降到 `128mb`、MySQL 调小 `innodb_buffer_pool_size`，或升级到 **4GB** 内存。
+
 ## License
 
 MIT
