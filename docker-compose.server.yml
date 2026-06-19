@@ -25,6 +25,7 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - ideaevo-network
+      - grapery-network
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
       interval: 30s
@@ -39,13 +40,17 @@ services:
     ports:
       - "${IDEAEVO_WEB_PORT:-3001}:3000"
     environment:
-      # 前端容器启动时 entrypoint.sh 会把 API_URL 写入 runtime-env.js
-      # 容器内通过服务名访问同网络的 api 容器
-      - API_URL=http://api:8080
+      # 前端容器启动时 entrypoint.sh 会把 API_URL 写入 runtime-env.js（浏览器读取）
+      # 用公共域名，浏览器和 SSR 都能访问（经 nginx 反代到 ideaevo-api）
+      # entrypoint.sh 会自动追加 /api，所以这里只填 origin
+      - API_URL=${IDEAEVO_PUBLIC_API_URL:-https://www.ideavalues.xyz}
+      # Next.js standalone 默认绑定到容器 hostname，需显式监听所有接口
+      - HOSTNAME=0.0.0.0
     depends_on:
       - api
     networks:
       - ideaevo-network
+      - grapery-network
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
       interval: 30s
@@ -55,5 +60,7 @@ services:
 
 networks:
   ideaevo-network:
-    # 与 grapery-network 平行的独立网络；不存在时 docker compose 会创建
     name: ideaevo-network
+  grapery-network:
+    # 复用 grapery ngx 所在的外部网络，让 nginx 反代可达 ideaevo 容器
+    external: true
