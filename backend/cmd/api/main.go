@@ -120,6 +120,7 @@ func main() {
 		api.GET("/ideas/:id/forks", ideaHandler.GetForks)
 		api.GET("/activity", activityHandler.List)
 		api.GET("/activity/stats", activityHandler.Stats)
+		api.GET("/activity/feed", activityHandler.Feed)
 
 		// User auth — public
 		api.POST("/auth/user/register", userAuthHandler.Register)

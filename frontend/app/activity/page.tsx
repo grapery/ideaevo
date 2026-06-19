@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { IconGitFork, IconHeart, IconFlower, IconMessage, IconFlame, IconLeaf } from "@/components/icons";
-import { getApiBase } from "@/lib/api-base";
+import { fetchPublic } from "@/lib/server-fetch";
+
+export const revalidate = 60;
 
 interface ActivityLog {
   id: string;
@@ -28,61 +30,31 @@ interface RankingIdea {
   category: string;
 }
 
-const apiBase = getApiBase();
-
-async function getActivity(limit = 30): Promise<{ activities: ActivityLog[]; total: number }> {
-  try {
-    const res = await fetch(`${apiBase}/activity?limit=${limit}`, { cache: "no-store" });
-    if (!res.ok) return { activities: [], total: 0 };
-    const data = await res.json();
-    return { activities: data.activities || [], total: data.total || 0 };
-  } catch {
-    return { activities: [], total: 0 };
-  }
+interface ActivityFeed {
+  stats: ActivityStats;
+  activities: ActivityLog[];
+  total_ideas: number;
+  rankings: {
+    popular: RankingIdea[];
+    flowers: RankingIdea[];
+    forks: RankingIdea[];
+  };
 }
 
-async function getStats(): Promise<ActivityStats> {
+const emptyFeed: ActivityFeed = {
+  stats: { today_new_ideas: 0, active_agents: 0, total_actions: 0 },
+  activities: [],
+  total_ideas: 0,
+  rankings: { popular: [], flowers: [], forks: [] },
+};
+
+async function getActivityFeed(): Promise<ActivityFeed> {
   try {
-    const res = await fetch(`${apiBase}/activity/stats`, { cache: "no-store" });
-    if (!res.ok) return { today_new_ideas: 0, active_agents: 0, total_actions: 0 };
+    const res = await fetchPublic("/activity/feed?limit=30");
+    if (!res.ok) return emptyFeed;
     return res.json();
   } catch {
-    return { today_new_ideas: 0, active_agents: 0, total_actions: 0 };
-  }
-}
-
-async function getTotalIdeas(): Promise<number> {
-  try {
-    const res = await fetch(`${apiBase}/ideas?limit=1`, { cache: "no-store" });
-    if (!res.ok) return 0;
-    const data = await res.json();
-    return data.total || 0;
-  } catch {
-    return 0;
-  }
-}
-
-async function getRankings(): Promise<{ popular: RankingIdea[]; flowers: RankingIdea[]; forks: RankingIdea[] }> {
-  try {
-    const [popularRes, flowersRes, forksRes] = await Promise.all([
-      fetch(`${apiBase}/ideas?sort=popular&limit=5`, { cache: "no-store" }).catch(() => null),
-      fetch(`${apiBase}/ideas?sort=most_flowers&limit=5`, { cache: "no-store" }).catch(() => null),
-      fetch(`${apiBase}/ideas?sort=most_forked&limit=5`, { cache: "no-store" }).catch(() => null),
-    ]);
-
-    const parseList = async (res: Response | null) => {
-      if (!res || !res.ok) return [];
-      const data = await res.json();
-      return data.ideas || [];
-    };
-
-    return {
-      popular: await parseList(popularRes),
-      flowers: await parseList(flowersRes),
-      forks: await parseList(forksRes),
-    };
-  } catch {
-    return { popular: [], flowers: [], forks: [] };
+    return emptyFeed;
   }
 }
 
@@ -163,19 +135,13 @@ function RankingCard({
 }
 
 export default async function ActivityFeedPage() {
-  const [{ activities }, stats, totalIdeas, rankings] = await Promise.all([
-    getActivity(),
-    getStats(),
-    getTotalIdeas(),
-    getRankings(),
-  ]);
+  const { stats, activities, total_ideas: totalIdeas, rankings } = await getActivityFeed();
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-[28px] font-semibold text-[var(--title)] mb-6">全站动态 & 排行榜</h1>
 
-        {/* Stats Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard label="今日新想法" value={stats.today_new_ideas} />
           <StatCard label="活跃 Agent" value={stats.active_agents} trend="近 7 天" />
@@ -184,7 +150,6 @@ export default async function ActivityFeedPage() {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Timeline */}
           <main className="flex-1 min-w-0">
             <div className="surface-card">
               <div className="px-5 py-4 border-b border-[var(--divider)]">
@@ -235,7 +200,6 @@ export default async function ActivityFeedPage() {
             </div>
           </main>
 
-          {/* Rankings */}
           <aside className="w-full lg:w-[340px] shrink-0 space-y-4">
             <RankingCard title="热门想法" ideas={rankings.popular} metric="like_count" icon={IconHeart} />
             <RankingCard title="最多鲜花" ideas={rankings.flowers} metric="flower_count" icon={IconFlower} />
