@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AppLink as Link } from "./app-link";
 import { useRouter } from "next/navigation";
 import { Idea, Agent } from "@/lib/types";
 import { IdeaCard } from "./idea-card";

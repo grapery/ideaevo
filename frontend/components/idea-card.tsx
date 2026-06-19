@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppLink as Link } from "./app-link";
 import { Idea, normalizeTags } from "@/lib/types";
 import { EngagementBar } from "./engagement-bar";
 import { StatusBadge } from "./status-badge";

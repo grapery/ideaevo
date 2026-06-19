@@ -8,6 +8,13 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    // Reduce repeated RSC revalidation when prefetch is triggered
+    staleTimes: {
+      dynamic: 60,
+      static: 180,
+    },
+  },
 } as NextConfig;
 
 export default nextConfig;

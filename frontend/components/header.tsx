@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AppLink as Link } from "./app-link";
 import { useAuth } from "@/lib/auth-context";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Logo } from "./logo";
