@@ -267,6 +267,7 @@ jobs:
 
       - name: Generate .env for server
         env:
+          DB_ADDRESS: ${{ vars.DB_ADDRESS }}
           DB_USERNAME: ${{ vars.DB_USERNAME }}
           DB_PASSWORD: ${{ vars.DB_PASSWORD }}
           JWT_SECRET: ${{ vars.JWT_SECRET }}
@@ -275,7 +276,7 @@ jobs:
         run: |
           mkdir -p deploy
           {
-            echo "DB_HOST=host.docker.internal"
+            echo "DB_HOST=${DB_ADDRESS}"
             echo "DB_PORT=3306"
             echo "DB_USER=${DB_USERNAME}"
             echo "DB_PASSWORD=${DB_PASSWORD}"
@@ -310,16 +311,17 @@ jobs:
           ACR_REGISTRY: ${{ vars.ACR_REGISTRY }}
           ACR_USERNAME: ${{ vars.ACR_USERNAME }}
           ACR_PASSWORD: ${{ vars.ACR_PASSWORD }}
+          DB_ADDRESS: ${{ vars.DB_ADDRESS }}
           DB_ROOT_USER: ${{ vars.DB_USERNAME }}
           DB_ROOT_PASSWORD: ${{ vars.DB_PASSWORD }}
         with:
           host: ${{ vars.DEV_DEPLOY_HOST }}
           username: ${{ vars.SSH_USER }}
           key_path: ${{ github.workspace }}/ssh_key
-          envs: API_IMAGE,WEB_IMAGE,ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,DB_ROOT_USER,DB_ROOT_PASSWORD
+          envs: API_IMAGE,WEB_IMAGE,ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,DB_ADDRESS,DB_ROOT_USER,DB_ROOT_PASSWORD
           script: |
             # 幂等创建独立库 ideaevo_dev（宿主机 MySQL 是原生服务，监听 127.0.0.1:3306）
-            mysql -h127.0.0.1 -u"$DB_ROOT_USER" -p"$DB_ROOT_PASSWORD" \
+            mysql -h"$DB_ADDRESS" -u"$DB_ROOT_USER" -p"$DB_ROOT_PASSWORD" \
               -e "CREATE DATABASE IF NOT EXISTS ideaevo_dev DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" \
               2>/dev/null && echo "✅ database ideaevo_dev ready" || echo "⚠️ database create skipped (mysql cli missing or auth failed — assume exists)"
             mkdir -p ${{ env.DEPLOY_DIR }}
@@ -330,9 +332,13 @@ jobs:
             export WEB_IMAGE="$WEB_IMAGE"
             docker compose -f docker-compose.server.yml -p ideaevo-dev pull api
             docker compose -f docker-compose.server.yml -p ideaevo-dev up -d api
-            sleep 8
+            sleep 12
+            echo "=== container status ==="
+            docker ps -a --filter "name=ideaevo-api" --format "{{.Names}}\t{{.Status}}"
+            echo "=== last logs ==="
+            docker logs ideaevo-api --tail 10 2>&1 || true
             docker compose -f docker-compose.server.yml -p ideaevo-dev ps
-            curl -sf http://localhost:8090/api/health && echo "✅ api healthy" || echo "⚠️ api health check failed"
+            curl -sf http://localhost:8090/health && echo "✅ api healthy" || echo "⚠️ api health check failed"
 
       - name: Deploy notification
         run: |
