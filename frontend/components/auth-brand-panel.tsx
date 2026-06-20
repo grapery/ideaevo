@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { IconLeaf } from "./icons";
 import { useEffect, useState } from "react";
+import { getApiBase } from "@/lib/api-base";
 
 interface BrandStats {
   ideaCount: number;
@@ -14,9 +15,7 @@ export function AuthBrandPanel() {
   const [stats, setStats] = useState<BrandStats>({ ideaCount: 0, agentCount: 0, todayNew: 0 });
 
   useEffect(() => {
-    const apiBase =
-      (typeof window !== "undefined" ? window.__ENV_API_URL__ : null) ||
-      "http://localhost:8080/api";
+    const apiBase = getApiBase();
     Promise.all([
       fetch(`${apiBase}/ideas?limit=1`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${apiBase}/agents?limit=1`).then((r) => (r.ok ? r.json() : null)),
@@ -27,6 +26,8 @@ export function AuthBrandPanel() {
         agentCount: agents?.total || 0,
         todayNew: activity?.today_new_ideas || 0,
       });
+    }).catch(() => {
+      // Stats are decorative; ignore network errors on the auth panel.
     });
   }, []);
 

@@ -3,8 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Idea } from "@/lib/types";
+import { getApiBase } from "@/lib/api-base";
 import { IconGitFork } from "@/components/icons";
 import { SendFlowerButton } from "./idea-action-bar";
+
+const sidebarCardClass = "surface-card px-5 py-4";
+const sidebarTitleClass = "heading-sans text-sm";
+const sidebarSoftBlockClass =
+  "rounded-xl bg-[var(--primary-soft)] px-3.5 py-2.5";
 
 interface ForkRecord {
   id: string;
@@ -64,9 +70,7 @@ export function ForkTreePanel({
 }) {
   const [ideaMap, setIdeaMap] = useState<Map<string, Idea>>(new Map());
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const apiBase =
-    (typeof window !== "undefined" ? window.__ENV_API_URL__ : null) ||
-    "http://localhost:8080/api";
+  const apiBase = getApiBase();
 
   // Fetch each forked idea to display its title.
   useEffect(() => {
@@ -100,18 +104,21 @@ export function ForkTreePanel({
   }
 
   return (
-    <div className="surface-card p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="heading-sans text-sm flex items-center gap-1.5">
-          <IconGitFork className="h-4 w-4" /> Fork 树
+    <div className={sidebarCardClass}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className={`${sidebarTitleClass} flex items-center gap-1.5`}>
+          <IconGitFork className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
+          Fork 树
         </h3>
-        <span className="text-xs text-[var(--text-muted)]">{forks.length} 个衍生</span>
+        <span className="shrink-0 text-xs tabular-nums text-[var(--text-muted)]">
+          {forks.length} 个衍生
+        </span>
       </div>
 
       <TreeNode node={tree} depth={0} collapsed={collapsed} onToggle={toggle} />
 
       {forks.length === 0 && (
-        <p className="mt-2 text-xs text-[var(--text-muted)]">
+        <p className="mt-2.5 text-xs leading-relaxed text-[var(--text-muted)]">
           暂无 Fork，成为第一个衍生者
         </p>
       )}
@@ -136,30 +143,34 @@ function TreeNode({
   const hasChildren = node.children.length > 0;
 
   return (
-    <div className={depth > 0 ? "ml-3 border-l-2 border-[var(--divider)] pl-3 my-1" : ""}>
+    <div className={depth > 0 ? "my-1 ml-3 border-l-2 border-[var(--divider)] pl-3" : ""}>
       <div
-        className={`flex items-start gap-2 rounded-lg px-2.5 py-1.5 ${
-          isRoot ? "bg-[var(--primary-soft)]" : "hover:bg-[var(--bg-subtle)]"
+        className={`flex items-start gap-2 ${
+          isRoot
+            ? sidebarSoftBlockClass
+            : "rounded-xl px-2 py-1.5 hover:bg-[var(--bg-subtle)]"
         }`}
       >
         {hasChildren ? (
           <button
             type="button"
             onClick={() => onToggle(ideaId)}
-            className="mt-0.5 text-[var(--text-muted)] hover:text-[var(--primary)] text-xs w-4"
+            className="mt-0.5 w-4 shrink-0 text-xs text-[var(--text-muted)] hover:text-[var(--primary)]"
             aria-label={isCollapsed ? "展开" : "折叠"}
           >
             {isCollapsed ? "▶" : "▼"}
           </button>
         ) : (
-          <span className="mt-0.5 text-[var(--text-muted)] text-xs w-4">•</span>
+          <span className="mt-1 w-4 shrink-0 text-center text-[10px] leading-none text-[var(--primary)]">
+            •
+          </span>
         )}
 
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {node.idea ? (
             <Link
               href={`/ideas/${node.idea.id}`}
-              className={`text-sm hover:text-[var(--primary)] block truncate ${
+              className={`block truncate text-sm leading-snug hover:text-[var(--primary)] ${
                 isRoot
                   ? "font-medium text-[var(--primary)]"
                   : "text-[var(--text-secondary)]"
@@ -168,7 +179,7 @@ function TreeNode({
               {node.idea.title}
             </Link>
           ) : (
-            <span className="text-sm text-[var(--text-muted)] italic">
+            <span className="text-sm italic text-[var(--text-muted)]">
               {node.fork ? `Fork ${node.fork.new_idea_id.slice(0, 6)}` : "未知"}
             </span>
           )}
@@ -209,26 +220,50 @@ export function FlowersPanel({ ideaId, flowerCount }: { ideaId: string; flowerCo
   const avatarCount = Math.min(flowerCount, 8);
 
   return (
-    <div className="surface-card p-4">
-      <h3 className="heading-sans text-sm mb-3">🌸 收到的花</h3>
+    <div className={sidebarCardClass}>
+      <h3 className={`${sidebarTitleClass} mb-3`}>
+        <span aria-hidden="true" className="mr-1">
+          🌸
+        </span>
+        收到的花
+      </h3>
       {avatarCount > 0 ? (
-        <div className="flex flex-wrap gap-1.5 mb-3">
+        <div className="mb-2.5 flex flex-wrap gap-2">
           {Array.from({ length: avatarCount }).map((_, i) => (
             <div
               key={i}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--teal-soft)] text-xs font-semibold text-[var(--teal)]"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[13px] font-semibold text-[var(--primary)]"
             >
               {String.fromCharCode(65 + (i % 26))}
             </div>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-[var(--text-muted)] mb-3">还没有人送花</p>
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">还没有人送花</p>
       )}
-      <p className="text-xs text-[var(--text-muted)] mb-3">
+      <p className="mb-3 text-xs tabular-nums text-[var(--text-muted)]">
         累计 {flowerCount} 朵鲜花
       </p>
       <SendFlowerButton ideaId={ideaId} />
+    </div>
+  );
+}
+
+export function VersionHistoryPanel({ createdAt }: { createdAt: string }) {
+  const createdDate = new Date(createdAt).toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  });
+
+  return (
+    <div className={sidebarCardClass}>
+      <h3 className={`${sidebarTitleClass} mb-3`}>版本历史</h3>
+      <div className={sidebarSoftBlockClass}>
+        <p className="text-sm font-medium text-[var(--primary)]">v1 · 当前</p>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">初始版本</p>
+        <p className="mt-1 text-xs tabular-nums text-[var(--text-muted)]">{createdDate}</p>
+      </div>
     </div>
   );
 }
@@ -238,8 +273,8 @@ export function RelatedIdeasPanel({ ideas, currentId }: { ideas: Idea[]; current
   if (related.length === 0) return null;
 
   return (
-    <div className="surface-card p-4">
-      <h3 className="heading-sans text-sm mb-3">相关想法</h3>
+    <div className={sidebarCardClass}>
+      <h3 className={`${sidebarTitleClass} mb-3`}>相关想法</h3>
       <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
         {related.map((item) => (
           <li key={item.id}>
@@ -255,18 +290,18 @@ export function RelatedIdeasPanel({ ideas, currentId }: { ideas: Idea[]; current
 
 export function IdeaStatsPanel({ idea }: { idea: Idea }) {
   return (
-    <div className="surface-card p-4">
-      <h3 className="heading-sans text-sm mb-3">想法统计</h3>
-      <div className="space-y-2 text-sm">
+    <div className={sidebarCardClass}>
+      <h3 className={`${sidebarTitleClass} mb-3`}>想法统计</h3>
+      <div className="space-y-2.5 text-sm">
         {[
           ["点赞", idea.like_count],
           ["鲜花", idea.flower_count],
           ["Fork", idea.fork_count],
           ["评论", idea.comment_count],
         ].map(([label, count]) => (
-          <div key={label as string} className="flex justify-between">
+          <div key={label as string} className="flex items-center justify-between gap-4">
             <span className="text-[var(--text-muted)]">{label}</span>
-            <span className="font-medium text-[var(--title)]">{count}</span>
+            <span className="font-medium tabular-nums text-[var(--title)]">{count}</span>
           </div>
         ))}
       </div>

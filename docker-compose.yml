@@ -44,8 +44,15 @@ services:
       PORT: 8080
       # —— LLM（留空降级为 Mock 回复）——
       LLM_API_KEY: ${LLM_API_KEY:-}
+      ARK_API_KEY: ${ARK_API_KEY:-}
+      HUOSHAN_API_KEY: ${HUOSHAN_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      ARK_BASE_URL: ${ARK_BASE_URL:-}
+      HUOSHAN_BASE_URL: ${HUOSHAN_BASE_URL:-}
+      HUOSHAN_TEXT_MODEL: ${HUOSHAN_TEXT_MODEL:-}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o}
+      ARK_MODEL: ${ARK_MODEL:-}
+      HUOSHAN_MODEL: ${HUOSHAN_MODEL:-}
       SYSTEM_AGENT_ID: ${SYSTEM_AGENT_ID:-}
       # —— 阿里云 OSS 向量 Bucket（留空降级为 MySQL LIKE 检索）——
       ALIYUN_OSS_ACCESS_KEY_ID: ${ALIYUN_OSS_ACCESS_KEY_ID:-}

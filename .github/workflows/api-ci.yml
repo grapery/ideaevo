@@ -283,6 +283,9 @@ jobs:
           DB_PASSWORD: ${{ vars.DB_PASSWORD }}
           JWT_SECRET: ${{ vars.JWT_SECRET }}
           DASHSCOPE_API_KEY: ${{ vars.DASHSCOPE_API_KEY }}
+          HUOSHAN_API_KEY: ${{ vars.HUOSHAN_API_KEY }}
+          HUOSHAN_BASE_URL: ${{ vars.HUOSHAN_BASE_URL }}
+          HUOSHAN_TEXT_MODEL: ${{ vars.HUOSHAN_TEXT_MODEL }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           ALIYUN_SMS_SIGN_NAME: ${{ vars.ALIYUN_SMS_SIGN_NAME }}
           ALIYUN_SMS_TEMPLATE_CODE: ${{ vars.ALIYUN_SMS_TEMPLATE_CODE }}
@@ -293,6 +296,7 @@ jobs:
         run: |
           mkdir -p deploy
           SMS_REGION="${ALIYUN_SMS_REGION:-cn-hangzhou}"
+          HUOSHAN_BASE="${HUOSHAN_BASE_URL:-https://ark.cn-beijing.volces.com/api/v3}"
           {
             echo "DB_HOST=${DB_ADDRESS}"
             echo "DB_PORT=3306"
@@ -302,9 +306,19 @@ jobs:
             echo "PORT=8080"
             echo "JWT_SECRET=${JWT_SECRET}"
             echo "JWT_EXPIRY=24h"
-            echo "LLM_API_KEY=${DASHSCOPE_API_KEY}"
-            echo "LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1"
-            echo "LLM_MODEL=qwen-plus"
+            # LLM 对话：优先火山方舟（与 grapery 共用 GitHub vars）；勿把 DASHSCOPE 写入 LLM_API_KEY
+            if [ -n "${HUOSHAN_API_KEY}" ]; then
+              echo "HUOSHAN_API_KEY=${HUOSHAN_API_KEY}"
+              echo "HUOSHAN_BASE_URL=${HUOSHAN_BASE}"
+              if [ -n "${HUOSHAN_TEXT_MODEL}" ]; then
+                echo "HUOSHAN_TEXT_MODEL=${HUOSHAN_TEXT_MODEL}"
+              fi
+            else
+              echo "LLM_API_KEY=${DASHSCOPE_API_KEY}"
+              echo "LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1"
+              echo "LLM_MODEL=qwen-plus"
+            fi
+            # Embedding 语义检索（独立于 LLM 对话）
             echo "DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}"
             echo "FRONTEND_URL=http://121.40.176.39:3001"
             echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"

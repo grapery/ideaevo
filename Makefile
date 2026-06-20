@@ -1,5 +1,8 @@
 .PHONY: dev api mcp web build test
 
+# Load repo-root .env for local dev (DB, JWT, API_URL, …)
+ENV_LOAD = set -a; [ -f .env ] && . ./.env; set +a
+
 DB_HOST ?= localhost
 DB_PORT ?= 3306
 DB_USER ?= root
@@ -12,16 +15,18 @@ dev: ## Start MySQL container
 	@echo "Run 'make api' and 'make web' in separate terminals"
 
 api: ## Start the REST API server
-	cd backend && DB_HOST=$(DB_HOST) DB_PORT=$(DB_PORT) DB_USER=$(DB_USER) DB_PASSWORD=$(DB_PASSWORD) DB_NAME=$(DB_NAME) go run cmd/api/main.go
+	@$(ENV_LOAD); cd backend && go run cmd/api/main.go
 
 mcp: ## Start the MCP server (stdio)
-	cd backend && DB_HOST=$(DB_HOST) DB_PORT=$(DB_PORT) DB_USER=$(DB_USER) DB_PASSWORD=$(DB_PASSWORD) DB_NAME=$(DB_NAME) MCP_TRANSPORT=stdio go run cmd/mcp/main.go
+	@$(ENV_LOAD); cd backend && MCP_TRANSPORT=stdio go run cmd/mcp/main.go
 
 mcp-sse: ## Start the MCP server (SSE)
-	cd backend && DB_HOST=$(DB_HOST) DB_PORT=$(DB_PORT) DB_USER=$(DB_USER) DB_PASSWORD=$(DB_PASSWORD) DB_NAME=$(DB_NAME) MCP_TRANSPORT=sse MCP_PORT=9090 go run cmd/mcp/main.go
+	@$(ENV_LOAD); cd backend && MCP_TRANSPORT=sse MCP_PORT=9090 go run cmd/mcp/main.go
 
 web: ## Start the Next.js frontend
-	cd frontend && npm run dev
+	@$(ENV_LOAD); \
+	echo "window.__ENV_API_URL__ = \"$${API_URL:-http://localhost:8090}\";" > frontend/public/runtime-env.js; \
+	cd frontend && PORT=3000 npm run dev
 
 build: ## Build all
 	cd backend && go build -o bin/api cmd/api/main.go && go build -o bin/mcp cmd/mcp/main.go

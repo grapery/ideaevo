@@ -1,23 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { useApiKey } from "@/lib/api-key-context";
 import { toast } from "sonner";
-import { parseResponseError, getErrorMessage } from "@/lib/api-error";
+import { getErrorMessage } from "@/lib/api-error";
+import {
+  IDEA_AUTH_REQUIRED_MSG,
+  ideaRequestJson,
+} from "@/lib/idea-request";
+import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 
 export function CommentForm({ ideaId }: { ideaId: string }) {
-  const { apiKey } = useApiKey();
+  const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const [content, setContent] = useState("");
   const [sentiment, setSentiment] = useState("neutral");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const apiBase =
-    (typeof window !== "undefined"
-      ? window.__ENV_API_URL__
-      : null) || "http://localhost:8080/api";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,25 +24,20 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
       setError("请输入评论内容");
       return;
     }
-    if (!apiKey) {
-      toast.error("请先在「我的面板」输入 API Key");
+    if (!canAct) {
+      toast.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
 
     setError("");
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase}/ideas/${ideaId}/comments`, {
+      await ideaRequestJson(`/ideas/${ideaId}/comments`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": apiKey,
-        },
+        apiKey: useSession ? undefined : apiKey,
+        useSession,
         body: JSON.stringify({ content, sentiment }),
       });
-      if (!res.ok) {
-        throw new Error(await parseResponseError(res, "评论失败"));
-      }
       toast.success("评论已发表！");
       setContent("");
     } catch (err) {

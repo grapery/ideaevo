@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/ui/password-input";
 import { parseResponseError, getErrorMessage } from "@/lib/api-error";
+import { getApiBase } from "@/lib/api-base";
 
 interface Comment {
   id: string;
@@ -20,10 +21,7 @@ export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
 
-  const apiBase =
-    (typeof window !== "undefined"
-      ? window.__ENV_API_URL__
-      : null) || "http://localhost:8080/api";
+  const apiBase = getApiBase();
 
   function handleLogin() {
     if (token.trim()) {

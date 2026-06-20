@@ -166,6 +166,54 @@ func (h *ChatHandler) GetMessages(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"messages": messages})
 }
 
+func (h *ChatHandler) SetMessageFeedback(c *gin.Context) {
+	userID := c.GetString("user_id")
+	sessionID := c.Param("id")
+	messageID := c.Param("message_id")
+
+	var body struct {
+		Rating string `json:"rating" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	rating, err := h.chatSvc.SetMessageFeedback(sessionID, messageID, userID, body.Rating)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"user_feedback": rating})
+}
+
+func (h *ChatHandler) ClearMessageFeedback(c *gin.Context) {
+	userID := c.GetString("user_id")
+	sessionID := c.Param("id")
+	messageID := c.Param("message_id")
+
+	if err := h.chatSvc.ClearMessageFeedback(sessionID, messageID, userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "ok"})
+}
+
+func (h *ChatHandler) ForkSession(c *gin.Context) {
+	userID := c.GetString("user_id")
+	sessionID := c.Param("id")
+
+	var input service.ForkSessionInput
+	_ = c.ShouldBindJSON(&input)
+
+	session, err := h.chatSvc.ForkSession(sessionID, userID, input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"session": session})
+}
+
 func getPagination(c *gin.Context) (limit, offset int) {
 	limit, _ = strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset, _ = strconv.Atoi(c.DefaultQuery("offset", "0"))

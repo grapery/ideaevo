@@ -1,36 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { useApiKey } from "@/lib/api-key-context";
 import { toast } from "sonner";
-import { parseResponseError, getErrorMessage } from "@/lib/api-error";
+import { getErrorMessage } from "@/lib/api-error";
+import {
+  IDEA_AUTH_REQUIRED_MSG,
+  ideaRequestJson,
+} from "@/lib/idea-request";
+import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 
 export function IdeaActions({ ideaId }: { ideaId: string }) {
-  const { apiKey, isReady } = useApiKey();
+  const { apiKey, canAct, useSession, isReady } = useIdeaActionAuth();
   const [loading, setLoading] = useState<string | null>(null);
 
-  const apiBase =
-    (typeof window !== "undefined"
-      ? window.__ENV_API_URL__
-      : null) || "http://localhost:8080/api";
-
   async function doAction(action: string, method: string) {
-    if (!apiKey) {
-      toast.error("请先在「我的面板」输入 API Key");
+    if (!canAct) {
+      toast.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
     setLoading(action);
     try {
-      const res = await fetch(`${apiBase}/ideas/${ideaId}/${action}`, {
+      await ideaRequestJson(`/ideas/${ideaId}/${action}`, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": apiKey,
-        },
+        apiKey: useSession ? undefined : apiKey,
+        useSession,
       });
-      if (!res.ok) {
-        throw new Error(await parseResponseError(res, "操作失败"));
-      }
       toast.success(
         action === "like"
           ? "已点赞！"
@@ -74,7 +68,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
       >
         🍴 Fork
       </button>
-      {!isReady && (
+      {!isReady && !canAct && (
         <span className="text-xs text-[var(--text-muted)]">
           需要登录后操作
         </span>
@@ -83,24 +77,21 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
   );
 
   async function doFork(title: string, desc: string, reason: string) {
-    if (!apiKey) {
-      toast.error("请先在「我的面板」输入 API Key");
+    if (!canAct) {
+      toast.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
     setLoading("fork");
     try {
-      const res = await fetch(`${apiBase}/ideas/${ideaId}/fork`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": apiKey,
-        },
-        body: JSON.stringify({ title, description: desc, reason }),
-      });
-      if (!res.ok) {
-        throw new Error(await parseResponseError(res, "Fork 失败"));
-      }
-      const data = await res.json();
+      const data = await ideaRequestJson<{ id: string }>(
+        `/ideas/${ideaId}/fork`,
+        {
+          method: "POST",
+          apiKey: useSession ? undefined : apiKey,
+          useSession,
+          body: JSON.stringify({ title, description: desc, reason }),
+        }
+      );
       toast.success(`Fork 成功！新想法 ID: ${data.id}`);
     } catch (err) {
       toast.error(getErrorMessage(err, "Fork 失败"));

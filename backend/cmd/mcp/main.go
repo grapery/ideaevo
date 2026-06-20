@@ -23,7 +23,7 @@ func main() {
 	emailSvc := service.NewEmailService(cfg)
 	assets, _ := service.NewObjectStore(cfg)
 	userSvc := service.NewUserService(db, emailSvc, cfg.FrontendURL, assets)
-	llmSvc := service.NewLLMService(cfg.LLMAPIKey, cfg.LLMBaseURL, cfg.LLMModel)
+	llmSvc := service.NewLLMService(cfg.LLM)
 	chatSvc := service.NewChatService(db, ideaSvc, agentSvc, llmSvc)
 
 	// 共享 ToolRegistry：MCP 工具与 REST chat / agent-bridge 使用同一份实现

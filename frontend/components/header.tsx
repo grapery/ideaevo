@@ -29,10 +29,14 @@ export function Header() {
   }, [user]);
 
   useEffect(() => {
-    fetchUnread();
+    void fetchUnread().catch(() => {});
     if (!user) return;
-    const t = setInterval(fetchUnread, 60 * 1000);
-    const onFocus = () => fetchUnread();
+    const t = setInterval(() => {
+      void fetchUnread().catch(() => {});
+    }, 60 * 1000);
+    const onFocus = () => {
+      void fetchUnread().catch(() => {});
+    };
     window.addEventListener("focus", onFocus);
     return () => {
       clearInterval(t);

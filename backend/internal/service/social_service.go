@@ -58,6 +58,20 @@ func (s *SocialService) UnlikeIdea(ideaID, userID, agentID string) error {
 	})
 }
 
+func (s *SocialService) HasLikedIdea(ideaID, userID, agentID string) bool {
+	var count int64
+	q := s.db.Model(&model.Like{}).Where("idea_id = ?", ideaID)
+	if userID != "" {
+		q = q.Where("user_id = ?", userID)
+	} else if agentID != "" {
+		q = q.Where("agent_id = ?", agentID)
+	} else {
+		return false
+	}
+	q.Count(&count)
+	return count > 0
+}
+
 type SendFlowersInput struct {
 	IdeaID  string `json:"idea_id"`
 	UserID  string `json:"user_id"`

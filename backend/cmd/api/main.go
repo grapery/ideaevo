@@ -39,7 +39,12 @@ func main() {
 	}
 	userSvc := service.NewUserService(db, emailSvc, cfg.FrontendURL, assets)
 	authSvc := service.NewAuthService(cfg)
-	llmSvc := service.NewLLMService(cfg.LLMAPIKey, cfg.LLMBaseURL, cfg.LLMModel)
+	llmSvc := service.NewLLMService(cfg.LLM)
+	if !cfg.LLM.Enabled() {
+		log.Printf("[llm] disabled: no API key found (set LLM_API_KEY, ARK_API_KEY, or HUOSHAN_API_KEY)")
+	} else {
+		log.Printf("[llm] enabled: provider=%s base=%s model=%s", cfg.LLM.Provider, cfg.LLM.BaseURL, cfg.LLM.Model)
+	}
 	chatSvc := service.NewChatService(db, ideaSvc, agentSvc, llmSvc)
 	notifSvc := service.NewNotificationService(db)
 	followSvc := service.NewFollowService(db, notifSvc)
@@ -92,7 +97,7 @@ func main() {
 	// —— agent-bridge（外部 AI agent 通过 REST 调用工具）——
 	bridgeSvc := service.NewAgentBridgeService(db, agentSvc, toolExecutor)
 
-	ideaHandler := handler.NewIdeaHandler(ideaSvc, agentSvc, socialSvc, wanyeSvc)
+	ideaHandler := handler.NewIdeaHandler(ideaSvc, agentSvc, socialSvc, wanyeSvc, systemAgentID)
 	agentHandler := handler.NewAgentHandler(agentSvc, ideaSvc)
 	authHandler := handler.NewAuthHandler(agentSvc)
 	commentHandler := handler.NewCommentHandler(wanyeSvc)
@@ -127,9 +132,10 @@ func main() {
 		// Public routes
 		api.POST("/auth/register", authHandler.RegisterAgent)
 		api.GET("/agents", agentHandler.List)
-		api.GET("/agents/:id", agentHandler.GetByID)
+		api.GET("/agents/:id", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetByID)
 		api.GET("/agents/:id/ideas", agentHandler.GetIdeas)
 		api.GET("/agents/:id/stats", agentHandler.GetStats)
+		api.GET("/agents/:id/follow", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetAgentFollowStatus)
 		api.GET("/ideas", ideaHandler.Query)
 		api.GET("/ideas/search", ideaHandler.Search)
 		api.GET("/ideas/:id", ideaHandler.GetByID)
@@ -174,6 +180,9 @@ func main() {
 			userRoutes.POST("/sessions/:id/messages", chatHandler.SendMessage)
 			userRoutes.GET("/sessions/:id/stream", chatHandler.SendMessageStream)
 			userRoutes.GET("/sessions/:id/messages", chatHandler.GetMessages)
+			userRoutes.POST("/sessions/:id/messages/:message_id/feedback", chatHandler.SetMessageFeedback)
+			userRoutes.DELETE("/sessions/:id/messages/:message_id/feedback", chatHandler.ClearMessageFeedback)
+			userRoutes.POST("/sessions/:id/fork", chatHandler.ForkSession)
 
 			// User profile
 			userRoutes.GET("/user/profile", userHandler.GetMyProfile)
@@ -196,12 +205,26 @@ func main() {
 			// Social follow
 			userRoutes.POST("/users/:id/follow", followHandler.Follow)
 			userRoutes.DELETE("/users/:id/follow", followHandler.Unfollow)
+			userRoutes.POST("/agents/:id/follow", followHandler.FollowAgent)
+			userRoutes.DELETE("/agents/:id/follow", followHandler.UnfollowAgent)
 		}
 
 		// Public user profile (with optional auth for follow status)
-		api.GET("/users/:id/profile", followHandler.GetProfile)
+		api.GET("/users/:id/profile", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetProfile)
 		api.GET("/users/:id/followers", followHandler.GetFollowers)
 		api.GET("/users/:id/following", followHandler.GetFollowing)
+
+		// Idea interactions — Agent API Key or logged-in user session
+		ideaActionRoutes := api.Group("")
+		ideaActionRoutes.Use(middleware.AgentOrUserAuth(agentSvc, cfg.JWTSecret))
+		{
+			ideaActionRoutes.GET("/ideas/:id/like", ideaHandler.GetLikeStatus)
+			ideaActionRoutes.POST("/ideas/:id/like", ideaHandler.Like)
+			ideaActionRoutes.DELETE("/ideas/:id/like", ideaHandler.Unlike)
+			ideaActionRoutes.POST("/ideas/:id/flowers", ideaHandler.SendFlowers)
+			ideaActionRoutes.POST("/ideas/:id/fork", ideaHandler.Fork)
+			ideaActionRoutes.POST("/ideas/:id/comments", ideaHandler.CreateComment)
+		}
 
 		// Agent-authenticated routes
 		agentRoutes := api.Group("")
@@ -211,11 +234,6 @@ func main() {
 			agentRoutes.POST("/ideas", ideaHandler.Register)
 			agentRoutes.PATCH("/ideas/:id/status", ideaHandler.UpdateStatus)
 			agentRoutes.POST("/ideas/:id/bury", ideaHandler.Bury)
-			agentRoutes.POST("/ideas/:id/like", ideaHandler.Like)
-			agentRoutes.DELETE("/ideas/:id/like", ideaHandler.Unlike)
-			agentRoutes.POST("/ideas/:id/flowers", ideaHandler.SendFlowers)
-			agentRoutes.POST("/ideas/:id/fork", ideaHandler.Fork)
-			agentRoutes.POST("/ideas/:id/comments", ideaHandler.CreateComment)
 			agentRoutes.PATCH("/comments/:id", commentHandler.Update)
 			agentRoutes.DELETE("/comments/:id", commentHandler.Delete)
 

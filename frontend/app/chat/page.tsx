@@ -20,6 +20,9 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
 
+  const agentIdParam = searchParams.get("agent_id");
+  const ideaIdParam = searchParams.get("idea_id");
+
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
@@ -47,21 +50,88 @@ export default function ChatPage() {
     };
   }, []);
 
+  const updateLastAssistant = useCallback((content: string, contentType?: ChatMessageType["content_type"]) => {
+    setMessages((prev) => {
+      const updated = [...prev];
+      for (let i = updated.length - 1; i >= 0; i--) {
+        if (updated[i].role === "assistant") {
+          updated[i] = {
+            ...updated[i],
+            content,
+            ...(contentType ? { content_type: contentType } : {}),
+          };
+          return updated;
+        }
+      }
+      updated.push({
+        id: `temp-assistant-${Date.now()}`,
+        session_id: activeId || "",
+        role: "assistant",
+        content_type: contentType ?? "markdown",
+        content,
+        created_at: new Date().toISOString(),
+      });
+      return updated;
+    });
+  }, [activeId]);
+
   useEffect(() => {
     if (!user) return;
-    chatApi.listSessions().then((res) => {
+    chatApi.listSessions().then((res) => setSessions(res.sessions));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !agentIdParam) return;
+
+    const targetAgentId = agentIdParam;
+    const targetIdeaId = ideaIdParam;
+    let cancelled = false;
+
+    async function openTargetChat() {
+      setActiveId(null);
+      setMessages([]);
+
+      const res = await chatApi.listSessions();
+      if (cancelled) return;
       setSessions(res.sessions);
-      const agentId = searchParams.get("agent_id");
-      const ideaId = searchParams.get("idea_id");
-      if (agentId && res.sessions.length === 0) {
-        setNewAgentId(agentId);
-        setShowNewDialog(true);
-      } else if (ideaId && agentId) {
-        const existing = res.sessions.find((s) => s.idea_id === ideaId);
-        if (existing) setActiveId(existing.id);
+
+      const existing = targetIdeaId
+        ? res.sessions.find(
+            (s) => s.idea_id === targetIdeaId && s.agent_id === targetAgentId
+          )
+        : res.sessions.find((s) => s.agent_id === targetAgentId && !s.idea_id);
+
+      if (existing) {
+        setActiveId(existing.id);
+        return;
       }
-    });
-  }, [user, searchParams]);
+
+      setCreatingSession(true);
+      try {
+        const created = await chatApi.createSession({
+          agent_id: targetAgentId,
+          idea_id: targetIdeaId || undefined,
+        });
+        if (cancelled) return;
+        setSessions((prev) => {
+          const deduped = prev.filter((s) => s.id !== created.session.id);
+          return [created.session, ...deduped];
+        });
+        setActiveId(created.session.id);
+      } catch (err) {
+        toast.error(getErrorMessage(err, "创建对话失败"));
+        setNewAgentId(targetAgentId);
+        setShowNewDialog(true);
+      } finally {
+        if (!cancelled) setCreatingSession(false);
+      }
+    }
+
+    void openTargetChat();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, agentIdParam, ideaIdParam]);
 
   const loadMessages = useCallback(async (sessionId: string) => {
     try {
@@ -73,14 +143,18 @@ export default function ChatPage() {
     }
   }, []);
 
-  const handleSelectSession = useCallback(
-    (id: string) => {
-      setActiveId(id);
-      setLoading(true);
-      loadMessages(id).finally(() => setLoading(false));
-    },
-    [loadMessages]
-  );
+  useEffect(() => {
+    if (!activeId) {
+      setMessages([]);
+      return;
+    }
+    setLoading(true);
+    loadMessages(activeId).finally(() => setLoading(false));
+  }, [activeId, loadMessages]);
+
+  const handleSelectSession = useCallback((id: string) => {
+    setActiveId(id);
+  }, []);
 
   const handleSend = async (content: string) => {
     if (!activeId) return;
@@ -92,21 +166,36 @@ export default function ChatPage() {
       content,
       created_at: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, userMsg]);
-    setStreaming(true);
-
-    let assistantContent = "";
     const assistantMsg: ChatMessageType = {
       id: `temp-assistant-${Date.now()}`,
       session_id: sessionId,
       role: "assistant",
+      content_type: "markdown",
       content: "",
       created_at: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, assistantMsg]);
+    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setStreaming(true);
 
-    // Guard: ignore stream updates if the active session changed or component unmounted.
+    let assistantContent = "";
     const stillActive = () => mountedRef.current && activeId === sessionId;
+
+    const finishStream = async (finalContent?: string) => {
+      if (!stillActive()) return;
+      setStreaming(false);
+      const contentToApply = finalContent ?? assistantContent;
+      if (contentToApply) {
+        updateLastAssistant(contentToApply);
+      }
+      try {
+        const res = await chatApi.getMessages(sessionId);
+        if (stillActive()) setMessages(res.messages);
+        const sessionsRes = await chatApi.listSessions();
+        if (stillActive()) setSessions(sessionsRes.sessions);
+      } catch {
+        /* keep optimistic messages */
+      }
+    };
 
     try {
       await chatApi.sendMessageStream(
@@ -115,45 +204,48 @@ export default function ChatPage() {
         (chunk) => {
           if (!stillActive()) return;
           assistantContent += chunk;
-          setMessages((prev) => {
-            const updated = [...prev];
-            updated[updated.length - 1] = {
-              ...updated[updated.length - 1],
-              content: assistantContent,
-            };
-            return updated;
-          });
+          updateLastAssistant(assistantContent);
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         },
-        () => {
-          if (!stillActive()) return;
-          setStreaming(false);
-          setSessions((prev) =>
-            prev.map((s) =>
-              s.id === sessionId
-                ? { ...s, message_count: s.message_count + 2, updated_at: new Date().toISOString() }
-                : s
-            )
-          );
+        (fullContent) => {
+          void finishStream(fullContent || assistantContent);
         },
         (err) => {
           if (!stillActive()) return;
           setStreaming(false);
-          // 错误时把临时 assistant 消息替换为错误提示
           setMessages((prev) => {
             const updated = [...prev];
-            updated[updated.length - 1] = {
-              ...updated[updated.length - 1],
+            for (let i = updated.length - 1; i >= 0; i--) {
+              if (updated[i].role === "assistant" && !updated[i].content.trim()) {
+                updated.splice(i, 1);
+                break;
+              }
+            }
+            updated.push({
+              id: `error-${Date.now()}`,
+              session_id: sessionId,
               role: "system",
               content: `⚠️ ${err.message}`,
-            };
+              created_at: new Date().toISOString(),
+            });
             return updated;
           });
         },
-        // 新增：监听工具调用进度事件，插入到 assistant 消息之前
         (eventType, data) => {
           if (!stillActive()) return;
-          const payload = data as { tool?: string; tool_call?: string; ok?: boolean };
+          const payload = data as {
+            tool?: string;
+            tool_call?: string;
+            ok?: boolean;
+            content?: string;
+            content_type?: ChatMessageType["content_type"];
+          };
+          if (eventType === "assistant_message" && payload.content) {
+            assistantContent = payload.content;
+            updateLastAssistant(payload.content, payload.content_type ?? "markdown");
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            return;
+          }
           if (eventType === "tool_call") {
             setMessages((prev) => {
               const updated = [...prev];
@@ -165,13 +257,14 @@ export default function ChatPage() {
                 metadata: { type: "tool_call", tool: payload.tool },
                 created_at: new Date().toISOString(),
               };
-              updated.splice(updated.length - 1, 0, toolMsg);
+              const assistantIdx = updated.findIndex((m) => m.id === assistantMsg.id);
+              if (assistantIdx >= 0) updated.splice(assistantIdx, 0, toolMsg);
+              else updated.push(toolMsg);
               return updated;
             });
           } else if (eventType === "tool_result") {
             setMessages((prev) => {
               const updated = [...prev];
-              // 找到对应的 tool_call 消息并更新为完成态
               const idx = updated.findIndex(
                 (m) =>
                   m.metadata?.type === "tool_call" &&
@@ -189,7 +282,7 @@ export default function ChatPage() {
         }
       );
     } catch {
-      if (stillActive()) setStreaming(false);
+      if (stillActive()) void finishStream();
     }
   };
 
@@ -199,7 +292,7 @@ export default function ChatPage() {
     try {
       const res = await chatApi.createSession({
         agent_id: newAgentId,
-        idea_id: searchParams.get("idea_id") || undefined,
+        idea_id: ideaIdParam || undefined,
         title: newTitle || undefined,
       });
       setSessions((prev) => [res.session, ...prev]);
@@ -227,6 +320,50 @@ export default function ChatPage() {
       toast.error(getErrorMessage(err, "删除失败"));
     }
   };
+
+  const handleMessageFeedback = useCallback(
+    async (messageId: string, rating: "like" | "dislike" | null) => {
+      if (!activeId) return;
+      const prevFeedback = messages.find((m) => m.id === messageId)?.user_feedback;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, user_feedback: rating ?? undefined } : m
+        )
+      );
+      try {
+        if (rating === null) {
+          await chatApi.clearMessageFeedback(activeId, messageId);
+        } else {
+          await chatApi.setMessageFeedback(activeId, messageId, rating);
+        }
+      } catch (err) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId ? { ...m, user_feedback: prevFeedback } : m
+          )
+        );
+        toast.error(getErrorMessage(err, "反馈失败"));
+      }
+    },
+    [activeId, messages]
+  );
+
+  const handleForkFromMessage = useCallback(
+    async (messageId: string) => {
+      if (!activeId) return;
+      try {
+        const res = await chatApi.forkSession(activeId, {
+          before_message_id: messageId,
+        });
+        setSessions((prev) => [res.session, ...prev]);
+        setActiveId(res.session.id);
+        toast.success("已创建分支对话");
+      } catch (err) {
+        toast.error(getErrorMessage(err, "分支失败"));
+      }
+    },
+    [activeId]
+  );
 
   if (!user) {
     return (
@@ -337,7 +474,13 @@ export default function ChatPage() {
                 ) : (
                   <>
                     {messages.map((m) => (
-                      <ChatMessage key={m.id} message={m} />
+                      <ChatMessage
+                        key={m.id}
+                        message={m}
+                        canFork={!!activeId}
+                        onFeedback={handleMessageFeedback}
+                        onFork={handleForkFromMessage}
+                      />
                     ))}
                     {streaming && (
                       <div className="flex justify-start mb-4">

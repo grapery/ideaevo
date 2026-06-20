@@ -2,13 +2,15 @@ import Link from "next/link";
 import { Idea, WanyeComment, normalizeTags, safeUrl } from "@/lib/types";
 import { CommentItem } from "@/components/comment-item";
 import { StatusBadge } from "@/components/status-badge";
-import { EngagementBar } from "@/components/engagement-bar";
 import { IdeaActionBar } from "@/components/idea-action-bar";
+import { IdeaDetailEngagement } from "@/components/idea-detail-engagement";
+import { FollowAgentButton } from "@/components/follow-agent-button";
 import {
   ForkTreePanel,
   FlowersPanel,
   RelatedIdeasPanel,
   IdeaStatsPanel,
+  VersionHistoryPanel,
 } from "@/components/idea-detail-sidebar";
 import { IconLeaf } from "@/components/icons";
 import { CommentForm } from "./wanye/comment-form";
@@ -93,8 +95,6 @@ export default async function IdeaDetailPage({
 
   const tags = normalizeTags(idea.tags);
   const agentName = idea.agent?.name || idea.agent_id?.slice(0, 8) || "Agent";
-  const createdDate = new Date(idea.created_at).toLocaleDateString("zh-CN");
-
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       <div className="mx-auto page-container py-8">
@@ -106,9 +106,8 @@ export default async function IdeaDetailPage({
           <span className="text-[var(--title)] truncate max-w-[320px]">{idea.title}</span>
         </nav>
 
-        <div className="flex gap-6">
-          <div className="flex-1 min-w-0">
-            <div className="surface-card p-8 mb-5">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
+          <div className="surface-card p-8 mb-0 lg:mb-0">
               <div className="mb-3">
                 <StatusBadge status={idea.status} />
               </div>
@@ -125,12 +124,7 @@ export default async function IdeaDetailPage({
                   <p className="text-xs text-[var(--text-muted)]">{formatRelativeTime(idea.created_at)} · {idea.category}</p>
                 </div>
                 <div className="flex-1" />
-                <Link
-                  href={`/agents/${idea.agent_id}`}
-                  className="hidden sm:inline-flex rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                >
-                  关注 Agent
-                </Link>
+                <FollowAgentButton agentId={idea.agent_id} />
               </div>
 
               <div className="mt-6 text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
@@ -161,11 +155,12 @@ export default async function IdeaDetailPage({
               )}
 
               <div className="mt-4 border-t border-[var(--divider)]">
-                <IdeaActionBar ideaId={id} forkCount={idea.fork_count} />
+                <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} />
               </div>
 
               <div className="pt-2 border-t border-[var(--divider)]">
-                <EngagementBar
+                <IdeaDetailEngagement
+                  ideaId={id}
                   likes={idea.like_count}
                   flowers={idea.flower_count}
                   forks={idea.fork_count}
@@ -174,7 +169,15 @@ export default async function IdeaDetailPage({
               </div>
             </div>
 
-            <div className="surface-card p-6">
+          <aside className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:block lg:space-y-3">
+            <ForkTreePanel idea={idea} forks={forks} />
+            <FlowersPanel ideaId={id} flowerCount={idea.flower_count} />
+            <VersionHistoryPanel createdAt={idea.created_at} />
+            <IdeaStatsPanel idea={idea} />
+            <RelatedIdeasPanel ideas={relatedIdeas} currentId={id} />
+          </aside>
+
+          <div className="surface-card p-6" id="wanye-comments">
               <div className="flex items-center gap-2 mb-4">
                 <h2 className="heading-sans text-lg">万叶评论</h2>
                 <span className="text-sm text-[var(--text-muted)]">({comments.length})</span>
@@ -203,24 +206,6 @@ export default async function IdeaDetailPage({
                 </Link>
               )}
             </div>
-          </div>
-
-          <aside className="hidden lg:block w-[360px] shrink-0 space-y-4">
-            <ForkTreePanel idea={idea} forks={forks} />
-            <FlowersPanel ideaId={id} flowerCount={idea.flower_count} />
-            <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)] mb-3">版本历史</h3>
-              <div className="space-y-2 text-sm">
-                <div className="rounded-lg bg-[var(--primary-soft)] p-3">
-                  <p className="font-medium text-[var(--primary)]">v1 · 当前</p>
-                  <p className="text-[var(--text-secondary)] mt-1">初始版本</p>
-                  <p className="text-xs text-[var(--text-muted)] mt-1">{createdDate}</p>
-                </div>
-              </div>
-            </div>
-            <IdeaStatsPanel idea={idea} />
-            <RelatedIdeasPanel ideas={relatedIdeas} currentId={id} />
-          </aside>
         </div>
       </div>
     </div>

@@ -38,7 +38,9 @@ func Connect(cfg *config.Config) *gorm.DB {
 		&model.ActivityLog{},
 		&model.ChatSession{},
 		&model.ChatMessage{},
+		&model.MessageFeedback{},
 		&model.Follow{},
+		&model.AgentFollow{},
 		&model.Notification{},
 		&model.PhoneVerification{},
 	); err != nil {
@@ -53,6 +55,14 @@ func Connect(cfg *config.Config) *gorm.DB {
 		AND index_name = 'idx_chat_messages_session_created'`).Scan(&idxExists)
 	if idxExists == 0 {
 		db.Exec("CREATE INDEX idx_chat_messages_session_created ON chat_messages(session_id, created_at DESC)")
+	}
+
+	// MySQL reserved word: rename notifications.read -> is_read
+	var readColExists int64
+	db.Raw(`SELECT COUNT(1) FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = 'notifications' AND column_name = 'read'`).Scan(&readColExists)
+	if readColExists > 0 {
+		db.Exec("ALTER TABLE notifications CHANGE COLUMN `read` is_read TINYINT(1) NOT NULL DEFAULT 0")
 	}
 
 	// Unset phone must be NULL so unique index allows multiple users without a phone.

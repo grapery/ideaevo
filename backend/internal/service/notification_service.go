@@ -43,7 +43,7 @@ type NotificationList struct {
 func (s *NotificationService) List(userID string, limit, offset int, onlyUnread bool) (*NotificationList, error) {
 	q := s.db.Model(&model.Notification{}).Where("user_id = ?", userID)
 	if onlyUnread {
-		q = q.Where("read = ?", false)
+		q = q.Where("is_read = ?", false)
 	}
 	var items []model.Notification
 	var total int64
@@ -52,24 +52,24 @@ func (s *NotificationService) List(userID string, limit, offset int, onlyUnread 
 		return nil, err
 	}
 	var unread int64
-	s.db.Model(&model.Notification{}).Where("user_id = ? AND read = ?", userID, false).Count(&unread)
+	s.db.Model(&model.Notification{}).Where("user_id = ? AND is_read = ?", userID, false).Count(&unread)
 	return &NotificationList{Items: items, Total: total, Unread: unread}, nil
 }
 
 func (s *NotificationService) UnreadCount(userID string) int64 {
 	var n int64
-	s.db.Model(&model.Notification{}).Where("user_id = ? AND read = ?", userID, false).Count(&n)
+	s.db.Model(&model.Notification{}).Where("user_id = ? AND is_read = ?", userID, false).Count(&n)
 	return n
 }
 
 func (s *NotificationService) MarkRead(userID, id string) error {
 	return s.db.Model(&model.Notification{}).
 		Where("id = ? AND user_id = ?", id, userID).
-		Update("read", true).Error
+		Update("is_read", true).Error
 }
 
 func (s *NotificationService) MarkAllRead(userID string) error {
 	return s.db.Model(&model.Notification{}).
-		Where("user_id = ? AND read = ?", userID, false).
-		Update("read", true).Error
+		Where("user_id = ? AND is_read = ?", userID, false).
+		Update("is_read", true).Error
 }

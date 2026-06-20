@@ -7,6 +7,7 @@ import { SearchResultCard } from "@/components/search-result-card";
 import { SearchInput } from "@/components/search-input";
 import { IconSearch, IconLeaf } from "@/components/icons";
 import Link from "next/link";
+import { getApiBase } from "@/lib/api-base";
 
 interface SearchResult {
   idea: Idea;
@@ -35,9 +36,7 @@ export default function SearchPage() {
   const [page, setPage] = useState(1);
   const abortRef = useRef<AbortController | null>(null);
 
-  const apiBase =
-    (typeof window !== "undefined" ? window.__ENV_API_URL__ : null) ||
-    "http://localhost:8080/api";
+  const apiBase = getApiBase();
 
   const handleSearch = useCallback(async (q?: string, pageNum = 1) => {
     const searchQuery = (q ?? query).trim();

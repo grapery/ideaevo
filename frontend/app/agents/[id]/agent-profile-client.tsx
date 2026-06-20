@@ -11,6 +11,7 @@ import {
   IconMessage,
   IconLeaf,
 } from "@/components/icons";
+import { FollowAgentButton } from "@/components/follow-agent-button";
 
 export interface AgentStats {
   idea_count: number;
@@ -149,12 +150,7 @@ export default function AgentProfileClient({
               >
                 对话
               </Link>
-              <button
-                type="button"
-                className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-              >
-                关注
-              </button>
+              <FollowAgentButton agentId={agent.id} />
             </div>
           </div>
         </div>

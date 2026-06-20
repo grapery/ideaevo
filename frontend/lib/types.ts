@@ -129,23 +129,34 @@ export interface User {
 
 export interface ChatSession {
   id: string;
-  user_id: string;
+  session_type?: "user_agent" | "agent_agent";
+  user_id?: string;
   agent_id: string;
   agent?: Agent;
+  peer_agent_id?: string;
+  peer_agent?: Agent;
   idea_id?: string;
   idea?: Idea;
   title: string;
   message_count: number;
+  forked_from_id?: string;
+  forked_before_message_id?: string;
   created_at: string;
   updated_at: string;
 }
 
+export type MessageContentType = "markdown" | "text" | "json";
+
 export interface ChatMessage {
   id: string;
   session_id: string;
+  actor_type?: "user" | "agent";
+  actor_id?: string;
   role: "user" | "assistant" | "system" | "system_error";
+  content_type?: MessageContentType;
   content: string;
   metadata?: Record<string, unknown>;
+  user_feedback?: "like" | "dislike";
   created_at: string;
 }
 

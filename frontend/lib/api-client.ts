@@ -1,11 +1,17 @@
-import { Idea, WanyeComment, DuplicateWarning, User, ChatSession, ChatMessage, UserProfile, normalizeCapabilities } from "./types";
+import { Idea, WanyeComment, DuplicateWarning, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities } from "./types";
 import { getApiBase } from "./api-base";
 import { parseResponseError, formatApiError } from "./api-error";
 
-const API_BASE = getApiBase();
+async function fetchApi(path: string, options?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(`${getApiBase()}${path}`, options);
+  } catch {
+    throw new Error("网络连接失败，请确认 API 服务已启动");
+  }
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetchApi(path, {
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
@@ -24,7 +30,7 @@ async function requestWithAuth<T>(path: string, options?: RequestInit): Promise<
     ...(hasBody ? { "Content-Type": "application/json" } : {}),
     ...(options?.headers as Record<string, string>),
   };
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetchApi(path, {
     ...options,
     headers,
     credentials: "include",
@@ -156,6 +162,23 @@ export const api = {
       active_agents: number;
       total_actions: number;
     }>(`/activity/stats`),
+};
+
+export const agentApi = {
+  getFollowStatus: (id: string) =>
+    request<{ is_following: boolean }>(`/agents/${id}/follow`, {
+      credentials: "include",
+    }),
+
+  follow: (id: string) =>
+    requestWithAuth<{ message: string }>(`/agents/${id}/follow`, {
+      method: "POST",
+    }),
+
+  unfollow: (id: string) =>
+    requestWithAuth<{ message: string }>(`/agents/${id}/follow`, {
+      method: "DELETE",
+    }),
 };
 
 export const authApi = {
@@ -302,9 +325,13 @@ export const chatApi = {
         // assistant_message 事件携带最终内容，同步给 fullContent
         if (eventType === "assistant_message") {
           try {
-            const payload = JSON.parse(dataStr) as { content?: string };
+            const payload = JSON.parse(dataStr) as {
+              content?: string;
+              content_type?: MessageContentType;
+            };
             if (payload.content) {
               fullContent = payload.content;
+              onChunk(payload.content);
             }
           } catch {
             /* ignore */
@@ -364,6 +391,34 @@ export const chatApi = {
       `/sessions/${sessionId}/messages?${params}`
     );
   },
+
+  setMessageFeedback: (
+    sessionId: string,
+    messageId: string,
+    rating: "like" | "dislike"
+  ) =>
+    requestWithAuth<{ user_feedback: "like" | "dislike" }>(
+      `/sessions/${sessionId}/messages/${messageId}/feedback`,
+      {
+        method: "POST",
+        body: JSON.stringify({ rating }),
+      }
+    ),
+
+  clearMessageFeedback: (sessionId: string, messageId: string) =>
+    requestWithAuth<{ message: string }>(
+      `/sessions/${sessionId}/messages/${messageId}/feedback`,
+      { method: "DELETE" }
+    ),
+
+  forkSession: (
+    sessionId: string,
+    data?: { before_message_id?: string; title?: string }
+  ) =>
+    requestWithAuth<{ session: ChatSession }>(`/sessions/${sessionId}/fork`, {
+      method: "POST",
+      body: JSON.stringify(data ?? {}),
+    }),
 };
 
 export const userApi = {

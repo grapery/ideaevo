@@ -1,23 +1,44 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useApiKey } from "@/lib/api-key-context";
 import { toast } from "sonner";
-import { parseResponseError, getErrorMessage } from "@/lib/api-error";
+import { getErrorMessage } from "@/lib/api-error";
+import {
+  IDEA_AUTH_REQUIRED_MSG,
+  ideaRequestJson,
+} from "@/lib/idea-request";
+import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
+import { useAuth } from "@/lib/auth-context";
 import { IconFlower, IconGitFork } from "./icons";
 
-export function IdeaActionBar({ ideaId, forkCount }: { ideaId: string; forkCount: number }) {
-  const { apiKey } = useApiKey();
+export function IdeaActionBar({
+  ideaId,
+  agentId,
+  forkCount,
+}: {
+  ideaId: string;
+  agentId: string;
+  forkCount: number;
+}) {
+  const { apiKey, canAct, useSession } = useIdeaActionAuth();
+  const { user } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const apiBase =
-    (typeof window !== "undefined" ? window.__ENV_API_URL__ : null) ||
-    "http://localhost:8080/api";
+  const chatHref = `/chat?idea_id=${encodeURIComponent(ideaId)}&agent_id=${encodeURIComponent(agentId)}`;
+
+  function openChat() {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    router.push(chatHref);
+  }
 
   async function doFork() {
-    if (!apiKey) {
-      toast.error("请先在「我的面板」输入 API Key");
+    if (!canAct) {
+      toast.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
     const title = prompt("Fork 标题:");
@@ -27,18 +48,15 @@ export function IdeaActionBar({ ideaId, forkCount }: { ideaId: string; forkCount
 
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase}/ideas/${ideaId}/fork`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": apiKey,
-        },
-        body: JSON.stringify({ title, description: desc, reason }),
-      });
-      if (!res.ok) {
-        throw new Error(await parseResponseError(res, "Fork 失败"));
-      }
-      const data = await res.json();
+      const data = await ideaRequestJson<{ id: string }>(
+        `/ideas/${ideaId}/fork`,
+        {
+          method: "POST",
+          apiKey: useSession ? undefined : apiKey,
+          useSession,
+          body: JSON.stringify({ title, description: desc, reason }),
+        }
+      );
       toast.success(`Fork 成功！新想法 ID: ${data.id}`);
     } catch (err) {
       toast.error(getErrorMessage(err, "Fork 失败"));
@@ -60,38 +78,33 @@ export function IdeaActionBar({ ideaId, forkCount }: { ideaId: string; forkCount
       </button>
       <span className="text-sm text-[var(--text-muted)]">{forkCount} 次 Fork</span>
       <div className="flex-1" />
-      <Link
-        href={`/chat?idea_id=${ideaId}`}
+      <button
+        type="button"
+        onClick={openChat}
         className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
       >
         与 Agent 对话
-      </Link>
+      </button>
     </div>
   );
 }
 
 export function SendFlowerButton({ ideaId }: { ideaId: string }) {
-  const { apiKey } = useApiKey();
+  const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const [loading, setLoading] = useState(false);
 
-  const apiBase =
-    (typeof window !== "undefined" ? window.__ENV_API_URL__ : null) ||
-    "http://localhost:8080/api";
-
   async function sendFlower() {
-    if (!apiKey) {
-      toast.error("请先在「我的面板」输入 API Key");
+    if (!canAct) {
+      toast.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase}/ideas/${ideaId}/flowers`, {
+      await ideaRequestJson(`/ideas/${ideaId}/flowers`, {
         method: "POST",
-        headers: { "X-API-Key": apiKey },
+        apiKey: useSession ? undefined : apiKey,
+        useSession,
       });
-      if (!res.ok) {
-        throw new Error(await parseResponseError(res, "送花失败"));
-      }
       toast.success("鲜花已送出！");
     } catch (err) {
       toast.error(getErrorMessage(err, "送花失败"));
@@ -105,7 +118,7 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
       type="button"
       onClick={sendFlower}
       disabled={loading}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--divider)] px-3 py-1.5 text-sm text-[var(--primary)] hover:bg-[var(--primary-soft)] disabled:opacity-50"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--divider)] bg-white px-3.5 py-2 text-[13px] font-medium text-[var(--primary)] hover:bg-[var(--primary-soft)] disabled:opacity-50"
     >
       <IconFlower className="h-4 w-4" />
       {loading ? "送出中…" : "送一朵花"}

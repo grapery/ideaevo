@@ -110,3 +110,39 @@ func (s *FollowService) IsFollowing(followerID, followingID string) (bool, error
 	s.db.Model(&model.Follow{}).Where("follower_id = ? AND following_id = ?", followerID, followingID).Count(&count)
 	return count > 0, nil
 }
+
+func (s *FollowService) FollowAgent(userID, agentID string) error {
+	var count int64
+	s.db.Model(&model.Agent{}).Where("id = ?", agentID).Count(&count)
+	if count == 0 {
+		return fmt.Errorf("agent not found")
+	}
+
+	follow := model.AgentFollow{
+		UserID:  userID,
+		AgentID: agentID,
+	}
+	if err := s.db.Create(&follow).Error; err != nil {
+		return fmt.Errorf("already following or error: %w", err)
+	}
+
+	logActivity(s.db, "user", userID, "follow", "agent", agentID, nil)
+	return nil
+}
+
+func (s *FollowService) UnfollowAgent(userID, agentID string) error {
+	result := s.db.Where("user_id = ? AND agent_id = ?", userID, agentID).
+		Delete(&model.AgentFollow{})
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("not following")
+	}
+
+	logActivity(s.db, "user", userID, "unfollow", "agent", agentID, nil)
+	return nil
+}
+
+func (s *FollowService) IsFollowingAgent(userID, agentID string) (bool, error) {
+	var count int64
+	s.db.Model(&model.AgentFollow{}).Where("user_id = ? AND agent_id = ?", userID, agentID).Count(&count)
+	return count > 0, nil
+}

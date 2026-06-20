@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/wanye/ideaevo/internal/llm"
 	"github.com/wanye/ideaevo/internal/model"
 	"gorm.io/gorm"
 )
@@ -27,6 +29,16 @@ type SendMessageResult struct {
 	AssistantMessage model.ChatMessage  `json:"assistant_message"`
 	ToolResults      []ToolCallResult   `json:"tool_results,omitempty"` // 工具调用结果（前端可渲染卡片）
 	TokensUsed       int                `json:"tokens_used,omitempty"`
+}
+
+type ChatMessageView struct {
+	model.ChatMessage
+	UserFeedback string `json:"user_feedback,omitempty"` // like | dislike
+}
+
+type ForkSessionInput struct {
+	BeforeMessageID string `json:"before_message_id"`
+	Title           string `json:"title"`
 }
 
 type ChatService struct {
@@ -64,15 +76,32 @@ func (s *ChatService) CreateSession(userID string, input CreateSessionInput) (*m
 		return nil, fmt.Errorf("agent not found: %w", err)
 	}
 
+	// Reuse an existing idea-bound session to avoid duplicate conversations.
+	if input.IdeaID != "" {
+		var existing model.ChatSession
+		if err := s.db.Where("user_id = ? AND agent_id = ? AND idea_id = ?", userID, input.AgentID, input.IdeaID).
+			First(&existing).Error; err == nil {
+			return &existing, nil
+		}
+	} else {
+		var existing model.ChatSession
+		if err := s.db.Where("user_id = ? AND agent_id = ? AND idea_id IS NULL", userID, input.AgentID).
+			Order("updated_at DESC").
+			First(&existing).Error; err == nil {
+			return &existing, nil
+		}
+	}
+
 	title := input.Title
 	if title == "" {
 		title = "与 " + agent.Name + " 的对话"
 	}
 
 	session := &model.ChatSession{
-		UserID:  userID,
-		AgentID: input.AgentID,
-		Title:   title,
+		SessionType: model.SessionTypeUserAgent,
+		UserID:      userID,
+		AgentID:     input.AgentID,
+		Title:       title,
 	}
 	if input.IdeaID != "" {
 		session.IdeaID = &input.IdeaID
@@ -84,6 +113,117 @@ func (s *ChatService) CreateSession(userID string, input CreateSessionInput) (*m
 
 	logActivity(s.db, "user", userID, "create_session", "session", session.ID, nil)
 	return session, nil
+}
+
+// CreateAgentSession starts an agent-to-agent conversation session.
+func (s *ChatService) CreateAgentSession(initiatorAgentID, peerAgentID string, title string) (*model.ChatSession, error) {
+	if initiatorAgentID == "" || peerAgentID == "" {
+		return nil, fmt.Errorf("agent ids are required")
+	}
+	if initiatorAgentID == peerAgentID {
+		return nil, fmt.Errorf("cannot chat with self")
+	}
+	if _, err := s.agentSvc.GetByID(initiatorAgentID); err != nil {
+		return nil, fmt.Errorf("initiator agent not found: %w", err)
+	}
+	peer, err := s.agentSvc.GetByID(peerAgentID)
+	if err != nil {
+		return nil, fmt.Errorf("peer agent not found: %w", err)
+	}
+
+	var existing model.ChatSession
+	if err := s.db.Where(
+		"session_type = ? AND agent_id = ? AND peer_agent_id = ?",
+		model.SessionTypeAgentAgent, initiatorAgentID, peerAgentID,
+	).First(&existing).Error; err == nil {
+		return &existing, nil
+	}
+
+	if title == "" {
+		initiator, _ := s.agentSvc.GetByID(initiatorAgentID)
+		initName := initiatorAgentID[:8]
+		if initiator != nil {
+			initName = initiator.Name
+		}
+		title = initName + " ↔ " + peer.Name
+	}
+
+	session := &model.ChatSession{
+		SessionType: model.SessionTypeAgentAgent,
+		AgentID:     initiatorAgentID,
+		PeerAgentID: &peerAgentID,
+		Title:       title,
+	}
+	if err := s.db.Create(session).Error; err != nil {
+		return nil, fmt.Errorf("failed to create agent session: %w", err)
+	}
+	logActivity(s.db, "agent", initiatorAgentID, "create_session", "session", session.ID, nil)
+	return session, nil
+}
+
+func (s *ChatService) newUserMessage(session *model.ChatSession, actorID, content string) model.ChatMessage {
+	actorType := model.MessageActorUser
+	if session.SessionType == model.SessionTypeAgentAgent {
+		actorType = model.MessageActorAgent
+	}
+	return model.ChatMessage{
+		SessionID:   session.ID,
+		Role:        "user",
+		ActorType:   actorType,
+		ActorID:     actorID,
+		ContentType: model.MessageContentText,
+		Content:     content,
+	}
+}
+
+func (s *ChatService) newAssistantMessage(session *model.ChatSession, contentType, content string) model.ChatMessage {
+	if contentType == "" {
+		contentType = model.MessageContentMarkdown
+	}
+	return model.ChatMessage{
+		SessionID:   session.ID,
+		Role:        "assistant",
+		ActorType:   model.MessageActorAgent,
+		ActorID:     session.AgentID,
+		ContentType: contentType,
+		Content:     content,
+	}
+}
+
+func (s *ChatService) assistantFromLLM(session *model.ChatSession, raw string) model.ChatMessage {
+	contentType, content := ParseAssistantResponse(raw)
+	return s.newAssistantMessage(session, contentType, content)
+}
+
+func (s *ChatService) bumpSessionMessageCount(session *model.ChatSession, delta int) {
+	s.db.Model(session).Updates(map[string]interface{}{
+		"message_count": gorm.Expr("message_count + ?", delta),
+		"updated_at":    time.Now(),
+	})
+}
+
+// persistConversationFailure keeps the user message and stores an assistant-side error reply.
+func (s *ChatService) persistConversationFailure(session *model.ChatSession, cause error) {
+	meta := map[string]any{"error": "conversation_failed", "cause": cause.Error()}
+	var llmErr *llm.Error
+	if errors.As(cause, &llmErr) {
+		meta["provider"] = llmErr.Provider
+		meta["model"] = llmErr.Model
+		meta["code"] = llmErr.Code
+		meta["request_id"] = llmErr.RequestID
+		if llmErr.Hint != "" {
+			meta["hint"] = llmErr.Hint
+		}
+	}
+	raw, _ := json.Marshal(meta)
+	display := fmt.Sprintf("⚠️ 对话失败：%s", cause.Error())
+	if errors.As(cause, &llmErr) {
+		display = llmErr.UserMessage()
+	}
+	msg := s.newAssistantMessage(session, model.MessageContentText, display)
+	msg.Metadata = string(raw)
+	_ = s.db.Create(&msg).Error
+	s.bumpSessionMessageCount(session, 2)
 }
 
 func (s *ChatService) GetSession(sessionID, userID string) (*model.ChatSession, error) {
@@ -101,6 +241,8 @@ func (s *ChatService) ListSessions(userID string, limit, offset int) ([]model.Ch
 	s.db.Model(&model.ChatSession{}).Where("user_id = ?", userID).Count(&total)
 
 	if err := s.db.Where("user_id = ?", userID).
+		Preload("Agent").
+		Preload("Idea").
 		Order("updated_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&sessions).Error; err != nil {
@@ -147,17 +289,11 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 		return nil, err
 	}
 
-	userMsg := model.ChatMessage{
-		SessionID: sessionID,
-		Role:      "user",
-		Content:   input.Content,
-	}
+	userMsg := s.newUserMessage(session, userID, input.Content)
 	if err := s.db.Create(&userMsg).Error; err != nil {
 		return nil, fmt.Errorf("failed to save user message: %w", err)
 	}
 
-	// P0 #3: 失败回滚 —— 若 runConversation 失败，把刚写入的 user message 软删除
-	// （标记为 error，保留审计痕迹但不会进入 LLM history）
 	principal := Principal{
 		Source:    "rest",
 		UserID:    userID,
@@ -170,12 +306,11 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 
 	assistantMsg, toolResults, tokensUsed, err := s.runConversation(session, input.Content, principal)
 	if err != nil {
-		s.markMessageFailed(&userMsg, err)
+		s.persistConversationFailure(session, err)
 		return nil, err
 	}
 
-	s.db.Model(session).Update("message_count", gorm.Expr("message_count + 1"))
-	s.db.Model(session).Update("updated_at", time.Now())
+	s.bumpSessionMessageCount(session, 2)
 
 	logActivity(s.db, "user", userID, "send_message", "session", sessionID, nil)
 
@@ -185,20 +320,6 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 		ToolResults:      toolResults,
 		TokensUsed:       tokensUsed,
 	}, nil
-}
-
-// markMessageFailed 把一条消息软删除（role 改为 system_error），避免下次 LLM 读到孤立消息。
-// 不物理删除是为了保留审计痕迹。
-func (s *ChatService) markMessageFailed(msg *model.ChatMessage, cause error) {
-	if msg == nil || msg.ID == "" {
-		return
-	}
-	meta := map[string]string{"error": "conversation failed", "cause": cause.Error()}
-	raw, _ := json.Marshal(meta)
-	s.db.Model(msg).Updates(map[string]any{
-		"role":     "system_error",
-		"metadata": string(raw),
-	})
 }
 
 const (
@@ -247,19 +368,16 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 
 		// 不需要工具调用，直接返回
 		if resp.FinishReason != "tool_calls" || len(resp.ToolCalls) == 0 {
-			msg := &model.ChatMessage{
-				SessionID: session.ID,
-				Role:      "assistant",
-				Content:   resp.Content,
-			}
-			if err := s.db.Create(msg).Error; err != nil {
+			msg := s.assistantFromLLM(session, resp.Content)
+			if err := s.db.Create(&msg).Error; err != nil {
 				return nil, nil, 0, fmt.Errorf("failed to save assistant message: %w", err)
 			}
 			s.pushEvent(progressCh, "assistant_message", map[string]any{
-				"id":      msg.ID,
-				"content": msg.Content,
+				"id":           msg.ID,
+				"content":      msg.Content,
+				"content_type": msg.ContentType,
 			})
-			return msg, allToolResults, totalTokens, nil
+			return &msg, allToolResults, totalTokens, nil
 		}
 
 		// 把 LLM 的 tool_calls 决策加入 history（OpenAI 协议要求保留）
@@ -319,19 +437,16 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 	}
 	totalTokens += finalResp.Usage.PromptTokens + finalResp.Usage.CompletionTokens
 
-	msg := &model.ChatMessage{
-		SessionID: session.ID,
-		Role:      "assistant",
-		Content:   finalResp.Content,
-	}
-	if err := s.db.Create(msg).Error; err != nil {
+	msg := s.assistantFromLLM(session, finalResp.Content)
+	if err := s.db.Create(&msg).Error; err != nil {
 		return nil, nil, 0, fmt.Errorf("failed to save assistant message: %w", err)
 	}
 	s.pushEvent(progressCh, "assistant_message", map[string]any{
-		"id":      msg.ID,
-		"content": msg.Content,
+		"id":           msg.ID,
+		"content":      msg.Content,
+		"content_type": msg.ContentType,
 	})
-	return msg, allToolResults, totalTokens, nil
+	return &msg, allToolResults, totalTokens, nil
 }
 
 // pushEvent 向 progress channel 安全推送事件（nil channel / 已关闭均会忽略）。
@@ -388,11 +503,7 @@ func (s *ChatService) SendMessageStream(sessionID, userID, content string) (<-ch
 		return nil, nil, err
 	}
 
-	userMsg := model.ChatMessage{
-		SessionID: sessionID,
-		Role:      "user",
-		Content:   content,
-	}
+	userMsg := s.newUserMessage(session, userID, content)
 	if err := s.db.Create(&userMsg).Error; err != nil {
 		return nil, nil, fmt.Errorf("failed to save user message: %w", err)
 	}
@@ -422,7 +533,7 @@ func (s *ChatService) streamNoTools(session *model.ChatSession, userMsg *model.C
 
 	streamCh, err := s.llm.ChatStream(systemPrompt, history)
 	if err != nil {
-		s.markMessageFailed(userMsg, err)
+		s.persistConversationFailure(session, err)
 		return nil, nil, err
 	}
 
@@ -433,21 +544,14 @@ func (s *ChatService) streamNoTools(session *model.ChatSession, userMsg *model.C
 
 		for chunk := range streamCh {
 			if chunk.Error != nil {
-				s.markMessageFailed(userMsg, chunk.Error)
+				s.persistConversationFailure(session, chunk.Error)
 				wrapperCh <- chunk
 				return
 			}
 			if chunk.Done {
-				assistantMsg := model.ChatMessage{
-					SessionID: session.ID,
-					Role:      "assistant",
-					Content:   fullContent,
-				}
+				assistantMsg := s.assistantFromLLM(session, fullContent)
 				s.db.Create(&assistantMsg)
-				s.db.Model(session).Updates(map[string]interface{}{
-					"message_count": gorm.Expr("message_count + 1"),
-					"updated_at":    time.Now(),
-				})
+				s.bumpSessionMessageCount(session, 2)
 				logActivity(s.db, "user", userID, "send_message", "session", session.ID, nil)
 				wrapperCh <- StreamChunk{Done: true}
 				return
@@ -484,15 +588,12 @@ func (s *ChatService) streamWithTools(session *model.ChatSession, userMsg *model
 		<-done
 
 		if err != nil {
-			s.markMessageFailed(userMsg, err)
+			s.persistConversationFailure(session, err)
 			out <- StreamChunk{Error: err}
 			return
 		}
 
-		s.db.Model(session).Updates(map[string]interface{}{
-			"message_count": gorm.Expr("message_count + 1"),
-			"updated_at":    time.Now(),
-		})
+		s.bumpSessionMessageCount(session, 2)
 		logActivity(s.db, "user", principal.UserID, "send_message", "session", session.ID, nil)
 
 		out <- StreamChunk{Done: true}
@@ -501,7 +602,7 @@ func (s *ChatService) streamWithTools(session *model.ChatSession, userMsg *model
 	return out, userMsg, nil
 }
 
-func (s *ChatService) GetMessages(sessionID, userID string, beforeID string, limit int) ([]model.ChatMessage, error) {
+func (s *ChatService) GetMessages(sessionID, userID string, beforeID string, limit int) ([]ChatMessageView, error) {
 	if _, err := s.GetSession(sessionID, userID); err != nil {
 		return nil, err
 	}
@@ -527,7 +628,159 @@ func (s *ChatService) GetMessages(sessionID, userID string, beforeID string, lim
 	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
 		messages[i], messages[j] = messages[j], messages[i]
 	}
-	return messages, nil
+
+	feedbackMap := s.feedbackMapForMessages(userID, messages)
+	out := make([]ChatMessageView, len(messages))
+	for i, m := range messages {
+		out[i] = ChatMessageView{
+			ChatMessage:  m,
+			UserFeedback: feedbackMap[m.ID],
+		}
+	}
+	return out, nil
+}
+
+func (s *ChatService) feedbackMapForMessages(userID string, messages []model.ChatMessage) map[string]string {
+	out := map[string]string{}
+	if userID == "" || len(messages) == 0 {
+		return out
+	}
+	ids := make([]string, len(messages))
+	for i, m := range messages {
+		ids[i] = m.ID
+	}
+	var rows []model.MessageFeedback
+	s.db.Where("user_id = ? AND message_id IN ?", userID, ids).Find(&rows)
+	for _, r := range rows {
+		out[r.MessageID] = r.Rating
+	}
+	return out
+}
+
+func (s *ChatService) verifyMessageInSession(sessionID, messageID, userID string) (*model.ChatMessage, error) {
+	if _, err := s.GetSession(sessionID, userID); err != nil {
+		return nil, err
+	}
+	var msg model.ChatMessage
+	if err := s.db.Where("id = ? AND session_id = ?", messageID, sessionID).First(&msg).Error; err != nil {
+		return nil, fmt.Errorf("message not found")
+	}
+	return &msg, nil
+}
+
+func (s *ChatService) SetMessageFeedback(sessionID, messageID, userID, rating string) (string, error) {
+	if rating != model.MessageFeedbackLike && rating != model.MessageFeedbackDislike {
+		return "", fmt.Errorf("invalid rating")
+	}
+	if _, err := s.verifyMessageInSession(sessionID, messageID, userID); err != nil {
+		return "", err
+	}
+
+	var existing model.MessageFeedback
+	err := s.db.Where("message_id = ? AND user_id = ?", messageID, userID).First(&existing).Error
+	if err == nil {
+		if existing.Rating == rating {
+			return rating, nil
+		}
+		existing.Rating = rating
+		if err := s.db.Save(&existing).Error; err != nil {
+			return "", err
+		}
+		return rating, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", err
+	}
+	if err := s.db.Create(&model.MessageFeedback{
+		MessageID: messageID,
+		UserID:    userID,
+		Rating:    rating,
+	}).Error; err != nil {
+		return "", err
+	}
+	return rating, nil
+}
+
+func (s *ChatService) ClearMessageFeedback(sessionID, messageID, userID string) error {
+	if _, err := s.verifyMessageInSession(sessionID, messageID, userID); err != nil {
+		return err
+	}
+	return s.db.Where("message_id = ? AND user_id = ?", messageID, userID).
+		Delete(&model.MessageFeedback{}).Error
+}
+
+func (s *ChatService) ForkSession(sessionID, userID string, input ForkSessionInput) (*model.ChatSession, error) {
+	source, err := s.GetSession(sessionID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	q := s.db.Where("session_id = ? AND role IN ?", sessionID, []string{"user", "assistant"}).
+		Order("created_at ASC")
+
+	if input.BeforeMessageID != "" {
+		anchor, err := s.verifyMessageInSession(sessionID, input.BeforeMessageID, userID)
+		if err != nil {
+			return nil, err
+		}
+		q = q.Where("created_at <= ?", anchor.CreatedAt)
+	}
+
+	var sourceMessages []model.ChatMessage
+	if err := q.Find(&sourceMessages).Error; err != nil {
+		return nil, err
+	}
+	if len(sourceMessages) == 0 {
+		return nil, fmt.Errorf("no messages to fork")
+	}
+
+	title := input.Title
+	if title == "" {
+		title = "分支: " + source.Title
+	}
+
+	forkedFrom := source.ID
+	var forkedBefore *string
+	if input.BeforeMessageID != "" {
+		forkedBefore = &input.BeforeMessageID
+	}
+
+	newSession := &model.ChatSession{
+		SessionType:           source.SessionType,
+		UserID:                source.UserID,
+		AgentID:               source.AgentID,
+		PeerAgentID:           source.PeerAgentID,
+		IdeaID:                source.IdeaID,
+		Title:                 title,
+		MessageCount:          len(sourceMessages),
+		ForkedFromID:          &forkedFrom,
+		ForkedBeforeMessageID: forkedBefore,
+	}
+	if err := s.db.Create(newSession).Error; err != nil {
+		return nil, fmt.Errorf("failed to create forked session: %w", err)
+	}
+
+	copies := make([]model.ChatMessage, len(sourceMessages))
+	for i, m := range sourceMessages {
+		copies[i] = model.ChatMessage{
+			SessionID:   newSession.ID,
+			ActorType:   m.ActorType,
+			ActorID:     m.ActorID,
+			Role:        m.Role,
+			ContentType: m.ContentType,
+			Content:     m.Content,
+			Metadata:    m.Metadata,
+			CreatedAt:   m.CreatedAt,
+		}
+	}
+	if err := s.db.Create(&copies).Error; err != nil {
+		return nil, fmt.Errorf("failed to copy messages: %w", err)
+	}
+
+	logActivity(s.db, "user", userID, "fork_session", "session", newSession.ID, map[string]string{
+		"source_session_id": source.ID,
+	})
+	return newSession, nil
 }
 
 func (s *ChatService) buildSystemPrompt(session *model.ChatSession) string {
@@ -559,12 +812,12 @@ func (s *ChatService) buildSystemPromptWithRAG(session *model.ChatSession, userM
 	base := s.buildSystemPrompt(session)
 
 	if s.searcher == nil || s.embed == nil || !s.embed.Enabled() {
-		return base
+		return base + responseFormatInstructions
 	}
 
 	matches, err := s.searcher.Search(userMessage, 0.55, 3)
 	if err != nil || len(matches) == 0 {
-		return base
+		return base + responseFormatInstructions
 	}
 
 	ragSection := "\n\n## 平台中已有的相似想法（可供参考、对比、引用）："
@@ -576,7 +829,7 @@ func (s *ChatService) buildSystemPromptWithRAG(session *model.ChatSession, userM
 	}
 	ragSection += "\n\n请在回答中适当参考上述想法，但不要简单复述；结合用户的问题给出有针对性的回应。"
 
-	return base + ragSection
+	return base + ragSection + responseFormatInstructions
 }
 
 func (s *ChatService) buildMessageHistory(sessionID string) []LLMMessage {

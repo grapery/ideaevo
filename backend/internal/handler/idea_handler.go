@@ -14,14 +14,21 @@ var validStatuses = map[string]bool{
 }
 
 type IdeaHandler struct {
-	ideaSvc   *service.IdeaService
-	agentSvc  *service.AgentService
-	socialSvc *service.SocialService
-	wanyeSvc  *service.WanyeService
+	ideaSvc       *service.IdeaService
+	agentSvc      *service.AgentService
+	socialSvc     *service.SocialService
+	wanyeSvc      *service.WanyeService
+	systemAgentID string
 }
 
-func NewIdeaHandler(ideaSvc *service.IdeaService, agentSvc *service.AgentService, socialSvc *service.SocialService, wanyeSvc *service.WanyeService) *IdeaHandler {
-	return &IdeaHandler{ideaSvc: ideaSvc, agentSvc: agentSvc, socialSvc: socialSvc, wanyeSvc: wanyeSvc}
+func NewIdeaHandler(ideaSvc *service.IdeaService, agentSvc *service.AgentService, socialSvc *service.SocialService, wanyeSvc *service.WanyeService, systemAgentID string) *IdeaHandler {
+	return &IdeaHandler{
+		ideaSvc:       ideaSvc,
+		agentSvc:      agentSvc,
+		socialSvc:     socialSvc,
+		wanyeSvc:      wanyeSvc,
+		systemAgentID: systemAgentID,
+	}
 }
 
 func (h *IdeaHandler) Register(c *gin.Context) {
@@ -158,15 +165,36 @@ func (h *IdeaHandler) Like(c *gin.Context) {
 		return
 	}
 
-	agentID, _ := c.Get("agent_id")
-	agentIDStr, _ := agentID.(string)
-	userID := c.GetHeader("X-User-ID")
+	agentIDStr := c.GetString("agent_id")
+	userID := extractUserID(c)
+	if userID == "" && agentIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
+		return
+	}
 
 	if err := h.socialSvc.LikeIdea(ideaID, userID, agentIDStr); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "liked"})
+}
+
+func (h *IdeaHandler) GetLikeStatus(c *gin.Context) {
+	ideaID := c.Param("id")
+	if _, err := h.ideaSvc.GetByID(ideaID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		return
+	}
+
+	agentIDStr := c.GetString("agent_id")
+	userID := extractUserID(c)
+	if userID == "" && agentIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
+		return
+	}
+
+	liked := h.socialSvc.HasLikedIdea(ideaID, userID, agentIDStr)
+	c.JSON(http.StatusOK, gin.H{"liked": liked})
 }
 
 func (h *IdeaHandler) Unlike(c *gin.Context) {
@@ -176,9 +204,8 @@ func (h *IdeaHandler) Unlike(c *gin.Context) {
 		return
 	}
 
-	agentID, _ := c.Get("agent_id")
-	agentIDStr, _ := agentID.(string)
-	userID := c.GetHeader("X-User-ID")
+	agentIDStr := c.GetString("agent_id")
+	userID := extractUserID(c)
 
 	h.socialSvc.UnlikeIdea(ideaID, userID, agentIDStr)
 	c.JSON(http.StatusOK, gin.H{"message": "unliked"})
@@ -201,11 +228,12 @@ func (h *IdeaHandler) SendFlowers(c *gin.Context) {
 	}
 	c.ShouldBindJSON(&input)
 
-	agentID, _ := c.Get("agent_id")
-	agentIDStr, _ := agentID.(string)
+	agentIDStr := c.GetString("agent_id")
+	userID := extractUserID(c)
 
 	if err := h.socialSvc.SendFlowers(service.SendFlowersInput{
 		IdeaID:  ideaID,
+		UserID:  userID,
 		AgentID: agentIDStr,
 		Message: input.Message,
 	}); err != nil {
@@ -238,8 +266,11 @@ func (h *IdeaHandler) Fork(c *gin.Context) {
 		return
 	}
 
-	agentID, _ := c.Get("agent_id")
-	agentIDStr, _ := agentID.(string)
+	agentIDStr := extractAgentID(c, h.systemAgentID)
+	if agentIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
+		return
+	}
 
 	newIdea, err := h.socialSvc.ForkIdea(service.ForkIdeaInput{
 		IdeaID:      ideaID,
@@ -286,6 +317,10 @@ func (h *IdeaHandler) CreateComment(c *gin.Context) {
 
 	if input.UserID == "" {
 		input.UserID = extractActorID(c)
+	}
+	if input.UserID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
+		return
 	}
 
 	comment, err := h.wanyeSvc.CreateComment(input)

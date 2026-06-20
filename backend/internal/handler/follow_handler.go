@@ -91,3 +91,37 @@ func (h *FollowHandler) GetProfile(c *gin.Context) {
 		"is_following": isFollowing,
 	})
 }
+
+func (h *FollowHandler) FollowAgent(c *gin.Context) {
+	userID := c.GetString("user_id")
+	agentID := c.Param("id")
+
+	if err := h.followSvc.FollowAgent(userID, agentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "followed"})
+}
+
+func (h *FollowHandler) UnfollowAgent(c *gin.Context) {
+	userID := c.GetString("user_id")
+	agentID := c.Param("id")
+
+	if err := h.followSvc.UnfollowAgent(userID, agentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "unfollowed"})
+}
+
+func (h *FollowHandler) GetAgentFollowStatus(c *gin.Context) {
+	userID := c.GetString("user_id")
+	agentID := c.Param("id")
+
+	following := false
+	if userID != "" {
+		following, _ = h.followSvc.IsFollowingAgent(userID, agentID)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"is_following": following})
+}

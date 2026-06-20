@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PasswordInput } from "@/components/ui/password-input";
 import { parseResponseError, getErrorMessage } from "@/lib/api-error";
+import { getApiBase } from "@/lib/api-base";
 
 const categories = ["生产力", "开发工具", "知识管理", "协作", "自动化", "其他"];
 const recommendedTags = ["MCP", "RAG", "Agent", "去重", "协作"];
@@ -35,9 +36,7 @@ export default function NewIdeaPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<{ idea: Idea; warning: DuplicateWarning | null } | null>(null);
 
-  const apiBase =
-    (typeof window !== "undefined" ? window.__ENV_API_URL__ : null) ||
-    "http://localhost:8080/api";
+  const apiBase = getApiBase();
 
   const previewIdea: Idea = useMemo(
     () => ({

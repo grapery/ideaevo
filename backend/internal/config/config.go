@@ -48,9 +48,8 @@ type Config struct {
 	FrontendURL string
 
 	// LLM
-	LLMAPIKey     string
-	LLMBaseURL    string
-	LLMModel      string
+	LLM LLMConfig
+
 	SystemAgentID string
 
 	// Aliyun OSS Vector Bucket
@@ -99,9 +98,7 @@ func Load() *Config {
 
 		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 
-		LLMAPIKey:     getEnv("LLM_API_KEY", ""),
-		LLMBaseURL:    getEnv("LLM_BASE_URL", "https://api.openai.com/v1"),
-		LLMModel:      getEnv("LLM_MODEL", "gpt-4o"),
+		LLM:           ResolveLLMConfig(),
 		SystemAgentID: getEnv("SYSTEM_AGENT_ID", ""),
 
 		AliyunAccessKeyID:     getEnv("ALIYUN_OSS_ACCESS_KEY_ID", getEnv("ALIYUN_ACCESS_KEY_ID", "")),
@@ -158,4 +155,81 @@ func getEnvDuration(key string, fallback time.Duration) time.Duration {
 		}
 	}
 	return fallback
+}
+
+// LLMConfig holds resolved OpenAI-compatible LLM settings.
+type LLMConfig struct {
+	Provider string // openai | ark | dashscope | ""
+	APIKey   string
+	BaseURL  string
+	Model    string
+}
+
+// DefaultArkTextModel is the fallback when no endpoint/model env is set (grapery-aligned).
+const DefaultArkTextModel = "doubao-seed-2-0-lite-260215"
+
+func (c LLMConfig) Enabled() bool {
+	return c.APIKey != ""
+}
+
+// ResolveLLMConfig picks provider-specific defaults without mixing e.g. Ark endpoint + qwen-plus.
+func ResolveLLMConfig() LLMConfig {
+	if key := os.Getenv("LLM_API_KEY"); key != "" {
+		return LLMConfig{
+			Provider: "openai",
+			APIKey:   key,
+			BaseURL:  firstNonEmpty(os.Getenv("LLM_BASE_URL"), "https://api.openai.com/v1"),
+			Model:    firstNonEmpty(os.Getenv("LLM_MODEL"), "gpt-4o"),
+		}
+	}
+
+	if key := firstNonEmpty(
+		os.Getenv("ARK_API_KEY"),
+		os.Getenv("HUOSHAN_API_KEY"),
+		os.Getenv("HUOSHAN_LLM_API_KEY"),
+		os.Getenv("VOLCENGINE_ARK_API_KEY"),
+	); key != "" {
+		return LLMConfig{
+			Provider: "ark",
+			APIKey:   key,
+			BaseURL: firstNonEmpty(
+				os.Getenv("LLM_BASE_URL"),
+				os.Getenv("ARK_BASE_URL"),
+				os.Getenv("HUOSHAN_BASE_URL"),
+				os.Getenv("HUOSHAN_LLM_BASE_URL"),
+				"https://ark.cn-beijing.volces.com/api/v3",
+			),
+			Model: firstNonEmpty(
+				os.Getenv("LLM_MODEL"),
+				os.Getenv("ARK_MODEL"),
+				os.Getenv("HUOSHAN_MODEL"),
+				os.Getenv("HUOSHAN_LLM_MODEL"),
+				os.Getenv("HUOSHAN_TEXT_MODEL"),
+				DefaultArkTextModel,
+			),
+		}
+	}
+
+	if key := os.Getenv("DASHSCOPE_API_KEY"); key != "" {
+		return LLMConfig{
+			Provider: "dashscope",
+			APIKey:   key,
+			BaseURL: firstNonEmpty(
+				os.Getenv("LLM_BASE_URL"),
+				"https://dashscope.aliyuncs.com/compatible-mode/v1",
+			),
+			Model: firstNonEmpty(os.Getenv("LLM_MODEL"), "qwen-plus"),
+		}
+	}
+
+	return LLMConfig{}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

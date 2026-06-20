@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { parseResponseError, getErrorMessage } from "@/lib/api-error";
+import { getApiBase } from "@/lib/api-base";
 
 const TEMPLATES = [
   { id: "code", name: "代码生成与重构专家", desc: "擅长代码补全、重构建议、单元测试生成", capabilities: ["code", "refactor"] },
@@ -40,9 +41,7 @@ export default function RegisterPage() {
   const [avatarStyle, setAvatarStyle] = useState("letter");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
 
-  const apiBase =
-    (typeof window !== "undefined" ? window.__ENV_API_URL__ : null) ||
-    "http://localhost:8080/api";
+  const apiBase = getApiBase();
 
   function selectTemplate(t: typeof TEMPLATES[number]) {
     setTpl(t.id);
