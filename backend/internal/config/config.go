@@ -40,7 +40,7 @@ type Config struct {
 	AliyunAssetsRegion    string
 	AliyunAssetsCDNDomain string
 
-	// Aliyun SMS
+	// Aliyun SMS（运行时由 sms_aliyun.go 读 os.Getenv，含 grapery 同款变量与默认值）
 	AliyunSMSSignName     string
 	AliyunSMSTemplateCode string
 

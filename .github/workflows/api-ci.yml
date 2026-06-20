@@ -5,6 +5,9 @@ name: API CI/CD
 # Repository Variables（Settings → Secrets and variables → Actions → Variables）:
 #   ACR_REGISTRY, ACR_USERNAME, ACR_PASSWORD            — 阿里云容器镜像服务
 #   DB_*（DB_USER / DB_PASSWORD / DB_NAME_DEV / DB_NAME_PROD）、JWT_SECRET …
+#   ALIYUN_SMS_SIGN_NAME / ALIYUN_SMS_TEMPLATE_CODE     — 短信签名与模板（可与 grapery 共用）
+#   ALIYUN_SMS_ACCESS_ID / ALIYUN_SMS_ACCESS_SECRET     — SMS RAM 子账号（写入容器 ALIYUN_SMS_ACCESS_KEY_*）
+#   ALIYUN_SMS_REGION / ALIYUN_SMS_ENDPOINT             — 可选，默认 cn-hangzhou / dysmsapi.aliyuncs.com
 #
 # 部署主机配置（如后续接 SSH 部署）：
 #   DEV_DEPLOY_HOST / PROD_DEPLOY_HOST、SSH_USER、SSH_KEY
@@ -169,6 +172,10 @@ jobs:
           echo "- ACR_REGISTRY: ${{ vars.ACR_REGISTRY && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
           echo "- DB_PASSWORD: ${{ vars.DB_PASSWORD && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
           echo "- JWT_SECRET: ${{ vars.JWT_SECRET && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ALIYUN_SMS_SIGN_NAME: ${{ vars.ALIYUN_SMS_SIGN_NAME != '' && '✅ Set' || '⚠️ Use code default' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ALIYUN_SMS_TEMPLATE_CODE: ${{ vars.ALIYUN_SMS_TEMPLATE_CODE != '' && '✅ Set' || '⚠️ Use code default' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ALIYUN_SMS_ACCESS_ID: ${{ vars.ALIYUN_SMS_ACCESS_ID != '' && '✅ Set' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ALIYUN_SMS_USE_DEFAULT_CREDENTIAL: 1 (fixed in deploy .env)" >> $GITHUB_STEP_SUMMARY
 
   # ========================================
   # Docker 构建推送 - Production
@@ -223,6 +230,10 @@ jobs:
           echo "- ACR_REGISTRY: ${{ vars.ACR_REGISTRY && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
           echo "- DB_PASSWORD: ${{ vars.DB_PASSWORD && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
           echo "- JWT_SECRET: ${{ vars.JWT_SECRET && '✅ Set' || '❌ Not Set' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ALIYUN_SMS_SIGN_NAME: ${{ vars.ALIYUN_SMS_SIGN_NAME != '' && '✅ Set' || '⚠️ Use code default' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ALIYUN_SMS_TEMPLATE_CODE: ${{ vars.ALIYUN_SMS_TEMPLATE_CODE != '' && '✅ Set' || '⚠️ Use code default' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ALIYUN_SMS_ACCESS_ID: ${{ vars.ALIYUN_SMS_ACCESS_ID != '' && '✅ Set' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ALIYUN_SMS_USE_DEFAULT_CREDENTIAL: 1 (fixed in deploy .env)" >> $GITHUB_STEP_SUMMARY
 
   # ========================================
   # SSH 部署 - Develop（拉镜像 + docker compose up）
@@ -273,8 +284,15 @@ jobs:
           JWT_SECRET: ${{ vars.JWT_SECRET }}
           DASHSCOPE_API_KEY: ${{ vars.DASHSCOPE_API_KEY }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          ALIYUN_SMS_SIGN_NAME: ${{ vars.ALIYUN_SMS_SIGN_NAME }}
+          ALIYUN_SMS_TEMPLATE_CODE: ${{ vars.ALIYUN_SMS_TEMPLATE_CODE }}
+          ALIYUN_SMS_REGION: ${{ vars.ALIYUN_SMS_REGION }}
+          ALIYUN_SMS_ENDPOINT: ${{ vars.ALIYUN_SMS_ENDPOINT }}
+          ALIYUN_SMS_ACCESS_ID: ${{ vars.ALIYUN_SMS_ACCESS_ID }}
+          ALIYUN_SMS_ACCESS_SECRET: ${{ vars.ALIYUN_SMS_ACCESS_SECRET }}
         run: |
           mkdir -p deploy
+          SMS_REGION="${ALIYUN_SMS_REGION:-cn-hangzhou}"
           {
             echo "DB_HOST=${DB_ADDRESS}"
             echo "DB_PORT=3306"
@@ -291,6 +309,13 @@ jobs:
             echo "FRONTEND_URL=http://121.40.176.39:3001"
             echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
             echo "API_URL=http://api:8080"
+            echo "ALIYUN_SMS_SIGN_NAME=${ALIYUN_SMS_SIGN_NAME}"
+            echo "ALIYUN_SMS_TEMPLATE_CODE=${ALIYUN_SMS_TEMPLATE_CODE}"
+            echo "ALIYUN_SMS_REGION=${SMS_REGION}"
+            echo "ALIYUN_SMS_ENDPOINT=${ALIYUN_SMS_ENDPOINT}"
+            echo "ALIYUN_SMS_USE_DEFAULT_CREDENTIAL=1"
+            echo "ALIYUN_SMS_ACCESS_KEY_ID=${ALIYUN_SMS_ACCESS_ID}"
+            echo "ALIYUN_SMS_ACCESS_KEY_SECRET=${ALIYUN_SMS_ACCESS_SECRET}"
           } > deploy/.env
 
       - name: Copy compose + .env to server

@@ -12,42 +12,19 @@ import (
 
 	"github.com/wanye/ideaevo/internal/config"
 	"github.com/wanye/ideaevo/internal/model"
-	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
-	dysmsapi "github.com/alibabacloud-go/dysmsapi-20170525/v4/client"
-	"github.com/alibabacloud-go/tea/tea"
 	"gorm.io/gorm"
 )
 
 type SMSService struct {
-	db           *gorm.DB
-	client       *dysmsapi.Client
-	signName     string
-	templateCode string
-	enabled      bool
+	db      *gorm.DB
+	enabled bool
 }
 
-func NewSMSService(db *gorm.DB, cfg *config.Config) (*SMSService, error) {
-	s := &SMSService{
-		db:           db,
-		signName:     cfg.AliyunSMSSignName,
-		templateCode: cfg.AliyunSMSTemplateCode,
+func NewSMSService(db *gorm.DB, _ *config.Config) (*SMSService, error) {
+	s := &SMSService{db: db}
+	if smsAliyunConfigured() {
+		s.enabled = true
 	}
-
-	if cfg.AliyunAccessKeyID == "" || cfg.AliyunSMSSignName == "" || cfg.AliyunSMSTemplateCode == "" {
-		return s, nil
-	}
-
-	conf := &openapi.Config{
-		AccessKeyId:     tea.String(cfg.AliyunAccessKeyID),
-		AccessKeySecret: tea.String(cfg.AliyunAccessKeySecret),
-		Endpoint:        tea.String("dysmsapi.aliyuncs.com"),
-	}
-	client, err := dysmsapi.NewClient(conf)
-	if err != nil {
-		return nil, err
-	}
-	s.client = client
-	s.enabled = true
 	return s, nil
 }
 
@@ -95,21 +72,11 @@ func (s *SMSService) SendOTP(phone, purpose string) error {
 	}
 
 	if s.Enabled() {
-		req := &dysmsapi.SendSmsRequest{
-			PhoneNumbers:  tea.String(phone),
-			SignName:      tea.String(s.signName),
-			TemplateCode:  tea.String(s.templateCode),
-			TemplateParam: tea.String(fmt.Sprintf(`{"code":"%s"}`, code)),
-		}
-		resp, err := s.client.SendSms(req)
-		if err != nil {
-			return err
-		}
-		if resp.Body != nil && resp.Body.Code != nil && *resp.Body.Code != "OK" {
-			return fmt.Errorf("sms failed: %s", tea.StringValue(resp.Body.Message))
+		if err := SendAliyunOTPCode(phone, code); err != nil {
+			return errors.New("短信发送失败，请稍后重试")
 		}
 	} else {
-		log.Printf("[sms] dev mode OTP for %s (%s): %s", phone, purpose, code)
+		log.Printf("[sms] dev mode OTP for %s (%s): %s", maskChinaPhone(phone), purpose, code)
 	}
 
 	s.db.Where("phone = ? AND purpose = ?", phone, purpose).Delete(&model.PhoneVerification{})
