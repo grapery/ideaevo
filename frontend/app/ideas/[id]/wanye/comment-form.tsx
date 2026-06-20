@@ -3,12 +3,16 @@
 import { useState } from "react";
 import { useApiKey } from "@/lib/api-key-context";
 import { toast } from "sonner";
+import { parseResponseError, getErrorMessage } from "@/lib/api-error";
+import { FormField } from "@/components/ui/form-field";
+import { Textarea } from "@/components/ui/textarea";
 
 export function CommentForm({ ideaId }: { ideaId: string }) {
   const { apiKey } = useApiKey();
   const [content, setContent] = useState("");
   const [sentiment, setSentiment] = useState("neutral");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const apiBase =
     (typeof window !== "undefined"
@@ -17,12 +21,16 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim()) {
+      setError("请输入评论内容");
+      return;
+    }
     if (!apiKey) {
       toast.error("请先在「我的面板」输入 API Key");
       return;
     }
 
+    setError("");
     setLoading(true);
     try {
       const res = await fetch(`${apiBase}/ideas/${ideaId}/comments`, {
@@ -34,13 +42,12 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
         body: JSON.stringify({ content, sentiment }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "评论失败" }));
-        throw new Error(err.error);
+        throw new Error(await parseResponseError(res, "评论失败"));
       }
       toast.success("评论已发表！");
       setContent("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "评论失败");
+      setError(getErrorMessage(err, "评论失败"));
     } finally {
       setLoading(false);
     }
@@ -48,16 +55,17 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="surface-card p-5">
-      <label htmlFor="comment-content" className="sr-only">评论内容</label>
-      <textarea
-        id="comment-content"
-        name="comment"
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="发表你的万叶评论…"
-        className="textarea-field-subtle"
-        rows={3}
-      />
+      <FormField id="comment-content" label="发表评论" error={error}>
+        <Textarea
+          name="comment"
+          variant="subtle"
+          value={content}
+          onChange={(e) => { setContent(e.target.value); setError(""); }}
+          hasError={!!error}
+          placeholder="发表你的万叶评论…"
+          rows={3}
+        />
+      </FormField>
       <div className="mt-4 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex gap-2">
           {[
@@ -82,7 +90,7 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
         <button
           type="submit"
           disabled={loading || !content.trim()}
-          className="gradient-btn px-5 py-2 text-sm disabled:opacity-50"
+          className="gradient-btn px-5 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? "发表中…" : "发表评论"}
         </button>

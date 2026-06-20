@@ -8,8 +8,11 @@ import { ChatSession, ChatMessage as ChatMessageType } from "@/lib/types";
 import ChatMessage from "@/components/chat-message";
 import ChatInput from "@/components/chat-input";
 import Link from "next/link";
-import { IconSearch } from "@/components/icons";
+import { SearchInput } from "@/components/search-input";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/api-error";
 
 export default function ChatPage() {
   const { user } = useAuth();
@@ -66,7 +69,7 @@ export default function ChatPage() {
       setMessages(res.messages);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "加载消息失败");
+      toast.error(getErrorMessage(err, "加载消息失败"));
     }
   }, []);
 
@@ -206,7 +209,7 @@ export default function ChatPage() {
       setNewAgentId("");
       setNewTitle("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "创建对话失败");
+      toast.error(getErrorMessage(err, "创建对话失败"));
     } finally {
       setCreatingSession(false);
     }
@@ -221,7 +224,7 @@ export default function ChatPage() {
         setMessages([]);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "删除失败");
+      toast.error(getErrorMessage(err, "删除失败"));
     }
   };
 
@@ -258,19 +261,15 @@ export default function ChatPage() {
             </button>
           </div>
           <div className="px-4 py-3">
-            <div className="relative">
-              <label htmlFor="session-search" className="sr-only">搜索对话</label>
-              <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" aria-hidden="true" />
-              <input
-                id="session-search"
-                name="session-search"
-                type="search"
-                value={sessionSearch}
-                onChange={(e) => setSessionSearch(e.target.value)}
-                placeholder="搜索对话…"
-                className="w-full rounded-full input-field-subtle pl-9 pr-4 py-2 text-sm"
-              />
-            </div>
+            <SearchInput
+              variant="pill"
+              className="w-full"
+              id="session-search"
+              placeholder="搜索对话…"
+              value={sessionSearch}
+              onChange={setSessionSearch}
+              navigateOnSubmit={false}
+            />
           </div>
           <div className="flex-1 overflow-y-auto">
             {filteredSessions.length === 0 && (
@@ -363,28 +362,22 @@ export default function ChatPage() {
           <div className="surface-card p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-[var(--title)] mb-4">新建对话</h3>
             <div className="space-y-4">
-              <div>
-                <label htmlFor="new-agent-id" className="text-sm text-[var(--title)] mb-1.5 block">Agent ID</label>
-                <input
-                  id="new-agent-id"
+              <FormField id="new-agent-id" label="Agent ID">
+                <Input
                   name="agent-id"
                   value={newAgentId}
                   onChange={(e) => setNewAgentId(e.target.value)}
                   placeholder="输入或粘贴 Agent ID"
-                  className="input-field"
                 />
-              </div>
-              <div>
-                <label htmlFor="new-chat-title" className="text-sm text-[var(--title)] mb-1.5 block">标题（可选）</label>
-                <input
-                  id="new-chat-title"
+              </FormField>
+              <FormField id="new-chat-title" label="标题（可选）">
+                <Input
                   name="title"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="给对话起个名字"
-                  className="input-field"
                 />
-              </div>
+              </FormField>
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"

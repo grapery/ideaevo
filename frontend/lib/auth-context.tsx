@@ -18,6 +18,8 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loginWithGoogle: () => void;
+  loginWithWeChat: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,6 +29,8 @@ const AuthContext = createContext<AuthContextType>({
   register: async () => {},
   logout: async () => {},
   loginWithGoogle: () => {},
+  loginWithWeChat: () => {},
+  refreshUser: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -45,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Only clear the session on a real auth failure (4xx), not a network blip.
       // A transient network error should not log the user out.
       const status = err instanceof Error ? err.message : "";
-      if (/API error: 4\d\d|^40\d|unauthorized/i.test(status)) {
+      if (/请先登录|登录已失效|请求失败 \(40[13]\)/i.test(status)) {
         setUser(null);
       }
     } finally {
@@ -78,9 +82,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = `${getApiBase()}/auth/google`;
   }
 
+  function loginWithWeChat() {
+    window.location.href = `${getApiBase()}/auth/wechat`;
+  }
+
+  async function refreshUser() {
+    try {
+      const data = await authApi.me();
+      setUser(data.user);
+    } catch {
+      setUser(null);
+    }
+  }
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, logout, loginWithGoogle }}
+      value={{ user, loading, login, register, logout, loginWithGoogle, loginWithWeChat, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

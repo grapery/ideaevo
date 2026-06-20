@@ -3,9 +3,15 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { userApi, notificationApi } from "@/lib/api-client";
+import { userApi, notificationApi, authApi } from "@/lib/api-client";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { PasswordInput } from "@/components/ui/password-input";
+import { Switch } from "@/components/ui/switch";
 import { ChatSession } from "@/lib/types";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/api-error";
 import {
   IconUser,
   IconBell,
@@ -35,20 +41,39 @@ const DEFAULT_NOTIF_PREFS = {
 const STORAGE_KEY = "wanye:notif-prefs";
 
 export default function SettingsPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const [section, setSection] = useState<Section>("profile");
 
   // Profile
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [backgroundUrl, setBackgroundUrl] = useState("");
   const [bio, setBio] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBackground, setUploadingBackground] = useState(false);
+
+  // Delete account
+  const [deletePwd, setDeletePwd] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deletePhone, setDeletePhone] = useState("");
+  const [deleteSmsCode, setDeleteSmsCode] = useState("");
+  const [deleteSmsCooldown, setDeleteSmsCooldown] = useState(0);
+  const [deleting, setDeleting] = useState(false);
 
   // Security
   const [oldPwd, setOldPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
   const [savingPwd, setSavingPwd] = useState(false);
+  const [pwdErrors, setPwdErrors] = useState<Record<string, string>>({});
+
+  // Change phone
+  const [changePhone, setChangePhone] = useState("");
+  const [changeCode, setChangeCode] = useState("");
+  const [changeCooldown, setChangeCooldown] = useState(0);
+  const [changingPhone, setChangingPhone] = useState(false);
 
   // Sessions
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -63,8 +88,23 @@ export default function SettingsPage() {
     if (user) {
       setName(user.name);
       setAvatarUrl(user.avatar_url || "");
+      setBackgroundUrl(user.background_url || "");
+      setBio(user.bio || "");
+      if (user.phone) setDeletePhone(user.phone);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (deleteSmsCooldown <= 0) return;
+    const t = setInterval(() => setDeleteSmsCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [deleteSmsCooldown]);
+
+  useEffect(() => {
+    if (changeCooldown <= 0) return;
+    const t = setInterval(() => setChangeCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [changeCooldown]);
 
   // Load prefs from localStorage
   useEffect(() => {
@@ -91,32 +131,183 @@ export default function SettingsPage() {
 
   const saveProfile = useCallback(async () => {
     if (!name.trim()) {
-      toast.error("显示名不能为空");
+      setProfileErrors({ name: "显示名不能为空" });
       return;
     }
+    setProfileErrors({});
     setSavingProfile(true);
     try {
-      await userApi.updateMyProfile({
+      const res = await userApi.updateMyProfile({
         name: name.trim(),
+        bio,
         avatar_url: avatarUrl.trim() || undefined,
+        background_url: backgroundUrl.trim() || undefined,
       });
+      if (res.user) await refreshUser();
       toast.success("资料已更新");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "更新失败");
+      toast.error(getErrorMessage(err, "更新失败"));
     } finally {
       setSavingProfile(false);
     }
-  }, [name, avatarUrl]);
+  }, [name, avatarUrl, backgroundUrl, bio, refreshUser]);
+
+  const uploadImage = useCallback(
+    async (kind: "avatar" | "background", file: File) => {
+      const allowed = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowed.includes(file.type)) {
+        toast.error("仅支持 JPEG、PNG、WebP 图片");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("图片不能超过 5MB");
+        return;
+      }
+      const setUploading = kind === "avatar" ? setUploadingAvatar : setUploadingBackground;
+      setUploading(true);
+      try {
+        const presign = await userApi.presignUpload(kind, file.type);
+        const putRes = await fetch(presign.upload_url, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type },
+        });
+        if (!putRes.ok) throw new Error("上传失败");
+        const patch: Parameters<typeof userApi.updateMyProfile>[0] = {
+          ...(kind === "avatar"
+            ? { avatar_url: presign.public_url, avatar_source: "upload" }
+            : { background_url: presign.public_url }),
+        };
+        const res = await userApi.updateMyProfile(patch);
+        if (kind === "avatar") setAvatarUrl(presign.public_url);
+        else setBackgroundUrl(presign.public_url);
+        if (res.user) await refreshUser();
+        toast.success(kind === "avatar" ? "头像已更新" : "背景已更新");
+      } catch (err) {
+        toast.error(getErrorMessage(err, "上传失败"));
+      } finally {
+        setUploading(false);
+      }
+    },
+    [refreshUser]
+  );
+
+  const resetAvatar = useCallback(async () => {
+    try {
+      const res = await userApi.resetAvatar();
+      if (res.user?.avatar_url) setAvatarUrl(res.user.avatar_url);
+      await refreshUser();
+      toast.success("已恢复默认头像");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "操作失败"));
+    }
+  }, [refreshUser]);
+
+  const resetBackground = useCallback(async () => {
+    try {
+      const res = await userApi.resetBackground();
+      if (res.user?.background_url) setBackgroundUrl(res.user.background_url);
+      await refreshUser();
+      toast.success("已恢复默认背景");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "操作失败"));
+    }
+  }, [refreshUser]);
+
+  const sendDeleteSms = useCallback(async () => {
+    if (!deletePhone.trim()) {
+      toast.error("请输入手机号");
+      return;
+    }
+    try {
+      await authApi.sendPhoneCode(deletePhone.trim(), "account_delete");
+      toast.success("验证码已发送");
+      setDeleteSmsCooldown(60);
+    } catch (err) {
+      toast.error(getErrorMessage(err, "发送失败"));
+    }
+  }, [deletePhone]);
+
+  const deleteAccount = useCallback(async () => {
+    if (!user) return;
+    setDeleting(true);
+    try {
+      const payload: Parameters<typeof userApi.deleteAccount>[0] = {};
+      if (user.auth_provider === "email") {
+        if (!deletePwd) {
+          toast.error("请输入密码确认");
+          setDeleting(false);
+          return;
+        }
+        payload.password = deletePwd;
+      } else if (user.auth_provider === "google") {
+        if (deleteConfirm !== "DELETE") {
+          toast.error('请输入 DELETE 确认');
+          setDeleting(false);
+          return;
+        }
+        payload.confirm_text = deleteConfirm;
+      } else if (user.auth_provider === "wechat") {
+        if (!deletePhone || !deleteSmsCode) {
+          toast.error("请完成手机验证");
+          setDeleting(false);
+          return;
+        }
+        payload.phone = deletePhone;
+        payload.sms_code = deleteSmsCode;
+      }
+      await userApi.deleteAccount(payload);
+      toast.success("账号已注销");
+      window.location.href = "/";
+    } catch (err) {
+      toast.error(getErrorMessage(err, "注销失败"));
+    } finally {
+      setDeleting(false);
+    }
+  }, [user, deletePwd, deleteConfirm, deletePhone, deleteSmsCode]);
+
+  const sendChangePhoneCode = useCallback(async () => {
+    if (!changePhone.trim()) {
+      toast.error("请输入新手机号");
+      return;
+    }
+    try {
+      await authApi.sendPhoneCode(changePhone.trim(), "change_phone");
+      toast.success("验证码已发送");
+      setChangeCooldown(60);
+    } catch (err) {
+      toast.error(getErrorMessage(err, "发送失败"));
+    }
+  }, [changePhone]);
+
+  const verifyChangePhone = useCallback(async () => {
+    if (!changePhone.trim() || !changeCode.trim()) {
+      toast.error("请填写手机号和验证码");
+      return;
+    }
+    setChangingPhone(true);
+    try {
+      await authApi.verifyPhone(changePhone.trim(), changeCode.trim());
+      await refreshUser();
+      setChangePhone("");
+      setChangeCode("");
+      toast.success("手机号已更新");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "验证失败"));
+    } finally {
+      setChangingPhone(false);
+    }
+  }, [changePhone, changeCode, refreshUser]);
 
   const changePwd = useCallback(async () => {
-    if (newPwd.length < 6) {
-      toast.error("新密码至少 6 个字符");
+    const errs: Record<string, string> = {};
+    if (newPwd.length < 6) errs.newPwd = "新密码至少 6 个字符";
+    if (newPwd !== confirmPwd) errs.confirmPwd = "两次新密码不一致";
+    if (Object.keys(errs).length) {
+      setPwdErrors(errs);
       return;
     }
-    if (newPwd !== confirmPwd) {
-      toast.error("两次新密码不一致");
-      return;
-    }
+    setPwdErrors({});
     setSavingPwd(true);
     try {
       await userApi.changePassword(oldPwd, newPwd);
@@ -125,7 +316,7 @@ export default function SettingsPage() {
       setNewPwd("");
       setConfirmPwd("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "修改失败");
+      setPwdErrors({ oldPwd: getErrorMessage(err, "修改失败") });
     } finally {
       setSavingPwd(false);
     }
@@ -223,19 +414,31 @@ export default function SettingsPage() {
           {/* Right content */}
           <main className="flex-1 min-w-0 max-w-[760px]">
             {/* Profile header card */}
-            <div className="surface-card p-5 mb-5 flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-2xl font-semibold text-[var(--primary)] overflow-hidden">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            <div className="surface-card overflow-hidden mb-5">
+              <div className="h-28 bg-[var(--primary-soft)] relative">
+                {backgroundUrl ? (
+                  <img src={backgroundUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  user.name.charAt(0).toUpperCase()
+                  <div className="h-full w-full bg-gradient-to-br from-[var(--primary-soft)] to-[var(--teal)]/15" />
                 )}
               </div>
-              <div>
-                <div className="text-lg font-semibold text-[var(--title)]">{user.name}</div>
-                <div className="text-sm text-[var(--text-muted)]">{user.email}</div>
-                <div className="mt-1 text-xs text-[var(--text-muted)]">
-                  关注 {user.following_count} · 粉丝 {user.follower_count}
+              <div className="px-5 pb-5 -mt-10 flex items-end gap-4">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-2xl font-semibold text-[var(--primary)] overflow-hidden border-4 border-white shadow-sm">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    user.name.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className="pb-1">
+                  <div className="text-lg font-semibold text-[var(--title)]">{user.name}</div>
+                  {user.email && (
+                    <div className="text-sm text-[var(--text-muted)]">{user.email}</div>
+                  )}
+                  <div className="mt-1 text-xs text-[var(--text-muted)]">
+                    关注 {user.following_count} · 粉丝 {user.follower_count}
+                    {user.phone_verified && user.phone && ` · ${user.phone}`}
+                  </div>
                 </div>
               </div>
             </div>
@@ -243,58 +446,81 @@ export default function SettingsPage() {
             {section === "profile" && (
               <div className="surface-card p-6">
                 <h2 className="text-base font-semibold text-[var(--title)] mb-4">基本信息</h2>
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <div>
-                    <label htmlFor="set-name" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">显示名</label>
-                    <input
-                      id="set-name"
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">头像</label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="gradient-btn px-4 py-2 text-sm font-medium cursor-pointer">
+                        {uploadingAvatar ? "上传中…" : "上传图片"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="sr-only"
+                          disabled={uploadingAvatar}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) uploadImage("avatar", f);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={resetAvatar}
+                        className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                      >
+                        恢复默认
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">背景图</label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="gradient-btn px-4 py-2 text-sm font-medium cursor-pointer">
+                        {uploadingBackground ? "上传中…" : "上传图片"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="sr-only"
+                          disabled={uploadingBackground}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) uploadImage("background", f);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={resetBackground}
+                        className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                      >
+                        恢复默认
+                      </button>
+                    </div>
+                  </div>
+                  <FormField id="set-name" label="显示名" error={profileErrors.name}>
+                    <Input
                       name="name"
                       autoComplete="name"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="input-field"
+                      onChange={(e) => { setName(e.target.value); setProfileErrors({}); }}
+                      hasError={!!profileErrors.name}
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="set-avatar" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                      头像 URL
-                    </label>
-                    <input
-                      id="set-avatar"
-                      name="avatar-url"
-                      type="url"
-                      autoComplete="off"
-                      value={avatarUrl}
-                      onChange={(e) => setAvatarUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="input-field"
-                    />
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">留空将使用首字母作为头像</p>
-                  </div>
-                  <div>
-                    <label htmlFor="set-bio" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">简介</label>
-                    <textarea
-                      id="set-bio"
+                  </FormField>
+                  <FormField id="set-bio" label="简介" hint={`${bio.length} / 500 字符`}>
+                    <Textarea
                       name="bio"
                       value={bio}
                       onChange={(e) => setBio(e.target.value)}
                       rows={3}
-                      maxLength={200}
+                      maxLength={500}
                       placeholder="一句话介绍自己 (例如：AI 研究者 / Agent 工具开发)"
-                      className="input-field resize-none"
+                      className="resize-none"
                     />
-                    <p className="mt-1 text-xs text-[var(--text-muted)] text-right">
-                      {bio.length} / 200 字符
-                    </p>
-                  </div>
+                  </FormField>
                 </div>
-                <div className="mt-5 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    className="rounded-lg border border-[var(--divider)] px-5 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                  >
-                    取消
-                  </button>
+                <div className="mt-5 flex justify-end">
                   <button
                     type="button"
                     onClick={saveProfile}
@@ -311,70 +537,104 @@ export default function SettingsPage() {
               <div className="surface-card p-6">
                 <h2 className="text-base font-semibold text-[var(--title)] mb-4">账号安全</h2>
 
-                <div className="mb-6 rounded-lg border border-[var(--divider)] p-4 flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-[var(--title)]">邮箱验证</div>
-                    <div className="text-xs text-[var(--text-muted)] mt-0.5">{user.email}</div>
+                {user.email && user.auth_provider !== "wechat" && (
+                  <div className="mb-6 rounded-lg border border-[var(--divider)] p-4 flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-[var(--title)]">邮箱验证</div>
+                      <div className="text-xs text-[var(--text-muted)] mt-0.5">{user.email}</div>
+                    </div>
+                    {user.email_verified ? (
+                      <span className="rounded-full bg-[var(--teal)]/15 px-3 py-1 text-xs font-medium text-[var(--teal)]">
+                        ✓ 已验证
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-[var(--coral)]/15 px-3 py-1 text-xs font-medium text-[var(--coral)]">
+                        未验证
+                      </span>
+                    )}
                   </div>
-                  {user.email_verified ? (
-                    <span className="rounded-full bg-[var(--teal)]/15 px-3 py-1 text-xs font-medium text-[var(--teal)]">
-                      ✓ 已验证
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-[var(--coral)]/15 px-3 py-1 text-xs font-medium text-[var(--coral)]">
-                      未验证
-                    </span>
-                  )}
-                </div>
+                )}
 
                 {user.auth_provider === "google" ? (
                   <div className="rounded-lg bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
                     你使用 Google 账号登录，无需设置密码。如需修改密码请前往 Google 账号管理。
                   </div>
+                ) : user.auth_provider === "wechat" ? (
+                  <div className="space-y-4">
+                    <div className="rounded-lg bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
+                      你使用微信扫码登录。
+                      {user.phone_verified && user.phone
+                        ? ` 已绑定手机 ${user.phone}`
+                        : " 请完成手机验证以使用完整功能。"}
+                    </div>
+                    {user.phone_verified && (
+                      <div className="rounded-lg border border-[var(--divider)] p-4 space-y-3 max-w-md">
+                        <div className="text-sm font-medium text-[var(--title)]">更换绑定手机</div>
+                        <FormField id="change-phone" label="新手机号">
+                          <Input
+                            type="tel"
+                            value={changePhone}
+                            onChange={(e) => setChangePhone(e.target.value)}
+                            placeholder="新手机号"
+                          />
+                        </FormField>
+                        <div className="flex gap-2 items-end">
+                          <FormField id="change-code" label="短信验证码" className="flex-1">
+                            <Input
+                              value={changeCode}
+                              onChange={(e) => setChangeCode(e.target.value)}
+                              placeholder="短信验证码"
+                            />
+                          </FormField>
+                          <button
+                            type="button"
+                            onClick={sendChangePhoneCode}
+                            disabled={changeCooldown > 0}
+                            className="shrink-0 rounded-lg border border-[var(--divider)] px-4 py-2 text-sm hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+                          >
+                            {changeCooldown > 0 ? `${changeCooldown}s` : "获取验证码"}
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={verifyChangePhone}
+                          disabled={changingPhone}
+                          className="gradient-btn px-4 py-2 text-sm font-medium disabled:opacity-50"
+                        >
+                          {changingPhone ? "更新中…" : "确认更换"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-4">
-                    <div>
-                      <label htmlFor="set-old-pwd" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                        当前密码
-                      </label>
-                      <input
-                        id="set-old-pwd"
+                    <FormField id="set-old-pwd" label="当前密码" error={pwdErrors.oldPwd}>
+                      <PasswordInput
                         name="old-password"
-                        type="password"
                         autoComplete="current-password"
                         value={oldPwd}
-                        onChange={(e) => setOldPwd(e.target.value)}
-                        className="input-field"
+                        onChange={(e) => { setOldPwd(e.target.value); setPwdErrors({}); }}
+                        hasError={!!pwdErrors.oldPwd}
                       />
-                    </div>
-                    <div>
-                      <label htmlFor="set-new-pwd" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                        新密码
-                      </label>
-                      <input
-                        id="set-new-pwd"
+                    </FormField>
+                    <FormField id="set-new-pwd" label="新密码" error={pwdErrors.newPwd}>
+                      <PasswordInput
                         name="new-password"
-                        type="password"
                         autoComplete="new-password"
                         value={newPwd}
-                        onChange={(e) => setNewPwd(e.target.value)}
-                        className="input-field"
+                        onChange={(e) => { setNewPwd(e.target.value); setPwdErrors({}); }}
+                        hasError={!!pwdErrors.newPwd}
                       />
-                    </div>
-                    <div>
-                      <label htmlFor="set-confirm-pwd" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                        确认新密码
-                      </label>
-                      <input
-                        id="set-confirm-pwd"
+                    </FormField>
+                    <FormField id="set-confirm-pwd" label="确认新密码" error={pwdErrors.confirmPwd}>
+                      <PasswordInput
                         name="confirm-password"
-                        type="password"
                         autoComplete="new-password"
                         value={confirmPwd}
-                        onChange={(e) => setConfirmPwd(e.target.value)}
-                        className="input-field"
+                        onChange={(e) => { setConfirmPwd(e.target.value); setPwdErrors({}); }}
+                        hasError={!!pwdErrors.confirmPwd}
                       />
-                    </div>
+                    </FormField>
                     <div className="flex justify-end">
                       <button
                         type="button"
@@ -387,6 +647,73 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
+
+                <div className="mt-8 pt-6 border-t border-[var(--divider)]">
+                  <h3 className="text-sm font-semibold text-[var(--coral)] mb-2">危险区域</h3>
+                  <p className="text-sm text-[var(--text-muted)] mb-4">
+                    注销账号后，个人资料将被匿名化且无法恢复。
+                  </p>
+                  {user.auth_provider === "email" && (
+                    <div className="space-y-3 max-w-md">
+                      <FormField id="delete-pwd" label="输入密码确认">
+                        <PasswordInput
+                          value={deletePwd}
+                          onChange={(e) => setDeletePwd(e.target.value)}
+                          placeholder="输入密码确认"
+                          autoComplete="current-password"
+                        />
+                      </FormField>
+                    </div>
+                  )}
+                  {user.auth_provider === "google" && (
+                    <div className="space-y-3 max-w-md">
+                      <FormField id="delete-confirm" label='输入 DELETE 确认'>
+                        <Input
+                          value={deleteConfirm}
+                          onChange={(e) => setDeleteConfirm(e.target.value)}
+                          placeholder="DELETE"
+                        />
+                      </FormField>
+                    </div>
+                  )}
+                  {user.auth_provider === "wechat" && (
+                    <div className="space-y-3 max-w-md">
+                      <FormField id="delete-phone" label="已绑定的手机号">
+                        <Input
+                          type="tel"
+                          value={deletePhone}
+                          onChange={(e) => setDeletePhone(e.target.value)}
+                          placeholder="已绑定的手机号"
+                        />
+                      </FormField>
+                      <div className="flex gap-2 items-end">
+                        <FormField id="delete-sms" label="短信验证码" className="flex-1">
+                          <Input
+                            value={deleteSmsCode}
+                            onChange={(e) => setDeleteSmsCode(e.target.value)}
+                            placeholder="短信验证码"
+                          />
+                        </FormField>
+                        <button
+                          type="button"
+                          onClick={sendDeleteSms}
+                          disabled={deleteSmsCooldown > 0}
+                          className="shrink-0 rounded-lg border border-[var(--divider)] px-4 py-2 text-sm hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+                        >
+                          {deleteSmsCooldown > 0 ? `${deleteSmsCooldown}s` : "获取验证码"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={deleteAccount}
+                    disabled={deleting}
+                    className="mt-4 rounded-lg bg-[var(--coral)]/10 border border-[var(--coral)]/30 px-5 py-2 text-sm font-medium text-[var(--coral)] hover:bg-[var(--coral)]/15 disabled:opacity-50"
+                  >
+                    {deleting ? "注销中…" : "注销账号"}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -443,6 +770,8 @@ export default function SettingsPage() {
                         <div className="text-xs text-[var(--text-muted)] mt-0.5">{row.desc}</div>
                       </div>
                       <Toggle
+                        id={`pref-${row.key}`}
+                        label={row.label}
                         on={prefs[row.key as keyof typeof prefs]}
                         onChange={(v) =>
                           setPrefs((p) => ({ ...p, [row.key]: v }))
@@ -496,22 +825,18 @@ export default function SettingsPage() {
   );
 }
 
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!on)}
-      className={`relative h-6 w-11 rounded-full transition-colors ${
-        on ? "bg-[var(--primary)]" : "bg-[var(--divider)]"
-      }`}
-    >
-      <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-          on ? "translate-x-5" : "translate-x-0.5"
-        }`}
-      />
-    </button>
-  );
+function Toggle({
+  id,
+  label,
+  on,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  on: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return <Switch id={id} label={label} checked={on} onChange={onChange} />;
 }
 
 function ApiKeyDisplay() {

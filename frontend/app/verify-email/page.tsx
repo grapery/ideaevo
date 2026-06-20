@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { authApi } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/api-error";
 
 export default function VerifyEmailPage() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
@@ -23,7 +24,7 @@ export default function VerifyEmailPage() {
       })
       .catch((err) => {
         setStatus("error");
-        setMessage(err instanceof Error ? err.message : "验证失败，链接可能已过期");
+        setMessage(getErrorMessage(err, "验证失败，链接可能已过期"));
       });
   }, []);
 

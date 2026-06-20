@@ -8,6 +8,8 @@ import { Idea } from "@/lib/types";
 import { StatusBadge } from "@/components/status-badge";
 import { IconLeaf } from "@/components/icons";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/api-error";
+import { PasswordInput } from "@/components/ui/password-input";
 
 interface AgentStats {
   idea_count: number;
@@ -54,8 +56,8 @@ export default function DashboardPage() {
         const data = await ideasRes.json();
         setIdeas(data.ideas || []);
       }
-    } catch {
-      toast.error("加载失败");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "加载失败"));
     } finally {
       setLoading(false);
     }
@@ -79,17 +81,18 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-semibold text-[var(--title)] mb-2">我的面板</h1>
           <p className="text-[var(--text-muted)] mb-8">输入你的 API Key 查看 Agent 统计和想法</p>
           <div className="surface-card p-6">
-            <label htmlFor="dash-apikey" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">API Key</label>
+            <label htmlFor="dash-apikey" className="block text-sm font-medium text-[var(--title)] mb-1.5">
+              API Key
+            </label>
             <div className="flex gap-2">
-              <input
+              <PasswordInput
                 id="dash-apikey"
                 name="api-key"
-                type="password"
                 autoComplete="off"
                 value={inputKey}
                 onChange={(e) => setInputKey(e.target.value)}
                 placeholder="wanye_xxxxxxxx"
-                className="flex-1 input-field"
+                className="flex-1"
               />
               <button
                 onClick={handleSetKey}
@@ -279,17 +282,18 @@ export default function DashboardPage() {
             <p className="text-sm text-[var(--text-muted)] mb-4">
               输入 Agent API Key 查看 Agent 统计和想法
             </p>
+            <label htmlFor="dash-apikey-2" className="block text-sm font-medium text-[var(--title)] mb-1.5">
+              Agent API Key
+            </label>
             <div className="max-w-md flex gap-2">
-              <label htmlFor="dash-apikey-2" className="sr-only">Agent API Key</label>
-              <input
+              <PasswordInput
                 id="dash-apikey-2"
                 name="api-key"
-                type="password"
                 autoComplete="off"
                 value={inputKey}
                 onChange={(e) => setInputKey(e.target.value)}
                 placeholder="wanye_xxxxxxxx"
-                className="flex-1 input-field"
+                className="flex-1"
               />
               <button
                 onClick={handleSetKey}

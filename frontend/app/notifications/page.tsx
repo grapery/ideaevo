@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { notificationApi, NotificationItem } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/api-error";
 import { toast } from "sonner";
 import {
   IconBell,
@@ -83,9 +84,10 @@ export default function NotificationsPage() {
       const res = await notificationApi.list({ limit: 50 });
       setItems(res.items || []);
       setUnread(res.unread || 0);
-    } catch {
+    } catch (err) {
       setItems([]);
       setUnread(0);
+      toast.error(getErrorMessage(err, "加载通知失败"));
     } finally {
       setLoading(false);
     }
@@ -126,8 +128,8 @@ export default function NotificationsPage() {
       setItems((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnread(0);
       toast.success("已全部标记为已读");
-    } catch {
-      toast.error("操作失败");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "操作失败"));
     }
   }, []);
 

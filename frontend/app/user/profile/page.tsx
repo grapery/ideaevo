@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { userApi, chatApi } from "@/lib/api-client";
 import { UserProfile, ChatSession } from "@/lib/types";
 import Link from "next/link";
+import UserProfileHeader from "@/components/user-profile-header";
 
 export default function MyProfilePage() {
   const { user } = useAuth();
@@ -14,7 +15,10 @@ export default function MyProfilePage() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
 
   useEffect(() => {
-    if (!user) { router.push("/login"); return; }
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     userApi.getMyProfile().then(setProfile);
     chatApi.listSessions(10, 0).then((res) => setSessions(res.sessions));
   }, [user, router]);
@@ -30,29 +34,16 @@ export default function MyProfilePage() {
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       <div className="max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Profile header */}
-        <div className="flex items-start gap-6 mb-8">
-          <div className="w-20 h-20 rounded-2xl bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center text-2xl font-semibold shrink-0">
-            {user.name.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-semibold text-[var(--title)] mb-1">{user.name}</h1>
-            <p className="text-sm text-[var(--text-muted)] mb-3">{user.email}</p>
-            <div className="flex gap-6 text-sm">
-              <span className="text-[var(--text-secondary)]">
-                <strong className="text-[var(--title)]">{profile.follower_count}</strong> 关注者
-              </span>
-              <span className="text-[var(--text-secondary)]">
-                <strong className="text-[var(--title)]">{profile.following_count}</strong> 关注中
-              </span>
-              <span className="text-[var(--text-secondary)]">
-                <strong className="text-[var(--title)]">{profile.session_count}</strong> 对话
-              </span>
-            </div>
-          </div>
-        </div>
+        <UserProfileHeader
+          user={profile.user}
+          isOwn
+          stats={{
+            follower_count: profile.follower_count,
+            following_count: profile.following_count,
+            session_count: profile.session_count,
+          }}
+        />
 
-        {/* Recent sessions */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-[var(--title)]">最近对话</h2>
@@ -80,12 +71,8 @@ export default function MyProfilePage() {
           )}
         </div>
 
-        {/* Quick links */}
         <div className="flex gap-3">
-          <Link
-            href="/chat"
-            className="gradient-btn px-5 py-2.5 text-sm font-medium"
-          >
+          <Link href="/chat" className="gradient-btn px-5 py-2.5 text-sm font-medium">
             开始新对话
           </Link>
           <Link

@@ -5,7 +5,9 @@ import { UserProfile, User } from "@/lib/types";
 import FollowButton from "@/components/follow-button";
 import { userApi } from "@/lib/api-client";
 import UserCard from "@/components/user-card";
-import { IconSearch, IconLeaf } from "@/components/icons";
+import UserProfileHeader from "@/components/user-profile-header";
+import { SearchInput } from "@/components/search-input";
+import { IconLeaf } from "@/components/icons";
 
 type TabKey = "following" | "followers" | "mutuals";
 type SortKey = "recent" | "earliest";
@@ -18,8 +20,6 @@ export default function UserPageClient({
   initialFollowing: boolean;
 }) {
   const [tab, setTab] = useState<TabKey>("followers");
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const [followingList, setFollowingList] = useState<User[]>([]);
   const [followersList, setFollowersList] = useState<User[]>([]);
   const [loaded, setLoaded] = useState<Record<TabKey, boolean>>({
@@ -88,39 +88,21 @@ export default function UserPageClient({
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       <div className="mx-auto page-container py-8">
-        {/* Header */}
-        <div className="flex items-start gap-5 mb-6 flex-wrap">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-3xl font-semibold text-[var(--primary)]">
-            {profile.user.name.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="heading-serif text-2xl font-medium">
-              {profile.user.name}
-            </h1>
-            <p className="text-sm text-[var(--text-muted)]">
-              加入于 {mounted ? new Date(profile.user.created_at).toLocaleDateString("zh-CN") : profile.user.created_at.slice(0, 10)}
-            </p>
-            <div className="mt-3 flex gap-5 text-sm">
-              {tabsConfig.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => loadList(t.key)}
-                  className={`text-[var(--text-secondary)] hover:text-[var(--primary)] ${
-                    tab === t.key ? "font-semibold text-[var(--primary)]" : ""
-                  }`}
-                >
-                  <span className="font-semibold text-[var(--title)]">{t.count}</span> {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <FollowButton
-            userId={profile.user.id}
-            initialFollowing={followingState}
-            onChange={setFollowingState}
-          />
-        </div>
+        <UserProfileHeader
+          user={profile.user}
+          stats={{
+            follower_count: profile.follower_count,
+            following_count: profile.following_count,
+            idea_count: profile.idea_count,
+          }}
+          actions={
+            <FollowButton
+              userId={profile.user.id}
+              initialFollowing={followingState}
+              onChange={setFollowingState}
+            />
+          }
+        />
 
         {/* Tabs */}
         <div className="border-b border-[var(--divider)] mb-4 flex gap-6">
@@ -142,19 +124,15 @@ export default function UserPageClient({
 
         {/* Toolbar */}
         <div className="flex items-center gap-3 mb-5 flex-wrap">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <label htmlFor="followers-search" className="sr-only">搜索粉丝</label>
-            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" aria-hidden="true" />
-            <input
-              id="followers-search"
-              name="followers-search"
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索粉丝…"
-              className="w-full rounded-full input-field-subtle pl-9 pr-4 py-2 text-sm"
-            />
-          </div>
+          <SearchInput
+            variant="pill"
+            className="flex-1 min-w-[200px] max-w-sm"
+            id="followers-search"
+            placeholder="搜索粉丝…"
+            value={search}
+            onChange={setSearch}
+            navigateOnSubmit={false}
+          />
           <div className="flex items-center gap-2 text-sm">
             <span className="text-[var(--text-muted)]">排序:</span>
             {(["recent", "earliest"] as SortKey[]).map((s) => (

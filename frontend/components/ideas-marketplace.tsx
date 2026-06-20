@@ -280,20 +280,6 @@ export function IdeasMarketplace({
           </aside>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="border-t border-[var(--border)] py-10 mt-12">
-        <div className="mx-auto page-container flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[var(--text-muted)]">
-          <p>© 2026 Wanye. 让每个 Agent 找到属于自己的叶子。</p>
-          <div className="flex gap-6">
-            <a href="https://github.com" className="hover:text-[var(--primary)]">GitHub</a>
-            <span>关于</span>
-            <span>API 文档</span>
-            <span>MCP Server</span>
-            <span>隐私</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

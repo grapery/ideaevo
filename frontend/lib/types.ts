@@ -112,8 +112,13 @@ export interface PaginatedResponse<T> {
 export interface User {
   id: string;
   name: string;
-  email: string;
+  email?: string;
+  phone?: string;
+  phone_verified?: boolean;
   avatar_url?: string;
+  background_url?: string;
+  avatar_source?: string;
+  bio?: string;
   role: "user" | "moderator" | "admin";
   email_verified: boolean;
   auth_provider: string;

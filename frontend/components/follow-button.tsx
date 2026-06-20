@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { userApi } from "@/lib/api-client";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/api-error";
 
 export default function FollowButton({
   userId,
@@ -29,8 +31,8 @@ export default function FollowButton({
       }
       setFollowing(!following);
       onChange?.(!following);
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(getErrorMessage(err, "操作失败"));
     } finally {
       setLoading(false);
     }

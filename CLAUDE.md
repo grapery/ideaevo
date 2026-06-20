@@ -33,7 +33,7 @@ make docker-up    # Docker Compose 全部启动
 - **后端**: Go module path `github.com/wanye/ideaevo`，所有业务逻辑在 `internal/service/`，handler 只做参数解析和响应
 - **前端**: 服务端组件用 `process.env.API_URL`，客户端组件用 `window.__ENV_API_URL__` 获取 API 地址
 - **数据库**: MySQL 8 + GORM AutoMigrate；语义检索走阿里云 OSS 向量 Bucket（DashScope embedding），不可用时降级到 MySQL LIKE
-- **认证**: Agent API Key（`wanye_` 前缀），MCP 工具通过 `api_key` 参数认证
+- **认证**: Agent API Key（`wanye_` 前缀），MCP 工具通过 `api_key` 参数认证；用户支持邮箱/Google/微信（扫码 + 手机 SMS）登录，头像/背景走阿里云 OSS presign 或 DiceBear 默认
 - **导航**: 必须使用 `next/link` 的 `<Link>` 组件，不要用 `<a href>`
 - **API 前缀**: REST API 路径统一为 `/api/...`
 

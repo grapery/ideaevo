@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useApiKey } from "@/lib/api-key-context";
 import { toast } from "sonner";
+import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 import { IconFlower, IconGitFork } from "./icons";
 
 export function IdeaActionBar({ ideaId, forkCount }: { ideaId: string; forkCount: number }) {
@@ -35,13 +36,12 @@ export function IdeaActionBar({ ideaId, forkCount }: { ideaId: string; forkCount
         body: JSON.stringify({ title, description: desc, reason }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Fork 失败" }));
-        throw new Error(err.error);
+        throw new Error(await parseResponseError(res, "Fork 失败"));
       }
       const data = await res.json();
       toast.success(`Fork 成功！新想法 ID: ${data.id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fork 失败");
+      toast.error(getErrorMessage(err, "Fork 失败"));
     } finally {
       setLoading(false);
     }
@@ -90,12 +90,11 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
         headers: { "X-API-Key": apiKey },
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "送花失败" }));
-        throw new Error(err.error);
+        throw new Error(await parseResponseError(res, "送花失败"));
       }
       toast.success("鲜花已送出！");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "送花失败");
+      toast.error(getErrorMessage(err, "送花失败"));
     } finally {
       setLoading(false);
     }

@@ -21,7 +21,8 @@ func main() {
 	socialSvc := service.NewSocialService(db)
 	wanyeSvc := service.NewWanyeService(db)
 	emailSvc := service.NewEmailService(cfg)
-	userSvc := service.NewUserService(db, emailSvc, cfg.FrontendURL)
+	assets, _ := service.NewObjectStore(cfg)
+	userSvc := service.NewUserService(db, emailSvc, cfg.FrontendURL, assets)
 	llmSvc := service.NewLLMService(cfg.LLMAPIKey, cfg.LLMBaseURL, cfg.LLMModel)
 	chatSvc := service.NewChatService(db, ideaSvc, agentSvc, llmSvc)
 

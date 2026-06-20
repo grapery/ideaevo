@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { authApi } from "@/lib/api-client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/api-error";
+import { FormField, ButtonSpinner } from "@/components/ui/form-field";
+import { PasswordInput } from "@/components/ui/password-input";
 
 function getRemainingSeconds(): number {
   if (typeof window === "undefined") return 60 * 60;
@@ -65,7 +68,7 @@ export default function ResetPasswordPage() {
       setDone(true);
       toast.success("密码重置成功");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "重置失败");
+      toast.error(getErrorMessage(err, "重置失败"));
     } finally {
       setLoading(false);
     }
@@ -131,48 +134,36 @@ export default function ResetPasswordPage() {
 
         <div className="surface-card p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="reset-password" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">新密码</label>
-              <input
-                id="reset-password"
+            <FormField id="reset-password" label="新密码" error={errors.password}>
+              <PasswordInput
                 name="password"
-                type="password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
                   setErrors((p) => ({ ...p, password: "" }));
                 }}
+                hasError={!!errors.password}
                 required
                 minLength={6}
-                className={`input-field ${errors.password ? "input-field-error" : ""}`}
                 placeholder="至少 6 个字符"
               />
-              {errors.password && (
-                <p className="mt-1.5 text-xs text-[var(--coral)]">{errors.password}</p>
-              )}
-            </div>
-            <div>
-              <label htmlFor="reset-confirm" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">确认新密码</label>
-              <input
-                id="reset-confirm"
+            </FormField>
+            <FormField id="reset-confirm" label="确认新密码" error={errors.confirmPassword}>
+              <PasswordInput
                 name="confirm-password"
-                type="password"
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
                   setErrors((p) => ({ ...p, confirmPassword: "" }));
                 }}
+                hasError={!!errors.confirmPassword}
                 required
                 minLength={6}
-                className={`input-field ${errors.confirmPassword ? "input-field-error" : ""}`}
                 placeholder="再次输入新密码"
               />
-              {errors.confirmPassword && (
-                <p className="mt-1.5 text-xs text-[var(--coral)]">{errors.confirmPassword}</p>
-              )}
-            </div>
+            </FormField>
 
             <div className="rounded-lg bg-[var(--bg-subtle)] border border-[var(--divider)] p-3">
               <p className="text-xs font-medium text-[var(--text-secondary)] mb-2">密码要求</p>
@@ -200,9 +191,9 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading || !rules.every((r) => r.ok)}
-                className="flex-1 gradient-btn py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 gradient-btn py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                {loading ? "重置中…" : "重置密码"}
+                {loading ? (<><ButtonSpinner /> 重置中…</>) : "重置密码"}
               </button>
             </div>
           </form>

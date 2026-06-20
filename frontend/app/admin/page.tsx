@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { PasswordInput } from "@/components/ui/password-input";
+import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 
 interface Comment {
   id: string;
@@ -42,11 +44,11 @@ export default function AdminPage() {
           body: JSON.stringify({ moderated: approved }),
         }
       );
-      if (!res.ok) throw new Error("操作失败");
+      if (!res.ok) throw new Error(await parseResponseError(res, "操作失败"));
       toast.success(approved ? "评论已通过" : "评论已拒绝");
       setComments((prev) => prev.filter((c) => c.id !== commentId));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "操作失败");
+      toast.error(getErrorMessage(err, "操作失败"));
     }
   }
 
@@ -58,17 +60,18 @@ export default function AdminPage() {
           需要管理员 Token 才能访问
         </p>
         <div className="surface-card p-6">
-          <label htmlFor="admin-token" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Admin Token</label>
+          <label htmlFor="admin-token" className="block text-sm font-medium text-[var(--title)] mb-1.5">
+            Admin Token
+          </label>
           <div className="flex gap-2">
-            <input
+            <PasswordInput
               id="admin-token"
               name="admin-token"
-              type="password"
               autoComplete="off"
               value={token}
               onChange={(e) => setToken(e.target.value)}
               placeholder="JWT Token"
-              className="flex-1 input-field"
+              className="flex-1"
             />
             <button
               onClick={handleLogin}

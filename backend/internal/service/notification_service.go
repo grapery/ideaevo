@@ -1,11 +1,7 @@
 package service
 
 import (
-	"errors"
-	"time"
-
 	"github.com/wanye/ideaevo/internal/model"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -76,52 +72,4 @@ func (s *NotificationService) MarkAllRead(userID string) error {
 	return s.db.Model(&model.Notification{}).
 		Where("user_id = ? AND read = ?", userID, false).
 		Update("read", true).Error
-}
-
-type UpdateProfileInput struct {
-	Name         string   `json:"name" binding:"omitempty,min=1,max=64"`
-	AvatarURL    string   `json:"avatar_url" binding:"omitempty,url"`
-}
-
-type ChangePasswordInput struct {
-	OldPassword string `json:"old_password" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required,min=6"`
-}
-
-// ---- Delegated user mutations (kept here so a single NotificationService can
-// be wired into the settings handler) ----
-
-func (s *NotificationService) UpdateProfile(userID string, input UpdateProfileInput) error {
-	updates := map[string]interface{}{}
-	if input.Name != "" {
-		updates["name"] = input.Name
-	}
-	if input.AvatarURL != "" {
-		updates["avatar_url"] = input.AvatarURL
-	}
-	if len(updates) == 0 {
-		return nil
-	}
-	updates["updated_at"] = time.Now()
-	return s.db.Model(&model.User{}).Where("id = ?", userID).Updates(updates).Error
-}
-
-func (s *NotificationService) ChangePassword(userID string, input ChangePasswordInput) error {
-	var user model.User
-	if err := s.db.First(&user, "id = ?", userID).Error; err != nil {
-		return err
-	}
-	if user.AuthProvider == "google" {
-		return errors.New("google accounts have no password")
-	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.OldPassword)); err != nil {
-		return errors.New("incorrect current password")
-	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-	user.PasswordHash = string(hash)
-	user.UpdatedAt = time.Now()
-	return s.db.Save(&user).Error
 }

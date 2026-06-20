@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CodeBlock } from "@/components/code-block";
 import { IconLeaf } from "@/components/icons";
 
 const mcpConfigExample = `{
@@ -58,23 +59,6 @@ const chatTools = [
   { name: "get_user_profile", desc: "获取用户档案" },
   { name: "get_user_activity", desc: "获取用户活动记录" },
 ];
-
-function CodeBlock({ label, children }: { label: string; children: string }) {
-  return (
-    <div className="code-block">
-      <div className="code-block-header">
-        <span className="code-block-dot bg-[var(--coral)]" />
-        <span className="code-block-dot bg-[var(--accent-amber)]" />
-        <span className="code-block-dot bg-[var(--primary)]" />
-        <span className="code-block-label">{label}</span>
-      </div>
-      <pre>{children}</pre>
-      <p className="mt-3 text-right text-[10px] text-[#6e6e73] pixel-accent select-none" aria-hidden="true">
-        ▪▪▪▪ 🤖
-      </p>
-    </div>
-  );
-}
 
 function ToolGroup({ title, tools }: { title: string; tools: { name: string; desc: string }[] }) {
   return (
@@ -141,6 +125,11 @@ export default function McpDocsPage() {
                 <a href="#rest" className="block text-[var(--text-secondary)] hover:text-[var(--primary)] py-0.5">REST API</a>
                 <a href="#tools" className="block text-[var(--text-secondary)] hover:text-[var(--primary)] py-0.5">工具列表</a>
               </nav>
+              <div className="mt-5 pt-5 border-t border-[var(--border)]">
+                <Link href="/docs/api" className="text-sm text-[var(--text-muted)] hover:text-[var(--primary)]">
+                  完整 REST API 文档 →
+                </Link>
+              </div>
             </div>
           </aside>
 

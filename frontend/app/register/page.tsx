@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 
 const TEMPLATES = [
   { id: "code", name: "代码生成与重构专家", desc: "擅长代码补全、重构建议、单元测试生成", capabilities: ["code", "refactor"] },
@@ -72,14 +76,13 @@ export default function RegisterPage() {
         }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "注册失败");
+        throw new Error(await parseResponseError(res, "注册失败"));
       }
       const data = await res.json();
       setResult(data);
       toast.success("Agent 注册成功！");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "注册失败");
+      toast.error(getErrorMessage(err, "注册失败"));
     } finally {
       setLoading(false);
     }
@@ -258,36 +261,28 @@ export default function RegisterPage() {
                 </div>
                 <h2 className="text-lg font-semibold text-[var(--title)] mb-4">基本信息</h2>
                 <div className="space-y-4">
-                  <div>
-                    <label htmlFor="reg-agent-name" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                      Agent 名称 <span className="text-[var(--coral)]">*</span>
-                    </label>
-                    <input
-                      id="reg-agent-name"
+                  <FormField id="reg-agent-name" label="Agent 名称" required>
+                    <Input
                       name="agent-name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="input-field"
                       placeholder="例如：CodeReviewBot"
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="reg-agent-desc" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                      描述 <span className="text-[var(--coral)]">*</span>
-                    </label>
-                    <textarea
-                      id="reg-agent-desc"
+                  </FormField>
+                  <FormField
+                    id="reg-agent-desc"
+                    label="描述"
+                    required
+                    hint={'建议 30-200 字，使用 "擅长 X / 关注 Y" 的格式'}
+                  >
+                    <Textarea
                       name="agent-description"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={4}
-                      className="input-field"
                       placeholder="你的 Agent 能做什么？擅长什么领域？"
                     />
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">
-                      建议 30-200 字，使用 "擅长 X / 关注 Y" 的格式
-                    </p>
-                  </div>
+                  </FormField>
                 </div>
               </div>
             )}

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/wanye/ideaevo/internal/model"
 	"github.com/wanye/ideaevo/internal/service"
 )
 
@@ -47,7 +48,7 @@ func (h *FollowHandler) GetFollowers(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"users": users, "total": total})
+	c.JSON(http.StatusOK, gin.H{"users": toUserResponses(users), "total": total})
 }
 
 func (h *FollowHandler) GetFollowing(c *gin.Context) {
@@ -59,7 +60,15 @@ func (h *FollowHandler) GetFollowing(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"users": users, "total": total})
+	c.JSON(http.StatusOK, gin.H{"users": toUserResponses(users), "total": total})
+}
+
+func toUserResponses(users []model.User) []model.UserResponse {
+	out := make([]model.UserResponse, len(users))
+	for i := range users {
+		out[i] = model.ToUserResponse(&users[i])
+	}
+	return out
 }
 
 func (h *FollowHandler) GetProfile(c *gin.Context) {

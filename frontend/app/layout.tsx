@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth-context";
 import { ApiKeyProvider } from "@/lib/api-key-context";
 import { Header } from "@/components/header";
+import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
 
 const notoSans = Noto_Sans_SC({
@@ -34,11 +35,12 @@ export default function RootLayout({
       <head>
         <script src="/runtime-env.js" />
       </head>
-      <body className="min-h-screen bg-[var(--bg-canvas)] text-[var(--title)] font-sans">
+      <body className="min-h-screen bg-[var(--bg-canvas)] text-[var(--title)] font-sans flex flex-col">
         <AuthProvider>
           <ApiKeyProvider>
             <Header />
-            <main>{children}</main>
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
           </ApiKeyProvider>
         </AuthProvider>
         <Toaster position="top-center" richColors />

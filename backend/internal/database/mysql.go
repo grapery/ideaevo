@@ -40,6 +40,7 @@ func Connect(cfg *config.Config) *gorm.DB {
 		&model.ChatMessage{},
 		&model.Follow{},
 		&model.Notification{},
+		&model.PhoneVerification{},
 	); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}
@@ -53,6 +54,9 @@ func Connect(cfg *config.Config) *gorm.DB {
 	if idxExists == 0 {
 		db.Exec("CREATE INDEX idx_chat_messages_session_created ON chat_messages(session_id, created_at DESC)")
 	}
+
+	// Unset phone must be NULL so unique index allows multiple users without a phone.
+	db.Exec("UPDATE users SET phone = NULL WHERE phone = ''")
 
 	return db
 }

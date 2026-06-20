@@ -5,10 +5,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/api-error";
 import { AuthBrandPanel } from "@/components/auth-brand-panel";
+import { FormField, ButtonSpinner } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function LoginPage() {
-  const { login, loginWithGoogle, user } = useAuth();
+  const { login, loginWithGoogle, loginWithWeChat, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -28,6 +32,8 @@ export default function LoginPage() {
         oauth_failed: "Google 登录失败，请重试",
         oauth_conflict: "该邮箱已用密码注册，请使用密码登录",
         oauth_token: "登录令牌生成失败，请重试",
+        wechat_oauth_failed: "微信登录失败，请重试",
+        wechat_not_configured: "微信登录未配置",
       };
       toast.error(messages[oauthError] || "登录失败");
     }
@@ -51,7 +57,7 @@ export default function LoginPage() {
       toast.success("登录成功");
       router.push("/dashboard");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "登录失败");
+      toast.error(getErrorMessage(err, "登录失败"));
     } finally {
       setLoading(false);
     }
@@ -82,35 +88,28 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              <div>
-                <label htmlFor="login-email" className="block text-sm font-medium text-[var(--title)] mb-1.5">邮箱</label>
-                <input
-                  id="login-email"
+              <FormField id="login-email" label="邮箱" error={errors.email}>
+                <Input
                   name="email"
                   type="email"
                   autoComplete="email"
                   spellCheck={false}
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: "" })); }}
-                  className={`input-field ${errors.email ? "input-field-error" : ""}`}
+                  hasError={!!errors.email}
                   placeholder="your@email.com"
                 />
-                {errors.email && <p className="mt-1 text-xs text-[var(--coral)]">{errors.email}</p>}
-              </div>
-              <div>
-                <label htmlFor="login-password" className="block text-sm font-medium text-[var(--title)] mb-1.5">密码</label>
-                <input
-                  id="login-password"
+              </FormField>
+              <FormField id="login-password" label="密码" error={errors.password}>
+                <PasswordInput
                   name="password"
-                  type="password"
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: "" })); }}
-                  className={`input-field ${errors.password ? "input-field-error" : ""}`}
+                  hasError={!!errors.password}
                   placeholder="输入密码"
                 />
-                {errors.password && <p className="mt-1 text-xs text-[var(--coral)]">{errors.password}</p>}
-              </div>
+              </FormField>
               <div className="flex justify-end">
                 <Link href="/forgot-password" className="text-sm text-[var(--primary)] hover:underline">
                   忘记密码？
@@ -119,9 +118,9 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full gradient-btn py-2.5 text-sm font-medium disabled:opacity-50"
+                className="w-full gradient-btn py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                {loading ? "登录中…" : "登录"}
+                {loading ? (<><ButtonSpinner /> 登录中…</>) : "登录"}
               </button>
             </form>
 
@@ -133,6 +132,15 @@ export default function LoginPage() {
                 <span className="bg-white px-3 text-[var(--text-muted)]">或</span>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={loginWithWeChat}
+              className="w-full btn-outline mb-3"
+            >
+              <span className="text-[#07C160] font-semibold">微</span>
+              使用微信扫码登录
+            </button>
 
             <button
               type="button"
@@ -150,7 +158,8 @@ export default function LoginPage() {
               </Link>
             </p>
             <p className="mt-4 text-center text-[11px] text-[var(--text-muted)]">
-              继续即表示同意《用户协议》和《隐私政策》
+              继续即表示同意《用户协议》和
+              <Link href="/privacy" className="text-[var(--primary)] hover:underline">《隐私政策》</Link>
             </p>
           </div>
         </div>

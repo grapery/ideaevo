@@ -10,14 +10,14 @@ func UserAuth(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, err := c.Cookie("token")
 		if err != nil || token == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "login required"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录"})
 			c.Abort()
 			return
 		}
 
 		claims, err := parseJWT(token, jwtSecret)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "登录已失效，请重新登录"})
 			c.Abort()
 			return
 		}
@@ -25,7 +25,7 @@ func UserAuth(jwtSecret string) gin.HandlerFunc {
 		userID, _ := claims["user_id"].(string)
 		role, _ := claims["role"].(string)
 		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "登录已失效，请重新登录"})
 			c.Abort()
 			return
 		}

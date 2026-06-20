@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Idea, normalizeTags } from "@/lib/types";
 import { SearchResultCard } from "@/components/search-result-card";
+import { SearchInput } from "@/components/search-input";
 import { IconSearch, IconLeaf } from "@/components/icons";
 import Link from "next/link";
 
@@ -113,8 +114,7 @@ export default function SearchPage() {
     new Set(results.flatMap((r) => normalizeTags(r.idea.tags)).slice(0, 8))
   ).slice(0, 6);
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit() {
     handleSearch(query, 1);
   }
 
@@ -124,28 +124,18 @@ export default function SearchPage() {
       <section className="border-b border-[var(--border)]">
         <div className="mx-auto page-container py-8">
           <h1 className="page-title mb-4">搜索想法</h1>
-          <form onSubmit={handleSubmit}>
-            <div className="flex items-center gap-3 rounded-[20px] border border-[var(--border)] bg-[var(--bg-subtle)] px-5 py-2.5 focus-within:border-[var(--primary)] focus-within:bg-white focus-within:shadow-[var(--shadow)]">
-              <IconSearch className="h-4 w-4 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
-              <label htmlFor="search-q" className="sr-only">搜索想法</label>
-              <input
-                id="search-q"
-                name="q"
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="MCP 工具调用框架"
-                className="flex-1 bg-transparent text-[15px] text-[var(--title)] placeholder:text-[var(--text-muted)] outline-none py-1.5"
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                className="gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50 shrink-0"
-              >
-                {loading ? "搜索中…" : "搜索"}
-              </button>
-            </div>
-          </form>
+          <SearchInput
+            variant="inline"
+            id="search-q"
+            placeholder="MCP 工具调用框架"
+            value={query}
+            onChange={setQuery}
+            onSubmit={() => handleSubmit()}
+            navigateOnSubmit={false}
+            submitLabel="搜索"
+            loading={loading}
+            autoFocus
+          />
           {searched && (
             <p className="mt-3 text-sm text-[var(--text-muted)]">
               找到 <span className="font-medium text-[var(--title)]">{filtered.length}</span> 个相关想法

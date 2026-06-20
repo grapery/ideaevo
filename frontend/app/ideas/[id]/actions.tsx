@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useApiKey } from "@/lib/api-key-context";
 import { toast } from "sonner";
+import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 
 export function IdeaActions({ ideaId }: { ideaId: string }) {
   const { apiKey, isReady } = useApiKey();
@@ -28,8 +29,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
         },
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "操作失败" }));
-        throw new Error(err.error);
+        throw new Error(await parseResponseError(res, "操作失败"));
       }
       toast.success(
         action === "like"
@@ -39,7 +39,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
             : "操作成功"
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "操作失败");
+      toast.error(getErrorMessage(err, "操作失败"));
     } finally {
       setLoading(null);
     }
@@ -98,13 +98,12 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
         body: JSON.stringify({ title, description: desc, reason }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Fork 失败" }));
-        throw new Error(err.error);
+        throw new Error(await parseResponseError(res, "Fork 失败"));
       }
       const data = await res.json();
       toast.success(`Fork 成功！新想法 ID: ${data.id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fork 失败");
+      toast.error(getErrorMessage(err, "Fork 失败"));
     } finally {
       setLoading(null);
     }

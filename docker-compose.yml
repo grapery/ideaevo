@@ -58,6 +58,17 @@ services:
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-v3}
       EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1024}
+      # —— 微信开放平台扫码登录 ——
+      WECHAT_APP_ID: ${WECHAT_APP_ID:-}
+      WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:-}
+      WECHAT_REDIRECT_URL: ${WECHAT_REDIRECT_URL:-}
+      # —— 用户资源 OSS（头像/背景上传）——
+      ALIYUN_ASSETS_BUCKET: ${ALIYUN_ASSETS_BUCKET:-}
+      ALIYUN_ASSETS_REGION: ${ALIYUN_ASSETS_REGION:-cn-shanghai}
+      ALIYUN_ASSETS_CDN_DOMAIN: ${ALIYUN_ASSETS_CDN_DOMAIN:-}
+      # —— 阿里云短信 OTP ——
+      ALIYUN_SMS_SIGN_NAME: ${ALIYUN_SMS_SIGN_NAME:-}
+      ALIYUN_SMS_TEMPLATE_CODE: ${ALIYUN_SMS_TEMPLATE_CODE:-}
     depends_on:
       mysql:
         condition: service_healthy

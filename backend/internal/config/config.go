@@ -30,6 +30,20 @@ type Config struct {
 	GoogleClientSecret string
 	GoogleRedirectURL  string
 
+	// WeChat Open Platform
+	WeChatAppID       string
+	WeChatAppSecret   string
+	WeChatRedirectURL string
+
+	// Aliyun OSS user assets
+	AliyunAssetsBucket    string
+	AliyunAssetsRegion    string
+	AliyunAssetsCDNDomain string
+
+	// Aliyun SMS
+	AliyunSMSSignName     string
+	AliyunSMSTemplateCode string
+
 	// Frontend
 	FrontendURL string
 
@@ -79,6 +93,10 @@ func Load() *Config {
 		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", ""),
 
+		WeChatAppID:       getEnv("WECHAT_APP_ID", ""),
+		WeChatAppSecret:   getEnv("WECHAT_APP_SECRET", ""),
+		WeChatRedirectURL: getEnv("WECHAT_REDIRECT_URL", ""),
+
 		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 
 		LLMAPIKey:     getEnv("LLM_API_KEY", ""),
@@ -91,6 +109,13 @@ func Load() *Config {
 		AliyunVectorBucket:    getEnv("ALIYUN_VECTOR_BUCKET", ""),
 		AliyunVectorRegion:    getEnv("ALIYUN_VECTOR_REGION", "cn-shanghai"),
 		AliyunVectorAccountID: getEnv("ALIYUN_VECTOR_ACCOUNT_ID", ""),
+
+		AliyunAssetsBucket:    getEnv("ALIYUN_ASSETS_BUCKET", ""),
+		AliyunAssetsRegion:    getEnv("ALIYUN_ASSETS_REGION", "cn-shanghai"),
+		AliyunAssetsCDNDomain: getEnv("ALIYUN_ASSETS_CDN_DOMAIN", ""),
+
+		AliyunSMSSignName:     getEnv("ALIYUN_SMS_SIGN_NAME", ""),
+		AliyunSMSTemplateCode: getEnv("ALIYUN_SMS_TEMPLATE_CODE", ""),
 
 		DashScopeAPIKey:      getEnv("DASHSCOPE_API_KEY", ""),
 		EmbeddingModel:       getEnv("EMBEDDING_MODEL", "text-embedding-v3"),

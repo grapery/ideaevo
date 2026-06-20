@@ -1,5 +1,6 @@
 import { Idea, WanyeComment, DuplicateWarning, User, ChatSession, ChatMessage, UserProfile, normalizeCapabilities } from "./types";
 import { getApiBase } from "./api-base";
+import { parseResponseError, formatApiError } from "./api-error";
 
 const API_BASE = getApiBase();
 
@@ -12,8 +13,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `API error: ${res.status}`);
+    throw new Error(await parseResponseError(res));
   }
   return res.json();
 }
@@ -30,8 +30,7 @@ async function requestWithAuth<T>(path: string, options?: RequestInit): Promise<
     credentials: "include",
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `API error: ${res.status}`);
+    throw new Error(await parseResponseError(res));
   }
   return res.json();
 }
@@ -194,6 +193,21 @@ export const authApi = {
 
   verifyEmail: (token: string) =>
     requestWithAuth<{ message: string }>(`/auth/user/verify?token=${encodeURIComponent(token)}`),
+
+  sendPhoneCode: (phone: string, purpose?: string) =>
+    requestWithAuth<{ message: string }>(`/auth/phone/send-code`, {
+      method: "POST",
+      body: JSON.stringify({ phone, purpose }),
+    }),
+
+  verifyPhone: (phone: string, code: string) =>
+    requestWithAuth<{ user: User; message: string }>(`/auth/phone/verify`, {
+      method: "POST",
+      body: JSON.stringify({ phone, code }),
+    }),
+
+  phoneSession: () =>
+    requestWithAuth<{ user_id: string; scope: string }>(`/auth/phone/session`),
 };
 
 export const chatApi = {
@@ -251,7 +265,7 @@ export const chatApi = {
 
     const res = await fetch(url, { credentials: "include" });
     if (!res.ok) {
-      onError(new Error(`Stream error: ${res.status}`));
+      onError(new Error(await parseResponseError(res, "消息发送失败")));
       return;
     }
 
@@ -272,7 +286,7 @@ export const chatApi = {
       if (eventType === "error") {
         try {
           const err = JSON.parse(dataStr);
-          onError(new Error(err.error || "stream error"));
+          onError(new Error(formatApiError(err.error || "stream error", "消息发送失败")));
         } catch {
           onError(new Error(dataStr || "stream error"));
         }
@@ -384,9 +398,41 @@ export const userApi = {
       `/user/sessions?limit=${limit}&offset=${offset}`
     ),
 
-  updateMyProfile: (data: { name?: string; avatar_url?: string }) =>
-    requestWithAuth<{ message: string }>("/user/profile", {
+  updateMyProfile: (data: {
+    name?: string;
+    avatar_url?: string;
+    background_url?: string;
+    avatar_source?: string;
+    bio?: string;
+  }) =>
+    requestWithAuth<{ message: string; user: User }>("/user/profile", {
       method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  presignUpload: (kind: "avatar" | "background", contentType: string) =>
+    requestWithAuth<{ upload_url: string; public_url: string; key: string }>(
+      "/user/upload/presign",
+      {
+        method: "POST",
+        body: JSON.stringify({ kind, content_type: contentType }),
+      }
+    ),
+
+  resetAvatar: () =>
+    requestWithAuth<{ user: User }>("/user/avatar/reset", { method: "POST" }),
+
+  resetBackground: () =>
+    requestWithAuth<{ user: User }>("/user/background/reset", { method: "POST" }),
+
+  deleteAccount: (data: {
+    password?: string;
+    confirm_text?: string;
+    phone?: string;
+    sms_code?: string;
+  }) =>
+    requestWithAuth<{ message: string }>("/user/account", {
+      method: "DELETE",
       body: JSON.stringify(data),
     }),
 

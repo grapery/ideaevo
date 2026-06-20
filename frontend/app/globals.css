@@ -356,6 +356,17 @@ a {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
 }
+.input-field::placeholder {
+  color: var(--text-muted);
+}
+.input-field:hover:not(:disabled):not(:focus) {
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+}
+.input-field:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--bg-subtle);
+}
 
 .input-field-subtle {
   width: 100%;
@@ -371,6 +382,16 @@ a {
   border-color: var(--primary);
   background: var(--bg-surface);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+}
+.input-field-subtle::placeholder {
+  color: var(--text-muted);
+}
+.input-field-subtle:hover:not(:disabled):not(:focus) {
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+}
+.input-field-subtle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .input-field-error {
@@ -397,6 +418,17 @@ a {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
 }
+.textarea-field::placeholder {
+  color: var(--text-muted);
+}
+.textarea-field:hover:not(:disabled):not(:focus) {
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+}
+.textarea-field:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--bg-subtle);
+}
 
 .textarea-field-subtle {
   width: 100%;
@@ -417,6 +449,24 @@ a {
   border-color: var(--primary);
   background: var(--bg-surface);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+}
+.textarea-field-subtle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@keyframes field-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.field-shake {
+  animation: field-shake 0.35s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .field-shake {
+    animation: none;
+  }
 }
 
 .btn-outline {

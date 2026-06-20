@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, KeyboardEvent } from "react";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function ChatInput({
   onSend,
@@ -47,10 +48,11 @@ export default function ChatInput({
     <div className="border-t border-[var(--border)] bg-[var(--bg-canvas)] p-4">
       <div className="flex items-end gap-2">
         <label htmlFor="chat-input" className="sr-only">输入消息</label>
-        <textarea
+        <Textarea
           ref={textareaRef}
           id="chat-input"
           name="message"
+          variant="subtle"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -58,13 +60,13 @@ export default function ChatInput({
           placeholder={placeholder}
           disabled={sending || disabled}
           rows={1}
-          className="flex-1 resize-none input-field-subtle disabled:opacity-50"
+          className="flex-1 resize-none min-h-[42px] max-h-[120px]"
         />
         <button
           type="button"
           onClick={handleSend}
           disabled={!text.trim() || sending || disabled}
-          className="gradient-btn px-4 py-2.5 text-sm font-medium disabled:opacity-40 shrink-0"
+          className="gradient-btn px-4 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
         >
           {sending ? "…" : "发送"}
         </button>

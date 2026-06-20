@@ -29,6 +29,10 @@ services:
       # 宿主机 MySQL：容器内通过 host.docker.internal 访问（Linux 需 extra_hosts 映射）
       - DB_HOST=${DB_HOST:-host.docker.internal}
       - PORT=8080
+      # 用户认证扩展（亦可在 .env 中配置）：
+      # WECHAT_APP_ID / WECHAT_APP_SECRET / WECHAT_REDIRECT_URL
+      # ALIYUN_ASSETS_BUCKET / ALIYUN_ASSETS_REGION / ALIYUN_ASSETS_CDN_DOMAIN
+      # ALIYUN_SMS_SIGN_NAME / ALIYUN_SMS_TEMPLATE_CODE
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

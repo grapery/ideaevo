@@ -6,6 +6,11 @@ import { Idea, DuplicateWarning } from "@/lib/types";
 import { IdeaCard } from "@/components/idea-card";
 import { StatusBadge } from "@/components/status-badge";
 import { IconLeaf } from "@/components/icons";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { PasswordInput } from "@/components/ui/password-input";
+import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 
 const categories = ["生产力", "开发工具", "知识管理", "协作", "自动化", "其他"];
 const recommendedTags = ["MCP", "RAG", "Agent", "去重", "协作"];
@@ -119,13 +124,12 @@ export default function NewIdeaPage() {
         }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || "注册失败");
+        throw new Error(await parseResponseError(res, "注册失败"));
       }
       const data = await res.json();
       setResult(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "注册失败");
+      setError(getErrorMessage(err, "注册失败"));
     } finally {
       setLoading(false);
     }
@@ -194,77 +198,59 @@ export default function NewIdeaPage() {
               </div>
             )}
 
-            <div>
-              <label htmlFor="new-apikey" className="block text-sm font-medium text-[var(--title)] mb-1.5">API Key *</label>
-              <input
-                id="new-apikey"
+            <FormField id="new-apikey" label="API Key *">
+              <PasswordInput
                 name="api-key"
-                type="password"
                 autoComplete="off"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="wanye_xxxxx"
-                className="input-field"
                 required
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label htmlFor="new-title" className="block text-sm font-medium text-[var(--title)] mb-1.5">标题 *</label>
-              <input
-                id="new-title"
+            <FormField id="new-title" label="标题 *">
+              <Input
                 name="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="为想法起一个简短有力的名字…"
-                className="input-field"
                 required
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label htmlFor="new-desc" className="block text-sm font-medium text-[var(--title)] mb-1.5">
-                描述 * <span className="text-[var(--text-muted)] font-normal">(支持 Markdown)</span>
-              </label>
-              <textarea
-                id="new-desc"
+            <FormField id="new-desc" label="描述 *" hint="支持 Markdown">
+              <Textarea
                 name="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="问题、动机、方案、当前进展…"
                 rows={6}
-                className="textarea-field"
                 required
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label htmlFor="new-repo" className="block text-sm font-medium text-[var(--title)] mb-1.5">仓库 URL (可选)</label>
-              <input
-                id="new-repo"
+            <FormField id="new-repo" label="仓库 URL (可选)">
+              <Input
                 name="repo-url"
                 type="url"
                 autoComplete="off"
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
                 placeholder="https://github.com/..."
-                className="input-field"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label htmlFor="new-demo" className="block text-sm font-medium text-[var(--title)] mb-1.5">Demo URL (可选)</label>
-              <input
-                id="new-demo"
+            <FormField id="new-demo" label="Demo URL (可选)">
+              <Input
                 name="demo-url"
                 type="url"
                 autoComplete="off"
                 value={demoUrl}
                 onChange={(e) => setDemoUrl(e.target.value)}
                 placeholder="https://..."
-                className="input-field"
               />
-            </div>
+            </FormField>
 
             <div>
               <label className="block text-sm font-medium text-[var(--title)] mb-2">分类 * (单选)</label>

@@ -21,7 +21,23 @@ func main() {
 	socialSvc := service.NewSocialService(db)
 	wanyeSvc := service.NewWanyeService(db)
 	emailSvc := service.NewEmailService(cfg)
-	userSvc := service.NewUserService(db, emailSvc, cfg.FrontendURL)
+	assets, assetsErr := service.NewObjectStore(cfg)
+	if assetsErr != nil {
+		log.Printf("[assets] disabled: %v", assetsErr)
+	}
+	if assets != nil && assets.Enabled() {
+		log.Printf("[assets] enabled: bucket=%s", cfg.AliyunAssetsBucket)
+	}
+	smsSvc, smsErr := service.NewSMSService(db, cfg)
+	if smsErr != nil {
+		log.Fatalf("sms service: %v", smsErr)
+	}
+	if smsSvc.Enabled() {
+		log.Printf("[sms] enabled")
+	} else {
+		log.Printf("[sms] dev mode (OTP logged to stdout)")
+	}
+	userSvc := service.NewUserService(db, emailSvc, cfg.FrontendURL, assets)
 	authSvc := service.NewAuthService(cfg)
 	llmSvc := service.NewLLMService(cfg.LLMAPIKey, cfg.LLMBaseURL, cfg.LLMModel)
 	chatSvc := service.NewChatService(db, ideaSvc, agentSvc, llmSvc)
@@ -86,7 +102,8 @@ func main() {
 	followHandler := handler.NewFollowHandler(followSvc, userSvc)
 	userHandler := handler.NewUserHandler(userSvc)
 	notifHandler := handler.NewNotificationHandler(notifSvc)
-	settingsHandler := handler.NewSettingsHandler(notifSvc)
+	settingsHandler := handler.NewUserSettingsHandler(userSvc, smsSvc, assets)
+	phoneHandler := handler.NewPhoneAuthHandler(userSvc, smsSvc, authSvc)
 	bridgeHandler := handler.NewAgentBridgeHandler(bridgeSvc)
 
 	r := gin.Default()
@@ -130,6 +147,16 @@ func main() {
 		api.POST("/auth/user/reset-password", userAuthHandler.ResetPassword)
 		api.GET("/auth/google", userAuthHandler.GoogleLogin)
 		api.GET("/auth/google/callback", userAuthHandler.GoogleCallback)
+		api.GET("/auth/wechat", userAuthHandler.WeChatLogin)
+		api.GET("/auth/wechat/callback", userAuthHandler.WeChatCallback)
+
+		phoneRoutes := api.Group("")
+		phoneRoutes.Use(middleware.PendingOrUserAuth(cfg.JWTSecret))
+		{
+			phoneRoutes.GET("/auth/phone/session", phoneHandler.Session)
+			phoneRoutes.POST("/auth/phone/send-code", phoneHandler.SendCode)
+			phoneRoutes.POST("/auth/phone/verify", phoneHandler.Verify)
+		}
 
 		// User auth — authenticated
 		userRoutes := api.Group("")
@@ -155,6 +182,10 @@ func main() {
 			// Settings
 			userRoutes.PATCH("/user/profile", settingsHandler.UpdateProfile)
 			userRoutes.POST("/user/password", settingsHandler.ChangePassword)
+			userRoutes.POST("/user/upload/presign", settingsHandler.PresignUpload)
+			userRoutes.POST("/user/avatar/reset", settingsHandler.ResetAvatar)
+			userRoutes.POST("/user/background/reset", settingsHandler.ResetBackground)
+			userRoutes.DELETE("/user/account", settingsHandler.DeleteAccount)
 
 			// Notifications
 			userRoutes.GET("/notifications", notifHandler.List)

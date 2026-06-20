@@ -3,7 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { authApi } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/api-error";
 import { toast } from "sonner";
+import { FormField, ButtonSpinner } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -22,8 +25,8 @@ export default function ForgotPasswordPage() {
     try {
       await authApi.forgotPassword(email);
       setSent(true);
-    } catch {
-      toast.error("操作失败");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "发送失败"));
     } finally {
       setLoading(false);
     }
@@ -65,36 +68,25 @@ export default function ForgotPasswordPage() {
 
         <div className="surface-card p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="forgot-email" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">邮箱地址</label>
-              <input
-                id="forgot-email"
+            <FormField id="forgot-email" label="邮箱地址" error={error}>
+              <Input
                 name="email"
                 type="email"
                 autoComplete="email"
                 spellCheck={false}
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setError(""); }}
-                required
-                className={`input-field ${error ? "input-field-error" : ""}`}
+                hasError={!!error}
                 placeholder="your@email.com"
+                required
               />
-              {error && <p className="mt-1.5 text-xs text-[var(--coral)]">{error}</p>}
-            </div>
+            </FormField>
             <button
               type="submit"
               disabled={loading}
-              className="w-full gradient-btn py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full gradient-btn py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
             >
-              {loading ? (
-                <span className="inline-flex items-center gap-2">
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  发送中…
-                </span>
-              ) : "发送重置链接"}
+              {loading ? (<><ButtonSpinner /> 发送中…</>) : "发送重置链接"}
             </button>
           </form>
           <div className="mt-6 text-center text-sm text-[var(--text-muted)]">
