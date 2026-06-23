@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/wanye/ideaevo/internal/a2a"
 	"github.com/wanye/ideaevo/internal/config"
 	"github.com/wanye/ideaevo/internal/database"
 	"github.com/wanye/ideaevo/internal/handler"
@@ -110,6 +111,14 @@ func main() {
 	settingsHandler := handler.NewUserSettingsHandler(userSvc, smsSvc, assets)
 	phoneHandler := handler.NewPhoneAuthHandler(userSvc, smsSvc, authSvc)
 	bridgeHandler := handler.NewAgentBridgeHandler(bridgeSvc)
+
+	// —— A2A（Agent-to-Agent 协议）——
+	a2aSvc := a2a.NewService(db, chatSvc)
+	frontendURL := cfg.FrontendURL
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000"
+	}
+	a2aHandler := a2a.NewHandler(a2aSvc, frontendURL)
 
 	r := gin.Default()
 	r.Use(middleware.CORS())
@@ -253,6 +262,12 @@ func main() {
 			adminRoutes.PATCH("/admin/comments/:id/moderate", commentHandler.Moderate)
 		}
 	}
+
+	// —— A2A 协议端点（Agent Card 发现 + JSON-RPC task 处理）——
+	// 路由注册在 /a2a 前缀下，复用同一端口。
+	a2aGroup := r.Group("/a2a")
+	a2aHandler.RegisterRoutes(a2aGroup)
+	log.Printf("[a2a] endpoints registered at /a2a")
 
 	log.Printf("Starting Wanye API server on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
