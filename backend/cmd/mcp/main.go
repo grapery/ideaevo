@@ -27,7 +27,7 @@ func main() {
 	chatSvc := service.NewChatService(db, ideaSvc, agentSvc, llmSvc)
 
 	// 共享 ToolRegistry：MCP 工具与 REST chat / agent-bridge 使用同一份实现
-	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc)
+	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc, agentSvc)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 
 	mcpServer := mcphandler.NewServer(agentSvc, socialSvc, chatSvc, userSvc, db).

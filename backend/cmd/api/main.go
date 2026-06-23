@@ -82,7 +82,7 @@ func main() {
 
 	// —— 工具系统（MCP / REST chat / agent-bridge 三入口共享）——
 	// 任何 agent 注册后都能通过这同一份 ToolRegistry 调用平台操作。
-	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc)
+	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc, agentSvc)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 	chatSvc.SetTools(toolExecutor, nil) // 内置助手暴露全部工具
 	log.Printf("[tools] registered %d tools: %v", len(toolRegistry.Names()), toolRegistry.Names())
