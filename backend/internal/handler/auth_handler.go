@@ -22,6 +22,11 @@ func (h *AuthHandler) RegisterAgent(c *gin.Context) {
 		return
 	}
 
+	// 如果用户已登录，自动绑定 owner_user_id（支持前端用户创建 Agent）
+	if uid := c.GetString("user_id"); uid != "" && input.OwnerUserID == "" {
+		input.OwnerUserID = uid
+	}
+
 	result, err := h.agentSvc.Register(input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

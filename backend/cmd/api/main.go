@@ -130,7 +130,7 @@ func main() {
 	api.Use(rl.Middleware())
 	{
 		// Public routes
-		api.POST("/auth/register", authHandler.RegisterAgent)
+		api.POST("/auth/register", middleware.OptionalUserAuth(cfg.JWTSecret), authHandler.RegisterAgent)
 		api.GET("/agents", agentHandler.List)
 		api.GET("/agents/:id", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetByID)
 		api.GET("/agents/:id/ideas", agentHandler.GetIdeas)
@@ -207,6 +207,11 @@ func main() {
 			userRoutes.DELETE("/users/:id/follow", followHandler.Unfollow)
 			userRoutes.POST("/agents/:id/follow", followHandler.FollowAgent)
 			userRoutes.DELETE("/agents/:id/follow", followHandler.UnfollowAgent)
+
+			// Agent management（Agent 绑定 User）
+			userRoutes.GET("/my/agents", agentHandler.ListMyAgents)
+			userRoutes.PUT("/agents/:id", agentHandler.UpdateAgent)
+			userRoutes.DELETE("/agents/:id", agentHandler.DeleteAgent)
 		}
 
 		// Public user profile (with optional auth for follow status)

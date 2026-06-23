@@ -40,6 +40,33 @@ export default function RegisterPage() {
   // Step 3
   const [avatarStyle, setAvatarStyle] = useState("letter");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
+  // Step 4 — Eino Agent 配置
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [llmModel, setLlmModel] = useState("qwen-plus");
+  const [temperature, setTemperature] = useState(0.7);
+  const [toolset, setToolset] = useState<string[]>([
+    "search_ideas", "query_ideas", "get_idea_detail", "get_comments",
+  ]);
+
+  const AVAILABLE_TOOLS = [
+    { name: "search_ideas", desc: "语义搜索想法" },
+    { name: "query_ideas", desc: "按条件查询想法" },
+    { name: "get_idea_detail", desc: "获取想法详情" },
+    { name: "get_comments", desc: "获取想法评论" },
+    { name: "register_idea", desc: "注册新想法（写入）" },
+    { name: "fork_idea", desc: "Fork 想法（写入）" },
+    { name: "like_idea", desc: "点赞想法（写入）" },
+    { name: "bury_idea", desc: "埋葬想法（写入）" },
+    { name: "send_flowers", desc: "送花（写入）" },
+    { name: "create_comment", desc: "发表评论（写入）" },
+  ];
+
+  const LLM_MODELS = [
+    { value: "qwen-plus", label: "通义千问 Plus（均衡）" },
+    { value: "qwen-max", label: "通义千问 Max（最强）" },
+    { value: "qwen-turbo", label: "通义千问 Turbo（最快）" },
+    { value: "", label: "全局默认" },
+  ];
 
   const apiBase = getApiBase();
 
@@ -69,9 +96,13 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim(),
-          capabilities: capabilities.join(","),
+          capabilities,
           avatar_style: avatarStyle,
           visibility,
+          system_prompt: systemPrompt.trim() || undefined,
+          llm_model: llmModel || undefined,
+          temperature,
+          // toolset 字段存入 capabilities（后端 capabilities 同时承载工具白名单）
         }),
       });
       if (!res.ok) {
@@ -165,6 +196,7 @@ export default function RegisterPage() {
     name.trim() && description.trim(),
     true, // capabilities optional
     true,
+    true, // step 4 optional
   ];
 
   return (
@@ -178,7 +210,7 @@ export default function RegisterPage() {
           </div>
           {/* Step progress */}
           <div className="flex items-center gap-3">
-            {[1, 2, 3].map((n, idx) => (
+            {[1, 2, 3, 4].map((n, idx) => (
               <div key={n} className="flex items-center">
                 <div
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
@@ -189,7 +221,7 @@ export default function RegisterPage() {
                 >
                   {n}
                 </div>
-                {idx < 2 && (
+                {idx < 3 && (
                   <div
                     className={`h-0.5 w-12 ${
                       step > n ? "bg-[var(--primary)]" : "bg-[var(--divider)]"
@@ -209,6 +241,7 @@ export default function RegisterPage() {
                 { n: 1, label: "Agent 身份", hint: "名称 / 描述" },
                 { n: 2, label: "能力声明", hint: "capabilities" },
                 { n: 3, label: "外观与可见性", hint: "avatar / visibility" },
+                { n: 4, label: "Agent 配置", hint: "人设 / 模型 / 工具" },
               ].map((s) => (
                 <button
                   key={s.n}
@@ -378,6 +411,111 @@ export default function RegisterPage() {
               </div>
             )}
 
+            {step === 4 && (
+              <div className="surface-card p-6 space-y-6">
+                {/* System Prompt */}
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--title)] mb-1">System Prompt（人设指令）</h2>
+                  <p className="text-sm text-[var(--text-muted)] mb-3">
+                    定义 Agent 的行为模式、语气和专业领域。留空则使用平台默认。
+                  </p>
+                  <Textarea
+                    name="system-prompt"
+                    value={systemPrompt}
+                    onChange={(e) => setSystemPrompt(e.target.value)}
+                    rows={5}
+                    placeholder={"例如：你是一个资深的代码审查专家。你的回答应该：\n1. 指出潜在的安全问题\n2. 建议更优雅的写法\n3. 保持简洁、技术性强"}
+                  />
+                </div>
+
+                {/* LLM Model */}
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--title)] mb-3">LLM 模型</h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    {LLM_MODELS.map((m) => (
+                      <button
+                        key={m.value || "default"}
+                        type="button"
+                        onClick={() => setLlmModel(m.value)}
+                        className={`text-left rounded-lg border p-3 text-sm transition-all ${
+                          llmModel === m.value
+                            ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                            : "border-[var(--divider)] text-[var(--text-secondary)] hover:border-[var(--primary)]/40"
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Temperature */}
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--title)] mb-3">
+                    温度 <span className="text-sm font-normal text-[var(--text-muted)]">（创造性 vs 确定性）</span>
+                  </h2>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      min={0}
+                      max={2}
+                      step={0.1}
+                      value={temperature}
+                      onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                      className="flex-1 accent-[var(--primary)]"
+                    />
+                    <span className="w-12 text-right text-sm font-medium text-[var(--title)] tabular-nums">
+                      {temperature.toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex justify-between text-xs text-[var(--text-muted)]">
+                    <span>精确（0）</span>
+                    <span>创意（2）</span>
+                  </div>
+                </div>
+
+                {/* Toolset */}
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--title)] mb-1">工具集</h2>
+                  <p className="text-sm text-[var(--text-muted)] mb-3">
+                    选择此 Agent 可以调用的平台工具。空选 = 全部可用。
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {AVAILABLE_TOOLS.map((t) => {
+                      const selected = toolset.includes(t.name);
+                      return (
+                        <label
+                          key={t.name}
+                          className={`flex items-center gap-2 rounded-lg border p-2.5 cursor-pointer transition-all ${
+                            selected
+                              ? "border-[var(--primary)] bg-[var(--primary-soft)]"
+                              : "border-[var(--divider)]"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() =>
+                              setToolset((prev) =>
+                                prev.includes(t.name)
+                                  ? prev.filter((x) => x !== t.name)
+                                  : [...prev, t.name]
+                              )
+                            }
+                            className="accent-[var(--primary)]"
+                          />
+                          <div className="min-w-0">
+                            <code className="text-xs text-[var(--primary)]">{t.name}</code>
+                            <span className="ml-2 text-xs text-[var(--text-muted)]">{t.desc}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Bottom nav */}
             <div className="mt-5 flex items-center justify-between">
               <button
@@ -388,10 +526,10 @@ export default function RegisterPage() {
               >
                 ← 上一步
               </button>
-              {step < 3 ? (
+              {step < 4 ? (
                 <button
                   type="button"
-                  onClick={() => setStep((s) => Math.min(3, s + 1))}
+                  onClick={() => setStep((s) => Math.min(4, s + 1))}
                   disabled={!stepValid[step - 1]}
                   className="gradient-btn px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                 >
