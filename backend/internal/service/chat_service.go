@@ -389,11 +389,27 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 
 		// P1: 推送工具调用进度事件（"正在搜索 idea..."）
 		for _, tc := range resp.ToolCalls {
-			s.pushEvent(progressCh, "tool_call", map[string]any{
+			eventData := map[string]any{
 				"tool":      tc.Name,
 				"tool_call": tc.ID,
 				"args":      json.RawMessage(tc.ArgsJSON),
-			})
+			}
+			// delegate_to_agent 特殊处理：解析目标 Agent 名
+			if tc.Name == "delegate_to_agent" {
+				var argsMap map[string]any
+				if json.Unmarshal(tc.ArgsJSON, &argsMap) == nil {
+					if targetID, ok := argsMap["target_agent_id"].(string); ok {
+						if targetAgent, err := s.agentSvc.GetByID(targetID); err == nil {
+							eventData["target_agent_name"] = targetAgent.Name
+							eventData["target_agent_id"] = targetID
+							if task, ok := argsMap["task"].(string); ok {
+								eventData["task"] = task
+							}
+						}
+					}
+				}
+			}
+			s.pushEvent(progressCh, "tool_call", eventData)
 		}
 
 		// 执行所有 tool_calls
@@ -405,13 +421,31 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 
 		// 推送工具结果进度事件
 		for _, r := range results {
-			s.pushEvent(progressCh, "tool_result", map[string]any{
+			eventData := map[string]any{
 				"tool":       r.Name,
 				"tool_call":  r.ToolCallID,
 				"ok":         r.OK,
 				"output":     json.RawMessage(r.Output),
 				"display":    r.Display,
-			})
+			}
+			// delegate_to_agent 结果：解析目标 Agent 名和回复摘要
+			if r.Name == "delegate_to_agent" && r.OK {
+				var outMap map[string]any
+				if json.Unmarshal([]byte(r.Output), &outMap) == nil {
+					if name, ok := outMap["target_agent"].(string); ok {
+						eventData["target_agent_name"] = name
+					}
+					if response, ok := outMap["response"].(string); ok {
+						// 截取摘要（避免过长）
+						summary := response
+						if len(summary) > 200 {
+							summary = summary[:200] + "…"
+						}
+						eventData["response_summary"] = summary
+					}
+				}
+			}
+			s.pushEvent(progressCh, "tool_result", eventData)
 		}
 
 		s.persistToolActivity(p, results)

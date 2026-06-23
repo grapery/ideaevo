@@ -103,7 +103,12 @@ func (e *ToolExecutor) ExecuteBatch(ctx context.Context, p Principal, calls []To
 		}
 
 		// 每个工具单独设超时，避免某个工具卡死整个对话
-		callCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		// delegate_to_agent 是 A2A 调用，需要更长超时
+		timeout := 15 * time.Second
+		if call.Name == "delegate_to_agent" {
+			timeout = 120 * time.Second
+		}
+		callCtx, cancel := context.WithTimeout(ctx, timeout)
 
 		var in ToolInput
 		if err := json.Unmarshal(call.ArgsJSON, &in); err != nil {

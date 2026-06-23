@@ -271,9 +271,52 @@ export default function ChatMessage({
 }: ChatMessageProps) {
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
-  const meta = message.metadata as { type?: string } | undefined;
+  const meta = message.metadata as { type?: string; is_a2a?: boolean; target_agent_name?: string; target_agent_id?: string; task?: string; a2a_completed?: boolean } | undefined;
   const isToolCall = meta?.type === "tool_call";
+  const isA2ADelegation = isToolCall && meta?.is_a2a;
+  const a2aCompleted = meta?.a2a_completed;
   const contentType = resolveContentType(message);
+
+  if (isA2ADelegation) {
+    return (
+      <div className="mb-4">
+        <div className={`inline-flex flex-col gap-1.5 rounded-xl border px-4 py-3 max-w-[85%] ${
+          a2aCompleted
+            ? "border-[var(--teal)]/30 bg-[var(--teal-soft)]"
+            : "border-[var(--primary)]/30 bg-[var(--primary-soft)]"
+        }`}>
+          <div className="flex items-center gap-2 text-xs font-medium">
+            {a2aCompleted ? (
+              <span className="text-[var(--teal)]">✓</span>
+            ) : (
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
+            )}
+            <span className={a2aCompleted ? "text-[var(--teal)]" : "text-[var(--primary)]"}>
+              {a2aCompleted ? "Agent 回复" : "正在与 Agent 通信"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--primary)] text-white text-[10px] font-semibold">
+              {(meta?.target_agent_name ?? "A").charAt(0).toUpperCase()}
+            </div>
+            <span className="text-sm font-medium text-[var(--title)]">
+              {meta?.target_agent_name ?? "Agent"}
+            </span>
+          </div>
+          {meta?.task && (
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+              📋 {meta.task.length > 80 ? meta.task.slice(0, 80) + "…" : meta.task}
+            </p>
+          )}
+          {a2aCompleted && (
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              {message.content.replace(/^✓\s*\S+\s*回复：/, "")}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (isToolCall) {
     return (

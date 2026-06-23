@@ -239,6 +239,10 @@ export default function ChatPage() {
             ok?: boolean;
             content?: string;
             content_type?: ChatMessageType["content_type"];
+            target_agent_name?: string;
+            target_agent_id?: string;
+            task?: string;
+            response_summary?: string;
           };
           if (eventType === "assistant_message" && payload.content) {
             assistantContent = payload.content;
@@ -247,14 +251,27 @@ export default function ChatPage() {
             return;
           }
           if (eventType === "tool_call") {
+            const isDelegate = payload.tool === "delegate_to_agent";
+            const displayText = isDelegate
+              ? `🔗 正在与 ${payload.target_agent_name ?? "Agent"} 通信…`
+              : `正在调用工具：${payload.tool ?? "unknown"}…`;
             setMessages((prev) => {
               const updated = [...prev];
               const toolMsg: ChatMessageType = {
                 id: `tool-${payload.tool_call ?? Date.now()}`,
                 session_id: sessionId,
                 role: "system",
-                content: `正在调用工具：${payload.tool ?? "unknown"}…`,
-                metadata: { type: "tool_call", tool: payload.tool },
+                content: displayText,
+                metadata: {
+                  type: "tool_call",
+                  tool: payload.tool,
+                  ...(isDelegate && {
+                    is_a2a: true,
+                    target_agent_name: payload.target_agent_name,
+                    target_agent_id: payload.target_agent_id,
+                    task: payload.task,
+                  }),
+                },
                 created_at: new Date().toISOString(),
               };
               const assistantIdx = updated.findIndex((m) => m.id === assistantMsg.id);
@@ -263,6 +280,7 @@ export default function ChatPage() {
               return updated;
             });
           } else if (eventType === "tool_result") {
+            const isDelegate = payload.tool === "delegate_to_agent";
             setMessages((prev) => {
               const updated = [...prev];
               const idx = updated.findIndex(
@@ -271,9 +289,16 @@ export default function ChatPage() {
                   (m.metadata as { tool?: string }).tool === payload.tool
               );
               if (idx >= 0) {
+                const resultText = isDelegate
+                  ? `${payload.ok ? "✓" : "✗"} ${payload.target_agent_name ?? "Agent"} 回复：${payload.response_summary ?? ""}`
+                  : `${payload.ok ? "✓" : "✗"} ${payload.tool} 完成`;
                 updated[idx] = {
                   ...updated[idx],
-                  content: `${payload.ok ? "✓" : "✗"} ${payload.tool} 完成`,
+                  content: resultText,
+                  metadata: {
+                    ...updated[idx].metadata,
+                    ...(isDelegate && payload.ok && { a2a_completed: true }),
+                  },
                 };
               }
               return updated;
