@@ -110,6 +110,19 @@ func (r *ToolRegistry) Names() []string {
 	return out
 }
 
+// GetByNames 按名称列表批量获取工具。不存在的名称跳过。
+func (r *ToolRegistry) GetByNames(names []string) []Tool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]Tool, 0, len(names))
+	for _, name := range names {
+		if t, ok := r.tools[name]; ok {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
 // Execute 便捷方法：查找并执行工具。
 func (r *ToolRegistry) Execute(ctx context.Context, name string, p Principal, in ToolInput) (*ToolResult, error) {
 	t, ok := r.Get(name)
