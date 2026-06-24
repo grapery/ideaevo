@@ -1,16 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { UserProfile, User } from "@/lib/types";
+import { useState } from "react";
+import { UserProfile } from "@/lib/types";
 import FollowButton from "@/components/follow-button";
-import { userApi } from "@/lib/api-client";
-import UserCard from "@/components/user-card";
 import UserProfileHeader from "@/components/user-profile-header";
-import { SearchInput } from "@/components/search-input";
-import { IconLeaf } from "@/components/icons";
-
-type TabKey = "following" | "followers" | "mutuals";
-type SortKey = "recent" | "earliest";
+import { UserProfileBody } from "@/components/user-profile-body";
+import { useAuth } from "@/lib/auth-context";
 
 export default function UserPageClient({
   profile,
@@ -19,71 +14,11 @@ export default function UserPageClient({
   profile: UserProfile;
   initialFollowing: boolean;
 }) {
-  const [tab, setTab] = useState<TabKey>("followers");
-  const [followingList, setFollowingList] = useState<User[]>([]);
-  const [followersList, setFollowersList] = useState<User[]>([]);
-  const [loaded, setLoaded] = useState<Record<TabKey, boolean>>({
-    following: false,
-    followers: false,
-    mutuals: false,
-  });
   const [followingState, setFollowingState] = useState(initialFollowing);
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SortKey>("recent");
+  const { user: currentUser } = useAuth();
 
-  async function loadList(type: TabKey) {
-    setTab(type);
-    if (type === "followers" && !loaded.followers) {
-      try {
-        const res = await userApi.getFollowers(profile.user.id);
-        setFollowersList(res.users);
-      } catch {}
-      setLoaded((p) => ({ ...p, followers: true }));
-    }
-    if (type === "following" && !loaded.following) {
-      try {
-        const res = await userApi.getFollowing(profile.user.id);
-        setFollowingList(res.users);
-      } catch {}
-      setLoaded((p) => ({ ...p, following: true }));
-    }
-    if (type === "mutuals" && !loaded.mutuals) {
-      try {
-        const [f1, f2] = await Promise.all([
-          userApi.getFollowers(profile.user.id),
-          userApi.getFollowing(profile.user.id),
-        ]);
-        const followingIds = new Set(f2.users.map((u) => u.id));
-        setFollowersList((_) => f1.users);
-        setFollowingList((_) => f2.users);
-        const mutuals = f1.users.filter((u) => followingIds.has(u.id));
-        setFollowersList((_) => f1.users);
-        setMutualsList(mutuals);
-      } catch {}
-      setLoaded((p) => ({ ...p, mutuals: true }));
-    }
-  }
-
-  const [mutualsList, setMutualsList] = useState<User[]>([]);
-
-  const current = tab === "followers" ? followersList : tab === "following" ? followingList : mutualsList;
-
-  const filtered = current
-    .filter((u) =>
-      search.trim() ? u.name.toLowerCase().includes(search.toLowerCase()) : true
-    )
-    .sort((a, b) => {
-      if (sort === "earliest") {
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      }
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
-
-  const tabsConfig: { key: TabKey; label: string; count: number }[] = [
-    { key: "following", label: "关注的人", count: profile.following_count },
-    { key: "followers", label: "粉丝", count: profile.follower_count },
-    { key: "mutuals", label: "互相关注", count: loaded.mutuals ? mutualsList.length : 0 },
-  ];
+  // 看自己 → 不显示关注按钮（与 own profile 一致）。
+  const isSelf = currentUser?.id === profile.user.id;
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
@@ -96,80 +31,25 @@ export default function UserPageClient({
             idea_count: profile.idea_count,
           }}
           actions={
-            <FollowButton
-              userId={profile.user.id}
-              initialFollowing={followingState}
-              onChange={setFollowingState}
-            />
+            !isSelf ? (
+              <FollowButton
+                userId={profile.user.id}
+                initialFollowing={followingState}
+                onChange={setFollowingState}
+              />
+            ) : undefined
           }
         />
-
-        {/* Tabs */}
-        <div className="border-b border-[var(--divider)] mb-4 flex gap-6">
-          {tabsConfig.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => loadList(t.key)}
-              className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                tab === t.key
-                  ? "border-[var(--primary)] text-[var(--primary)]"
-                  : "border-transparent text-[var(--text-muted)] hover:text-[var(--title)]"
-              }`}
-            >
-              {t.label} ({t.count})
-            </button>
-          ))}
-        </div>
-
-        {/* Toolbar */}
-        <div className="flex items-center gap-3 mb-5 flex-wrap">
-          <SearchInput
-            variant="pill"
-            className="flex-1 min-w-[200px] max-w-sm"
-            id="followers-search"
-            placeholder="搜索粉丝…"
-            value={search}
-            onChange={setSearch}
-            navigateOnSubmit={false}
-          />
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-[var(--text-muted)]">排序:</span>
-            {(["recent", "earliest"] as SortKey[]).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSort(s)}
-                className={`rounded-md px-3 py-1 ${
-                  sort === s
-                    ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-                    : "text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]"
-                }`}
-              >
-                {s === "recent" ? "最近活跃" : "最早关注"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* User grid */}
-        {!loaded[tab] ? (
-          <div className="text-center py-12 text-[var(--text-muted)]">点击 Tab 加载列表…</div>
-        ) : filtered.length === 0 ? (
-          <div className="surface-card p-12 text-center text-[var(--text-muted)]">
-            <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
-            <p>{search ? "没有匹配的用户" : "暂无数据"}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((u) => (
-              <div key={u.id} className="surface-card p-4">
-                <UserCard user={u} />
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+      <UserProfileBody
+        userId={profile.user.id}
+        isOwn={false}
+        stats={{
+          idea_count: profile.idea_count,
+          follower_count: profile.follower_count,
+          following_count: profile.following_count,
+        }}
+      />
     </div>
   );
 }
