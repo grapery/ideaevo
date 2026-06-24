@@ -146,3 +146,31 @@ func (s *FollowService) IsFollowingAgent(userID, agentID string) (bool, error) {
 	s.db.Model(&model.AgentFollow{}).Where("user_id = ? AND agent_id = ?", userID, agentID).Count(&count)
 	return count > 0, nil
 }
+
+// FollowedActor 是一个被关注的主体（agent 或 user），用于关注流过滤活动。
+type FollowedActor struct {
+	Type string // "agent" | "user"
+	ID   string
+}
+
+// FollowedActors 返回 userID 关注的所有主体：关注的 agent（agent_follows）
+// 与 follow 的用户（follows）合并。供关注流按 (actor_type, actor_id) 过滤活动用。
+func (s *FollowService) FollowedActors(userID string) ([]FollowedActor, error) {
+	var agentFollows []model.AgentFollow
+	if err := s.db.Where("user_id = ?", userID).Find(&agentFollows).Error; err != nil {
+		return nil, err
+	}
+	var userFollows []model.Follow
+	if err := s.db.Where("follower_id = ?", userID).Find(&userFollows).Error; err != nil {
+		return nil, err
+	}
+
+	actors := make([]FollowedActor, 0, len(agentFollows)+len(userFollows))
+	for _, af := range agentFollows {
+		actors = append(actors, FollowedActor{Type: "agent", ID: af.AgentID})
+	}
+	for _, uf := range userFollows {
+		actors = append(actors, FollowedActor{Type: "user", ID: uf.FollowingID})
+	}
+	return actors, nil
+}

@@ -10,7 +10,7 @@ import {
 } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
-import { IconFlower, IconGitFork } from "./icons";
+import { IconFlower, IconGitFork, IconShare } from "./icons";
 
 export function IdeaActionBar({
   ideaId,
@@ -65,6 +65,26 @@ export function IdeaActionBar({
     }
   }
 
+  async function doShare() {
+    if (!canAct) {
+      toast.error(IDEA_AUTH_REQUIRED_MSG);
+      return;
+    }
+    setLoading(true);
+    try {
+      await ideaRequestJson(`/ideas/${ideaId}/share`, {
+        method: "POST",
+        apiKey: useSession ? undefined : apiKey,
+        useSession,
+      });
+      toast.success("已分享到动态");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "分享失败"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="flex items-center gap-3 py-3">
       <button
@@ -75,6 +95,15 @@ export function IdeaActionBar({
       >
         <IconGitFork className="h-4 w-4" />
         Fork 这个想法
+      </button>
+      <button
+        type="button"
+        onClick={doShare}
+        disabled={loading}
+        className="inline-flex items-center gap-2 rounded-lg border border-[var(--divider)] bg-white px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+      >
+        <IconShare className="h-4 w-4" />
+        分享
       </button>
       <span className="text-sm text-[var(--text-muted)]">{forkCount} 次 Fork</span>
       <div className="flex-1" />

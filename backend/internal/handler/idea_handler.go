@@ -39,16 +39,13 @@ func (h *IdeaHandler) Register(c *gin.Context) {
 	}
 
 	agentID := c.GetString("agent_id")
-	idea, warning, err := h.ideaSvc.Register(agentID, input)
+	idea, err := h.ideaSvc.Register(agentID, input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"idea":    idea,
-		"warning": warning,
-	})
+	c.JSON(http.StatusCreated, gin.H{"idea": idea})
 }
 
 func (h *IdeaHandler) GetByID(c *gin.Context) {
@@ -299,6 +296,43 @@ func (h *IdeaHandler) Fork(c *gin.Context) {
 	c.JSON(http.StatusCreated, newIdea)
 }
 
+// Share 记录一次分享事件（轻量：不复制 idea、不改计数），使该想法出现在 feed 流里。
+// 鉴权与 fork 同组（AgentOrUserAuth）：API Key → actor=agent；登录会话 → actor=user。
+func (h *IdeaHandler) Share(c *gin.Context) {
+	ideaID := c.Param("id")
+	idea, err := h.ideaSvc.GetByID(ideaID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		return
+	}
+	if idea.Status != model.IdeaStatusActive {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot share inactive idea"})
+		return
+	}
+
+	// 解析真实身份：API Key 走 agent；登录用户走 user。
+	actorType := "user"
+	actorID := extractUserID(c)
+	if actorID == "" {
+		if agentID, exists := c.Get("agent_id"); exists {
+			if id, ok := agentID.(string); ok && id != "" {
+				actorType = "agent"
+				actorID = id
+			}
+		}
+	}
+	if actorID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
+		return
+	}
+
+	if err := h.socialSvc.ShareIdea(ideaID, actorType, actorID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "shared"})
+}
+
 func (h *IdeaHandler) GetComments(c *gin.Context) {
 	comments, err := h.wanyeSvc.GetComments(c.Param("id"))
 	if err != nil {
@@ -350,4 +384,33 @@ func (h *IdeaHandler) GetForks(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, forks)
+}
+
+// GetUserIdeas 返回某用户拥有的所有 idea（跨其拥有的 agent 聚合），供用户主页展示。
+// 公开端点，与 GET /agents/:id/ideas 同构。
+func (h *IdeaHandler) GetUserIdeas(c *gin.Context) {
+	limit := 20
+	offset := 0
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			limit = n
+		}
+	}
+	if v := c.Query("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			offset = n
+		}
+	}
+
+	ideas, total, err := h.ideaSvc.Query(service.QueryFilter{
+		OwnerUserID: c.Param("id"),
+		Limit:       limit,
+		Offset:      offset,
+		Sort:        "newest",
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ideas": ideas, "total": total})
 }

@@ -154,7 +154,7 @@ func (s *SocialService) ForkIdea(input ForkIdeaInput) (*model.Idea, error) {
 			return err
 		}
 
-		logActivity(tx, "agent", input.AgentID, "fork", "idea", input.IdeaID, map[string]string{"new_idea_id": idea.ID})
+		logActivity(tx, "agent", input.AgentID, ActionFork, "idea", input.IdeaID, map[string]string{"new_idea_id": idea.ID})
 		return nil
 	})
 
@@ -172,4 +172,23 @@ func (s *SocialService) GetForks(ideaID string) ([]model.Fork, error) {
 		return nil, err
 	}
 	return forks, nil
+}
+
+// ShareIdea 记录一次"分享"活动事件（轻量转推语义，类似 GitHub/Twitter 转发）：
+// 不复制 idea、不改任何计数，只在活动流里留下一条 share 记录，
+// 这样它能出现在全局 / 关注 feed 流的白名单里。
+// actorType/actorID 由调用方解析（agent 或 user）。
+func (s *SocialService) ShareIdea(ideaID, actorType, actorID string) error {
+	var count int64
+	if err := s.db.Model(&model.Idea{}).Where("id = ? AND status = ?", ideaID, model.IdeaStatusActive).Count(&count).Error; err != nil {
+		return fmt.Errorf("check idea failed: %w", err)
+	}
+	if count == 0 {
+		return fmt.Errorf("idea not found or not active")
+	}
+	if actorID == "" {
+		return fmt.Errorf("share requires an authenticated actor")
+	}
+	logActivity(s.db, actorType, actorID, ActionShare, "idea", ideaID, nil)
+	return nil
 }

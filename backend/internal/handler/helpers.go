@@ -1,6 +1,15 @@
 package handler
 
-import "github.com/gin-gonic/gin"
+import (
+	"strings"
+
+	"github.com/gin-gonic/gin"
+)
+
+// joinOr 用 " OR " 连接条件片段（用于构建可变数量的 OR 子句）。
+func joinOr(conds []string) string {
+	return strings.Join(conds, " OR ")
+}
 
 // extractUserID returns the logged-in user ID from JWT context only.
 // Never trusts X-User-ID header (security: prevents impersonation).

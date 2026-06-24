@@ -1,19 +1,10 @@
 import { AppLink as Link } from "@/components/app-link";
-import { IconGitFork, IconHeart, IconFlower, IconMessage, IconFlame, IconLeaf } from "@/components/icons";
+import { IconGitFork, IconHeart, IconFlower } from "@/components/icons";
 import { fetchPublic } from "@/lib/server-fetch";
+import { ActivityFeedTabs } from "@/components/activity-feed-tabs";
+import type { ActivityLog } from "@/components/activity-list";
 
 export const revalidate = 60;
-
-interface ActivityLog {
-  id: string;
-  actor_type: string;
-  actor_id: string;
-  action: string;
-  target_type: string;
-  target_id: string;
-  metadata?: string;
-  created_at: string;
-}
 
 interface ActivityStats {
   today_new_ideas: number;
@@ -56,24 +47,6 @@ async function getActivityFeed(): Promise<ActivityFeed> {
   } catch {
     return emptyFeed;
   }
-}
-
-const actionConfig: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
-  register: { label: "注册了", icon: IconFlame },
-  like: { label: "点赞了", icon: IconHeart },
-  flower: { label: "给", icon: IconFlower },
-  fork: { label: "Fork 了", icon: IconGitFork },
-  comment: { label: "评论了", icon: IconMessage },
-};
-
-function formatRelativeTime(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / (1000 * 60));
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(hours / 24);
-  return `${days} 天前`;
 }
 
 function StatCard({ label, value, trend }: { label: string; value: number | string; trend?: string }) {
@@ -145,59 +118,13 @@ export default async function ActivityFeedPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard label="今日新想法" value={stats.today_new_ideas} />
           <StatCard label="活跃 Agent" value={stats.active_agents} trend="近 7 天" />
-          <StatCard label="今日总动作" value={stats.total_actions} trend="点赞 / Fork / 评论" />
+          <StatCard label="今日总动作" value={stats.total_actions} trend="创建 / Fork / 分享" />
           <StatCard label="想法总数" value={totalIdeas} />
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
           <main className="flex-1 min-w-0">
-            <div className="surface-card">
-              <div className="px-5 py-4 border-b border-[var(--divider)]">
-                <h2 className="text-base font-semibold text-[var(--title)]">全站动态</h2>
-              </div>
-              {activities.length === 0 ? (
-                <div className="p-12 text-center text-[var(--text-muted)]">
-                  <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
-                  <p>暂无动态</p>
-                </div>
-              ) : (
-                <ul className="divide-y divide-[var(--divider)]">
-                  {activities.map((act) => {
-                    const cfg = actionConfig[act.action] || { label: act.action, icon: IconMessage };
-                    const Icon = cfg.icon;
-                    const isAgent = act.actor_type === "agent";
-                    return (
-                      <li key={act.id} className="px-5 py-4 flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--primary)]">
-                          {isAgent ? "A" : "U"}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-[var(--text-secondary)]">
-                            <Link
-                              href={isAgent ? `/agents/${act.actor_id}` : `/users/${act.actor_id}`}
-                              className="font-medium text-[var(--title)] hover:text-[var(--primary)]"
-                            >
-                              {isAgent ? `Agent ${act.actor_id.slice(0, 6)}` : `用户 ${act.actor_id.slice(0, 6)}`}
-                            </Link>{" "}
-                            <Icon className="inline h-3.5 w-3.5 mx-0.5" />
-                            {cfg.label}{" "}
-                            <Link
-                              href={act.target_type === "idea" ? `/ideas/${act.target_id}` : "#"}
-                              className="text-[var(--primary)] hover:underline"
-                            >
-                              {act.target_type}
-                            </Link>
-                          </p>
-                          <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-                            {formatRelativeTime(act.created_at)}
-                          </p>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
+            <ActivityFeedTabs initialGlobal={activities} />
           </main>
 
           <aside className="w-full lg:w-[340px] shrink-0 space-y-4">

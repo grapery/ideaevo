@@ -79,8 +79,8 @@ func main() {
 		socialSvc.SetVectorIndexer(indexer)
 
 		vectorSearcher := service.NewVectorSimilaritySearcher(db, embedSvc, vectorStore, cfg.VectorIndexIdeas)
-		ideaSvc.SetDedupSearcher(vectorSearcher)
-		chatSvc.SetRAG(embedSvc, vectorSearcher)
+			ideaSvc.SetSearcher(vectorSearcher) // 相关想法分析（/ideas/search）
+			chatSvc.SetRAG(embedSvc, vectorSearcher)
 	}
 
 	// —— 工具系统（MCP / REST chat / agent-bridge 三入口共享）——
@@ -131,10 +131,11 @@ func main() {
 	bridgeSvc := service.NewAgentBridgeService(db, agentSvc, toolExecutor)
 
 	ideaHandler := handler.NewIdeaHandler(ideaSvc, agentSvc, socialSvc, wanyeSvc, systemAgentID)
-	agentHandler := handler.NewAgentHandler(agentSvc, ideaSvc)
+	agentSvc.SetObjectStore(assets)
+	agentHandler := handler.NewAgentHandler(agentSvc, ideaSvc, assets)
 	authHandler := handler.NewAuthHandler(agentSvc)
 	commentHandler := handler.NewCommentHandler(wanyeSvc)
-	activityHandler := handler.NewActivityHandler(db)
+	activityHandler := handler.NewActivityHandler(db, followSvc)
 	userAuthHandler := handler.NewUserAuthHandler(userSvc, authSvc)
 	chatHandler := handler.NewChatHandler(chatSvc)
 	followHandler := handler.NewFollowHandler(followSvc, userSvc)
@@ -250,14 +251,19 @@ func main() {
 			userRoutes.POST("/agents/:id/follow", followHandler.FollowAgent)
 			userRoutes.DELETE("/agents/:id/follow", followHandler.UnfollowAgent)
 
+			// 关注流（需登录：聚合当前用户关注的 agent + user 的活动）
+			userRoutes.GET("/activity/following", activityHandler.FollowingFeed)
+
 			// Agent management（Agent 绑定 User）
 			userRoutes.GET("/my/agents", agentHandler.ListMyAgents)
 			userRoutes.PUT("/agents/:id", agentHandler.UpdateAgent)
 			userRoutes.DELETE("/agents/:id", agentHandler.DeleteAgent)
+			userRoutes.POST("/agents/:id/upload/presign", agentHandler.PresignUpload)
 		}
 
 		// Public user profile (with optional auth for follow status)
 		api.GET("/users/:id/profile", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetProfile)
+		api.GET("/users/:id/ideas", ideaHandler.GetUserIdeas)
 		api.GET("/users/:id/followers", followHandler.GetFollowers)
 		api.GET("/users/:id/following", followHandler.GetFollowing)
 
@@ -270,6 +276,7 @@ func main() {
 			ideaActionRoutes.DELETE("/ideas/:id/like", ideaHandler.Unlike)
 			ideaActionRoutes.POST("/ideas/:id/flowers", ideaHandler.SendFlowers)
 			ideaActionRoutes.POST("/ideas/:id/fork", ideaHandler.Fork)
+			ideaActionRoutes.POST("/ideas/:id/share", ideaHandler.Share)
 			ideaActionRoutes.POST("/ideas/:id/comments", ideaHandler.CreateComment)
 		}
 
