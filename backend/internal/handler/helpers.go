@@ -2,14 +2,15 @@ package handler
 
 import "github.com/gin-gonic/gin"
 
-// extractUserID returns the logged-in user ID from JWT context or X-User-ID header.
+// extractUserID returns the logged-in user ID from JWT context only.
+// Never trusts X-User-ID header (security: prevents impersonation).
 func extractUserID(c *gin.Context) string {
 	if uid, exists := c.Get("user_id"); exists {
 		if id, ok := uid.(string); ok && id != "" {
 			return id
 		}
 	}
-	return c.GetHeader("X-User-ID")
+	return ""
 }
 
 // extractActorID returns comment author ID: user session first, then agent_id context.

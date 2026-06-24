@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/wanye/ideaevo/internal/a2a"
 	"github.com/wanye/ideaevo/internal/config"
 	"github.com/wanye/ideaevo/internal/database"
@@ -81,10 +84,39 @@ func main() {
 	}
 
 	// —— 工具系统（MCP / REST chat / agent-bridge 三入口共享）——
-	// 任何 agent 注册后都能通过这同一份 ToolRegistry 调用平台操作。
-	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc, agentSvc)
+	// 先创建不含 delegate 的 registry，后面注入 delegate 函数。
+	var delegateFn service.DelegateFunc // 延迟设置
+	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc, agentSvc, nil)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 	chatSvc.SetTools(toolExecutor, nil) // 内置助手暴露全部工具
+
+	// 注册 delegate_to_agent 工具（进程内 A2A 委派，延迟注入避免循环依赖）
+	delegateFn = func(ctx context.Context, targetAgentID string, task string, callerAgentID string) (string, error) {
+		a2aTask := &a2a.Task{
+			ID:    uuid.NewString(),
+			State: a2a.TaskStateSubmitted,
+			Messages: []a2a.Message{
+				{Role: "user", MessageID: "delegate", Parts: []a2a.Part{{Type: "text", Text: task}}},
+			},
+		}
+		result, err := chatSvc.HandleTask(a2aTask, targetAgentID, false, nil)
+		if err != nil {
+			return "", err
+		}
+		// 提取 agent 回复
+		for _, msg := range result.Messages {
+			if msg.Role == "agent" {
+				for _, p := range msg.Parts {
+					if p.Type == "text" && p.Text != "" {
+						return p.Text, nil
+					}
+				}
+			}
+		}
+		return "", fmt.Errorf("no response from agent")
+	}
+	toolRegistry.Register(service.NewDelegateToAgentTool(db, agentSvc, delegateFn))
+
 	log.Printf("[tools] registered %d tools: %v", len(toolRegistry.Names()), toolRegistry.Names())
 
 	// —— 内置万叶助手 agent（页面聊天默认对话对象）——
@@ -138,8 +170,9 @@ func main() {
 	api := r.Group("/api")
 	api.Use(rl.Middleware())
 	{
-		// Public routes
-		api.POST("/auth/register", middleware.OptionalUserAuth(cfg.JWTSecret), authHandler.RegisterAgent)
+		// Agent 注册要求登录（自动绑定 owner_user_id）
+		// MCP 等无浏览器场景用 API Key 认证已有 Agent，不走此路由
+		api.POST("/auth/register", middleware.UserAuth(cfg.JWTSecret), authHandler.RegisterAgent)
 		api.GET("/agents", agentHandler.List)
 		api.GET("/agents/:id", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetByID)
 		api.GET("/agents/:id/ideas", agentHandler.GetIdeas)
@@ -264,10 +297,19 @@ func main() {
 	}
 
 	// —— A2A 协议端点（Agent Card 发现 + JSON-RPC task 处理）——
-	// 路由注册在 /a2a 前缀下，复用同一端口。
-	a2aGroup := r.Group("/a2a")
-	a2aHandler.RegisterRoutes(a2aGroup)
-	log.Printf("[a2a] endpoints registered at /a2a")
+	// Agent Card 发现端点保持公开（A2A 规范要求）。
+	// JSON-RPC task 端点要求鉴权（AgentOrUserAuth：API Key 或 JWT）。
+	rl2 := middleware.NewRateLimiter(100, time.Minute) // A2A 独立限流
+	a2aPublic := r.Group("/a2a")
+	a2aPublic.Use(rl2.Middleware())
+	a2aPublic.GET("/.well-known/agent.json", a2aHandler.GetAgentCards)
+	a2aPublic.GET("/agents/:agentId/.well-known/agent.json", a2aHandler.GetAgentCard)
+
+	a2aAuth := r.Group("/a2a")
+	a2aAuth.Use(rl2.Middleware())
+	a2aAuth.Use(middleware.AgentOrUserAuth(agentSvc, cfg.JWTSecret))
+	a2aAuth.POST("/agents/:agentId", a2aHandler.HandleJSONRPC)
+	log.Printf("[a2a] endpoints registered at /a2a (discovery=public, tasks=auth)")
 
 	log.Printf("Starting Wanye API server on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {

@@ -81,7 +81,7 @@ func (s *Service) GetAgentCard(agentID, baseURL string) (*AgentCard, error) {
 }
 
 // SendTask 处理 tasks/send（非流式）。
-func (s *Service) SendTask(ctx context.Context, params SendTaskParams, agentID string) (*Task, error) {
+func (s *Service) SendTask(ctx context.Context, params SendTaskParams, agentID string, callerID string) (*Task, error) {
 	if s.handler == nil {
 		return nil, fmt.Errorf("A2A handler not configured")
 	}
@@ -104,7 +104,7 @@ func (s *Service) SendTask(ctx context.Context, params SendTaskParams, agentID s
 	// 持久化 A2A 任务
 	a2aTask := &model.A2ATask{
 		ID:            params.ID,
-		CallerAgentID: "external", // 外部调用方
+		CallerAgentID: callerID, // 外部调用方
 		TargetAgentID: agentID,
 		Status:        model.A2ATaskStatusRunning,
 		InputText:     userText,
@@ -144,7 +144,7 @@ func (s *Service) SendTask(ctx context.Context, params SendTaskParams, agentID s
 
 // SendTaskSubscribe 处理 tasks/sendSubscribe（流式）。
 // onChunk 回调被传递给 handler，用于推送流式文本块。
-func (s *Service) SendTaskSubscribe(ctx context.Context, params SendTaskParams, agentID string, onChunk func(text string)) (*Task, error) {
+func (s *Service) SendTaskSubscribe(ctx context.Context, params SendTaskParams, agentID string, callerID string, onChunk func(text string)) (*Task, error) {
 	if s.handler == nil {
 		return nil, fmt.Errorf("A2A handler not configured")
 	}
@@ -165,7 +165,7 @@ func (s *Service) SendTaskSubscribe(ctx context.Context, params SendTaskParams, 
 	// 持久化
 	a2aTask := &model.A2ATask{
 		ID:            params.ID,
-		CallerAgentID: "external",
+		CallerAgentID: callerID,
 		TargetAgentID: agentID,
 		Status:        model.A2ATaskStatusRunning,
 		InputText:     userText,

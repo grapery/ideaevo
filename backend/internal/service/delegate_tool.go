@@ -1,13 +1,9 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/wanye/ideaevo/internal/model"
@@ -15,15 +11,18 @@ import (
 )
 
 // DelegateToAgentTool 让一个 Agent 在对话中把任务委派给站内另一个 Agent。
-// 这是 A2A Client 侧的实现——通过 HTTP 调用目标 Agent 的 A2A 端点。
+// 通过内部函数调用（非 HTTP）执行目标 Agent，避免鉴权问题。
 type DelegateToAgentTool struct {
-	db       *gorm.DB
-	agentSvc *AgentService
-	baseURL  string // 本站 API base URL，如 "http://localhost:8080"
+	db           *gorm.DB
+	agentSvc     *AgentService
+	delegateFn   func(ctx context.Context, targetAgentID string, task string, callerAgentID string) (string, error)
 }
 
-func NewDelegateToAgentTool(db *gorm.DB, agentSvc *AgentService, baseURL string) *DelegateToAgentTool {
-	return &DelegateToAgentTool{db: db, agentSvc: agentSvc, baseURL: baseURL}
+// DelegateFunc 是进程内委派函数签名。
+type DelegateFunc func(ctx context.Context, targetAgentID string, task string, callerAgentID string) (string, error)
+
+func NewDelegateToAgentTool(db *gorm.DB, agentSvc *AgentService, delegateFn DelegateFunc) *DelegateToAgentTool {
+	return &DelegateToAgentTool{db: db, agentSvc: agentSvc, delegateFn: delegateFn}
 }
 
 func (t *DelegateToAgentTool) Name() string { return "delegate_to_agent" }
@@ -68,91 +67,22 @@ func (t *DelegateToAgentTool) Execute(ctx context.Context, p Principal, in ToolI
 		return &ToolResult{OK: false, Error: "目标 Agent 是私有的，无法委派"}, nil
 	}
 
-	// 调用目标 Agent 的 A2A 端点（JSON-RPC tasks/send）
-	taskID := uuid.New().String()
-	rpcReq := map[string]any{
-		"jsonrpc": "2.0",
-		"id":      taskID,
-		"method":  "tasks/send",
-		"params": map[string]any{
-			"id": taskID,
-			"message": map[string]any{
-				"role":      "user",
-				"messageId": uuid.New().String(),
-				"parts":     []map[string]any{{"type": "text", "text": taskText}},
-			},
-		},
+	// 通过进程内函数调用目标 Agent（避免 HTTP 鉴权问题）
+	callerID := p.AgentID
+	if callerID == "" {
+		callerID = "user:" + p.UserID
 	}
 
-	body, _ := json.Marshal(rpcReq)
-	url := fmt.Sprintf("%s/a2a/agents/%s", t.baseURL, targetID)
-
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	responseText, err := t.delegateFn(ctx, targetID, taskText, callerID)
 	if err != nil {
-		return &ToolResult{OK: false, Error: fmt.Sprintf("创建请求失败: %v", err)}, nil
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return &ToolResult{OK: false, Error: fmt.Sprintf("调用 Agent %s 失败: %v", target.Name, err)}, nil
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-
-	// 解析 JSON-RPC 响应
-	var rpcResp struct {
-		Result *struct {
-			ID      string `json:"id"`
-			State   string `json:"state"`
-			Messages []struct {
-				Role  string `json:"role"`
-				Parts []struct {
-					Type string `json:"type"`
-					Text string `json:"text"`
-				} `json:"parts"`
-			} `json:"messages"`
-		} `json:"result"`
-		Error *struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.Unmarshal(respBody, &rpcResp); err != nil {
-		return &ToolResult{OK: false, Error: fmt.Sprintf("解析响应失败: %v", err)}, nil
-	}
-
-	if rpcResp.Error != nil {
 		return &ToolResult{
 			OK:    false,
-			Error: fmt.Sprintf("Agent %s 返回错误: %s", target.Name, rpcResp.Error.Message),
+			Error: fmt.Sprintf("调用 Agent %s 失败: %v", target.Name, err),
 		}, nil
 	}
 
-	if rpcResp.Result == nil {
-		return &ToolResult{OK: false, Error: "Agent 返回空结果"}, nil
-	}
-
-	// 提取目标 Agent 的回复文本
-	var responseText string
-	for _, msg := range rpcResp.Result.Messages {
-		if msg.Role == "agent" {
-			for _, p := range msg.Parts {
-				if p.Type == "text" && p.Text != "" {
-					responseText = p.Text
-					break
-				}
-			}
-		}
-	}
-
 	// 记录 A2A 委派任务
-	callerID := p.AgentID
-	if callerID == "" {
-		callerID = p.UserID
-	}
+	taskID := uuid.New().String()
 	a2aTask := &model.A2ATask{
 		ID:            taskID,
 		CallerAgentID: callerID,

@@ -19,13 +19,12 @@ func NewHandler(svc *Service, baseURL string) *Handler {
 	return &Handler{svc: svc, baseURL: baseURL}
 }
 
-// RegisterRoutes 在 Gin 路由组上注册 A2A 端点。
-// 路由前缀建议为 /a2a。
+// RegisterDiscoveryRoutes 注册公开的 Agent Card 发现端点（无需鉴权）。
+// 已弃用：路由在 main.go 中分别注册（公开 discovery + 鉴权 tasks）。
+// 保留以备需要时使用。
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
-	// Agent Card 发现（标准 A2A 规范路径）
 	rg.GET("/.well-known/agent.json", h.GetAgentCards)
 	rg.GET("/agents/:agentId/.well-known/agent.json", h.GetAgentCard)
-	// JSON-RPC 端点
 	rg.POST("/agents/:agentId", h.HandleJSONRPC)
 }
 
@@ -47,8 +46,17 @@ func (h *Handler) GetAgentCard(c *gin.Context) {
 }
 
 // HandleJSONRPC 处理所有 A2A JSON-RPC 请求。
+// 要求鉴权（AgentOrUserAuth 中间件），调用方身份从 context 获取。
 func (h *Handler) HandleJSONRPC(c *gin.Context) {
 	agentID := c.Param("agentId")
+
+	// 从鉴权中间件获取调用方身份
+	callerAgentID := c.GetString("agent_id")
+	callerUserID := c.GetString("user_id")
+	callerID := callerAgentID
+	if callerID == "" {
+		callerID = "user:" + callerUserID
+	}
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -70,9 +78,9 @@ func (h *Handler) HandleJSONRPC(c *gin.Context) {
 
 	switch req.Method {
 	case "tasks/send":
-		h.handleSendTask(c, &req, agentID, false)
+		h.handleSendTask(c, &req, agentID, callerID, false)
 	case "tasks/sendSubscribe":
-		h.handleSendTask(c, &req, agentID, true)
+		h.handleSendTask(c, &req, agentID, callerID, true)
 	case "tasks/get":
 		h.handleGetTask(c, &req)
 	default:
@@ -81,7 +89,7 @@ func (h *Handler) HandleJSONRPC(c *gin.Context) {
 }
 
 // handleSendTask 处理 tasks/send 和 tasks/sendSubscribe。
-func (h *Handler) handleSendTask(c *gin.Context, req *JSONRPCRequest, agentID string, streaming bool) {
+func (h *Handler) handleSendTask(c *gin.Context, req *JSONRPCRequest, agentID string, callerID string, streaming bool) {
 	var params SendTaskParams
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		h.respondError(c, req.ID, ErrCodeInvalidParams, "invalid params")
@@ -124,7 +132,7 @@ func (h *Handler) handleSendTask(c *gin.Context, req *JSONRPCRequest, agentID st
 		}
 
 		// 执行任务
-		result, err := h.svc.SendTaskSubscribe(c.Request.Context(), params, agentID, onChunk)
+		result, err := h.svc.SendTaskSubscribe(c.Request.Context(), params, agentID, callerID, onChunk)
 		if err != nil {
 			errResp := JSONRPCResponse{
 				JSONRPC: "2.0",
@@ -151,7 +159,7 @@ func (h *Handler) handleSendTask(c *gin.Context, req *JSONRPCRequest, agentID st
 		flusher.Flush()
 	} else {
 		// 非流式：直接返回
-		result, err := h.svc.SendTask(c.Request.Context(), params, agentID)
+		result, err := h.svc.SendTask(c.Request.Context(), params, agentID, callerID)
 		if err != nil {
 			h.respondError(c, req.ID, ErrCodeInternalError, err.Error())
 			return

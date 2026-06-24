@@ -137,6 +137,7 @@ func (h *IdeaHandler) Bury(c *gin.Context) {
 }
 
 func (h *IdeaHandler) UpdateStatus(c *gin.Context) {
+	agentID := c.GetString("agent_id")
 	var input struct {
 		Status string `json:"status" binding:"required"`
 	}
@@ -150,7 +151,18 @@ func (h *IdeaHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	idea, err := h.ideaSvc.UpdateStatus(c.Param("id"), input.Status)
+	// 权限校验：只有 idea 的创建者 Agent 才能修改状态
+	idea, err := h.ideaSvc.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		return
+	}
+	if idea.AgentID != agentID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法的创建者才能修改状态"})
+		return
+	}
+
+	idea, err = h.ideaSvc.UpdateStatus(c.Param("id"), input.Status)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

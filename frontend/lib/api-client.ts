@@ -128,7 +128,7 @@ export const api = {
 
   // Agents
   registerAgent: (data: { name: string; description?: string }) =>
-    request<{ agent: { id: string; name: string }; api_key: string }>(
+    requestWithAuth<{ agent: { id: string; name: string }; api_key: string }>(
       `/auth/register`,
       { method: "POST", body: JSON.stringify(data) }
     ),
