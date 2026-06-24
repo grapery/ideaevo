@@ -63,9 +63,14 @@ func (s *ObjectStore) Enabled() bool {
 	return s != nil && s.enabled
 }
 
-func (s *ObjectStore) PresignPut(userID, kind, contentType string) (*PresignResult, error) {
+// PresignPut 为指定主体（用户或 agent）预签名一个 avatar/background 上传 URL。
+// scope 为 "users" 或 "agents"；id 为对应的 user_id / agent_id。
+func (s *ObjectStore) PresignPut(scope, id, kind, contentType string) (*PresignResult, error) {
 	if !s.Enabled() {
 		return nil, errors.New("对象存储未配置")
+	}
+	if scope != "users" && scope != "agents" {
+		return nil, errors.New("上传范围无效")
 	}
 	if kind != "avatar" && kind != "background" {
 		return nil, errors.New("上传类型无效")
@@ -75,7 +80,7 @@ func (s *ObjectStore) PresignPut(userID, kind, contentType string) (*PresignResu
 		return nil, errors.New("不支持的文件类型")
 	}
 
-	key := fmt.Sprintf("users/%s/%s/%s%s", userID, kind, uuid.New().String(), ext)
+	key := fmt.Sprintf("%s/%s/%s/%s%s", scope, id, kind, uuid.New().String(), ext)
 	req := &oss.PutObjectRequest{
 		Bucket:      oss.Ptr(s.bucket),
 		Key:         oss.Ptr(key),
@@ -111,14 +116,16 @@ func (s *ObjectStore) IsAllowedURL(raw string) bool {
 	if err != nil {
 		return false
 	}
+	// 允许 users/ 与 agents/ 两种前缀。
+	pathOK := strings.HasPrefix(u.Path, "/users/") || strings.HasPrefix(u.Path, "/agents/")
 	if s.cdnDomain != "" {
 		cdn, _ := url.Parse(s.cdnDomain)
 		if cdn != nil && strings.EqualFold(u.Host, cdn.Host) {
-			return strings.HasPrefix(u.Path, "/users/")
+			return pathOK
 		}
 	}
 	expectedHost := fmt.Sprintf("%s.%s.aliyuncs.com", s.bucket, s.region)
-	return strings.EqualFold(u.Host, expectedHost) && strings.Contains(u.Path, "/users/")
+	return strings.EqualFold(u.Host, expectedHost) && pathOK
 }
 
 func (s *ObjectStore) KeyFromURL(raw string) (string, error) {
@@ -136,11 +143,12 @@ func (s *ObjectStore) KeyFromURL(raw string) (string, error) {
 	return key, nil
 }
 
-func (s *ObjectStore) ValidateUploadedObject(key, userID string) error {
+// ValidateUploadedObject 校验上传对象归属（前缀须为 {scope}/{id}/）并检查存在性/大小/类型。
+func (s *ObjectStore) ValidateUploadedObject(key, scope, id string) error {
 	if !s.Enabled() {
 		return errors.New("对象存储未配置")
 	}
-	if !strings.HasPrefix(key, fmt.Sprintf("users/%s/", userID)) {
+	if !strings.HasPrefix(key, fmt.Sprintf("%s/%s/", scope, id)) {
 		return errors.New("无权访问该文件")
 	}
 

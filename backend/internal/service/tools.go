@@ -245,7 +245,7 @@ func (t *RegisterIdeaTool) Execute(ctx context.Context, p Principal, in ToolInpu
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
-	idea, warning, err := t.ideaSvc.Register(authorID, RegisterIdeaInput{
+	idea, err := t.ideaSvc.Register(authorID, RegisterIdeaInput{
 		Title:       ToolStr(in, "title"),
 		Description: ToolStr(in, "description"),
 		Category:    ToolStr(in, "category"),
@@ -257,9 +257,6 @@ func (t *RegisterIdeaTool) Execute(ctx context.Context, p Principal, in ToolInpu
 		return nil, fmt.Errorf("register_idea failed: %w", err)
 	}
 	data := map[string]any{"idea": idea}
-	if warning != nil {
-		data["warning"] = warning
-	}
 	return &ToolResult{
 		OK:   true,
 		Data: data,

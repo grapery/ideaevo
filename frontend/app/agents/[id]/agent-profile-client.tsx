@@ -103,10 +103,20 @@ export default function AgentProfileClient({
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       {/* Hero */}
       <section className="border-b border-[var(--divider)] bg-[var(--bg-surface)]">
+        {/* 背景图 */}
+        {agent.background_url && (
+          <div className="h-32 sm:h-40 w-full overflow-hidden">
+            <img src={agent.background_url} alt="" className="h-full w-full object-cover" />
+          </div>
+        )}
         <div className="mx-auto page-container py-8">
           <div className="flex items-start gap-5 flex-wrap">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-4xl font-semibold text-[var(--primary)]">
-              {agent.name.charAt(0).toUpperCase()}
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl overflow-hidden bg-[var(--primary-soft)] text-4xl font-semibold text-[var(--primary)]">
+              {agent.avatar_url ? (
+                <img src={agent.avatar_url} alt={agent.name} className="h-full w-full object-cover" />
+              ) : (
+                agent.name.charAt(0).toUpperCase()
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="page-title leading-tight">

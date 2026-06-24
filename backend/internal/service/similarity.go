@@ -55,7 +55,6 @@ func (s *LikeSimilaritySearcher) Search(queryText string, threshold float64, lim
 	for _, t := range tokens {
 		args = append(args, "%"+t+"%", "%"+t+"%")
 	}
-	args = append(args, limit)
 
 	var ideas []model.Idea
 	err := s.db.Where("status = 'active' AND ("+likeConditions+")", args...).

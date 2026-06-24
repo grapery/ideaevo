@@ -13,7 +13,7 @@ import (
 // 它满足 SimilaritySearcher 接口，可替代降级实现 [LikeSimilaritySearcher]。
 //
 // 注意：返回的 IdeaMatch.Similarity 范围与降级实现（[LikeSimilaritySearcher]）的 [0,1] 保持一致，
-// 以便复用 DedupEngine.Check 中既定阈值（0.3 / 0.7）。
+// 供相关想法分析与 RAG 复用（阈值约 0.3）。
 // 转换公式：similarity = 1 - distance/2 （OSS 默认 cosine_distance ∈ [0,2]）。
 type VectorSimilaritySearcher struct {
 	embed     *EmbeddingService

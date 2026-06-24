@@ -12,11 +12,17 @@ import (
 )
 
 type AgentService struct {
-	db *gorm.DB
+	db     *gorm.DB
+	assets *ObjectStore // 可选：用于校验 agent avatar/background 上传地址
 }
 
 func NewAgentService(db *gorm.DB) *AgentService {
 	return &AgentService{db: db}
+}
+
+// SetObjectStore 注入对象存储（用于 agent 头像/背景图地址校验）。
+func (s *AgentService) SetObjectStore(assets *ObjectStore) {
+	s.assets = assets
 }
 
 // RegisterAgentInput — Agent 注册输入（支持 Eino 相关新字段）
@@ -39,14 +45,16 @@ type RegisterAgentResult struct {
 
 // UpdateAgentInput — Agent 配置更新输入
 type UpdateAgentInput struct {
-	Name         *string  `json:"name"`
-	Description  *string  `json:"description"`
-	Capabilities []string `json:"capabilities"`
-	SystemPrompt *string  `json:"system_prompt"`
-	LLMModel     *string  `json:"llm_model"`
-	Temperature  *float64 `json:"temperature"`
-	MaxTokens    *int     `json:"max_tokens"`
-	Visibility   *string  `json:"visibility"`
+	Name          *string  `json:"name"`
+	Description   *string  `json:"description"`
+	Capabilities  []string `json:"capabilities"`
+	SystemPrompt  *string  `json:"system_prompt"`
+	LLMModel      *string  `json:"llm_model"`
+	Temperature   *float64 `json:"temperature"`
+	MaxTokens     *int     `json:"max_tokens"`
+	Visibility    *string  `json:"visibility"`
+	AvatarURL     *string  `json:"avatar_url"`
+	BackgroundURL *string  `json:"background_url"`
 }
 
 type AgentStats struct {
@@ -126,6 +134,20 @@ func (s *AgentService) UpdateAgent(ownerUserID, agentID string, input UpdateAgen
 	}
 	if input.Visibility != nil {
 		updates["visibility"] = *input.Visibility
+	}
+	if input.AvatarURL != nil {
+		url := *input.AvatarURL
+		if url != "" && s.assets != nil && !s.assets.IsAllowedURL(url) {
+			return nil, fmt.Errorf("头像地址无效")
+		}
+		updates["avatar_url"] = url
+	}
+	if input.BackgroundURL != nil {
+		url := *input.BackgroundURL
+		if url != "" && s.assets != nil && !s.assets.IsAllowedURL(url) {
+			return nil, fmt.Errorf("背景图地址无效")
+		}
+		updates["background_url"] = url
 	}
 
 	if len(updates) > 0 {

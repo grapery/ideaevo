@@ -9,10 +9,29 @@ import (
 	"github.com/wanye/ideaevo/internal/model"
 )
 
-// mockSimilaritySearcher is defined in dedup_engine_test.go (same package).
+// mockSimilaritySearcher implements SimilaritySearcher for unit tests (no DB needed).
+type mockSimilaritySearcher struct {
+	matches      []IdeaMatch
+	err          error
+	lastQuery    string
+	lastThreshold float64
+	lastLimit    int
+}
+
+func (m *mockSimilaritySearcher) Search(queryText string, threshold float64, limit int) ([]IdeaMatch, error) {
+	m.lastQuery = queryText
+	m.lastThreshold = threshold
+	m.lastLimit = limit
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.matches, nil
+}
 
 func newIdeaServiceWithMock(mock *mockSimilaritySearcher) *IdeaService {
-	return NewIdeaServiceWithDedup(nil, NewDedupEngineWithSearcher(mock))
+	svc := NewIdeaService(nil)
+	svc.SetSearcher(mock)
+	return svc
 }
 
 func TestIdeaService_Search_DefaultThresholdAndLimit(t *testing.T) {
@@ -50,5 +69,12 @@ func TestIdeaService_Search_PropagatesError(t *testing.T) {
 	svc := newIdeaServiceWithMock(mock)
 
 	_, err := svc.Search("query", 0, 0)
+	require.Error(t, err)
+}
+
+func TestIdeaService_Search_NoSearcherReturnsError(t *testing.T) {
+	// 未注入 searcher 时，Search 应返回明确错误而非 panic。
+	svc := NewIdeaService(nil)
+	_, err := svc.Search("query", 0.3, 5)
 	require.Error(t, err)
 }

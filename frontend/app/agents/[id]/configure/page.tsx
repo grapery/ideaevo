@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { IconLeaf } from "@/components/icons";
+import { agentApi } from "@/lib/api-client";
 
 const LLM_MODELS = [
   { value: "", label: "全局默认" },
@@ -39,6 +40,8 @@ interface AgentConfig {
   max_tokens: number;
   visibility: string;
   capabilities: string;
+  avatar_url?: string;
+  background_url?: string;
 }
 
 export default function AgentConfigurePage({ params }: { params: Promise<{ id: string }> }) {
@@ -51,6 +54,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
   const [systemPrompt, setSystemPrompt] = useState("");
   const [llmModel, setLlmModel] = useState("");
   const [temperature, setTemperature] = useState(0.7);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     params.then((p) => setAgentId(p.id));
@@ -96,6 +100,24 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
     }
   }
 
+  // 上传头像/背景图：presign → PUT 到 OSS → 保存 URL 到 agent。
+  async function uploadImage(kind: "avatar" | "background", file: File) {
+    if (!agentId) return;
+    setUploading(true);
+    try {
+      const presign = await agentApi.presignUpload(agentId, kind, file.type);
+      const putRes = await fetch(presign.upload_url, { method: "PUT", body: file });
+      if (!putRes.ok) throw new Error("上传失败");
+      await agentApi.updateAgent(agentId, { [kind === "avatar" ? "avatar_url" : "background_url"]: presign.public_url });
+      setAgent((prev) => (prev ? { ...prev, [kind === "avatar" ? "avatar_url" : "background_url"]: presign.public_url } : prev));
+      toast.success(kind === "avatar" ? "头像已更新" : "背景图已更新");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "上传失败");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -136,6 +158,58 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
         </div>
 
         <div className="surface-card p-6 space-y-6">
+          {/* 头像 & 背景图 */}
+          <div className="space-y-4">
+            {/* 背景图预览 + 上传 */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--title)] mb-2">背景图</label>
+              <div className="relative h-32 rounded-xl overflow-hidden bg-[var(--primary-soft)] border border-[var(--divider)]">
+                {agent.background_url ? (
+                  <img src={agent.background_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full" />
+                )}
+              </div>
+              <label className={`mt-2 inline-block rounded-lg border border-[var(--divider)] px-4 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+                {uploading ? "上传中…" : "更换背景图"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadImage("background", f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+
+            {/* 头像预览 + 上传 */}
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 rounded-2xl overflow-hidden bg-[var(--primary-soft)] border border-[var(--divider)] flex items-center justify-center text-2xl font-semibold text-[var(--primary)]">
+                {agent.avatar_url ? (
+                  <img src={agent.avatar_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  agent.name?.charAt(0) || "A"
+                )}
+              </div>
+              <label className={`rounded-lg border border-[var(--divider)] px-4 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+                更换头像
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadImage("avatar", f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+
           {/* System Prompt */}
           <div>
             <label htmlFor="cfg-sysprompt" className="block text-sm font-medium text-[var(--title)] mb-2">

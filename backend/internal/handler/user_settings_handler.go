@@ -69,7 +69,7 @@ func (h *UserSettingsHandler) PresignUpload(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": FriendlyMessage("upload not configured")})
 		return
 	}
-	result, err := h.assets.PresignPut(userID, input.Kind, input.ContentType)
+	result, err := h.assets.PresignPut("users", userID, input.Kind, input.ContentType)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": ServiceError(err)})
 		return

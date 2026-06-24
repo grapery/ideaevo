@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Idea, DuplicateWarning } from "@/lib/types";
+import { Idea } from "@/lib/types";
 import { IdeaCard } from "@/components/idea-card";
 import { StatusBadge } from "@/components/status-badge";
 import { IconLeaf } from "@/components/icons";
@@ -14,9 +14,9 @@ import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 import { getApiBase } from "@/lib/api-base";
 
 const categories = ["生产力", "开发工具", "知识管理", "协作", "自动化", "其他"];
-const recommendedTags = ["MCP", "RAG", "Agent", "去重", "协作"];
+const recommendedTags = ["MCP", "RAG", "Agent", "向量", "协作"];
 
-const steps = ["内容", "分类", "去重", "发布"];
+const steps = ["内容", "分类", "发布"];
 
 // Stable timestamp for the live preview card so SSR and client render match.
 const PREVIEW_DATE = "2026-01-01T00:00:00Z";
@@ -34,7 +34,7 @@ export default function NewIdeaPage() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<{ idea: Idea; warning: DuplicateWarning | null } | null>(null);
+  const [result, setResult] = useState<{ idea: Idea } | null>(null);
 
   const apiBase = getApiBase();
 
@@ -143,16 +143,6 @@ export default function NewIdeaPage() {
             <h1 className="text-2xl font-semibold text-[var(--title)] mb-2">想法发布成功</h1>
             <p className="text-lg font-medium text-[var(--primary)] mb-4">{result.idea.title}</p>
             <StatusBadge status={result.idea.status} />
-            {result.warning?.is_duplicate && (
-              <div className="mt-4 rounded-lg bg-[var(--coral-soft)] border border-[var(--coral)]/20 p-4 text-left">
-                <p className="text-sm font-medium text-[var(--coral)]">发现相似想法</p>
-                {result.warning.similar_ideas?.map((s) => (
-                  <p key={s.idea.id} className="text-xs text-[var(--text-secondary)] mt-1">
-                    {s.idea.title} ({(s.similarity * 100).toFixed(0)}%)
-                  </p>
-                ))}
-              </div>
-            )}
             <Link
               href={`/ideas/${result.idea.id}`}
               className="mt-6 inline-block gradient-btn px-6 py-2.5 text-sm font-medium"
@@ -343,13 +333,16 @@ export default function NewIdeaPage() {
           {/* Right panel */}
           <aside className="w-full lg:w-[420px] shrink-0 space-y-4">
             <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)] mb-3">去重检测</h3>
+              <h3 className="text-sm font-semibold text-[var(--title)] mb-1">相关想法分析</h3>
+              <p className="text-xs text-[var(--text-muted)] mb-3">
+                评估时参考平台已有的相关想法，寻找协作或灵感。
+              </p>
               {checking ? (
-                <p className="text-sm text-[var(--text-muted)]">检测中…</p>
+                <p className="text-sm text-[var(--text-muted)]">分析中…</p>
               ) : similar.length > 0 ? (
                 <>
-                  <p className="text-sm text-[var(--coral)] mb-3">
-                    检测到 {similar.length} 个相似度 ≥ 50% 的想法。建议先看看是否可 Fork 或协作。
+                  <p className="text-sm text-[var(--primary)] mb-3">
+                    找到 {similar.length} 个相关想法（相关度 ≥ 50%）。
                   </p>
                   <div className="space-y-2">
                     {similar.map((s) => (
@@ -360,7 +353,7 @@ export default function NewIdeaPage() {
                       >
                         <p className="text-sm font-medium text-[var(--title)]">{s.idea.title}</p>
                         <p className="text-xs text-[var(--text-muted)] mt-1">
-                          {(s.similarity * 100).toFixed(0)}% 相似
+                          {(s.similarity * 100).toFixed(0)}% 相关
                         </p>
                       </Link>
                     ))}
@@ -368,7 +361,7 @@ export default function NewIdeaPage() {
                 </>
               ) : (
                 <p className="text-sm text-[var(--text-muted)]">
-                  {title.length >= 4 ? "未发现高相似想法，可以发布" : "填写标题和描述后自动检测"}
+                  {title.length >= 4 ? "暂未找到高相关想法" : "填写标题和描述后自动分析"}
                 </p>
               )}
             </div>

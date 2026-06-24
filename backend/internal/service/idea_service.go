@@ -1,10 +1,8 @@
 package service
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/wanye/ideaevo/internal/model"
@@ -12,22 +10,13 @@ import (
 )
 
 type IdeaService struct {
-	db  *gorm.DB
-	dedup *DedupEngine
-	indexer *IdeaVectorIndexer
+	db       *gorm.DB
+	searcher SimilaritySearcher // 语义检索（RAG / 相关分析）；为空时 Search 不可用
+	indexer  *IdeaVectorIndexer
 }
 
 func NewIdeaService(db *gorm.DB) *IdeaService {
-	return &IdeaService{
-		db:    db,
-		dedup: NewDedupEngine(db),
-	}
-}
-
-// NewIdeaServiceWithDedup allows tests to inject a pre-constructed [DedupEngine]
-// (typically carrying a mock [SimilaritySearcher]) without touching the database.
-func NewIdeaServiceWithDedup(db *gorm.DB, d *DedupEngine) *IdeaService {
-	return &IdeaService{db: db, dedup: d}
+	return &IdeaService{db: db}
 }
 
 // SetVectorIndexer 注入向量索引器（在 main.go 中按需调用）。
@@ -37,10 +26,11 @@ func (s *IdeaService) SetVectorIndexer(indexer *IdeaVectorIndexer) {
 	s.indexer = indexer
 }
 
-// SetDedupSearcher 切换 dedup 底层使用的 searcher（向量检索就绪后由 main.go 注入）。
-func (s *IdeaService) SetDedupSearcher(searcher SimilaritySearcher) {
-	if s.dedup != nil && searcher != nil {
-		s.dedup.SetSearcher(searcher)
+// SetSearcher 注入语义检索器（向量检索就绪后由 main.go 注入）。
+// 用于相关想法分析（/ideas/search）与 RAG。默认为 nil，此时 Search 返回错误。
+func (s *IdeaService) SetSearcher(searcher SimilaritySearcher) {
+	if searcher != nil {
+		s.searcher = searcher
 	}
 }
 
@@ -53,24 +43,12 @@ type RegisterIdeaInput struct {
 	DemoURL     string   `json:"demo_url"`
 }
 
-type DuplicateWarning struct {
-	IsDuplicate    bool        `json:"is_duplicate"`
-	SimilarIdeas   []IdeaMatch `json:"similar_ideas,omitempty"`
-}
-
 type IdeaMatch struct {
-	Idea        model.Idea `json:"idea"`
-	Similarity  float64    `json:"similarity"`
+	Idea       model.Idea `json:"idea"`
+	Similarity float64    `json:"similarity"`
 }
 
-func (s *IdeaService) Register(agentID string, input RegisterIdeaInput) (*model.Idea, *DuplicateWarning, error) {
-	// Check for duplicates
-	dedupHash := generateDedupHash(input.Title, input.Description)
-	warning, err := s.dedup.Check(input.Title, input.Description)
-	if err != nil {
-		return nil, nil, fmt.Errorf("dedup check failed: %w", err)
-	}
-
+func (s *IdeaService) Register(agentID string, input RegisterIdeaInput) (*model.Idea, error) {
 	tagsJSON, _ := json.Marshal(input.Tags)
 
 	idea := &model.Idea{
@@ -82,11 +60,10 @@ func (s *IdeaService) Register(agentID string, input RegisterIdeaInput) (*model.
 		Tags:        string(tagsJSON),
 		RepoURL:     input.RepoURL,
 		DemoURL:     input.DemoURL,
-		DedupHash:   dedupHash,
 	}
 
 	if err := s.db.Create(idea).Error; err != nil {
-		return nil, nil, fmt.Errorf("create idea failed: %w", err)
+		return nil, fmt.Errorf("create idea failed: %w", err)
 	}
 
 	// 向量化索引（异步、降级容错）
@@ -94,8 +71,8 @@ func (s *IdeaService) Register(agentID string, input RegisterIdeaInput) (*model.
 		s.indexer.IndexIdea(idea)
 	}
 
-	logActivity(s.db, "agent", agentID, "register", "idea", idea.ID, nil)
-	return idea, warning, nil
+	logActivity(s.db, "agent", agentID, ActionRegister, "idea", idea.ID, nil)
+	return idea, nil
 }
 
 func (s *IdeaService) GetByID(id string) (*model.Idea, error) {
@@ -107,12 +84,13 @@ func (s *IdeaService) GetByID(id string) (*model.Idea, error) {
 }
 
 type QueryFilter struct {
-	Status   string `form:"status"`
-	Category string `form:"category"`
-	AgentID  string `form:"agent_id"`
-	Sort     string `form:"sort" binding:"omitempty,oneof=newest popular most_forked most_liked most_flowers"`
-	Limit    int    `form:"limit" binding:"omitempty,min=1,max=100"`
-	Offset   int    `form:"offset" binding:"omitempty,min=0"`
+	Status      string `form:"status"`
+	Category    string `form:"category"`
+	AgentID     string `form:"agent_id"`
+	OwnerUserID string `form:"owner_user_id"` // 跨该用户拥有的所有 agent 聚合 idea（user profile 用）
+	Sort        string `form:"sort" binding:"omitempty,oneof=newest popular most_forked most_liked most_flowers"`
+	Limit       int    `form:"limit" binding:"omitempty,min=1,max=100"`
+	Offset      int    `form:"offset" binding:"omitempty,min=0"`
 }
 
 func (s *IdeaService) Query(filter QueryFilter) ([]model.Idea, int64, error) {
@@ -130,6 +108,11 @@ func (s *IdeaService) Query(filter QueryFilter) ([]model.Idea, int64, error) {
 	}
 	if filter.AgentID != "" {
 		query = query.Where("agent_id = ?", filter.AgentID)
+	}
+	if filter.OwnerUserID != "" {
+		// 跨该用户拥有的所有 agent 聚合（idea 属于 agent，agent 属于 user）。
+		query = query.Joins("JOIN agents ON agents.id = ideas.agent_id").
+			Where("agents.owner_user_id = ?", filter.OwnerUserID)
 	}
 
 	var total int64
@@ -157,13 +140,16 @@ func (s *IdeaService) Query(filter QueryFilter) ([]model.Idea, int64, error) {
 }
 
 func (s *IdeaService) Search(queryText string, threshold float64, limit int) ([]IdeaMatch, error) {
+	if s.searcher == nil {
+		return nil, fmt.Errorf("semantic search unavailable (no searcher configured)")
+	}
 	if threshold == 0 {
 		threshold = 0.3
 	}
 	if limit == 0 {
 		limit = 10
 	}
-	return s.dedup.Search(queryText, threshold, limit)
+	return s.searcher.Search(queryText, threshold, limit)
 }
 
 func (s *IdeaService) Bury(ideaID, agentID, reason string) (*model.Idea, error) {
@@ -217,10 +203,4 @@ func (s *IdeaService) UpdateStatus(ideaID, status string) (*model.Idea, error) {
 	}
 
 	return &idea, nil
-}
-
-func generateDedupHash(title, description string) string {
-	normalized := strings.ToLower(strings.TrimSpace(title + " " + description))
-	h := sha256.Sum256([]byte(normalized))
-	return fmt.Sprintf("%x", h[:16])
 }

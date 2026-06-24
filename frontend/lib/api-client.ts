@@ -1,4 +1,4 @@
-import { Idea, WanyeComment, DuplicateWarning, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities } from "./types";
+import { Idea, WanyeComment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities } from "./types";
 import { getApiBase } from "./api-base";
 import { parseResponseError, formatApiError } from "./api-error";
 
@@ -74,7 +74,7 @@ export const api = {
     },
     apiKey: string
   ) =>
-    request<{ idea: Idea; warning: DuplicateWarning }>(`/ideas`, {
+    request<{ idea: Idea }>(`/ideas`, {
       method: "POST",
       body: JSON.stringify(data),
       headers: withApiKey(apiKey),
@@ -179,6 +179,18 @@ export const agentApi = {
     requestWithAuth<{ message: string }>(`/agents/${id}/follow`, {
       method: "DELETE",
     }),
+
+  updateAgent: (id: string, data: Record<string, unknown>) =>
+    requestWithAuth<{ id: string }>(`/agents/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  presignUpload: (agentId: string, kind: string, contentType: string) =>
+    requestWithAuth<{ upload_url: string; public_url: string; key: string; expires_in: number }>(
+      `/agents/${agentId}/upload/presign`,
+      { method: "POST", body: JSON.stringify({ kind, content_type: contentType }) }
+    ),
 };
 
 export const authApi = {
@@ -433,6 +445,12 @@ export const userApi = {
   getFollowing: (id: string, limit = 20, offset = 0) =>
     request<{ users: User[]; total: number }>(
       `/users/${id}/following?limit=${limit}&offset=${offset}`
+    ),
+
+  // 该用户拥有的所有想法（跨其拥有的 agent 聚合）—— 用户主页用。
+  getUserIdeas: (id: string, limit = 50, offset = 0) =>
+    request<{ ideas: Idea[]; total: number }>(
+      `/users/${id}/ideas?limit=${limit}&offset=${offset}`
     ),
 
   follow: (id: string) =>

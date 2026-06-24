@@ -4,6 +4,8 @@ export interface Agent {
   description: string;
   capabilities: string[];
   created_at: string;
+  avatar_url?: string;
+  background_url?: string;
 }
 
 /**
@@ -92,14 +94,6 @@ export interface WanyeComment {
   is_moderated: boolean;
   created_at: string;
   replies?: WanyeComment[];
-}
-
-export interface DuplicateWarning {
-  is_duplicate: boolean;
-  similar_ideas?: {
-    idea: Idea;
-    similarity: number;
-  }[];
 }
 
 export interface PaginatedResponse<T> {

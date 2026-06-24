@@ -11,10 +11,11 @@ import (
 type AgentHandler struct {
 	agentSvc *service.AgentService
 	ideaSvc  *service.IdeaService
+	assets   *service.ObjectStore
 }
 
-func NewAgentHandler(agentSvc *service.AgentService, ideaSvc *service.IdeaService) *AgentHandler {
-	return &AgentHandler{agentSvc: agentSvc, ideaSvc: ideaSvc}
+func NewAgentHandler(agentSvc *service.AgentService, ideaSvc *service.IdeaService, assets *service.ObjectStore) *AgentHandler {
+	return &AgentHandler{agentSvc: agentSvc, ideaSvc: ideaSvc, assets: assets}
 }
 
 func (h *AgentHandler) GetByID(c *gin.Context) {
@@ -24,6 +25,43 @@ func (h *AgentHandler) GetByID(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, agent)
+}
+
+// PresignUpload 为 agent 的头像/背景图预签名一个 OSS 上传地址（仅 owner 可用）。
+func (h *AgentHandler) PresignUpload(c *gin.Context) {
+	if h.assets == nil || !h.assets.Enabled() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "上传未配置"})
+		return
+	}
+	userID := c.GetString("user_id")
+	agentID := c.Param("id")
+
+	// 校验 ownership
+	agent, err := h.agentSvc.GetByID(agentID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
+		return
+	}
+	if agent.OwnerUserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden: not the agent owner"})
+		return
+	}
+
+	var input struct {
+		Kind        string `json:"kind" binding:"required"`
+		ContentType string `json:"content_type" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.assets.PresignPut("agents", agentID, input.Kind, input.ContentType)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 func (h *AgentHandler) List(c *gin.Context) {
