@@ -17,6 +17,15 @@ const (
 	MessageActorAgent = "agent"
 )
 
+// Message roles (stored in ChatMessage.Role).
+const (
+	MessageRoleUser       = "user"
+	MessageRoleAssistant  = "assistant"
+	MessageRoleSystem     = "system"
+	MessageRoleSystemErr  = "system_error"
+	MessageRoleTool       = "tool" // tool-call result, OpenAI protocol; not shown to UI
+)
+
 // Assistant/user message content types for rendering.
 const (
 	MessageContentMarkdown = "markdown"
@@ -59,7 +68,7 @@ type ChatMessage struct {
 	SessionID string    `gorm:"size:36;index;not null" json:"session_id"`
 	ActorType string    `gorm:"size:10;index" json:"actor_type"` // user | agent
 	ActorID   string    `gorm:"size:36;index" json:"actor_id"`
-	Role        string    `gorm:"size:20;not null;index" json:"role"` // user, assistant, system
+	Role        string    `gorm:"size:20;not null;index" json:"role"` // user, assistant, system, tool
 	ContentType string    `gorm:"size:20;default:markdown" json:"content_type"`
 	Content     string    `gorm:"type:text;not null" json:"content"`
 	Metadata  string    `gorm:"type:json" json:"metadata,omitempty"`

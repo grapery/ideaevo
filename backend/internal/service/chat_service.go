@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/wanye/ideaevo/internal/llm"
@@ -195,6 +196,69 @@ func (s *ChatService) assistantFromLLM(session *model.ChatSession, raw string) m
 	return s.newAssistantMessage(session, contentType, content)
 }
 
+// ---- tool-use message persistence ----
+//
+// OpenAI 协议要求多轮 tool use 的历史完整保留：
+//   assistant(tool_calls=[...]) -> tool(tool_call_id=..., content=result) -> ...
+// 为了让两步确认（register_idea 等）能跨请求生效，这些中间消息必须落库，
+// 在下一轮请求的 buildMessageHistory 中按 OpenAI 格式重建。
+// tool 相关字段（tool_calls / tool_call_id / tool_name）序列化进 Metadata JSON，
+// 不需要改表结构。GetMessages 会过滤掉 role=tool 行，不返回给前端展示。
+
+// toolMessageMeta 是持久化进 ChatMessage.Metadata 的 tool 元数据。
+// assistant 行用 ToolCalls；tool 行用 ToolCallID + ToolName。
+type toolMessageMeta struct {
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+	ToolName   string     `json:"tool_name,omitempty"`
+}
+
+// newToolCallAssistantMessage 构造 LLM 决定调用工具时的 assistant 消息
+// （OpenAI role=assistant + tool_calls）。content 可能为空。
+func (s *ChatService) newToolCallAssistantMessage(session *model.ChatSession, content string, toolCalls []ToolCall) model.ChatMessage {
+	meta, _ := json.Marshal(toolMessageMeta{ToolCalls: toolCalls})
+	return model.ChatMessage{
+		SessionID:   session.ID,
+		Role:        model.MessageRoleAssistant,
+		ActorType:   model.MessageActorAgent,
+		ActorID:     session.AgentID,
+		ContentType: model.MessageContentText,
+		Content:     content,
+		Metadata:    string(meta),
+	}
+}
+
+// newToolResultMessage 构造工具执行结果消息（OpenAI role=tool）。
+func (s *ChatService) newToolResultMessage(session *model.ChatSession, toolCallID, toolName, output string) model.ChatMessage {
+	meta, _ := json.Marshal(toolMessageMeta{ToolCallID: toolCallID, ToolName: toolName})
+	return model.ChatMessage{
+		SessionID:   session.ID,
+		Role:        model.MessageRoleTool,
+		ActorType:   model.MessageActorAgent,
+		ActorID:     session.AgentID,
+		ContentType: model.MessageContentJSON,
+		Content:     output,
+		Metadata:    string(meta),
+	}
+}
+
+// chatMessageToLLMMessage 把持久化的 ChatMessage 还原为 LLM 可用的 LLMMessage，
+// 从 Metadata 恢复 tool_calls / tool_call_id / tool_name（OpenAI 协议格式）。
+func chatMessageToLLMMessage(m model.ChatMessage) LLMMessage {
+	msg := LLMMessage{Role: m.Role, Content: m.Content}
+	if m.Metadata == "" || m.Metadata == "{}" {
+		return msg
+	}
+	var meta toolMessageMeta
+	if err := json.Unmarshal([]byte(m.Metadata), &meta); err != nil {
+		return msg
+	}
+	msg.ToolCalls = meta.ToolCalls
+	msg.ToolCallID = meta.ToolCallID
+	msg.ToolName = meta.ToolName
+	return msg
+}
+
 func (s *ChatService) bumpSessionMessageCount(session *model.ChatSession, delta int) {
 	s.db.Model(session).Updates(map[string]interface{}{
 		"message_count": gorm.Expr("message_count + ?", delta),
@@ -333,8 +397,10 @@ const (
 //  3. 若 LLM 请求工具 → 执行 → 把结果加入 history → 再次调 LLM
 //  4. 直到 LLM finish_reason=stop 或达到 maxToolRounds
 //
-// 所有中间 tool 消息只在内存中流转，不持久化（避免历史表膨胀）；
-// 只有最终的 assistant 回复被保存为 ChatMessage。
+// 中间的 assistant(tool_calls) 与 tool 结果消息会持久化进 chat_messages
+// （Metadata 承载 tool_calls / tool_call_id），以便两步确认等跨请求流程
+// 能在 buildMessageHistory 中按 OpenAI 格式重建。GetMessages 会过滤掉
+// role=tool 行，前端历史列表不展示这些中间消息。
 func (s *ChatService) runConversation(session *model.ChatSession, userContent string, p Principal) (*model.ChatMessage, []ToolCallResult, int, error) {
 	return s.runConversationWithProgress(session, userContent, p, nil)
 }
@@ -386,6 +452,12 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 			Content:   resp.Content,
 			ToolCalls: resp.ToolCalls,
 		})
+
+		// 持久化 assistant(tool_calls) 消息，使两步确认等跨请求流程可见（失败仅记录，不中断对话）
+		tcMsg := s.newToolCallAssistantMessage(session, resp.Content, resp.ToolCalls)
+		if err := s.db.Create(&tcMsg).Error; err != nil {
+			log.Printf("[chat] persist tool_calls message failed: %v", err)
+		}
 
 		// P1: 推送工具调用进度事件（"正在搜索 idea..."）
 		for _, tc := range resp.ToolCalls {
@@ -457,6 +529,11 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 				ToolName:   r.Name,
 				Content:    r.Output,
 			})
+			// 持久化 tool 结果消息，使两步确认等跨请求流程可见（失败仅记录，不中断对话）
+			trMsg := s.newToolResultMessage(session, r.ToolCallID, r.Name, r.Output)
+			if err := s.db.Create(&trMsg).Error; err != nil {
+				log.Printf("[chat] persist tool result message failed: %v", err)
+			}
 		}
 	}
 
@@ -645,7 +722,10 @@ func (s *ChatService) GetMessages(sessionID, userID string, beforeID string, lim
 		limit = 50
 	}
 
-	q := s.db.Where("session_id = ?", sessionID).Order("created_at DESC").Limit(limit)
+	// 前端历史列表不展示 role=tool 的中间消息（流式期间已通过 SSE tool_call/tool_result 事件展示）；
+	// 这些行仅用于 buildMessageHistory 重建 LLM 上下文。
+	q := s.db.Where("session_id = ? AND role != ?", sessionID, model.MessageRoleTool).
+		Order("created_at DESC").Limit(limit)
 
 	if beforeID != "" {
 		var before model.ChatMessage
@@ -749,7 +829,8 @@ func (s *ChatService) ForkSession(sessionID, userID string, input ForkSessionInp
 		return nil, err
 	}
 
-	q := s.db.Where("session_id = ? AND role IN ?", sessionID, []string{"user", "assistant"}).
+	// 保留 role=tool 行：分叉会话也需要完整的 tool-use 上下文（两步确认等）。
+	q := s.db.Where("session_id = ? AND role IN ?", sessionID, []string{"user", "assistant", "tool"}).
 		Order("created_at ASC")
 
 	if input.BeforeMessageID != "" {
@@ -868,7 +949,9 @@ func (s *ChatService) buildSystemPromptWithRAG(session *model.ChatSession, userM
 
 func (s *ChatService) buildMessageHistory(sessionID string) []LLMMessage {
 	var messages []model.ChatMessage
-	s.db.Where("session_id = ? AND role IN ?", sessionID, []string{"user", "assistant"}).
+	// 包含 role=tool 行：OpenAI 多轮 tool use 要求 assistant(tool_calls) → tool 结果
+	// 完整保留，两步确认（register_idea 等）跨请求时才能在历史里看到上轮的 token。
+	s.db.Where("session_id = ? AND role IN ?", sessionID, []string{"user", "assistant", "tool"}).
 		Order("created_at DESC").
 		Limit(maxMessageHistory).
 		Find(&messages)
@@ -877,9 +960,10 @@ func (s *ChatService) buildMessageHistory(sessionID string) []LLMMessage {
 		messages[i], messages[j] = messages[j], messages[i]
 	}
 
-	var result []LLMMessage
+	result := make([]LLMMessage, 0, len(messages))
 	for _, m := range messages {
-		result = append(result, LLMMessage{Role: m.Role, Content: m.Content})
+		// 从 Metadata 恢复 tool_calls / tool_call_id / tool_name（OpenAI 协议格式）
+		result = append(result, chatMessageToLLMMessage(m))
 	}
 	return result
 }
