@@ -192,3 +192,90 @@ func (s *SocialService) ShareIdea(ideaID, actorType, actorID string) error {
 	logActivity(s.db, actorType, actorID, ActionShare, "idea", ideaID, nil)
 	return nil
 }
+
+// ---- emoji 反应（针对 idea，单选切换语义）----
+
+// ReactToIdea 给 idea 加或切换 emoji 反应。同一 actor（user 或 agent）对同一 idea
+// 只保留一个 emoji：已存在则 UPDATE，不存在则 INSERT。不记 activity（避免刷屏）。
+func (s *SocialService) ReactToIdea(ideaID, userID, agentID, emoji string) error {
+	if !model.IsAllowedEmoji(emoji) {
+		return fmt.Errorf("unsupported emoji: %s", emoji)
+	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var existing model.Reaction
+		err := tx.Where("idea_id = ? AND (user_id = ? OR agent_id = ?)", ideaID, userID, agentID).First(&existing).Error
+		if err == nil {
+			// 已有反应 → 更新 emoji
+			return tx.Model(&existing).Update("emoji", emoji).Error
+		}
+		// 不存在 → 新建
+		r := &model.Reaction{IdeaID: ideaID, UserID: userID, AgentID: agentID, Emoji: emoji}
+		return tx.Create(r).Error
+	})
+}
+
+// UnreactIdea 移除当前 actor 对 idea 的反应。
+func (s *SocialService) UnreactIdea(ideaID, userID, agentID string) error {
+	return s.db.Where("idea_id = ? AND (user_id = ? OR agent_id = ?)", ideaID, userID, agentID).
+		Delete(&model.Reaction{}).Error
+}
+
+// GetReactionCounts 返回某 idea 各 emoji 的计数 {👍:3, 🎉:1, ...}。
+func (s *SocialService) GetReactionCounts(ideaID string) (map[string]int, error) {
+	type emojiCount struct {
+		Emoji string
+		Cnt   int
+	}
+	var rows []emojiCount
+	if err := s.db.Model(&model.Reaction{}).
+		Select("emoji, COUNT(*) as cnt").
+		Where("idea_id = ?", ideaID).
+		Group("emoji").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	counts := make(map[string]int, len(rows))
+	for _, r := range rows {
+		counts[r.Emoji] = r.Cnt
+	}
+	return counts, nil
+}
+
+// GetMyReaction 返回当前 actor 对 idea 的 emoji（空=未反应）。
+func (s *SocialService) GetMyReaction(ideaID, userID, agentID string) (string, error) {
+	var r model.Reaction
+	err := s.db.Where("idea_id = ? AND (user_id = ? OR agent_id = ?)", ideaID, userID, agentID).First(&r).Error
+	if err != nil {
+		return "", nil // 未反应不报错
+	}
+	return r.Emoji, nil
+}
+
+// GetBulkReactionCounts 批量返回多个 idea 的 reaction 计数，供 activity hydrate 用。
+// 返回 map[ideaID]map[emoji]count。
+func (s *SocialService) GetBulkReactionCounts(ideaIDs []string) (map[string]map[string]int, error) {
+	result := make(map[string]map[string]int)
+	if len(ideaIDs) == 0 {
+		return result, nil
+	}
+	type row struct {
+		IdeaID string
+		Emoji  string
+		Cnt    int
+	}
+	var rows []row
+	if err := s.db.Model(&model.Reaction{}).
+		Select("idea_id, emoji, COUNT(*) as cnt").
+		Where("idea_id IN ?", ideaIDs).
+		Group("idea_id, emoji").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		if result[r.IdeaID] == nil {
+			result[r.IdeaID] = make(map[string]int)
+		}
+		result[r.IdeaID][r.Emoji] = r.Cnt
+	}
+	return result, nil
+}

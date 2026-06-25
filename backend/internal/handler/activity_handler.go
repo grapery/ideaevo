@@ -15,10 +15,11 @@ import (
 type ActivityHandler struct {
 	db        *gorm.DB
 	followSvc *service.FollowService
+	socialSvc *service.SocialService
 }
 
-func NewActivityHandler(db *gorm.DB, followSvc *service.FollowService) *ActivityHandler {
-	return &ActivityHandler{db: db, followSvc: followSvc}
+func NewActivityHandler(db *gorm.DB, followSvc *service.FollowService, socialSvc *service.SocialService) *ActivityHandler {
+	return &ActivityHandler{db: db, followSvc: followSvc, socialSvc: socialSvc}
 }
 
 // ActivityView 是 ActivityLog 的丰富化视图，附带关联实体的名称/头像/标题，
@@ -39,11 +40,12 @@ type ActivityView struct {
 	TargetDesc     string `json:"target_desc,omitempty"`
 	TargetStatus   string `json:"target_status,omitempty"`
 	TargetCategory string `json:"target_category,omitempty"`
+	Reactions      map[string]int `json:"reactions,omitempty"`
 }
 
-// hydrateActivities 批量加载 activity 关联的 idea（标题/描述/状态/分类）和
-// actor（名字/头像），填充进 ActivityView。3 次批量查询，无 N+1。
-func hydrateActivities(db *gorm.DB, activities []model.ActivityLog) []ActivityView {
+// hydrateActivities 批量加载 activity 关联的 idea（标题/描述/状态/分类）、
+// actor（名字/头像）和 reaction 计数，填充进 ActivityView。批量查询，无 N+1。
+func hydrateActivities(db *gorm.DB, socialSvc *service.SocialService, activities []model.ActivityLog) []ActivityView {
 	if len(activities) == 0 {
 		return []ActivityView{}
 	}
@@ -104,6 +106,16 @@ func hydrateActivities(db *gorm.DB, activities []model.ActivityLog) []ActivityVi
 		}
 	}
 
+	// 批量加载 reaction 计数
+	var reactionMap map[string]map[string]int
+	if socialSvc != nil && len(ideaIDs) > 0 {
+		ids := make([]string, 0, len(ideaIDs))
+		for id := range ideaIDs {
+			ids = append(ids, id)
+		}
+		reactionMap, _ = socialSvc.GetBulkReactionCounts(ids)
+	}
+
 	// 填充丰富字段
 	views := make([]ActivityView, len(activities))
 	for i, a := range activities {
@@ -129,6 +141,11 @@ func hydrateActivities(db *gorm.DB, activities []model.ActivityLog) []ActivityVi
 				v.TargetDesc = brief.Description
 				v.TargetStatus = brief.Status
 				v.TargetCategory = brief.Category
+			}
+			if reactionMap != nil {
+				if counts, ok := reactionMap[a.TargetID]; ok && len(counts) > 0 {
+					v.Reactions = counts
+				}
 			}
 		}
 		views[i] = v
@@ -166,7 +183,7 @@ func (h *ActivityHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"activities": hydrateActivities(h.db, activities), "total": total})
+	c.JSON(http.StatusOK, gin.H{"activities": hydrateActivities(h.db, h.socialSvc, activities), "total": total})
 }
 
 func (h *ActivityHandler) Stats(c *gin.Context) {
@@ -242,7 +259,7 @@ func (h *ActivityHandler) Feed(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"stats":       stats,
-		"activities":  hydrateActivities(h.db, activities),
+		"activities":  hydrateActivities(h.db, h.socialSvc, activities),
 		"total":       activityTotal,
 		"total_ideas": totalIdeas,
 		"rankings": gin.H{
@@ -309,5 +326,5 @@ func (h *ActivityHandler) FollowingFeed(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"activities": hydrateActivities(h.db, activities), "total": total})
+	c.JSON(http.StatusOK, gin.H{"activities": hydrateActivities(h.db, h.socialSvc, activities), "total": total})
 }

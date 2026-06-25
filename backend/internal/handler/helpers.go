@@ -46,3 +46,15 @@ func extractAgentID(c *gin.Context, systemAgentID string) string {
 	}
 	return ""
 }
+
+// resolveActor 返回 (userID, agentID)：API Key 认证→agentID；登录会话→userID。
+// 两者可能都为空（未认证）。
+func resolveActor(c *gin.Context) (userID, agentID string) {
+	userID = extractUserID(c)
+	if agentIDVal, exists := c.Get("agent_id"); exists {
+		if id, ok := agentIDVal.(string); ok {
+			agentID = id
+		}
+	}
+	return
+}

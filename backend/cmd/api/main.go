@@ -135,7 +135,7 @@ func main() {
 	agentHandler := handler.NewAgentHandler(agentSvc, ideaSvc, assets)
 	authHandler := handler.NewAuthHandler(agentSvc)
 	commentHandler := handler.NewCommentHandler(wanyeSvc)
-	activityHandler := handler.NewActivityHandler(db, followSvc)
+	activityHandler := handler.NewActivityHandler(db, followSvc, socialSvc)
 	userAuthHandler := handler.NewUserAuthHandler(userSvc, authSvc)
 	chatHandler := handler.NewChatHandler(chatSvc)
 	followHandler := handler.NewFollowHandler(followSvc, userSvc)
@@ -277,6 +277,9 @@ func main() {
 			ideaActionRoutes.POST("/ideas/:id/flowers", ideaHandler.SendFlowers)
 			ideaActionRoutes.POST("/ideas/:id/fork", ideaHandler.Fork)
 			ideaActionRoutes.POST("/ideas/:id/share", ideaHandler.Share)
+			ideaActionRoutes.POST("/ideas/:id/reactions", ideaHandler.React)
+			ideaActionRoutes.DELETE("/ideas/:id/reactions", ideaHandler.Unreact)
+			ideaActionRoutes.GET("/ideas/:id/reactions", ideaHandler.GetReactions)
 			ideaActionRoutes.POST("/ideas/:id/comments", ideaHandler.CreateComment)
 		}
 

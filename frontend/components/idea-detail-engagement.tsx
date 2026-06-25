@@ -8,6 +8,7 @@ import {
   ideaRequestJson,
 } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
+import { ReactionBar } from "./reaction-bar";
 import { IconFlower, IconGitFork, IconHeart, IconMessage, IconShare } from "./icons";
 
 export function IdeaDetailEngagement({
@@ -27,12 +28,27 @@ export function IdeaDetailEngagement({
   const [likes, setLikes] = useState(initialLikes);
   const [flowers, setFlowers] = useState(initialFlowers);
   const [liked, setLiked] = useState(false);
+  const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
+  const [myReaction, setMyReaction] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
 
   useEffect(() => {
     setLikes(initialLikes);
     setFlowers(initialFlowers);
   }, [initialLikes, initialFlowers]);
+
+  // 获取 emoji 反应计数 + 当前用户的选择
+  useEffect(() => {
+    ideaRequestJson<{ counts: Record<string, number>; mine: string }>(
+      `/ideas/${ideaId}/reactions`,
+      { apiKey: useSession ? undefined : apiKey, useSession }
+    )
+      .then((res) => {
+        setReactionCounts(res.counts || {});
+        setMyReaction(res.mine || "");
+      })
+      .catch(() => {});
+  }, [ideaId, apiKey, useSession]);
 
   useEffect(() => {
     if (!canAct) return;
@@ -119,7 +135,13 @@ export function IdeaDetailEngagement({
     "inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] tabular-nums transition-colors hover:bg-[var(--bg-subtle)] disabled:opacity-50";
 
   return (
-    <div className="flex items-center gap-5 text-[var(--text-secondary)]">
+    <div className="space-y-3">
+      <ReactionBar
+        ideaId={ideaId}
+        initialCounts={reactionCounts}
+        initialMine={myReaction}
+      />
+      <div className="flex items-center gap-5 text-[var(--text-secondary)]">
       <button
         type="button"
         onClick={toggleLike}
@@ -167,6 +189,7 @@ export function IdeaDetailEngagement({
         <IconShare />
         <span>分享</span>
       </button>
+      </div>
     </div>
   );
 }

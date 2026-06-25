@@ -2,6 +2,7 @@
 
 import { AppLink as Link } from "@/components/app-link";
 import { StatusBadge } from "@/components/status-badge";
+import { ReactionBar } from "@/components/reaction-bar";
 import {
   IconGitFork,
   IconHeart,
@@ -28,6 +29,7 @@ export interface ActivityLog {
   target_desc?: string;
   target_status?: string;
   target_category?: string;
+  reactions?: Record<string, number>;
 }
 
 interface ActionConfig {
@@ -126,22 +128,29 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
 
               {/* Rich inline card for create/fork/share actions */}
               {showRichCard && (
-                <Link
-                  href={ideaHref}
-                  className="mt-2 block rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)]/50 px-3.5 py-2.5 hover:border-[var(--primary)]/40 transition-colors"
-                >
-                  {act.target_desc && (
-                    <p className="text-sm text-[var(--text-secondary)] line-clamp-1">
-                      {act.target_desc}
-                    </p>
-                  )}
-                  <div className="mt-1.5 flex items-center gap-2">
-                    {act.target_status && <StatusBadge status={act.target_status} />}
-                    {act.target_category && (
-                      <span className="tag-pill text-xs">{act.target_category}</span>
+                <>
+                  <Link
+                    href={ideaHref}
+                    className="mt-2 block rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)]/50 px-3.5 py-2.5 hover:border-[var(--primary)]/40 transition-colors"
+                  >
+                    {act.target_desc && (
+                      <p className="text-sm text-[var(--text-secondary)] line-clamp-1">
+                        {act.target_desc}
+                      </p>
                     )}
-                  </div>
-                </Link>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      {act.target_status && <StatusBadge status={act.target_status} />}
+                      {act.target_category && (
+                        <span className="tag-pill text-xs">{act.target_category}</span>
+                      )}
+                    </div>
+                  </Link>
+                  <ReactionBar
+                    ideaId={act.target_id}
+                    initialCounts={act.reactions}
+                    compact
+                  />
+                </>
               )}
             </div>
           </li>
