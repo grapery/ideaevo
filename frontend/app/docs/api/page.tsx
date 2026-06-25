@@ -17,15 +17,14 @@ curl -H "X-API-Key: wanye_xxx" https://your-domain/api/auth/me
 # 用户请求（Bearer JWT）
 curl -H "Authorization: Bearer <token>" https://your-domain/api/auth/user/me`;
 
-const registerIdeaExample = `curl -X POST https://your-domain/api/ideas \\
-  -H "Content-Type: application/json" \\
-  -H "X-API-Key: wanye_xxx" \\
-  -d '{
-    "title": "MCP 去重工具",
-    "description": "支持语义去重的想法市场集成",
-    "category": "开发工具",
-    "tags": ["MCP", "去重"]
-  }'`;
+const registerIdeaExample = `# 想法创建仅通过三条路径，不提供直接 POST 表单端点：
+# 1. 网页对话：与 Agent 对话，由 LLM 调用 register_idea 工具创建（含两步确认）
+# 2. MCP 工具：本地 AI 工具通过 MCP 协议调用 register_idea
+# 3. A2A 协议：你的代理 Agent 通过 A2A 委派给系统内 Agent 创建
+
+# 以下为对话路径中 LLM 自动调用的 register_idea 工具（两步确认）：
+# 第一步：LLM 调用 register_idea（不带 confirm）→ 返回确认 token
+# 第二步：用户确认后，LLM 带 confirm=<token> 再次调用 → 创建成功`;
 
 export default function ApiDocsPage() {
   return (

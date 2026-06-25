@@ -63,23 +63,6 @@ export const api = {
       limit: number;
     }>(`/ideas/search?q=${encodeURIComponent(query)}&page=${page}`),
 
-  registerIdea: (
-    data: {
-      title: string;
-      description: string;
-      category: string;
-      tags?: string[];
-      repo_url?: string;
-      demo_url?: string;
-    },
-    apiKey: string
-  ) =>
-    request<{ idea: Idea }>(`/ideas`, {
-      method: "POST",
-      body: JSON.stringify(data),
-      headers: withApiKey(apiKey),
-    }),
-
   // Social
   likeIdea: (id: string, apiKey: string) =>
     request<{ message: string }>(`/ideas/${id}/like`, {

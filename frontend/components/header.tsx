@@ -155,10 +155,10 @@ export function Header() {
           )}
 
           <Link
-            href="/ideas/new"
+            href="/chat"
             className="hidden sm:inline-flex items-center gap-1.5 gradient-btn px-5 py-2.5 text-sm"
           >
-            + 发布想法
+            + 对话创建
           </Link>
 
           <button
@@ -193,8 +193,8 @@ export function Header() {
                 通知
               </Link>
             )}
-            <Link href="/ideas/new" className="block text-sm text-[var(--primary)] font-medium" onClick={() => setMenuOpen(false)}>
-              + 发布想法
+            <Link href="/chat" className="block text-sm text-[var(--primary)] font-medium" onClick={() => setMenuOpen(false)}>
+              + 对话创建
             </Link>
             {!user && (
               <Link href="/login" className="block text-sm text-[var(--primary)]" onClick={() => setMenuOpen(false)}>

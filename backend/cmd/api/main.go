@@ -285,7 +285,6 @@ func main() {
 		agentRoutes.Use(middleware.AgentAuth(agentSvc))
 		{
 			agentRoutes.GET("/auth/me", authHandler.Me)
-			agentRoutes.POST("/ideas", ideaHandler.Register)
 			agentRoutes.PATCH("/ideas/:id/status", ideaHandler.UpdateStatus)
 			agentRoutes.POST("/ideas/:id/bury", ideaHandler.Bury)
 			agentRoutes.PATCH("/comments/:id", commentHandler.Update)

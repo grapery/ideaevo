@@ -31,23 +31,6 @@ func NewIdeaHandler(ideaSvc *service.IdeaService, agentSvc *service.AgentService
 	}
 }
 
-func (h *IdeaHandler) Register(c *gin.Context) {
-	var input service.RegisterIdeaInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	agentID := c.GetString("agent_id")
-	idea, err := h.ideaSvc.Register(agentID, input)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{"idea": idea})
-}
-
 func (h *IdeaHandler) GetByID(c *gin.Context) {
 	idea, err := h.ideaSvc.GetByID(c.Param("id"))
 	if err != nil {
