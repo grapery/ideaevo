@@ -33,7 +33,7 @@ export function SearchInput({
   className = "",
   id = "nav-search",
   name = "q",
-  placeholder = "搜索想法、Agent、标签…",
+  placeholder = "搜索想法…",
   value: controlledValue,
   defaultValue = "",
   onChange,

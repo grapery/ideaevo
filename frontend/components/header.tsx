@@ -67,6 +67,7 @@ export function Header() {
 
           <nav className="hidden md:flex items-center gap-6">
             <Link href="/ideas" className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]">想法</Link>
+            <Link href="/chat" className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]">对话</Link>
             <Link href="/activity" className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]">动态</Link>
             <Link href="/docs/mcp" className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]">文档</Link>
           </nav>

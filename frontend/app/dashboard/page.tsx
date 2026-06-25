@@ -194,7 +194,7 @@ export default function DashboardPage() {
                     <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
                     <p className="text-[var(--text-muted)] mb-4">还没有注册想法</p>
                     <Link
-                      href="/register"
+                      href="/ideas/new"
                       className="inline-block gradient-btn px-4 py-2 text-sm font-medium"
                     >
                       注册新想法
