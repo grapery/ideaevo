@@ -6,6 +6,7 @@ import { AppLink as AppLinkComponent } from "@/components/app-link";
 import { userApi, chatApi } from "@/lib/api-client";
 import { getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/lib/auth-context";
+import { useApiKey } from "@/lib/api-key-context";
 import { Idea, User, ChatSession } from "@/lib/types";
 import { IdeaCard } from "@/components/idea-card";
 import { ActivityList, ActivityLog } from "@/components/activity-list";
@@ -18,7 +19,7 @@ const AppLink = AppLinkComponent as unknown as React.ComponentType<{
   children: React.ReactNode;
 }>;
 
-type Tab = "overview" | "ideas" | "activity" | "followers" | "following" | "sessions";
+type Tab = "overview" | "ideas" | "activity" | "followers" | "following" | "sessions" | "api";
 
 interface ProfileStats {
   idea_count?: number;
@@ -133,6 +134,7 @@ export function UserProfileBody({
     { key: "followers", label: "关注者", count: followersTotal },
     { key: "following", label: "关注中", count: followingTotal },
     { key: "sessions", label: "对话", ownOnly: true },
+    { key: "api", label: "API 管理", ownOnly: true },
   ].filter((t) => !t.ownOnly || isOwn) as { key: Tab; label: string; count?: number; ownOnly?: boolean }[];
 
   const ideaCount = stats.idea_count ?? 0;
@@ -229,6 +231,8 @@ export function UserProfileBody({
           {tab === "sessions" && isOwn && (
             <SessionsTab sessions={sessions} />
           )}
+
+          {tab === "api" && isOwn && <ApiKeyTab />}
         </main>
 
         {/* Sidebar */}
@@ -376,5 +380,89 @@ function Loading() {
     <div className="flex items-center justify-center py-12">
       <div className="animate-spin w-6 h-6 border-2 border-[var(--primary)] border-t-transparent rounded-full" />
     </div>
+  );
+}
+
+// ApiKeyTab —— Agent API Key 管理（原 dashboard 的 Agent-centric 功能合并到主页）。
+// 用户可以通过 API Key 在本地 AI 工具中调用 MCP 工具创建想法、操作 idea。
+function ApiKeyTab() {
+  const { apiKey, setApiKey, agentId, agentName, isReady } = useApiKey();
+  const [inputKey, setInputKey] = useState("");
+  const [revealed, setRevealed] = useState(false);
+
+  const handleSet = () => {
+    if (inputKey.trim()) {
+      setApiKey(inputKey.trim());
+      setInputKey("");
+    }
+  };
+
+  return (
+    <section className="surface-card p-6 space-y-6">
+      <div>
+        <h2 className="text-base font-semibold text-[var(--title)]">Agent API Key</h2>
+        <p className="text-sm text-[var(--text-muted)] mt-1">
+          通过 API Key 在本地 AI 工具（MCP）或你的代理 Agent（A2A）中调用系统能力。
+        </p>
+      </div>
+
+      {isReady ? (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)]/50 p-4">
+            <p className="text-sm text-[var(--text-muted)]">当前绑定的 Agent</p>
+            <p className="text-base font-medium text-[var(--title)] mt-1">{agentName || "Agent"}</p>
+            {agentId && (
+              <p className="text-xs text-[var(--text-muted)] mt-1 font-mono">{agentId}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[var(--title)] mb-1.5">API Key</label>
+            <div className="flex gap-2">
+              <input
+                type={revealed ? "text" : "password"}
+                readOnly
+                value={apiKey || ""}
+                className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm font-mono text-[var(--text-secondary)]"
+              />
+              <button
+                onClick={() => setRevealed(!revealed)}
+                className="rounded-lg border border-[var(--divider)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+              >
+                {revealed ? "隐藏" : "显示"}
+              </button>
+            </div>
+          </div>
+          <button
+            onClick={() => setApiKey("")}
+            className="rounded-lg border border-[var(--coral)]/30 px-4 py-2 text-sm text-[var(--coral)] hover:bg-[var(--coral-soft)]"
+          >
+            解除绑定
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-[var(--title)]">输入 Agent API Key</label>
+          <div className="max-w-md flex gap-2">
+            <input
+              type="password"
+              value={inputKey}
+              onChange={(e) => setInputKey(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSet()}
+              placeholder="wanye_xxxxxxxx"
+              className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm"
+            />
+            <button onClick={handleSet} className="gradient-btn px-5 py-2 text-sm font-medium">
+              确认
+            </button>
+          </div>
+          <p className="text-xs text-[var(--text-muted)]">
+            还没有 API Key？
+            <Link href="/register" className="text-[var(--primary)] hover:underline ml-1">
+              注册 Agent
+            </Link>
+          </p>
+        </div>
+      )}
+    </section>
   );
 }

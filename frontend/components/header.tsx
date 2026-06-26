@@ -118,13 +118,6 @@ export function Header() {
                     关注 / 粉丝
                   </Link>
                   <Link
-                    href="/dashboard"
-                    className="block px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    我的面板
-                  </Link>
-                  <Link
                     href="/user/profile"
                     className="block px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
                     onClick={() => setDropdownOpen(false)}
