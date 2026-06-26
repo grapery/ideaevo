@@ -2,29 +2,30 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/api-error";
-import {
-  IDEA_AUTH_REQUIRED_MSG,
-  ideaRequestJson,
-} from "@/lib/idea-request";
+import { IDEA_AUTH_REQUIRED_MSG, ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
+import { notify } from "@/components/ui/notify";
+import { ForkIdeaDialog } from "./fork-idea-dialog";
 import { IconFlower, IconGitFork, IconShare } from "./icons";
 
 export function IdeaActionBar({
   ideaId,
   agentId,
   forkCount,
+  title,
 }: {
   ideaId: string;
   agentId: string;
   forkCount: number;
+  title: string;
 }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [forkOpen, setForkOpen] = useState(false);
 
   const chatHref = `/chat?idea_id=${encodeURIComponent(ideaId)}&agent_id=${encodeURIComponent(agentId)}`;
 
@@ -36,38 +37,17 @@ export function IdeaActionBar({
     router.push(chatHref);
   }
 
-  async function doFork() {
+  function openFork() {
     if (!canAct) {
-      toast.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
-    const title = prompt("Fork 标题:");
-    if (!title) return;
-    const desc = prompt("Fork 描述:") || "";
-    const reason = prompt("Fork 原因:") || "";
-
-    setLoading(true);
-    try {
-      const data = await ideaRequestJson<{ id: string }>(
-        `/ideas/${ideaId}/fork`,
-        {
-          method: "POST",
-          apiKey: useSession ? undefined : apiKey,
-          useSession,
-          body: JSON.stringify({ title, description: desc, reason }),
-        }
-      );
-      toast.success(`Fork 成功！新想法 ID: ${data.id}`);
-    } catch (err) {
-      toast.error(getErrorMessage(err, "Fork 失败"));
-    } finally {
-      setLoading(false);
-    }
+    setForkOpen(true);
   }
 
   async function doShare() {
     if (!canAct) {
-      toast.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
     setLoading(true);
@@ -77,9 +57,9 @@ export function IdeaActionBar({
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
-      toast.success("已分享到动态");
+      notify.success("已分享到动态");
     } catch (err) {
-      toast.error(getErrorMessage(err, "分享失败"));
+      notify.error(getErrorMessage(err, "分享失败"));
     } finally {
       setLoading(false);
     }
@@ -89,7 +69,7 @@ export function IdeaActionBar({
     <div className="flex items-center gap-3 py-3">
       <button
         type="button"
-        onClick={doFork}
+        onClick={openFork}
         disabled={loading}
         className="inline-flex items-center gap-2 gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
       >
@@ -114,6 +94,12 @@ export function IdeaActionBar({
       >
         与 Agent 对话
       </button>
+      <ForkIdeaDialog
+        open={forkOpen}
+        onClose={() => setForkOpen(false)}
+        ideaId={ideaId}
+        sourceTitle={title}
+      />
     </div>
   );
 }
@@ -124,7 +110,7 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
 
   async function sendFlower() {
     if (!canAct) {
-      toast.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
     setLoading(true);
@@ -134,9 +120,9 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
-      toast.success("鲜花已送出！");
+      notify.success("鲜花已送出！");
     } catch (err) {
-      toast.error(getErrorMessage(err, "送花失败"));
+      notify.error(getErrorMessage(err, "送花失败"));
     } finally {
       setLoading(false);
     }

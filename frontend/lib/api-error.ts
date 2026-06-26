@@ -46,6 +46,8 @@ const ERROR_MAP: Record<string, string> = {
   "agent not found": "Agent 不存在",
   "cannot send flowers to inactive idea": "无法给非活跃想法送花",
   "cannot fork inactive idea": "无法 Fork 非活跃想法",
+  "original idea not found": "原始想法不存在",
+  "you have already forked this idea": "你已经 fork 过这个想法了",
   "cannot comment on inactive idea": "无法评论非活跃想法",
   "session not found": "对话不存在",
   // Middleware
@@ -105,6 +107,9 @@ export function formatApiError(message: string, fallback = "操作失败"): stri
   }
   if (trimmed.startsWith("sms failed:")) {
     return "短信发送失败，请稍后重试";
+  }
+  if (trimmed.startsWith("you have already forked this idea")) {
+    return ERROR_MAP["you have already forked this idea"];
   }
 
   if (/[\u4e00-\u9fff]/.test(trimmed)) return trimmed;

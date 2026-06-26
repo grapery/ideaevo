@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { AuthBrandPanel } from "@/components/auth-brand-panel";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
@@ -51,7 +51,7 @@ export default function WeChatPhonePage() {
     setSending(true);
     try {
       await authApi.sendPhoneCode(trimmed);
-      toast.success("验证码已发送");
+      notify.success("验证码已发送");
       setCooldown(60);
     } catch (err) {
       const msg = getErrorMessage(err, "发送失败");
@@ -76,7 +76,7 @@ export default function WeChatPhonePage() {
     try {
       await authApi.verifyPhone(trimmed, code.trim());
       await refreshUser();
-      toast.success("手机验证成功");
+      notify.success("手机验证成功");
       router.push("/dashboard");
     } catch (err) {
       setErrors({ code: getErrorMessage(err, "验证失败") });

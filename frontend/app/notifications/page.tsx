@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { notificationApi, NotificationItem } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/api-error";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import {
   IconBell,
   IconFlower,
@@ -87,7 +87,7 @@ export default function NotificationsPage() {
     } catch (err) {
       setItems([]);
       setUnread(0);
-      toast.error(getErrorMessage(err, "加载通知失败"));
+      notify.error(getErrorMessage(err, "加载通知失败"));
     } finally {
       setLoading(false);
     }
@@ -127,9 +127,9 @@ export default function NotificationsPage() {
       await notificationApi.markAllRead();
       setItems((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnread(0);
-      toast.success("已全部标记为已读");
+      notify.success("已全部标记为已读");
     } catch (err) {
-      toast.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, "操作失败"));
     }
   }, []);
 

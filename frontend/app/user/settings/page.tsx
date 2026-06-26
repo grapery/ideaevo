@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Switch } from "@/components/ui/switch";
 import { ChatSession } from "@/lib/types";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import {
   IconUser,
@@ -144,9 +144,9 @@ export default function SettingsPage() {
         background_url: backgroundUrl.trim() || undefined,
       });
       if (res.user) await refreshUser();
-      toast.success("资料已更新");
+      notify.success("资料已更新");
     } catch (err) {
-      toast.error(getErrorMessage(err, "更新失败"));
+      notify.error(getErrorMessage(err, "更新失败"));
     } finally {
       setSavingProfile(false);
     }
@@ -156,11 +156,11 @@ export default function SettingsPage() {
     async (kind: "avatar" | "background", file: File) => {
       const allowed = ["image/jpeg", "image/png", "image/webp"];
       if (!allowed.includes(file.type)) {
-        toast.error("仅支持 JPEG、PNG、WebP 图片");
+        notify.error("仅支持 JPEG、PNG、WebP 图片");
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("图片不能超过 5MB");
+        notify.error("图片不能超过 5MB");
         return;
       }
       const setUploading = kind === "avatar" ? setUploadingAvatar : setUploadingBackground;
@@ -182,9 +182,9 @@ export default function SettingsPage() {
         if (kind === "avatar") setAvatarUrl(presign.public_url);
         else setBackgroundUrl(presign.public_url);
         if (res.user) await refreshUser();
-        toast.success(kind === "avatar" ? "头像已更新" : "背景已更新");
+        notify.success(kind === "avatar" ? "头像已更新" : "背景已更新");
       } catch (err) {
-        toast.error(getErrorMessage(err, "上传失败"));
+        notify.error(getErrorMessage(err, "上传失败"));
       } finally {
         setUploading(false);
       }
@@ -197,9 +197,9 @@ export default function SettingsPage() {
       const res = await userApi.resetAvatar();
       if (res.user?.avatar_url) setAvatarUrl(res.user.avatar_url);
       await refreshUser();
-      toast.success("已恢复默认头像");
+      notify.success("已恢复默认头像");
     } catch (err) {
-      toast.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, "操作失败"));
     }
   }, [refreshUser]);
 
@@ -208,23 +208,23 @@ export default function SettingsPage() {
       const res = await userApi.resetBackground();
       if (res.user?.background_url) setBackgroundUrl(res.user.background_url);
       await refreshUser();
-      toast.success("已恢复默认背景");
+      notify.success("已恢复默认背景");
     } catch (err) {
-      toast.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, "操作失败"));
     }
   }, [refreshUser]);
 
   const sendDeleteSms = useCallback(async () => {
     if (!deletePhone.trim()) {
-      toast.error("请输入手机号");
+      notify.error("请输入手机号");
       return;
     }
     try {
       await authApi.sendPhoneCode(deletePhone.trim(), "account_delete");
-      toast.success("验证码已发送");
+      notify.success("验证码已发送");
       setDeleteSmsCooldown(60);
     } catch (err) {
-      toast.error(getErrorMessage(err, "发送失败"));
+      notify.error(getErrorMessage(err, "发送失败"));
     }
   }, [deletePhone]);
 
@@ -235,21 +235,21 @@ export default function SettingsPage() {
       const payload: Parameters<typeof userApi.deleteAccount>[0] = {};
       if (user.auth_provider === "email") {
         if (!deletePwd) {
-          toast.error("请输入密码确认");
+          notify.error("请输入密码确认");
           setDeleting(false);
           return;
         }
         payload.password = deletePwd;
       } else if (user.auth_provider === "google") {
         if (deleteConfirm !== "DELETE") {
-          toast.error('请输入 DELETE 确认');
+          notify.error('请输入 DELETE 确认');
           setDeleting(false);
           return;
         }
         payload.confirm_text = deleteConfirm;
       } else if (user.auth_provider === "wechat") {
         if (!deletePhone || !deleteSmsCode) {
-          toast.error("请完成手机验证");
+          notify.error("请完成手机验证");
           setDeleting(false);
           return;
         }
@@ -257,10 +257,10 @@ export default function SettingsPage() {
         payload.sms_code = deleteSmsCode;
       }
       await userApi.deleteAccount(payload);
-      toast.success("账号已注销");
+      notify.success("账号已注销");
       window.location.href = "/";
     } catch (err) {
-      toast.error(getErrorMessage(err, "注销失败"));
+      notify.error(getErrorMessage(err, "注销失败"));
     } finally {
       setDeleting(false);
     }
@@ -268,21 +268,21 @@ export default function SettingsPage() {
 
   const sendChangePhoneCode = useCallback(async () => {
     if (!changePhone.trim()) {
-      toast.error("请输入新手机号");
+      notify.error("请输入新手机号");
       return;
     }
     try {
       await authApi.sendPhoneCode(changePhone.trim(), "change_phone");
-      toast.success("验证码已发送");
+      notify.success("验证码已发送");
       setChangeCooldown(60);
     } catch (err) {
-      toast.error(getErrorMessage(err, "发送失败"));
+      notify.error(getErrorMessage(err, "发送失败"));
     }
   }, [changePhone]);
 
   const verifyChangePhone = useCallback(async () => {
     if (!changePhone.trim() || !changeCode.trim()) {
-      toast.error("请填写手机号和验证码");
+      notify.error("请填写手机号和验证码");
       return;
     }
     setChangingPhone(true);
@@ -291,9 +291,9 @@ export default function SettingsPage() {
       await refreshUser();
       setChangePhone("");
       setChangeCode("");
-      toast.success("手机号已更新");
+      notify.success("手机号已更新");
     } catch (err) {
-      toast.error(getErrorMessage(err, "验证失败"));
+      notify.error(getErrorMessage(err, "验证失败"));
     } finally {
       setChangingPhone(false);
     }
@@ -311,7 +311,7 @@ export default function SettingsPage() {
     setSavingPwd(true);
     try {
       await userApi.changePassword(oldPwd, newPwd);
-      toast.success("密码已修改");
+      notify.success("密码已修改");
       setOldPwd("");
       setNewPwd("");
       setConfirmPwd("");
@@ -326,10 +326,10 @@ export default function SettingsPage() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
       setPrefsSaved(true);
-      toast.success("通知偏好已保存");
+      notify.success("通知偏好已保存");
       setTimeout(() => setPrefsSaved(false), 2000);
     } catch {
-      toast.error("保存失败");
+      notify.error("保存失败");
     }
   }, [prefs]);
 

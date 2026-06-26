@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { AuthBrandPanel } from "@/components/auth-brand-panel";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
@@ -45,9 +45,9 @@ export default function SignupPage() {
     try {
       await register(name, email, password);
       setSuccess(true);
-      toast.success("注册成功，请查收验证邮件");
+      notify.success("注册成功，请查收验证邮件");
     } catch (err) {
-      toast.error(getErrorMessage(err, "注册失败"));
+      notify.error(getErrorMessage(err, "注册失败"));
     } finally {
       setLoading(false);
     }

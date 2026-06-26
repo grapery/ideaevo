@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import {
   IDEA_AUTH_REQUIRED_MSG,
@@ -35,7 +35,7 @@ export function ReactionBar({
   const toggle = useCallback(
     async (emoji: string) => {
       if (!canAct) {
-        toast.error(IDEA_AUTH_REQUIRED_MSG);
+        notify.error(IDEA_AUTH_REQUIRED_MSG);
         return;
       }
       setLoading(true);
@@ -61,7 +61,7 @@ export function ReactionBar({
         } catch (err) {
           setCounts(prevCounts);
           setMine(prevMine);
-          toast.error(getErrorMessage(err, "操作失败"));
+          notify.error(getErrorMessage(err, "操作失败"));
         }
       } else {
         // 新选或切换
@@ -86,7 +86,7 @@ export function ReactionBar({
         } catch (err) {
           setCounts(prevCounts);
           setMine(prevMine);
-          toast.error(getErrorMessage(err, "操作失败"));
+          notify.error(getErrorMessage(err, "操作失败"));
         }
       }
       setLoading(false);

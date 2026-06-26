@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { IconLeaf } from "@/components/icons";
 import { agentApi } from "@/lib/api-client";
 
@@ -72,7 +72,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
         setLoading(false);
       })
       .catch(() => {
-        toast.error("加载 Agent 失败");
+        notify.error("加载 Agent 失败");
         setLoading(false);
       });
   }, [agentId]);
@@ -92,9 +92,9 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
         }),
       });
       if (!res.ok) throw new Error(await res.text());
-      toast.success("配置已保存");
+      notify.success("配置已保存");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "保存失败");
+      notify.error(err instanceof Error ? err.message : "保存失败");
     } finally {
       setSaving(false);
     }
@@ -110,9 +110,9 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
       if (!putRes.ok) throw new Error("上传失败");
       await agentApi.updateAgent(agentId, { [kind === "avatar" ? "avatar_url" : "background_url"]: presign.public_url });
       setAgent((prev) => (prev ? { ...prev, [kind === "avatar" ? "avatar_url" : "background_url"]: presign.public_url } : prev));
-      toast.success(kind === "avatar" ? "头像已更新" : "背景图已更新");
+      notify.success(kind === "avatar" ? "头像已更新" : "背景图已更新");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "上传失败");
+      notify.error(err instanceof Error ? err.message : "上传失败");
     } finally {
       setUploading(false);
     }

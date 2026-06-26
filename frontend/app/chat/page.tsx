@@ -11,7 +11,7 @@ import Link from "next/link";
 import { SearchInput } from "@/components/search-input";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 
 export default function ChatPage() {
@@ -119,7 +119,7 @@ export default function ChatPage() {
         });
         setActiveId(created.session.id);
       } catch (err) {
-        toast.error(getErrorMessage(err, "创建对话失败"));
+        notify.error(getErrorMessage(err, "创建对话失败"));
         setNewAgentId(targetAgentId);
         setShowNewDialog(true);
       } finally {
@@ -139,7 +139,7 @@ export default function ChatPage() {
       setMessages(res.messages);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     } catch (err) {
-      toast.error(getErrorMessage(err, "加载消息失败"));
+      notify.error(getErrorMessage(err, "加载消息失败"));
     }
   }, []);
 
@@ -327,7 +327,7 @@ export default function ChatPage() {
       setNewAgentId("");
       setNewTitle("");
     } catch (err) {
-      toast.error(getErrorMessage(err, "创建对话失败"));
+      notify.error(getErrorMessage(err, "创建对话失败"));
     } finally {
       setCreatingSession(false);
     }
@@ -342,7 +342,7 @@ export default function ChatPage() {
         setMessages([]);
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, "删除失败"));
+      notify.error(getErrorMessage(err, "删除失败"));
     }
   };
 
@@ -367,7 +367,7 @@ export default function ChatPage() {
             m.id === messageId ? { ...m, user_feedback: prevFeedback } : m
           )
         );
-        toast.error(getErrorMessage(err, "反馈失败"));
+        notify.error(getErrorMessage(err, "反馈失败"));
       }
     },
     [activeId, messages]
@@ -382,9 +382,9 @@ export default function ChatPage() {
         });
         setSessions((prev) => [res.session, ...prev]);
         setActiveId(res.session.id);
-        toast.success("已创建分支对话");
+        notify.success("已创建分支对话");
       } catch (err) {
-        toast.error(getErrorMessage(err, "分支失败"));
+        notify.error(getErrorMessage(err, "分支失败"));
       }
     },
     [activeId]

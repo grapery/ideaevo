@@ -43,7 +43,18 @@ export default function RootLayout({
             <SiteFooter />
           </ApiKeyProvider>
         </AuthProvider>
-        <Toaster position="top-center" richColors />
+        <Toaster
+          position="top-center"
+          richColors
+          closeButton
+          toastOptions={{
+            style: {
+              borderRadius: "12px",
+              fontFamily: "var(--font-sans)",
+              fontSize: "14px",
+            },
+          }}
+        />
       </body>
     </html>
   );

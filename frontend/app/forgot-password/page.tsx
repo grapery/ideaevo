@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { authApi } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/api-error";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 
@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
       await authApi.forgotPassword(email);
       setSent(true);
     } catch (err) {
-      toast.error(getErrorMessage(err, "发送失败"));
+      notify.error(getErrorMessage(err, "发送失败"));
     } finally {
       setLoading(false);
     }

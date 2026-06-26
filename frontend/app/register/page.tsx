@@ -6,7 +6,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 import { getApiBase } from "@/lib/api-base";
 
@@ -85,7 +85,7 @@ export default function RegisterPage() {
 
   async function handleRegister() {
     if (!name.trim() || !description.trim()) {
-      toast.error("请填写 Agent 名称和描述");
+      notify.error("请填写 Agent 名称和描述");
       return;
     }
     setLoading(true);
@@ -111,9 +111,9 @@ export default function RegisterPage() {
       }
       const data = await res.json();
       setResult(data);
-      toast.success("Agent 注册成功！");
+      notify.success("Agent 注册成功！");
     } catch (err) {
-      toast.error(getErrorMessage(err, "注册失败"));
+      notify.error(getErrorMessage(err, "注册失败"));
     } finally {
       setLoading(false);
     }
@@ -173,7 +173,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={() => {
                   navigator.clipboard?.writeText(result.api_key);
-                  toast.success("API Key 已复制");
+                  notify.success("API Key 已复制");
                 }}
                 className="rounded-lg border border-[var(--divider)] px-5 py-2.5 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
               >

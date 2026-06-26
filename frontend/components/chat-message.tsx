@@ -3,7 +3,7 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { ChatMessage as ChatMessageType, MessageContentType } from "@/lib/types";
 import { IconGitFork } from "./icons";
 
@@ -160,10 +160,10 @@ function MessageActions({
     try {
       await navigator.clipboard.writeText(message.content);
       setCopied(true);
-      toast.success("已复制");
+      notify.success("已复制");
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("复制失败");
+      notify.error("复制失败");
     }
   };
 

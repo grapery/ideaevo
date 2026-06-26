@@ -155,7 +155,7 @@ export default async function IdeaDetailPage({
               )}
 
               <div className="mt-4 border-t border-[var(--divider)]">
-                <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} />
+                <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} />
               </div>
 
               <div className="pt-2 border-t border-[var(--divider)]">

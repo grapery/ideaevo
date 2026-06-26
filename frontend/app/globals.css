@@ -463,8 +463,26 @@ a {
 .field-shake {
   animation: field-shake 0.35s ease;
 }
+
+/* Modal animations */
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-card-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-backdrop {
+  animation: modal-backdrop-in 0.18s ease-out;
+}
+.modal-card {
+  animation: modal-card-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
 @media (prefers-reduced-motion: reduce) {
-  .field-shake {
+  .field-shake,
+  .modal-backdrop,
+  .modal-card {
     animation: none;
   }
 }

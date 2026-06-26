@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { authApi } from "@/lib/api-client";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -59,16 +59,16 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     if (!validate()) return;
     if (!token) {
-      toast.error("无效的重置链接");
+      notify.error("无效的重置链接");
       return;
     }
     setLoading(true);
     try {
       await authApi.resetPassword(token, password);
       setDone(true);
-      toast.success("密码重置成功");
+      notify.success("密码重置成功");
     } catch (err) {
-      toast.error(getErrorMessage(err, "重置失败"));
+      notify.error(getErrorMessage(err, "重置失败"));
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/wanye/ideaevo/internal/model"
@@ -120,6 +121,14 @@ func (s *SocialService) ForkIdea(input ForkIdeaInput) (*model.Idea, error) {
 		var original model.Idea
 		if err := tx.First(&original, "id = ?", input.IdeaID).Error; err != nil {
 			return fmt.Errorf("original idea not found: %w", err)
+		}
+
+		// 重复 fork 检测：同一 agent 对同一源想法只允许 fork 一次。
+		var existing model.Fork
+		if err := tx.Where("source_idea_id = ? AND agent_id = ?", input.IdeaID, input.AgentID).First(&existing).Error; err == nil {
+			return fmt.Errorf("you have already forked this idea: %s", existing.NewIdeaID)
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
 		}
 
 		cat := input.Category

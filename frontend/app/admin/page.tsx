@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { PasswordInput } from "@/components/ui/password-input";
 import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 import { getApiBase } from "@/lib/api-base";
@@ -43,10 +43,10 @@ export default function AdminPage() {
         }
       );
       if (!res.ok) throw new Error(await parseResponseError(res, "操作失败"));
-      toast.success(approved ? "评论已通过" : "评论已拒绝");
+      notify.success(approved ? "评论已通过" : "评论已拒绝");
       setComments((prev) => prev.filter((c) => c.id !== commentId));
     } catch (err) {
-      toast.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, "操作失败"));
     }
   }
 

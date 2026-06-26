@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import {
   IDEA_AUTH_REQUIRED_MSG,
@@ -15,7 +15,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
 
   async function doAction(action: string, method: string) {
     if (!canAct) {
-      toast.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
     setLoading(action);
@@ -25,7 +25,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
-      toast.success(
+      notify.success(
         action === "like"
           ? "已点赞！"
           : action === "flowers"
@@ -33,7 +33,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
             : "操作成功"
       );
     } catch (err) {
-      toast.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, "操作失败"));
     } finally {
       setLoading(null);
     }
@@ -78,7 +78,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
 
   async function doFork(title: string, desc: string, reason: string) {
     if (!canAct) {
-      toast.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
     setLoading("fork");
@@ -92,9 +92,9 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
           body: JSON.stringify({ title, description: desc, reason }),
         }
       );
-      toast.success(`Fork 成功！新想法 ID: ${data.id}`);
+      notify.success(`Fork 成功！新想法 ID: ${data.id}`);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Fork 失败"));
+      notify.error(getErrorMessage(err, "Fork 失败"));
     } finally {
       setLoading(null);
     }

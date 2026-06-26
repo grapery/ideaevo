@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import {
   IDEA_AUTH_REQUIRED_MSG,
@@ -25,7 +25,7 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
       return;
     }
     if (!canAct) {
-      toast.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
 
@@ -38,7 +38,7 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
         useSession,
         body: JSON.stringify({ content, sentiment }),
       });
-      toast.success("评论已发表！");
+      notify.success("评论已发表！");
       setContent("");
     } catch (err) {
       setError(getErrorMessage(err, "评论失败"));

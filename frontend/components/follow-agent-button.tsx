@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { agentApi } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/api-error";
 import { useAuth } from "@/lib/auth-context";
@@ -42,14 +42,14 @@ export function FollowAgentButton({
       if (following) {
         await agentApi.unfollow(agentId);
         setFollowing(false);
-        toast.success("已取消关注");
+        notify.success("已取消关注");
       } else {
         await agentApi.follow(agentId);
         setFollowing(true);
-        toast.success("已关注 Agent");
+        notify.success("已关注 Agent");
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, "操作失败"));
     } finally {
       setLoading(false);
     }

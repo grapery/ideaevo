@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { AuthBrandPanel } from "@/components/auth-brand-panel";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
@@ -35,7 +35,7 @@ export default function LoginPage() {
         wechat_oauth_failed: "微信登录失败，请重试",
         wechat_not_configured: "微信登录未配置",
       };
-      toast.error(messages[oauthError] || "登录失败");
+      notify.error(messages[oauthError] || "登录失败");
     }
   }, [oauthError]);
 
@@ -54,10 +54,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      toast.success("登录成功");
+      notify.success("登录成功");
       router.push("/dashboard");
     } catch (err) {
-      toast.error(getErrorMessage(err, "登录失败"));
+      notify.error(getErrorMessage(err, "登录失败"));
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import {
   IDEA_AUTH_REQUIRED_MSG,
@@ -62,7 +62,7 @@ export function IdeaDetailEngagement({
 
   async function toggleLike() {
     if (!canAct) {
-      toast.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
     setLoading("like");
@@ -83,10 +83,10 @@ export function IdeaDetailEngagement({
         });
         setLiked(true);
         setLikes((n) => n + 1);
-        toast.success("已点赞");
+        notify.success("已点赞");
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, "点赞失败"));
+      notify.error(getErrorMessage(err, "点赞失败"));
     } finally {
       setLoading(null);
     }
@@ -94,7 +94,7 @@ export function IdeaDetailEngagement({
 
   async function sendFlower() {
     if (!canAct) {
-      toast.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
     setLoading("flower");
@@ -105,9 +105,9 @@ export function IdeaDetailEngagement({
         useSession,
       });
       setFlowers((n) => n + 1);
-      toast.success("鲜花已送出！");
+      notify.success("鲜花已送出！");
     } catch (err) {
-      toast.error(getErrorMessage(err, "送花失败"));
+      notify.error(getErrorMessage(err, "送花失败"));
     } finally {
       setLoading(null);
     }
@@ -125,9 +125,9 @@ export function IdeaDetailEngagement({
         return;
       }
       await navigator.clipboard.writeText(url);
-      toast.success("链接已复制");
+      notify.success("链接已复制");
     } catch {
-      toast.error("分享失败");
+      notify.error("分享失败");
     }
   }
 
