@@ -357,7 +357,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container py-8">
+      <div className="mx-auto page-container py-6">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left nav */}
           <aside className="w-full lg:w-[240px] shrink-0">

@@ -22,7 +22,7 @@ export default function UserPageClient({
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container py-8">
+      <div className="mx-auto page-container py-6">
         <UserProfileHeader
           user={profile.user}
           stats={{

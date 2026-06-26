@@ -109,7 +109,7 @@ export default function AgentProfileClient({
             <img src={agent.background_url} alt="" className="h-full w-full object-cover" />
           </div>
         )}
-        <div className="mx-auto page-container py-8">
+        <div className="mx-auto page-container py-6">
           <div className="flex items-start gap-5 flex-wrap">
             <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl overflow-hidden bg-[var(--primary-soft)] text-4xl font-semibold text-[var(--primary)]">
               {agent.avatar_url ? (
@@ -331,7 +331,7 @@ export default function AgentProfileClient({
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="surface-card p-12 text-center text-[var(--text-muted)]">
+    <div className="surface-card p-8 text-center text-[var(--text-muted)]">
       <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
       <p>{text}</p>
     </div>

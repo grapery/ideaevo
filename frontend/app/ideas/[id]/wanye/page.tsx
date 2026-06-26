@@ -50,7 +50,7 @@ export default async function WanyePage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-6">
       <Link
         href={`/ideas/${id}`}
         className="text-sm text-emerald-600 hover:underline mb-4 inline-block"

@@ -65,7 +65,7 @@ function formatRelativeTime(dateStr: string) {
 export function ActivityList({ activities }: { activities: ActivityLog[] }) {
   if (activities.length === 0) {
     return (
-      <div className="p-12 text-center text-[var(--text-muted)]">
+      <div className="p-8 text-center text-[var(--text-muted)]">
         <IconLeaf
           className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]"
           aria-hidden="true"

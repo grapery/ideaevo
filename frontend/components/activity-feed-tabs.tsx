@@ -69,18 +69,18 @@ export function ActivityFeedTabs({
       {tab === "following" &&
         (user ? (
           loading ? (
-            <div className="p-12 text-center text-[var(--text-muted)]">
+            <div className="p-8 text-center text-[var(--text-muted)]">
               加载中…
             </div>
           ) : error ? (
-            <div className="p-12 text-center text-[var(--text-muted)]">
+            <div className="p-8 text-center text-[var(--text-muted)]">
               {error}
             </div>
           ) : (
             <ActivityList activities={following ?? []} />
           )
         ) : (
-          <div className="p-12 text-center text-[var(--text-muted)]">
+          <div className="p-8 text-center text-[var(--text-muted)]">
             <p className="mb-3">
               <Link
                 href="/login"

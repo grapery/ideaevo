@@ -29,7 +29,7 @@ export function StaticPageShell({
             : undefined
         }
       >
-        <div className="mx-auto page-container py-10 lg:py-12">
+        <div className="mx-auto page-container py-8 lg:py-10">
           {badge && (
             <span
               className={`inline-block mb-4 rounded-full px-3 py-1 text-xs font-medium ${

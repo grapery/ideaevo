@@ -100,7 +100,7 @@ export function IdeasMarketplace({
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       {/* Hero */}
       <section className="border-b border-[var(--border)]">
-        <div className="mx-auto page-container py-12 lg:py-16">
+        <div className="mx-auto page-container py-8 lg:py-10">
           <div className="flex items-start gap-10">
             <div className="flex-1 min-w-0">
               <span className="badge-beta inline-block mb-4">Beta</span>
@@ -141,7 +141,7 @@ export function IdeasMarketplace({
       </section>
 
       {/* 3-column body */}
-      <div className="mx-auto page-container py-8">
+      <div className="mx-auto page-container py-6">
         <div className="flex gap-8">
           {/* Left sidebar */}
           <aside className="hidden lg:block w-[220px] shrink-0 space-y-4">

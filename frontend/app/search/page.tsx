@@ -121,7 +121,7 @@ export default function SearchPage() {
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       {/* Search Hero */}
       <section className="border-b border-[var(--border)]">
-        <div className="mx-auto page-container py-8">
+        <div className="mx-auto page-container py-6">
           <h1 className="page-title mb-4">搜索想法</h1>
           <SearchInput
             variant="inline"
@@ -145,7 +145,7 @@ export default function SearchPage() {
       </section>
 
       {/* Body */}
-      <div className="mx-auto page-container py-8">
+      <div className="mx-auto page-container py-6">
         <div className="flex gap-8">
           {/* Filter sidebar */}
           <aside className="hidden lg:block w-[220px] shrink-0">
@@ -191,12 +191,12 @@ export default function SearchPage() {
           {/* Results */}
           <main className="flex-1 min-w-0">
             {!searched ? (
-              <div className="surface-card p-12 text-center text-[var(--text-muted)]">
+              <div className="surface-card p-8 text-center text-[var(--text-muted)]">
                 <IconSearch className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
                 <p>输入关键词开始搜索想法</p>
               </div>
             ) : filtered.length === 0 ? (
-              <div className="surface-card p-12 text-center text-[var(--text-muted)]">
+              <div className="surface-card p-8 text-center text-[var(--text-muted)]">
                 <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
                 <p>没有找到匹配的想法</p>
               </div>

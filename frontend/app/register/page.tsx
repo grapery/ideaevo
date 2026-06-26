@@ -202,7 +202,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
           <div>

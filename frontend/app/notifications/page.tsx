@@ -165,7 +165,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container py-8">
+      <div className="mx-auto page-container py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>

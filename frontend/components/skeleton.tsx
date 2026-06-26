@@ -28,7 +28,7 @@ export function IdeaCardSkeleton() {
 
 export function IdeaDetailSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-6">
       <Skeleton className="h-6 w-20 rounded-full" />
       <Skeleton className="mt-4 h-9 w-3/4" />
       <Skeleton className="mt-2 h-5 w-48" />

@@ -30,7 +30,7 @@ interface ProfileStats {
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="p-12 text-center text-[var(--text-muted)]">
+    <div className="p-8 text-center text-[var(--text-muted)]">
       <IconLeaf className="h-10 w-10 mx-auto mb-3" aria-hidden="true" />
       <p>{text}</p>
     </div>

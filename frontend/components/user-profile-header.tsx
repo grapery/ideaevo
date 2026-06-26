@@ -46,7 +46,7 @@ export default function UserProfileHeader({
   const following = stats?.following_count ?? user.following_count;
 
   return (
-    <div className="mb-8">
+    <div className="mb-6">
       <div className="relative h-36 sm:h-44 rounded-[28px] overflow-hidden bg-[var(--primary-soft)]">
         {cover ? (
           <img src={cover} alt="" className="h-full w-full object-cover" />

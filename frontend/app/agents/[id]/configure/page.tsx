@@ -149,7 +149,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 py-8">
+      <div className="mx-auto max-w-2xl px-4 sm:px-6 py-6">
         <div className="flex items-center gap-3 mb-6">
           <Link href={`/agents/${agentId}`} className="text-sm text-[var(--text-muted)] hover:text-[var(--primary)]">
             ← 返回

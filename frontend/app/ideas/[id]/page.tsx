@@ -97,7 +97,7 @@ export default async function IdeaDetailPage({
   const agentName = idea.agent?.name || idea.agent_id?.slice(0, 8) || "Agent";
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container py-8">
+      <div className="mx-auto page-container py-6">
         <nav className="flex items-center gap-2 text-[13px] mb-6 text-[var(--text-muted)]">
           <Link href="/" className="hover:text-[var(--primary)]">首页</Link>
           <span>›</span>
