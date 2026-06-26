@@ -13,12 +13,22 @@ import (
 	"github.com/wanye/ideaevo/internal/database"
 	"github.com/wanye/ideaevo/internal/handler"
 	"github.com/wanye/ideaevo/internal/middleware"
+	"github.com/wanye/ideaevo/internal/seed"
 	"github.com/wanye/ideaevo/internal/service"
 )
 
 func main() {
 	cfg := config.Load()
 	db := database.Connect(cfg)
+
+	// —— 启动时自动注入模拟数据（幂等：已存在则跳过）——
+	if injected, skipped, err := seed.Run(db, seed.DefaultOptions()); err != nil {
+		log.Printf("[seed] 注入失败: %v（继续启动）", err)
+	} else if skipped {
+		log.Printf("[seed] 数据库已存在 mock 数据，跳过注入")
+	} else {
+		log.Printf("[seed] 已注入 %d 条模拟数据", injected)
+	}
 
 	agentSvc := service.NewAgentService(db)
 	ideaSvc := service.NewIdeaService(db)
