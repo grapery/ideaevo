@@ -41,10 +41,14 @@ export default function MyProfilePage() {
             idea_count: profile.idea_count,
             session_count: profile.session_count,
           }}
+          onStatClick={(key) =>
+            window.dispatchEvent(new CustomEvent("profile-tab-change", { detail: key }))
+          }
         />
       </div>
       <UserProfileBody
         userId={user.id}
+        user={profile.user}
         isOwn
         stats={{
           idea_count: profile.idea_count,

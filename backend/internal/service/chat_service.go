@@ -77,6 +77,11 @@ func (s *ChatService) CreateSession(userID string, input CreateSessionInput) (*m
 		return nil, fmt.Errorf("agent not found: %w", err)
 	}
 
+	// 权限校验：agent 关闭了对话（owner 自己不受限）
+	if agent.AllowChat != nil && !*agent.AllowChat && agent.OwnerUserID != userID {
+		return nil, fmt.Errorf("this agent does not accept chats")
+	}
+
 	// Reuse an existing idea-bound session to avoid duplicate conversations.
 	if input.IdeaID != "" {
 		var existing model.ChatSession

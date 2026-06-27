@@ -54,6 +54,8 @@
   --status-implemented: #6b8cae;
   --status-buried: #aeaeb2;
 
+  --header-height: 64px;
+
   --font-serif: var(--font-noto-serif), "Noto Serif SC", "Songti SC", "STSong", Georgia, serif;
   --font-sans: var(--font-noto-sans), "Noto Sans SC", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
 }
@@ -542,4 +544,157 @@ a {
   color: #e8e6e3;
   white-space: pre;
   line-height: 1.6;
+}
+
+/* ============================================================
+ * Unified button system (GitHub-style hierarchy, brand colors)
+ * ============================================================ */
+
+/* Size modifiers — applied to any button class below */
+.btn-sm {
+  padding: 0.1875rem 0.625rem; /* 3px 10px */
+  font-size: 0.75rem; /* 12px */
+  border-radius: 6px;
+  gap: 0.25rem;
+}
+.btn-md {
+  padding: 0.3125rem 0.875rem; /* 5px 14px */
+  font-size: 0.8125rem; /* 13px */
+  border-radius: 6px;
+  gap: 0.375rem;
+}
+
+/* Primary — main CTA (charcoal, brand-consistent with gradient-btn) */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  background: var(--cta);
+  color: #ffffff;
+  border: 1px solid var(--cta);
+  border-radius: 6px;
+  padding: 0.3125rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.btn-primary:hover {
+  background: var(--cta-hover);
+  border-color: var(--cta-hover);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Default — secondary/neutral action (GitHub's grey outline button) */
+.btn-default {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3125rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.btn-default:hover {
+  background: var(--bg-subtle);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: var(--title);
+}
+.btn-default:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Danger — unfollow / destructive */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  background: var(--bg-surface);
+  color: var(--coral);
+  border: 1px solid var(--coral);
+  border-radius: 6px;
+  padding: 0.3125rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.btn-danger:hover {
+  background: var(--coral-soft);
+}
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+ * Profile layout tokens (GitHub-style page shell)
+ * ============================================================ */
+
+/* Sticky tab bar (sits under the global header) */
+.profile-tabs {
+  position: sticky;
+  top: var(--header-height);
+  z-index: 30;
+  background: color-mix(in srgb, var(--bg-canvas) 95%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Tab item */
+.profile-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.625rem 0.25rem;
+  margin-right: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.profile-tab:hover {
+  color: var(--title);
+  border-bottom-color: var(--border);
+}
+.profile-tab[data-active="true"] {
+  color: var(--title);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+/* Count badge inside tabs */
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  padding: 0 0.375rem;
+  height: 1.125rem;
+  border-radius: 9999px;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.profile-tab[data-active="true"] .count-badge {
+  background: var(--primary-soft);
+  color: var(--primary);
 }

@@ -15,11 +15,13 @@ export function IdeaActionBar({
   agentId,
   forkCount,
   title,
+  allowChat = true,
 }: {
   ideaId: string;
   agentId: string;
   forkCount: number;
   title: string;
+  allowChat?: boolean;
 }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const { user } = useAuth();
@@ -66,12 +68,12 @@ export function IdeaActionBar({
   }
 
   return (
-    <div className="flex items-center gap-3 py-3">
+    <div className="flex flex-wrap items-center gap-3 py-3">
       <button
         type="button"
         onClick={openFork}
         disabled={loading}
-        className="inline-flex items-center gap-2 gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
+        className="btn-primary"
       >
         <IconGitFork className="h-4 w-4" />
         Fork 这个想法
@@ -80,7 +82,7 @@ export function IdeaActionBar({
         type="button"
         onClick={doShare}
         disabled={loading}
-        className="inline-flex items-center gap-2 rounded-lg border border-[var(--divider)] bg-white px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        className="btn-default"
       >
         <IconShare className="h-4 w-4" />
         分享
@@ -90,7 +92,8 @@ export function IdeaActionBar({
       <button
         type="button"
         onClick={openChat}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+        className="btn-default"
+        style={allowChat === false ? { display: "none" } : undefined}
       >
         与 Agent 对话
       </button>
@@ -133,7 +136,7 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
       type="button"
       onClick={sendFlower}
       disabled={loading}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--divider)] bg-white px-3.5 py-2 text-[13px] font-medium text-[var(--primary)] hover:bg-[var(--primary-soft)] disabled:opacity-50"
+      className="btn-default text-[var(--primary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)]"
     >
       <IconFlower className="h-4 w-4" />
       {loading ? "送出中…" : "送一朵花"}

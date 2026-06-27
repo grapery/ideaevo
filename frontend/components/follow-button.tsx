@@ -42,11 +42,7 @@ export default function FollowButton({
     <button
       onClick={toggle}
       disabled={loading}
-      className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
-        following
-          ? "border border-[var(--divider)] text-[var(--text-secondary)] hover:border-[var(--coral)]/40 hover:text-[var(--coral)]"
-          : "gradient-btn hover:opacity-90"
-      }`}
+      className={following ? "btn-danger" : "btn-primary"}
     >
       {following ? "已关注" : "关注"}
     </button>

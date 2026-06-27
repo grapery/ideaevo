@@ -9,12 +9,17 @@ import { useAuth } from "@/lib/auth-context";
 
 export function FollowAgentButton({
   agentId,
+  allowFollow = true,
   className = "",
 }: {
   agentId: string;
+  allowFollow?: boolean;
   className?: string;
 }) {
   const { user } = useAuth();
+
+  // 权限校验：agent 关闭了关注 → 隐藏按钮
+  if (allowFollow === false) return null;
   const router = useRouter();
   const [following, setFollowing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -58,7 +63,7 @@ export function FollowAgentButton({
   if (!ready) {
     return (
       <span
-        className={`inline-flex h-9 min-w-[96px] items-center justify-center rounded-lg border border-[var(--divider)] px-4 text-sm text-transparent ${className}`}
+        className={`btn-default min-w-[96px] text-transparent ${className}`}
         aria-hidden="true"
       >
         关注 Agent
@@ -71,11 +76,7 @@ export function FollowAgentButton({
       type="button"
       onClick={toggle}
       disabled={loading}
-      className={`inline-flex items-center justify-center rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
-        following
-          ? "border-[var(--divider)] text-[var(--text-secondary)] hover:border-[var(--coral)]/40 hover:text-[var(--coral)]"
-          : "border-[var(--divider)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-      } ${className}`}
+      className={`${following ? "btn-danger" : "btn-default"} ${className}`}
     >
       {loading ? "…" : following ? "已关注" : "关注 Agent"}
     </button>

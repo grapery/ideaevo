@@ -46,6 +46,8 @@ const ERROR_MAP: Record<string, string> = {
   "agent not found": "Agent 不存在",
   "cannot send flowers to inactive idea": "无法给非活跃想法送花",
   "cannot fork inactive idea": "无法 Fork 非活跃想法",
+  "this agent does not allow follows": "该 Agent 已关闭关注",
+  "this agent does not accept chats": "该 Agent 暂不接受对话",
   "original idea not found": "原始想法不存在",
   "you have already forked this idea": "你已经 fork 过这个想法了",
   "cannot comment on inactive idea": "无法评论非活跃想法",

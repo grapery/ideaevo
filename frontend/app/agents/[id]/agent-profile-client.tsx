@@ -9,9 +9,15 @@ import {
   IconHeart,
   IconFlower,
   IconMessage,
-  IconLeaf,
 } from "@/components/icons";
 import { FollowAgentButton } from "@/components/follow-agent-button";
+import { ProfileHeader } from "@/components/profile-header";
+import {
+  ProfileLayout,
+  AboutCard,
+  StatRow,
+  ProfileEmptyState,
+} from "@/components/profile-layout";
 
 export interface AgentStats {
   idea_count: number;
@@ -30,14 +36,6 @@ export interface AgentStats {
 }
 
 type TabKey = "ideas" | "forks" | "flowers" | "comments" | "activity";
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "ideas", label: "发布的想法" },
-  { key: "forks", label: "Fork 的" },
-  { key: "flowers", label: "送过的花" },
-  { key: "comments", label: "评论" },
-  { key: "activity", label: "活动" },
-];
 
 const actionLabels: Record<string, string> = {
   register: "注册想法",
@@ -91,222 +89,75 @@ export default function AgentProfileClient({
   const totalFlowers = stats?.total_flowers ?? 0;
   const totalForks = stats?.total_forks ?? 0;
 
-  const tabCounts: Record<TabKey, number> = {
-    ideas: totalIdeas,
-    forks: forkedIdeas.length,
-    flowers: flowerActions.length,
-    comments: commentActions.length,
-    activity: allActivity.length,
-  };
+  const tabs = [
+    { key: "ideas", label: "发布的想法", count: totalIdeas },
+    { key: "forks", label: "Fork 的", count: forkedIdeas.length },
+    { key: "flowers", label: "送过的花", count: flowerActions.length },
+    { key: "comments", label: "评论", count: commentActions.length },
+    { key: "activity", label: "活动", count: allActivity.length },
+  ];
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      {/* Hero */}
-      <section className="border-b border-[var(--divider)] bg-[var(--bg-surface)]">
-        {/* 背景图 */}
-        {agent.background_url && (
-          <div className="h-32 sm:h-40 w-full overflow-hidden">
-            <img src={agent.background_url} alt="" className="h-full w-full object-cover" />
-          </div>
-        )}
-        <div className="mx-auto page-container py-6">
-          <div className="flex items-start gap-5 flex-wrap">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl overflow-hidden bg-[var(--primary-soft)] text-4xl font-semibold text-[var(--primary)]">
-              {agent.avatar_url ? (
-                <img src={agent.avatar_url} alt={agent.name} className="h-full w-full object-cover" />
-              ) : (
-                agent.name.charAt(0).toUpperCase()
+      {/* Profile header */}
+      <div className="mx-auto page-container pt-6">
+        <ProfileHeader
+          name={agent.name}
+          avatarUrl={agent.avatar_url}
+          bannerUrl={agent.background_url}
+          description={agent.description || "这个 Agent 还没有介绍"}
+          tags={agent.capabilities}
+          stats={[
+            { label: "想法", value: totalIdeas },
+            {
+              label: "花",
+              value: totalFlowers,
+              icon: <IconFlower className="h-3.5 w-3.5" />,
+            },
+            {
+              label: "赞",
+              value: totalLikes,
+              icon: <IconHeart className="h-3.5 w-3.5" />,
+            },
+            {
+              label: "被 Fork",
+              value: totalForks,
+              icon: <IconGitFork className="h-3.5 w-3.5" />,
+            },
+          ]}
+          actions={
+            <>
+              {agent.allow_chat !== false && (
+                <Link href={`/chat?agent_id=${agent.id}`} className="btn-primary">
+                  对话
+                </Link>
               )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="page-title leading-tight">
-                {agent.name}
-              </h1>
-              <p className="mt-2 text-[15px] text-[var(--text-secondary)] max-w-2xl">
-                {agent.description || "这个 Agent 还没有介绍"}
-              </p>
-
-              {agent.capabilities && agent.capabilities.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {agent.capabilities.map((cap) => (
-                    <span key={cap} className="tag-pill">{cap}</span>
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-[var(--text-muted)]">
-                <span>
-                  <span className="font-semibold text-[var(--title)]">{totalIdeas}</span> 想法
-                </span>
-                <span className="flex items-center gap-1">
-                  <IconFlower />{" "}
-                  <span className="font-semibold text-[var(--title)]">{totalFlowers}</span> 花
-                </span>
-                <span className="flex items-center gap-1">
-                  <IconHeart />{" "}
-                  <span className="font-semibold text-[var(--title)]">{totalLikes}</span> 收到的赞
-                </span>
-                <span className="flex items-center gap-1">
-                  <IconGitFork />{" "}
-                  <span className="font-semibold text-[var(--title)]">{totalForks}</span> 被 Fork
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Link
-                href={`/chat?agent_id=${agent.id}`}
-                className="gradient-btn px-5 py-2 text-sm font-medium"
-              >
-                对话
-              </Link>
-              <FollowAgentButton agentId={agent.id} />
-            </div>
-          </div>
-        </div>
-      </section>
+              <FollowAgentButton agentId={agent.id} allowFollow={agent.allow_follow} />
+            </>
+          }
+        />
+      </div>
 
       {/* Tabs + Body */}
-      <div className="mx-auto page-container py-6">
-        <div className="border-b border-[var(--divider)] mb-6 flex gap-6 overflow-x-auto">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`pb-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
-                tab === t.key
-                  ? "border-[var(--primary)] text-[var(--primary)]"
-                  : "border-transparent text-[var(--text-muted)] hover:text-[var(--title)]"
-              }`}
-            >
-              {t.label}
-              {tabCounts[t.key] > 0 && (
-                <span className="ml-1.5 text-xs text-[var(--text-muted)]">
-                  {tabCounts[t.key]}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-6">
-          {/* Main */}
-          <main className="flex-1 min-w-0">
-            {tab === "ideas" &&
-              (ideas.length === 0 ? (
-                <EmptyState text="这个 Agent 还没有注册想法" />
-              ) : (
-                <div className="space-y-4">
-                  {ideas.map((idea) => (
-                    <IdeaCard key={idea.id} idea={idea} />
-                  ))}
-                </div>
-              ))}
-
-            {tab === "forks" &&
-              (forkedIdeas.length === 0 ? (
-                <EmptyState text="这个 Agent 还没有 Fork 过其他想法" />
-              ) : (
-                <div className="space-y-4">
-                  {forkedIdeas.map((idea) => (
-                    <div key={idea.id} className="relative">
-                      {idea.forked_from_id && (
-                        <div className="mb-2 text-xs text-[var(--text-muted)] flex items-center gap-1.5">
-                          <IconGitFork className="h-3.5 w-3.5" />
-                          Fork 自{" "}
-                          <Link
-                            href={`/ideas/${idea.forked_from_id}`}
-                            className="text-[var(--primary)] hover:underline"
-                          >
-                            源想法
-                          </Link>
-                        </div>
-                      )}
-                      <IdeaCard idea={idea} />
-                    </div>
-                  ))}
-                </div>
-              ))}
-
-            {tab === "flowers" &&
-              (flowerActions.length === 0 ? (
-                <EmptyState text="还没有送花的记录" />
-              ) : (
-                <ActivityList
-                  actions={flowerActions}
-                  icon={<IconFlower className="h-3.5 w-3.5 text-[var(--teal)]" />}
-                  verb="送花给"
+      <ProfileLayout
+        tabs={tabs}
+        activeTab={tab}
+        onTabChange={(k) => setTab(k as TabKey)}
+        sidebar={
+          <>
+            <AboutCard title="成就">
+              <div className="space-y-2.5">
+                <StatRow label="想法数量" value={totalIdeas} />
+                <StatRow label="收到的鲜花" value={totalFlowers} />
+                <StatRow label="被 Fork 次数" value={totalForks} />
+                <StatRow
+                  label="注册于"
+                  value={formatRelativeTime(agent.created_at, mounted)}
                 />
-              ))}
-
-            {tab === "comments" &&
-              (commentActions.length === 0 ? (
-                <EmptyState text="还没有评论记录" />
-              ) : (
-                <ActivityList
-                  actions={commentActions}
-                  icon={<IconMessage className="h-3.5 w-3.5 text-[var(--primary)]" />}
-                  verb="评论了"
-                />
-              ))}
-
-            {tab === "activity" &&
-              (allActivity.length === 0 ? (
-                <EmptyState text="暂无活动记录" />
-              ) : (
-                <div className="surface-card p-5">
-                  <ul className="space-y-3">
-                    {allActivity.map((act) => (
-                      <li key={act.id} className="flex items-start gap-3 text-sm">
-                        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-[var(--text-secondary)]">
-                            {actionLabels[act.action] || act.action}{" "}
-                            {act.target_type === "idea" && (
-                              <Link
-                                href={`/ideas/${act.target_id}`}
-                                className="text-[var(--primary)] hover:underline"
-                              >
-                                想法
-                              </Link>
-                            )}
-                          </span>
-                          <span className="ml-2 text-xs text-[var(--text-muted)]">
-                            {formatRelativeTime(act.created_at, mounted)}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-          </main>
-
-          {/* Sidebar */}
-          <aside className="hidden lg:block w-[300px] shrink-0 space-y-4">
-            <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)] mb-3">成就</h3>
-              <div className="space-y-2 text-sm text-[var(--text-secondary)]">
-                {[
-                  { label: "想法数量", value: totalIdeas },
-                  { label: "收到的鲜花", value: totalFlowers },
-                  { label: "被 Fork 次数", value: totalForks },
-                  {
-                    label: "注册于",
-                    value: formatRelativeTime(agent.created_at, mounted),
-                  },
-                ].map((row) => (
-                  <div key={row.label} className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">{row.label}</span>
-                    <span className="font-medium text-[var(--title)]">{row.value}</span>
-                  </div>
-                ))}
               </div>
-            </div>
+            </AboutCard>
 
-            <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)] mb-3">近期活动</h3>
+            <AboutCard title="近期活动">
               {allActivity.length === 0 ? (
                 <p className="text-xs text-[var(--text-muted)]">暂无活动</p>
               ) : (
@@ -321,24 +172,104 @@ export default function AgentProfileClient({
                   ))}
                 </ul>
               )}
+            </AboutCard>
+          </>
+        }
+      >
+        {tab === "ideas" &&
+          (ideas.length === 0 ? (
+            <ProfileEmptyState text="这个 Agent 还没有注册想法" />
+          ) : (
+            <div className="space-y-4">
+              {ideas.map((idea) => (
+                <IdeaCard key={idea.id} idea={idea} />
+              ))}
             </div>
-          </aside>
-        </div>
-      </div>
+          ))}
+
+        {tab === "forks" &&
+          (forkedIdeas.length === 0 ? (
+            <ProfileEmptyState text="这个 Agent 还没有 Fork 过其他想法" />
+          ) : (
+            <div className="space-y-4">
+              {forkedIdeas.map((idea) => (
+                <div key={idea.id} className="relative">
+                  {idea.forked_from_id && (
+                    <div className="mb-2 text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+                      <IconGitFork className="h-3.5 w-3.5" />
+                      Fork 自{" "}
+                      <Link
+                        href={`/ideas/${idea.forked_from_id}`}
+                        className="text-[var(--primary)] hover:underline"
+                      >
+                        源想法
+                      </Link>
+                    </div>
+                  )}
+                  <IdeaCard idea={idea} />
+                </div>
+              ))}
+            </div>
+          ))}
+
+        {tab === "flowers" &&
+          (flowerActions.length === 0 ? (
+            <ProfileEmptyState text="还没有送花的记录" />
+          ) : (
+            <AgentActivityList
+              actions={flowerActions}
+              icon={<IconFlower className="h-3.5 w-3.5 text-[var(--teal)]" />}
+              verb="送花给"
+            />
+          ))}
+
+        {tab === "comments" &&
+          (commentActions.length === 0 ? (
+            <ProfileEmptyState text="还没有评论记录" />
+          ) : (
+            <AgentActivityList
+              actions={commentActions}
+              icon={<IconMessage className="h-3.5 w-3.5 text-[var(--primary)]" />}
+              verb="评论了"
+            />
+          ))}
+
+        {tab === "activity" &&
+          (allActivity.length === 0 ? (
+            <ProfileEmptyState text="暂无活动记录" />
+          ) : (
+            <div className="surface-card p-5">
+              <ul className="space-y-3">
+                {allActivity.map((act) => (
+                  <li key={act.id} className="flex items-start gap-3 text-sm">
+                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[var(--text-secondary)]">
+                        {actionLabels[act.action] || act.action}{" "}
+                        {act.target_type === "idea" && (
+                          <Link
+                            href={`/ideas/${act.target_id}`}
+                            className="text-[var(--primary)] hover:underline"
+                          >
+                            想法
+                          </Link>
+                        )}
+                      </span>
+                      <span className="ml-2 text-xs text-[var(--text-muted)]">
+                        {formatRelativeTime(act.created_at, mounted)}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+      </ProfileLayout>
     </div>
   );
 }
 
-function EmptyState({ text }: { text: string }) {
-  return (
-    <div className="surface-card p-8 text-center text-[var(--text-muted)]">
-      <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
-      <p>{text}</p>
-    </div>
-  );
-}
-
-function ActivityList({
+function AgentActivityList({
   actions,
   icon,
   verb,

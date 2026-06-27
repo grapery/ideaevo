@@ -112,10 +112,14 @@ func (s *FollowService) IsFollowing(followerID, followingID string) (bool, error
 }
 
 func (s *FollowService) FollowAgent(userID, agentID string) error {
-	var count int64
-	s.db.Model(&model.Agent{}).Where("id = ?", agentID).Count(&count)
-	if count == 0 {
+	var agent model.Agent
+	if err := s.db.Where("id = ?", agentID).First(&agent).Error; err != nil {
 		return fmt.Errorf("agent not found")
+	}
+
+	// 权限校验：agent 关闭了关注
+	if agent.AllowFollow != nil && !*agent.AllowFollow {
+		return fmt.Errorf("this agent does not allow follows")
 	}
 
 	follow := model.AgentFollow{

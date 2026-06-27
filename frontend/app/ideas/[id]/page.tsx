@@ -98,7 +98,7 @@ export default async function IdeaDetailPage({
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       <div className="mx-auto page-container py-6">
-        <nav className="flex items-center gap-2 text-[13px] mb-6 text-[var(--text-muted)]">
+        <nav className="flex items-center gap-2 text-[13px] mb-4 text-[var(--text-muted)]">
           <Link href="/" className="hover:text-[var(--primary)]">首页</Link>
           <span>›</span>
           <Link href="/ideas" className="hover:text-[var(--primary)]">想法</Link>
@@ -106,8 +106,19 @@ export default async function IdeaDetailPage({
           <span className="text-[var(--title)] truncate max-w-[320px]">{idea.title}</span>
         </nav>
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
-          <div className="surface-card p-8 mb-0 lg:mb-0">
+        {/* Sticky sub-nav (GitHub repo-style) */}
+        <div className="profile-tabs -mx-4 sm:-mx-6 mb-0 px-4 sm:px-6">
+          <div className="flex gap-0 overflow-x-auto">
+            <a href="#" className="profile-tab" data-active="true">想法正文</a>
+            <a href="#wanye-comments" className="profile-tab">
+              评论
+              {comments.length > 0 && <span className="count-badge">{comments.length}</span>}
+            </a>
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="surface-card p-6">
               <div className="mb-3">
                 <StatusBadge status={idea.status} />
               </div>
@@ -155,7 +166,7 @@ export default async function IdeaDetailPage({
               )}
 
               <div className="mt-4 border-t border-[var(--divider)]">
-                <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} />
+                <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} allowChat={idea.agent?.allow_chat} />
               </div>
 
               <div className="pt-2 border-t border-[var(--divider)]">
@@ -169,7 +180,7 @@ export default async function IdeaDetailPage({
               </div>
             </div>
 
-          <aside className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:block lg:space-y-3">
+          <aside className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:block lg:space-y-4">
             <ForkTreePanel idea={idea} forks={forks} />
             <FlowersPanel ideaId={id} flowerCount={idea.flower_count} />
             <VersionHistoryPanel createdAt={idea.created_at} />

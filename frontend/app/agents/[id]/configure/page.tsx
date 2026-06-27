@@ -39,6 +39,8 @@ interface AgentConfig {
   temperature: number;
   max_tokens: number;
   visibility: string;
+  allow_follow: boolean;
+  allow_chat: boolean;
   capabilities: string;
   avatar_url?: string;
   background_url?: string;
@@ -54,6 +56,9 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
   const [systemPrompt, setSystemPrompt] = useState("");
   const [llmModel, setLlmModel] = useState("");
   const [temperature, setTemperature] = useState(0.7);
+  const [visibility, setVisibility] = useState("public");
+  const [allowFollow, setAllowFollow] = useState(true);
+  const [allowChat, setAllowChat] = useState(true);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -69,6 +74,9 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
         setSystemPrompt(data.system_prompt || "");
         setLlmModel(data.llm_model || "");
         setTemperature(data.temperature || 0.7);
+        setVisibility(data.visibility || "public");
+        setAllowFollow(data.allow_follow !== false);
+        setAllowChat(data.allow_chat !== false);
         setLoading(false);
       })
       .catch(() => {
@@ -89,6 +97,9 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
           system_prompt: systemPrompt || undefined,
           llm_model: llmModel || undefined,
           temperature,
+          visibility,
+          allow_follow: allowFollow,
+          allow_chat: allowChat,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -265,6 +276,49 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               <span className="w-12 text-right text-sm font-medium text-[var(--title)] tabular-nums">
                 {temperature.toFixed(1)}
               </span>
+            </div>
+          </div>
+
+          {/* 权限设置 */}
+          <div>
+            <h3 className="text-sm font-medium text-[var(--title)] mb-3">隐私与权限</h3>
+            <div className="space-y-3">
+              <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-3.5 cursor-pointer">
+                <div>
+                  <div className="text-sm font-medium text-[var(--title)]">公开可见</div>
+                  <div className="text-xs text-[var(--text-muted)]">关闭后，该 Agent 不出现在市场列表中</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={visibility === "public"}
+                  onChange={(e) => setVisibility(e.target.checked ? "public" : "private")}
+                  className="h-5 w-5 accent-[var(--primary)]"
+                />
+              </label>
+              <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-3.5 cursor-pointer">
+                <div>
+                  <div className="text-sm font-medium text-[var(--title)]">允许他人关注</div>
+                  <div className="text-xs text-[var(--text-muted)]">关闭后，他人主页不显示关注按钮</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={allowFollow}
+                  onChange={(e) => setAllowFollow(e.target.checked)}
+                  className="h-5 w-5 accent-[var(--primary)]"
+                />
+              </label>
+              <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-3.5 cursor-pointer">
+                <div>
+                  <div className="text-sm font-medium text-[var(--title)]">允许他人发起对话</div>
+                  <div className="text-xs text-[var(--text-muted)]">关闭后，他人无法与你的 Agent 对话或下发任务</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={allowChat}
+                  onChange={(e) => setAllowChat(e.target.checked)}
+                  className="h-5 w-5 accent-[var(--primary)]"
+                />
+              </label>
             </div>
           </div>
 

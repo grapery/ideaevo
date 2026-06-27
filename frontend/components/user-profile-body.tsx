@@ -11,7 +11,12 @@ import { Idea, User, ChatSession } from "@/lib/types";
 import { IdeaCard } from "@/components/idea-card";
 import { ActivityList, ActivityLog } from "@/components/activity-list";
 import UserCard from "@/components/user-card";
-import { IconLeaf } from "@/components/icons";
+import {
+  ProfileLayout,
+  AboutCard,
+  StatRow,
+  ProfileEmptyState,
+} from "@/components/profile-layout";
 
 const AppLink = AppLinkComponent as unknown as React.ComponentType<{
   href: string;
@@ -28,26 +33,24 @@ interface ProfileStats {
   session_count?: number;
 }
 
-function EmptyState({ text }: { text: string }) {
-  return (
-    <div className="p-8 text-center text-[var(--text-muted)]">
-      <IconLeaf className="h-10 w-10 mx-auto mb-3" aria-hidden="true" />
-      <p>{text}</p>
-    </div>
-  );
+function formatJoinDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return `加入于 ${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
 }
 
 /**
  * UserProfileBody —— GitHub 风格的用户主页主体（tab 导航 + 主列/侧栏）。
  * isOwn=true 时额外显示"对话"tab（自己的主页）。
- * 镜像 agent-profile-client 的布局结构。
+ * 使用统一的 ProfileLayout 骨架。
  */
 export function UserProfileBody({
   userId,
+  user,
   isOwn,
   stats,
 }: {
   userId: string;
+  user: User;
   isOwn: boolean;
   stats: ProfileStats;
 }) {
@@ -127,129 +130,65 @@ export function UserProfileBody({
     if (tab === "sessions" && sessions === null) loadSessions();
   }, [tab, followers, following, sessions, loadFollowers, loadFollowing, loadSessions]);
 
-  const tabs: { key: Tab; label: string; count?: number; ownOnly?: boolean }[] = [
-    { key: "overview", label: "概览" },
-    { key: "ideas", label: "想法", count: stats.idea_count ?? 0 },
-    { key: "activity", label: "动态" },
-    { key: "followers", label: "关注者", count: followersTotal },
-    { key: "following", label: "关注中", count: followingTotal },
-    { key: "sessions", label: "对话", ownOnly: true },
-    { key: "api", label: "API 管理", ownOnly: true },
-  ].filter((t) => !t.ownOnly || isOwn) as { key: Tab; label: string; count?: number; ownOnly?: boolean }[];
+  // 允许 header 统计点击通过自定义事件跳转 tab。
+  useEffect(() => {
+    function onTabChange(e: Event) {
+      const key = (e as CustomEvent<string>).detail;
+      if (key) setTab(key as Tab);
+    }
+    window.addEventListener("profile-tab-change", onTabChange as EventListener);
+    return () => window.removeEventListener("profile-tab-change", onTabChange as EventListener);
+  }, []);
+
+  const tabs: { key: Tab; label: string; count?: number }[] = (
+    [
+      { key: "overview", label: "概览" },
+      { key: "ideas", label: "想法", count: stats.idea_count ?? 0 },
+      { key: "activity", label: "动态" },
+      { key: "followers", label: "关注者", count: followersTotal },
+      { key: "following", label: "关注中", count: followingTotal },
+      { key: "sessions", label: "对话", ownOnly: true },
+      { key: "api", label: "API 管理", ownOnly: true },
+    ] as { key: Tab; label: string; count?: number; ownOnly?: boolean }[]
+  )
+    .filter((t) => !t.ownOnly || isOwn)
+    .map(({ key, label, count }) => ({ key, label, count }));
 
   const ideaCount = stats.idea_count ?? 0;
 
   return (
-    <div className="mx-auto page-container py-6">
-      {/* Tabs */}
-      <div className="border-b border-[var(--divider)] mb-6 flex gap-6 overflow-x-auto">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={`pb-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
-              tab === t.key
-                ? "border-[var(--primary)] text-[var(--primary)]"
-                : "border-transparent text-[var(--text-muted)] hover:text-[var(--title)]"
-            }`}
-          >
-            {t.label}
-            {t.count !== undefined && t.count > 0 && (
-              <span className="ml-1.5 text-xs text-[var(--text-muted)]">{t.count}</span>
-            )}
-          </button>
-        ))}
-      </div>
+    <ProfileLayout
+      tabs={tabs}
+      activeTab={tab}
+      onTabChange={(k) => setTab(k as Tab)}
+      sidebar={
+        <>
+          <AboutCard title="关于">
+            <div className="space-y-2.5 text-sm">
+              {user.bio && (
+                <p className="text-[var(--text-secondary)] leading-relaxed">{user.bio}</p>
+              )}
+              {isOwn && user.email && (
+                <p className="text-[var(--text-muted)]">{user.email}</p>
+              )}
+              <p className="text-[var(--text-muted)]">{formatJoinDate(user.created_at)}</p>
+              {(user.role === "admin" || user.role === "moderator") && (
+                <span className="badge-pill badge-active">{user.role === "admin" ? "管理员" : "版主"}</span>
+              )}
+            </div>
+          </AboutCard>
 
-      <div className="flex gap-6">
-        {/* Main column */}
-        <main className="flex-1 min-w-0">
-          {tab === "overview" && (
-            <OverviewTab
-              ideas={ideas}
-              activity={activity}
-              onSeeAllIdeas={() => setTab("ideas")}
-              onSeeAllActivity={() => setTab("activity")}
-            />
-          )}
-
-          {tab === "ideas" &&
-            (ideas === null ? (
-              <Loading />
-            ) : ideas.length === 0 ? (
-              <EmptyState text={isOwn ? "你还没有创建想法" : "这个用户还没有创建想法"} />
-            ) : (
-              <div className="space-y-4">
-                {ideas.map((idea) => (
-                  <IdeaCard key={idea.id} idea={idea} />
-                ))}
-              </div>
-            ))}
-
-          {tab === "activity" &&
-            (activity === null ? (
-              <Loading />
-            ) : activity.length === 0 ? (
-              <EmptyState text="暂无动态" />
-            ) : (
-              <div className="surface-card">
-                <ActivityList activities={activity} />
-              </div>
-            ))}
-
-          {tab === "followers" &&
-            (followers === null ? (
-              <Loading />
-            ) : followers.length === 0 ? (
-              <EmptyState text="还没有关注者" />
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {followers.map((u) => (
-                  <div key={u.id} className="surface-card p-4">
-                    <UserCard user={u} />
-                  </div>
-                ))}
-              </div>
-            ))}
-
-          {tab === "following" &&
-            (following === null ? (
-              <Loading />
-            ) : following.length === 0 ? (
-              <EmptyState text="还没有关注任何人" />
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {following.map((u) => (
-                  <div key={u.id} className="surface-card p-4">
-                    <UserCard user={u} />
-                  </div>
-                ))}
-              </div>
-            ))}
-
-          {tab === "sessions" && isOwn && (
-            <SessionsTab sessions={sessions} />
-          )}
-
-          {tab === "api" && isOwn && <ApiKeyTab />}
-        </main>
-
-        {/* Sidebar */}
-        <aside className="hidden lg:block w-[300px] shrink-0 space-y-4">
-          <div className="panel-card">
-            <h3 className="text-base font-semibold text-[var(--title)] mb-4">数据概览</h3>
-            <div className="space-y-3">
+          <AboutCard title="数据概览">
+            <div className="space-y-2.5">
               <StatRow label="想法" value={ideaCount} />
               <StatRow label="关注者" value={followersTotal} />
               <StatRow label="关注中" value={followingTotal} />
               {isOwn && <StatRow label="对话" value={stats.session_count ?? 0} />}
             </div>
-          </div>
+          </AboutCard>
 
           {ideas !== null && ideas.length > 0 && (
-            <div className="panel-card">
-              <h3 className="text-base font-semibold text-[var(--title)] mb-3">最新想法</h3>
+            <AboutCard title="最新想法">
               <ul className="space-y-2">
                 {ideas.slice(0, 5).map((idea) => (
                   <li key={idea.id}>
@@ -262,11 +201,78 @@ export function UserProfileBody({
                   </li>
                 ))}
               </ul>
-            </div>
+            </AboutCard>
           )}
-        </aside>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {tab === "overview" && (
+        <OverviewTab
+          ideas={ideas}
+          activity={activity}
+          onSeeAllIdeas={() => setTab("ideas")}
+          onSeeAllActivity={() => setTab("activity")}
+        />
+      )}
+
+      {tab === "ideas" &&
+        (ideas === null ? (
+          <Loading />
+        ) : ideas.length === 0 ? (
+          <ProfileEmptyState text={isOwn ? "你还没有创建想法" : "这个用户还没有创建想法"} />
+        ) : (
+          <div className="space-y-4">
+            {ideas.map((idea) => (
+              <IdeaCard key={idea.id} idea={idea} />
+            ))}
+          </div>
+        ))}
+
+      {tab === "activity" &&
+        (activity === null ? (
+          <Loading />
+        ) : activity.length === 0 ? (
+          <ProfileEmptyState text="暂无动态" />
+        ) : (
+          <div className="surface-card">
+            <ActivityList activities={activity} />
+          </div>
+        ))}
+
+      {tab === "followers" &&
+        (followers === null ? (
+          <Loading />
+        ) : followers.length === 0 ? (
+          <ProfileEmptyState text="还没有关注者" />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+            {followers.map((u) => (
+              <div key={u.id} className="surface-card p-4">
+                <UserCard user={u} />
+              </div>
+            ))}
+          </div>
+        ))}
+
+      {tab === "following" &&
+        (following === null ? (
+          <Loading />
+        ) : following.length === 0 ? (
+          <ProfileEmptyState text="还没有关注任何人" />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+            {following.map((u) => (
+              <div key={u.id} className="surface-card p-4">
+                <UserCard user={u} />
+              </div>
+            ))}
+          </div>
+        ))}
+
+      {tab === "sessions" && isOwn && <SessionsTab sessions={sessions} />}
+
+      {tab === "api" && isOwn && <ApiKeyTab />}
+    </ProfileLayout>
   );
 }
 
@@ -299,7 +305,7 @@ function OverviewTab({
         {ideas === null ? (
           <Loading />
         ) : ideas.length === 0 ? (
-          <EmptyState text="还没有创建想法" />
+          <ProfileEmptyState text="还没有创建想法" />
         ) : (
           <div className="p-4 space-y-4">
             {ideas.slice(0, 3).map((idea) => (
@@ -325,7 +331,7 @@ function OverviewTab({
         {activity === null ? (
           <Loading />
         ) : activity.length === 0 ? (
-          <EmptyState text="暂无动态" />
+          <ProfileEmptyState text="暂无动态" />
         ) : (
           <ActivityList activities={activity.slice(0, 5)} />
         )}
@@ -343,7 +349,7 @@ function SessionsTab({ sessions }: { sessions: ChatSession[] | null }) {
       {sessions === null ? (
         <Loading />
       ) : sessions.length === 0 ? (
-        <EmptyState text="还没有对话" />
+        <ProfileEmptyState text="还没有对话" />
       ) : (
         <ul className="divide-y divide-[var(--divider)]">
           {sessions.map((s) => (
@@ -363,15 +369,6 @@ function SessionsTab({ sessions }: { sessions: ChatSession[] | null }) {
         </ul>
       )}
     </section>
-  );
-}
-
-function StatRow({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-[var(--text-muted)]">{label}</span>
-      <span className="font-semibold text-[var(--title)] tabular-nums">{value}</span>
-    </div>
   );
 }
 

@@ -6,6 +6,10 @@ export interface Agent {
   created_at: string;
   avatar_url?: string;
   background_url?: string;
+  owner_user_id?: string;
+  visibility?: "public" | "private";
+  allow_follow?: boolean;
+  allow_chat?: boolean;
 }
 
 /**

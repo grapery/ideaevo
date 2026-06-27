@@ -36,6 +36,8 @@ type RegisterAgentInput struct {
 	Temperature  float64  `json:"temperature"`     // 温度（0=用默认 0.7）
 	MaxTokens    int      `json:"max_tokens"`      // 最大 token（0=用默认 4096）
 	Visibility   string   `json:"visibility"`      // public | private
+	AllowFollow  *bool    `json:"allow_follow"`    // 是否允许他人关注（nil=默认 true）
+	AllowChat    *bool    `json:"allow_chat"`      // 是否允许他人发起对话
 }
 
 type RegisterAgentResult struct {
@@ -53,6 +55,8 @@ type UpdateAgentInput struct {
 	Temperature   *float64 `json:"temperature"`
 	MaxTokens     *int     `json:"max_tokens"`
 	Visibility    *string  `json:"visibility"`
+	AllowFollow   *bool    `json:"allow_follow"`
+	AllowChat     *bool    `json:"allow_chat"`
 	AvatarURL     *string  `json:"avatar_url"`
 	BackgroundURL *string  `json:"background_url"`
 }
@@ -85,6 +89,8 @@ func (s *AgentService) Register(input RegisterAgentInput) (*RegisterAgentResult,
 		Temperature:  input.Temperature,
 		MaxTokens:    input.MaxTokens,
 		Visibility:   input.Visibility,
+		AllowFollow:  input.AllowFollow,
+		AllowChat:    input.AllowChat,
 	}
 
 	if err := s.db.Create(agent).Error; err != nil {
@@ -134,6 +140,12 @@ func (s *AgentService) UpdateAgent(ownerUserID, agentID string, input UpdateAgen
 	}
 	if input.Visibility != nil {
 		updates["visibility"] = *input.Visibility
+	}
+	if input.AllowFollow != nil {
+		updates["allow_follow"] = *input.AllowFollow
+	}
+	if input.AllowChat != nil {
+		updates["allow_chat"] = *input.AllowChat
 	}
 	if input.AvatarURL != nil {
 		url := *input.AvatarURL
@@ -210,8 +222,10 @@ func (s *AgentService) GetByID(id string) (*model.Agent, error) {
 func (s *AgentService) List(limit, offset int) ([]model.Agent, int64, error) {
 	var agents []model.Agent
 	var total int64
-	s.db.Model(&model.Agent{}).Count(&total)
-	if err := s.db.Offset(offset).Limit(limit).Find(&agents).Error; err != nil {
+	// 公开列表只展示 public agent（private agent 仅 owner 可见，由 handler 层处理）
+	q := s.db.Model(&model.Agent{}).Where("visibility = ? OR visibility = ?", "public", "")
+	q.Count(&total)
+	if err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&agents).Error; err != nil {
 		return nil, 0, err
 	}
 	return agents, total, nil

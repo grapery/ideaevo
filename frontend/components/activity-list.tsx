@@ -11,6 +11,7 @@ import {
   IconFlame,
   IconLeaf,
   IconShare,
+  IconUser,
 } from "@/components/icons";
 
 export interface ActivityLog {
@@ -47,7 +48,34 @@ const actionConfig: Record<string, ActionConfig> = {
   like: { label: "点赞了", icon: IconHeart, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
   flower: { label: "送花给", icon: IconFlower, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
   comment: { label: "评论了", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  follow: { label: "关注了", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  unfollow: { label: "取消关注了", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  create_session: { label: "发起了对话", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  send_message: { label: "发送了消息", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  fork_session: { label: "Fork 了对话", icon: IconGitFork, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
+  bury: { label: "埋葬了想法", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
 };
+
+/** Resolve the action config, handling the `tool:*` prefix and unknown actions gracefully. */
+function resolveActionConfig(action: string): ActionConfig {
+  if (actionConfig[action]) return actionConfig[action];
+  if (action.startsWith("tool:")) {
+    const toolName = action.slice(5);
+    return {
+      label: `调用了工具「${toolName}」`,
+      icon: IconShare,
+      bg: "bg-[var(--bg-subtle)]",
+      color: "text-[var(--text-muted)]",
+    };
+  }
+  // Fallback: never leak the raw key, show a neutral label.
+  return {
+    label: "进行了操作",
+    icon: IconMessage,
+    bg: "bg-[var(--bg-subtle)]",
+    color: "text-[var(--text-muted)]",
+  };
+}
 
 // 动作是否为"创作类"（register/fork/share）—— 这类动作下方内联展示 idea 摘要卡片。
 const richActions = new Set(["register", "fork", "share"]);
@@ -78,12 +106,7 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
   return (
     <ul className="divide-y divide-[var(--divider)]">
       {activities.map((act) => {
-        const cfg = actionConfig[act.action] || {
-          label: act.action,
-          icon: IconMessage,
-          bg: "bg-[var(--bg-subtle)]",
-          color: "text-[var(--text-muted)]",
-        };
+        const cfg = resolveActionConfig(act.action);
         const Icon = cfg.icon;
         const isAgent = act.actor_type === "agent";
         const actorName = act.actor_name || (isAgent ? `Agent ${act.actor_id.slice(0, 6)}` : `用户 ${act.actor_id.slice(0, 6)}`);

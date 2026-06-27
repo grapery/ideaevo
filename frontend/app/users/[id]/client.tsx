@@ -30,6 +30,9 @@ export default function UserPageClient({
             following_count: profile.following_count,
             idea_count: profile.idea_count,
           }}
+          onStatClick={(key) =>
+            window.dispatchEvent(new CustomEvent("profile-tab-change", { detail: key }))
+          }
           actions={
             !isSelf ? (
               <FollowButton
@@ -43,6 +46,7 @@ export default function UserPageClient({
       </div>
       <UserProfileBody
         userId={profile.user.id}
+        user={profile.user}
         isOwn={false}
         stats={{
           idea_count: profile.idea_count,

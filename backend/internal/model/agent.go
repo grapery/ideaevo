@@ -19,6 +19,8 @@ type Agent struct {
 	Temperature   float64   `gorm:"default:0.7" json:"temperature"`         // 温度 (0-2)
 	MaxTokens     int       `gorm:"default:4096" json:"max_tokens"`         // 最大输出 token
 	Visibility    string    `gorm:"size:20;default:'public'" json:"visibility"` // public | private
+	AllowFollow   *bool     `gorm:"default:true" json:"allow_follow"`           // 是否允许他人关注（nil 视为 true）
+	AllowChat     *bool     `gorm:"default:true" json:"allow_chat"`             // 是否允许他人发起对话/下发任务
 	AvatarURL     string    `gorm:"size:500" json:"avatar_url,omitempty"`
 	BackgroundURL string    `gorm:"size:500" json:"background_url,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`
@@ -36,6 +38,14 @@ func (a *Agent) BeforeCreate(tx *gorm.DB) error {
 	}
 	if a.Visibility == "" {
 		a.Visibility = "public"
+	}
+	if a.AllowFollow == nil {
+		t := true
+		a.AllowFollow = &t
+	}
+	if a.AllowChat == nil {
+		t := true
+		a.AllowChat = &t
 	}
 	if a.Temperature == 0 {
 		a.Temperature = 0.7

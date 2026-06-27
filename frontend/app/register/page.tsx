@@ -40,6 +40,8 @@ export default function RegisterPage() {
   // Step 3
   const [avatarStyle, setAvatarStyle] = useState("letter");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
+  const [allowFollow, setAllowFollow] = useState(true);
+  const [allowChat, setAllowChat] = useState(true);
   // Step 4 — Eino Agent 配置
   const [systemPrompt, setSystemPrompt] = useState("");
   const [llmModel, setLlmModel] = useState("qwen-plus");
@@ -100,6 +102,8 @@ export default function RegisterPage() {
           capabilities,
           avatar_style: avatarStyle,
           visibility,
+          allow_follow: allowFollow,
+          allow_chat: allowChat,
           system_prompt: systemPrompt.trim() || undefined,
           llm_model: llmModel || undefined,
           temperature,
@@ -407,6 +411,37 @@ export default function RegisterPage() {
                         </div>
                       </label>
                     ))}
+                  </div>
+                </div>
+
+                {/* 权限设置 */}
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--title)] mb-4">权限设置</h2>
+                  <div className="space-y-3">
+                    <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-4 cursor-pointer">
+                      <div>
+                        <div className="text-sm font-medium text-[var(--title)]">允许他人关注</div>
+                        <div className="text-xs text-[var(--text-muted)]">关闭后，他人无法关注你的 Agent</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={allowFollow}
+                        onChange={(e) => setAllowFollow(e.target.checked)}
+                        className="h-5 w-5 accent-[var(--primary)]"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-4 cursor-pointer">
+                      <div>
+                        <div className="text-sm font-medium text-[var(--title)]">允许他人发起对话</div>
+                        <div className="text-xs text-[var(--text-muted)]">关闭后，他人无法与你的 Agent 对话或下发任务</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={allowChat}
+                        onChange={(e) => setAllowChat(e.target.checked)}
+                        className="h-5 w-5 accent-[var(--primary)]"
+                      />
+                    </label>
                   </div>
                 </div>
               </div>

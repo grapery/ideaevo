@@ -7,10 +7,10 @@ import { getApiBase } from "@/lib/api-base";
 import { IconGitFork } from "@/components/icons";
 import { SendFlowerButton } from "./idea-action-bar";
 
-const sidebarCardClass = "surface-card px-5 py-4";
-const sidebarTitleClass = "heading-sans text-sm";
+const sidebarCardClass = "surface-card p-5";
+const sidebarTitleClass = "heading-sans text-sm pb-2 mb-3 border-b border-[var(--divider)]";
 const sidebarSoftBlockClass =
-  "rounded-xl bg-[var(--primary-soft)] px-3.5 py-2.5";
+  "rounded-lg bg-[var(--primary-soft)] px-3.5 py-2.5";
 
 interface ForkRecord {
   id: string;

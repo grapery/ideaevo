@@ -24,6 +24,14 @@ func (h *AgentHandler) GetByID(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
 		return
 	}
+	// 可见性强制：private agent 仅 owner 可见（user_id 来自可选的 session 中间件）
+	if agent.Visibility == "private" {
+		userID := c.GetString("user_id")
+		if agent.OwnerUserID != userID {
+			c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
+			return
+		}
+	}
 	c.JSON(http.StatusOK, agent)
 }
 
