@@ -3,6 +3,8 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/wanye/ideaevo/internal/model"
@@ -49,6 +51,15 @@ type IdeaMatch struct {
 }
 
 func (s *IdeaService) Register(agentID string, input RegisterIdeaInput) (*model.Idea, error) {
+	repoURL := strings.TrimSpace(input.RepoURL)
+	demoURL := strings.TrimSpace(input.DemoURL)
+	if err := validateHTTPURL(repoURL); err != nil {
+		return nil, err
+	}
+	if err := validateHTTPURL(demoURL); err != nil {
+		return nil, err
+	}
+
 	tagsJSON, _ := json.Marshal(input.Tags)
 
 	idea := &model.Idea{
@@ -58,8 +69,8 @@ func (s *IdeaService) Register(agentID string, input RegisterIdeaInput) (*model.
 		Status:      model.IdeaStatusActive,
 		Category:    input.Category,
 		Tags:        string(tagsJSON),
-		RepoURL:     input.RepoURL,
-		DemoURL:     input.DemoURL,
+		RepoURL:     repoURL,
+		DemoURL:     demoURL,
 	}
 
 	if err := s.db.Create(idea).Error; err != nil {
@@ -200,6 +211,95 @@ func (s *IdeaService) UpdateStatus(ideaID, status string) (*model.Idea, error) {
 			// 状态可能从 buried 恢复为 active，需要重新索引
 			s.indexer.IndexIdea(&idea)
 		}
+	}
+
+	return &idea, nil
+}
+
+var validImplStatuses = map[string]bool{
+	"":            true,
+	"concept":     true,
+	"in_progress": true,
+	"implemented": true,
+	"paused":      true,
+}
+
+type UpdateIdeaMetaInput struct {
+	ImplStatus *string `json:"impl_status"`
+	RepoURL    *string `json:"repo_url"`
+	DemoURL    *string `json:"demo_url"`
+	IconURL    *string `json:"icon_url"`
+}
+
+func validateHTTPURL(raw string) error {
+	if raw == "" {
+		return nil
+	}
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return fmt.Errorf("invalid URL: %s", raw)
+	}
+	return nil
+}
+
+func validateIdeaIconURL(assets *ObjectStore, ideaID, raw string) error {
+	if assets == nil || !assets.Enabled() {
+		return fmt.Errorf("icon_url must be from allowed storage")
+	}
+	if !assets.IsAllowedURL(raw) {
+		return fmt.Errorf("icon_url must be from allowed storage")
+	}
+	key, err := assets.KeyFromURL(raw)
+	if err != nil {
+		return fmt.Errorf("invalid icon_url")
+	}
+	return assets.ValidateUploadedObject(key, "ideas", ideaID)
+}
+
+// UpdateMeta 更新想法的可选附加信息（实现状态、仓库、演示、图标）。
+func (s *IdeaService) UpdateMeta(ideaID string, input UpdateIdeaMetaInput, assets *ObjectStore) (*model.Idea, error) {
+	var idea model.Idea
+	if err := s.db.First(&idea, "id = ?", ideaID).Error; err != nil {
+		return nil, err
+	}
+
+	if input.ImplStatus != nil {
+		status := strings.TrimSpace(*input.ImplStatus)
+		if !validImplStatuses[status] {
+			return nil, fmt.Errorf("invalid impl_status, must be one of: concept, in_progress, implemented, paused")
+		}
+		idea.ImplStatus = model.ImplStatus(status)
+	}
+	if input.RepoURL != nil {
+		v := strings.TrimSpace(*input.RepoURL)
+		if err := validateHTTPURL(v); err != nil {
+			return nil, err
+		}
+		idea.RepoURL = v
+	}
+	if input.DemoURL != nil {
+		v := strings.TrimSpace(*input.DemoURL)
+		if err := validateHTTPURL(v); err != nil {
+			return nil, err
+		}
+		idea.DemoURL = v
+	}
+	if input.IconURL != nil {
+		v := strings.TrimSpace(*input.IconURL)
+		if v != "" {
+			if err := validateIdeaIconURL(assets, ideaID, v); err != nil {
+				return nil, err
+			}
+		}
+		idea.IconURL = v
+	}
+
+	if err := s.db.Save(&idea).Error; err != nil {
+		return nil, err
+	}
+
+	if s.indexer != nil && idea.Status == model.IdeaStatusActive {
+		s.indexer.IndexIdea(&idea)
 	}
 
 	return &idea, nil

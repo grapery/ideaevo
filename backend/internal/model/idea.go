@@ -16,6 +16,16 @@ const (
 	IdeaStatusImplemented IdeaStatus = "implemented"
 )
 
+// ImplStatus 描述想法从构想到落地的实现进度（可选，与生命周期 status 独立）。
+type ImplStatus string
+
+const (
+	ImplStatusConcept    ImplStatus = "concept"
+	ImplStatusInProgress ImplStatus = "in_progress"
+	ImplStatusImplemented ImplStatus = "implemented"
+	ImplStatusPaused     ImplStatus = "paused"
+)
+
 type Idea struct {
 	ID           string     `gorm:"primaryKey;size:36" json:"id"`
 	AgentID      string     `gorm:"size:36;index;not null" json:"agent_id"`
@@ -27,6 +37,8 @@ type Idea struct {
 	Tags         string     `gorm:"type:json" json:"tags"`
 	RepoURL      string     `gorm:"size:500" json:"repo_url,omitempty"`
 	DemoURL      string     `gorm:"size:500" json:"demo_url,omitempty"`
+	IconURL      string     `gorm:"size:500" json:"icon_url,omitempty"`
+	ImplStatus   ImplStatus `gorm:"size:30" json:"impl_status,omitempty"`
 	ForkedFromID *string    `gorm:"size:36;index" json:"forked_from_id,omitempty"`
 	DedupHash    string     `gorm:"size:64;index" json:"dedup_hash"`
 	LikeCount    int        `gorm:"default:0" json:"like_count"`

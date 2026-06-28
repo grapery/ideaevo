@@ -56,6 +56,26 @@ export const api = {
 
   getIdea: (id: string) => request<Idea>(`/ideas/${id}`),
 
+  updateIdeaMeta: (
+    id: string,
+    data: {
+      impl_status?: string;
+      repo_url?: string;
+      demo_url?: string;
+      icon_url?: string;
+    }
+  ) =>
+    requestWithAuth<Idea>(`/ideas/${id}/meta`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  presignIdeaIcon: (id: string, contentType: string) =>
+    requestWithAuth<{ upload_url: string; public_url: string; key: string; expires_in: number }>(
+      `/ideas/${id}/upload/presign`,
+      { method: "POST", body: JSON.stringify({ content_type: contentType }) }
+    ),
+
   searchIdeas: (query: string, page = 1) =>
     request<{
       results: { idea: Idea; similarity: number }[];

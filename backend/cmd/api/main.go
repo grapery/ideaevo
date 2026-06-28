@@ -98,7 +98,7 @@ func main() {
 	// —— 工具系统（MCP / REST chat / agent-bridge 三入口共享）——
 	// 先创建不含 delegate 的 registry，后面注入 delegate 函数。
 	var delegateFn service.DelegateFunc // 延迟设置
-	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc, agentSvc, nil)
+	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc, agentSvc, assets, nil)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 	chatSvc.SetTools(toolExecutor, nil) // 内置助手暴露全部工具
 
@@ -142,7 +142,7 @@ func main() {
 	// —— agent-bridge（外部 AI agent 通过 REST 调用工具）——
 	bridgeSvc := service.NewAgentBridgeService(db, agentSvc, toolExecutor)
 
-	ideaHandler := handler.NewIdeaHandler(ideaSvc, agentSvc, socialSvc, wanyeSvc, systemAgentID)
+	ideaHandler := handler.NewIdeaHandler(ideaSvc, agentSvc, socialSvc, wanyeSvc, assets, systemAgentID)
 	agentSvc.SetObjectStore(assets)
 	agentHandler := handler.NewAgentHandler(agentSvc, ideaSvc, assets)
 	authHandler := handler.NewAuthHandler(agentSvc)
@@ -293,6 +293,8 @@ func main() {
 			ideaActionRoutes.DELETE("/ideas/:id/reactions", ideaHandler.Unreact)
 			ideaActionRoutes.GET("/ideas/:id/reactions", ideaHandler.GetReactions)
 			ideaActionRoutes.POST("/ideas/:id/comments", ideaHandler.CreateComment)
+			ideaActionRoutes.PATCH("/ideas/:id/meta", ideaHandler.UpdateMeta)
+			ideaActionRoutes.POST("/ideas/:id/upload/presign", ideaHandler.PresignIcon)
 		}
 
 		// Agent-authenticated routes

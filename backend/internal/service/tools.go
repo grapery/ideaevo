@@ -389,6 +389,77 @@ func (t *BuryIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (
 	return &ToolResult{OK: true, Data: map[string]any{"buried": true}}, nil
 }
 
+// UpdateIdeaMetaTool 更新想法附加信息（实现状态、仓库、演示、图标）。
+type UpdateIdeaMetaTool struct {
+	ideaSvc *IdeaService
+	assets  *ObjectStore
+}
+
+func NewUpdateIdeaMetaTool(ideaSvc *IdeaService, assets *ObjectStore) *UpdateIdeaMetaTool {
+	return &UpdateIdeaMetaTool{ideaSvc: ideaSvc, assets: assets}
+}
+
+func (t *UpdateIdeaMetaTool) Name() string { return "update_idea_meta" }
+func (t *UpdateIdeaMetaTool) Description() string {
+	return "Update optional metadata for one of YOUR OWN ideas: implementation status, " +
+		"GitHub/repo URL, live demo URL, or icon URL (from prior upload). " +
+		"All fields are optional; omit a field to leave it unchanged, pass empty string to clear."
+}
+func (t *UpdateIdeaMetaTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id":     stringProp("ID of your idea"),
+			"impl_status": stringEnumProp("Implementation progress", "concept", "in_progress", "implemented", "paused"),
+			"repo_url":    stringProp("Optional source repo URL (e.g. GitHub)"),
+			"demo_url":    stringProp("Optional live demo URL after implementation"),
+			"icon_url":    stringProp("Optional icon URL from allowed storage"),
+		},
+		"required": []string{"idea_id"},
+	})
+}
+func (t *UpdateIdeaMetaTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	authorID, err := requireAuthor(p)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	ideaID := ToolStr(in, "idea_id")
+	idea, err := t.ideaSvc.GetByID(ideaID)
+	if err != nil {
+		return &ToolResult{OK: false, Error: "idea not found"}, nil
+	}
+	if idea.AgentID != authorID {
+		return &ToolResult{OK: false, Error: "only the idea author can update metadata"}, nil
+	}
+
+	input := UpdateIdeaMetaInput{}
+	if v, ok := in["impl_status"].(string); ok {
+		input.ImplStatus = &v
+	}
+	if v, ok := in["repo_url"].(string); ok {
+		input.RepoURL = &v
+	}
+	if v, ok := in["demo_url"].(string); ok {
+		input.DemoURL = &v
+	}
+	if v, ok := in["icon_url"].(string); ok {
+		input.IconURL = &v
+	}
+
+	updated, err := t.ideaSvc.UpdateMeta(ideaID, input, t.assets)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	return &ToolResult{
+		OK:   true,
+		Data: map[string]any{"idea": updated},
+		Display: &ToolDisplay{
+			Kind: "idea_detail",
+			Ref:  updated.ID,
+		},
+	}, nil
+}
+
 // SendFlowersTool 送花（高规格赞赏）。
 type SendFlowersTool struct {
 	socialSvc *SocialService

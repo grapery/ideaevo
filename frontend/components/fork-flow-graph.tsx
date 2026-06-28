@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Idea } from "@/lib/types";
 import { getApiBase } from "@/lib/api-base";
@@ -25,31 +25,33 @@ interface FlowNode {
   children: FlowNode[];
 }
 
-interface GraphRow {
+/** One row in the git-style graph (top = oldest) */
+interface LayoutRow {
   node: FlowNode;
-  depth: number;
   lane: number;
-  maxLane: number;
-  isLastSibling: boolean;
-  parentLane: number;
-  ancestorChain: number[];
+  /** Lanes that carry a vertical line through the top half of this row */
+  lanesAbove: number[];
+  /** Lanes that carry a vertical line through the bottom half of this row */
+  lanesBelow: number[];
+  /** Draw a branch elbow from lanesAbove[branchFrom] into this row's lane */
+  branchFrom?: number;
 }
 
+const LANE_W = 14;
+const ROW_H = 48;
+const PAD_X = 10;
+const DOT_R = 4;
+
 const LANE_COLORS = [
-  "var(--primary)",
+  "var(--ink-faint)",
+  "var(--accent-link)",
   "#6b8cae",
   "#9b7bb8",
   "#c49a6c",
-  "#7ba38f",
 ];
 
-function formatRelative(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days < 1) return "今天";
-  if (days < 30) return `${days} 天前`;
-  if (days < 365) return `${Math.floor(days / 30)} 个月前`;
-  return `${Math.floor(days / 365)} 年前`;
+function laneX(lane: number) {
+  return PAD_X + lane * LANE_W;
 }
 
 function buildDescendantTree(
@@ -80,247 +82,272 @@ function buildDescendantTree(
     };
   }
 
-  const directForks = childrenByParent.get(ideaId) || [];
-  return directForks
+  return (childrenByParent.get(ideaId) || [])
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
     .map(toNode);
 }
 
-function flattenTree(
-  nodes: FlowNode[],
-  depth: number,
-  lane: number,
-  parentLane: number,
-  ancestorChain: number[],
-  isLastSibling: boolean
-): GraphRow[] {
-  const rows: GraphRow[] = [];
-  nodes.forEach((node, index) => {
-    const isLast = index === nodes.length - 1;
-    const nodeLane = depth === 0 ? 0 : lane;
-    rows.push({
-      node,
-      depth,
-      lane: nodeLane,
-      maxLane: nodeLane,
-      isLastSibling: isLast,
-      parentLane,
-      ancestorChain: [...ancestorChain],
-    });
+/**
+ * Git log --graph style layout.
+ * Main lineage (ancestors + HEAD) stays on lane 0; each fork branch gets its own lane.
+ */
+function layoutGitGraph(
+  ancestors: FlowNode[],
+  current: FlowNode,
+  descendants: FlowNode[]
+): LayoutRow[] {
+  const rows: LayoutRow[] = [];
+  const activeBelow = new Set<number>([0]);
 
-    if (node.children.length > 0) {
-      const childRows = flattenTree(
-        node.children,
-        depth + 1,
-        nodeLane + 1,
-        nodeLane,
-        [...ancestorChain, nodeLane],
-        isLast
-      );
-      rows.push(...childRows);
-      const maxChildLane = childRows.reduce((m, r) => Math.max(m, r.lane), nodeLane);
-      rows[rows.length - childRows.length - 1].maxLane = maxChildLane;
-    }
+  const pushRow = (partial: Omit<LayoutRow, "lanesAbove" | "lanesBelow">) => {
+    const lanesAbove = [...activeBelow];
+    rows.push({ ...partial, lanesAbove, lanesBelow: [] });
+    return rows.length - 1;
+  };
+
+  const setBelow = (idx: number, lanes: number[]) => {
+    rows[idx].lanesBelow = lanes;
+    activeBelow.clear();
+    lanes.forEach((l) => activeBelow.add(l));
+  };
+
+  // Ancestors on main lane 0
+  ancestors.forEach((a, i) => {
+    const idx = pushRow({ node: a, lane: 0 });
+    const hasMore = i < ancestors.length - 1 || ancestors.length > 0;
+    setBelow(idx, hasMore ? [0] : []);
   });
+
+  // HEAD — fork tip: branches off lane 0 when forked from ancestor
+  const headLane = ancestors.length > 0 ? 1 : 0;
+  const headIdx = pushRow({
+    node: current,
+    lane: headLane,
+    branchFrom: ancestors.length > 0 ? 0 : undefined,
+  });
+
+  if (descendants.length === 0) {
+    setBelow(headIdx, ancestors.length > 0 ? [0] : []);
+    return rows;
+  }
+
+  // Fork point from HEAD: keep main lane 0 + child lanes
+  const childLanes = descendants.map((_, i) => i + (headLane + 1));
+  setBelow(headIdx, [0, ...childLanes]);
+
+  function walkChildren(nodes: FlowNode[], lanes: number[], parentLane: number) {
+    nodes.forEach((node, i) => {
+      const lane = lanes[i];
+      const idx = pushRow({
+        node,
+        lane,
+        branchFrom: parentLane,
+      });
+
+      if (node.children.length > 0) {
+        // Nested forks continue on same lane, children branch further right
+        const nestedLanes = node.children.map((_, j) => lane + j + 1);
+        const below = [parentLane, lane, ...nestedLanes];
+        setBelow(idx, [...new Set(below)]);
+        walkChildren(node.children, nestedLanes, lane);
+      } else {
+        // Close this branch lane; keep parent lanes if siblings remain
+        const remaining = lanes.slice(i + 1);
+        const below = [parentLane, ...remaining];
+        setBelow(idx, below.length > 0 ? [...new Set(below)] : []);
+      }
+    });
+  }
+
+  walkChildren(descendants, childLanes, headLane);
   return rows;
 }
 
-function GraphGutter({
-  row,
-  isFirst,
-  isLast,
-  hasNext,
-}: {
-  row: GraphRow;
-  isFirst: boolean;
-  isLast: boolean;
-  hasNext: boolean;
-}) {
-  const laneWidth = 14;
-  const dotX = 7;
-  const color = LANE_COLORS[row.lane % LANE_COLORS.length];
-  const isCurrent = row.node.kind === "current";
+function maxLaneOf(rows: LayoutRow[]) {
+  let m = 0;
+  for (const r of rows) {
+    m = Math.max(m, r.lane, ...r.lanesAbove, ...r.lanesBelow);
+  }
+  return m;
+}
+
+/** Unified SVG for the entire graph column */
+function GitGraphSvg({ rows }: { rows: LayoutRow[] }) {
+  const maxLane = maxLaneOf(rows);
+  const width = laneX(maxLane) + PAD_X;
+  const height = rows.length * ROW_H;
+
+  const paths: ReactNode[] = [];
+  const dots: ReactNode[] = [];
+
+  rows.forEach((row, i) => {
+    const yMid = i * ROW_H + ROW_H / 2;
+    const x = laneX(row.lane);
+    const color = LANE_COLORS[row.lane % LANE_COLORS.length];
+    const isCurrent = row.node.kind === "current";
+
+    // Connect from previous row's dot to this row's dot
+    if (i > 0) {
+      const prev = rows[i - 1];
+      const yTop = (i - 1) * ROW_H + ROW_H / 2;
+      const yBranch = yMid - 8;
+
+      if (row.branchFrom !== undefined && row.lane !== row.branchFrom) {
+        const bx = laneX(row.branchFrom);
+        paths.push(
+          <path
+            key={`branch-${i}`}
+            d={`M ${bx} ${yTop} L ${bx} ${yBranch} L ${x} ${yBranch} L ${x} ${yMid}`}
+            fill="none"
+            stroke={color}
+            strokeWidth={1.5}
+            strokeLinejoin="round"
+          />
+        );
+        for (const la of row.lanesAbove) {
+          if (la === row.branchFrom || la === row.lane) continue;
+          if (!prev.lanesBelow.includes(la)) continue;
+          const lx = laneX(la);
+          paths.push(
+            <line
+              key={`v-pass-${i}-${la}`}
+              x1={lx}
+              y1={yTop}
+              x2={lx}
+              y2={yMid}
+              stroke={LANE_COLORS[la % LANE_COLORS.length]}
+              strokeWidth={1.5}
+              opacity={0.45}
+            />
+          );
+        }
+      } else {
+        for (const la of row.lanesAbove) {
+          if (!prev.lanesBelow.includes(la)) continue;
+          const lx = laneX(la);
+          paths.push(
+            <line
+              key={`v-straight-${i}-${la}`}
+              x1={lx}
+              y1={yTop}
+              x2={lx}
+              y2={yMid}
+              stroke={la === row.lane ? color : LANE_COLORS[la % LANE_COLORS.length]}
+              strokeWidth={1.5}
+              opacity={la === row.lane ? 0.85 : 0.45}
+            />
+          );
+        }
+      }
+    }
+
+    // Pass-through lanes below this row (no commit on that lane)
+    if (i < rows.length - 1) {
+      const yBot = yMid;
+      const yNext = (i + 1) * ROW_H + ROW_H / 2;
+      for (const lb of row.lanesBelow) {
+        if (lb === row.lane) continue;
+        const lx = laneX(lb);
+        paths.push(
+          <line
+            key={`v-pass-below-${i}-${lb}`}
+            x1={lx}
+            y1={yBot}
+            x2={lx}
+            y2={yNext}
+            stroke={LANE_COLORS[lb % LANE_COLORS.length]}
+            strokeWidth={1.5}
+            opacity={0.45}
+          />
+        );
+      }
+    }
+
+    // Commit dot
+    if (isCurrent) {
+      dots.push(
+        <g key={`dot-${i}`}>
+          <circle cx={x} cy={yMid} r={DOT_R + 1} fill={color} stroke={color} strokeWidth={1.5} />
+          <circle cx={x} cy={yMid} r={2} fill="var(--bg-surface)" />
+        </g>
+      );
+    } else {
+      dots.push(
+        <circle
+          key={`dot-${i}`}
+          cx={x}
+          cy={yMid}
+          r={DOT_R}
+          fill="var(--bg-surface)"
+          stroke={color}
+          strokeWidth={1.5}
+        />
+      );
+    }
+  });
 
   return (
-    <div className="relative w-[28px] shrink-0" style={{ minHeight: 48 }}>
-      <svg
-        className="absolute inset-0 h-full w-full overflow-visible"
-        aria-hidden="true"
-      >
-        {/* Main vertical line (ancestors + current) */}
-        {row.node.kind !== "fork" && !isLast && (
-          <line
-            x1={dotX}
-            y1={isCurrent ? 14 : 0}
-            x2={dotX}
-            y2="100%"
-            stroke="var(--divider)"
-            strokeWidth={2}
-          />
-        )}
+    <svg
+      width={width}
+      height={height}
+      className="shrink-0"
+      aria-hidden="true"
+      style={{ display: "block" }}
+    >
+      {paths}
+      {dots}
+    </svg>
+  );
+}
 
-        {/* Ancestor line from top */}
-        {row.node.kind === "ancestor" && !isFirst && (
-          <line
-            x1={dotX}
-            y1={0}
-            x2={dotX}
-            y2={14}
-            stroke="var(--divider)"
-            strokeWidth={2}
-          />
-        )}
+function RowContent({ row }: { row: LayoutRow }) {
+  const isCurrent = row.node.kind === "current";
+  const color = LANE_COLORS[row.lane % LANE_COLORS.length];
 
-        {/* Fork branch lines */}
-        {row.node.kind === "fork" && (
-          <>
-            {/* Vertical from parent lane */}
-            {row.ancestorChain.map((lane, i) => {
-              const x = dotX + lane * laneWidth;
-              const showVert = !row.isLastSibling || i < row.ancestorChain.length - 1;
-              if (!showVert && row.isLastSibling) return null;
-              return (
-                <line
-                  key={`v-${lane}-${i}`}
-                  x1={x}
-                  y1={0}
-                  x2={x}
-                  y2={row.isLastSibling && i === row.ancestorChain.length - 1 ? 14 : "100%"}
-                  stroke={LANE_COLORS[lane % LANE_COLORS.length]}
-                  strokeWidth={2}
-                  opacity={0.5}
-                />
-              );
-            })}
-            {/* Horizontal connector */}
-            <path
-              d={`M ${dotX} 14 L ${dotX + row.depth * laneWidth} 14`}
-              stroke={color}
-              strokeWidth={2}
-              fill="none"
-              opacity={0.7}
-            />
-            {/* Vertical down if has children or not last */}
-            {(hasNext || row.node.children.length > 0) && !row.isLastSibling && (
-              <line
-                x1={dotX + row.depth * laneWidth}
-                y1={14}
-                x2={dotX + row.depth * laneWidth}
-                y2="100%"
-                stroke={color}
-                strokeWidth={2}
-                opacity={0.5}
-              />
-            )}
-          </>
-        )}
-
-        {/* Fork point from current to children */}
-        {row.node.kind === "current" && row.node.children.length > 0 && (
-          <line
-            x1={dotX}
-            y1={14}
-            x2={dotX}
-            y2="100%"
-            stroke="var(--divider)"
-            strokeWidth={2}
-          />
-        )}
-      </svg>
-
-      {/* Node dot */}
+  return (
+    <div
+      className="flex min-w-0 flex-1 items-center"
+      style={{ height: ROW_H }}
+    >
       <div
-        className="absolute left-0 top-[6px] flex items-center justify-center"
-        style={{ left: row.node.kind === "fork" ? row.depth * laneWidth : 0 }}
+        className={`min-w-0 flex-1 px-2 ${
+          isCurrent
+            ? "border border-[var(--rule)] border-l-[3px] bg-[var(--bg-subtle)] py-1.5"
+            : "py-0.5"
+        }`}
+        style={isCurrent ? { borderLeftColor: color } : undefined}
       >
         {isCurrent ? (
-          <div
-            className="flex h-[14px] w-[14px] items-center justify-center rounded-full border-2"
-            style={{ borderColor: color, background: color }}
-          >
-            <div className="h-[5px] w-[5px] rounded-full bg-white" />
-          </div>
+          <span className="block truncate text-[13px] font-medium text-[var(--ink)]">
+            {row.node.title}
+          </span>
         ) : (
-          <div
-            className="h-[10px] w-[10px] rounded-full border-2 bg-[var(--bg-surface)]"
-            style={{ borderColor: row.node.kind === "fork" ? color : "var(--divider)" }}
-          />
+          <Link
+            href={`/ideas/${row.node.id}`}
+            className="block truncate text-[13px] text-[var(--ink-soft)] hover:text-[var(--accent-link)]"
+          >
+            {row.node.title}
+          </Link>
+        )}
+        {isCurrent && (
+          <span
+            className="mt-0.5 inline-block px-1 py-px font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-wider"
+            style={{ color }}
+          >
+            HEAD
+          </span>
+        )}
+        {row.node.kind === "fork" && row.node.reason && (
+          <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--ink-faint)]" title={row.node.reason}>
+            {row.node.reason}
+          </p>
         )}
       </div>
     </div>
   );
 }
 
-function FlowRow({
-  row,
-  isFirst,
-  isLast,
-  hasNext,
-}: {
-  row: GraphRow;
-  isFirst: boolean;
-  isLast: boolean;
-  hasNext: boolean;
-}) {
-  const isCurrent = row.node.kind === "current";
-  const color = LANE_COLORS[row.lane % LANE_COLORS.length];
-
-  return (
-    <div className="flex gap-2 py-1">
-      <GraphGutter row={row} isFirst={isFirst} isLast={isLast} hasNext={hasNext} />
-      <div
-        className={`min-w-0 flex-1 rounded-lg px-2.5 py-1.5 ${
-          isCurrent
-            ? "bg-[var(--primary-soft)] ring-1 ring-[var(--primary)]/20"
-            : "hover:bg-[var(--bg-subtle)]"
-        }`}
-      >
-        <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1">
-            {isCurrent ? (
-              <span className="block truncate text-sm font-medium text-[var(--primary)]">
-                {row.node.title}
-              </span>
-            ) : (
-              <Link
-                href={`/ideas/${row.node.id}`}
-                className="block truncate text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]"
-              >
-                {row.node.title}
-              </Link>
-            )}
-            {isCurrent && (
-              <span
-                className="mt-0.5 inline-block rounded px-1.5 py-px text-[10px] font-medium"
-                style={{ background: color, color: "white" }}
-              >
-                HEAD
-              </span>
-            )}
-            {row.node.kind === "fork" && row.node.reason && (
-              <p className="mt-0.5 line-clamp-1 text-xs text-[var(--text-muted)]">
-                {row.node.reason}
-              </p>
-            )}
-            {row.node.kind === "fork" && row.node.createdAt && (
-              <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
-                {row.node.agentId && (
-                  <span>Agent {row.node.agentId.slice(0, 6)} · </span>
-                )}
-                {formatRelative(row.node.createdAt)}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-async function fetchAncestorChain(
-  idea: Idea,
-  apiBase: string
-): Promise<FlowNode[]> {
+async function fetchAncestorChain(idea: Idea, apiBase: string): Promise<FlowNode[]> {
   const ancestors: FlowNode[] = [];
   let parentId = idea.forked_from_id;
   let depth = 0;
@@ -386,60 +413,37 @@ export function ForkFlowGraph({
     [idea.id, forks, ideaMap]
   );
 
-  const rows: GraphRow[] = useMemo(() => {
-    const result: GraphRow[] = [];
+  const currentNode: FlowNode = useMemo(
+    () => ({
+      id: idea.id,
+      title: idea.title,
+      kind: "current",
+      children: descendants,
+    }),
+    [idea.id, idea.title, descendants]
+  );
 
-    ancestors.forEach((a, i) => {
-      result.push({
-        node: a,
-        depth: 0,
-        lane: 0,
-        maxLane: 0,
-        isLastSibling: i === ancestors.length - 1 && descendants.length === 0,
-        parentLane: 0,
-        ancestorChain: [],
-      });
-    });
-
-    result.push({
-      node: {
-        id: idea.id,
-        title: idea.title,
-        kind: "current",
-        children: descendants,
-      },
-      depth: 0,
-      lane: 0,
-      maxLane: 0,
-      isLastSibling: descendants.length === 0,
-      parentLane: 0,
-      ancestorChain: [],
-    });
-
-    if (descendants.length > 0) {
-      const forkRows = flattenTree(descendants, 1, 1, 0, [0], descendants.length === 1);
-      result.push(...forkRows);
-    }
-
-    return result;
-  }, [ancestors, idea.id, idea.title, descendants]);
+  const layout = useMemo(
+    () => layoutGitGraph(ancestors, currentNode, descendants),
+    [ancestors, currentNode, descendants]
+  );
 
   const hasLineage = ancestors.length > 0 || forks.length > 0;
 
   if (!hasLineage && compact) return null;
 
   return (
-    <div className={compact ? "" : "surface-card p-5"}>
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <div className={compact ? "" : "surface-card p-4"}>
+      <div className="mb-2 flex items-center justify-between gap-3">
         <h3
-          className={`heading-sans text-sm flex items-center gap-1.5 ${
-            compact ? "" : "pb-2 mb-0 border-b border-[var(--divider)]"
+          className={`flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)] ${
+            compact ? "" : "border-b border-[var(--rule)] pb-2"
           }`}
         >
-          <IconGitFork className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
+          <IconGitFork className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)]" />
           Fork 谱系
         </h3>
-        <span className="shrink-0 text-xs tabular-nums text-[var(--text-muted)]">
+        <span className="shrink-0 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
           {forks.length} 个衍生
           {ancestors.length > 0 && ` · ${ancestors.length} 层上游`}
         </span>
@@ -447,20 +451,17 @@ export function ForkFlowGraph({
 
       {hasLineage ? (
         <div className="overflow-x-auto">
-          <div className="min-w-[200px]">
-            {rows.map((row, i) => (
-              <FlowRow
-                key={row.node.id}
-                row={row}
-                isFirst={i === 0}
-                isLast={i === rows.length - 1}
-                hasNext={i < rows.length - 1}
-              />
-            ))}
+          <div className="flex min-w-[200px]">
+            <GitGraphSvg rows={layout} />
+            <div className="min-w-0 flex-1">
+              {layout.map((row) => (
+                <RowContent key={row.node.id} row={row} />
+              ))}
+            </div>
           </div>
         </div>
       ) : (
-        <p className="text-xs leading-relaxed text-[var(--text-muted)]">
+        <p className="text-[12px] leading-relaxed text-[var(--ink-faint)]">
           暂无 Fork 记录，成为第一个衍生者
         </p>
       )}

@@ -66,6 +66,15 @@ export function safeUrl(url: unknown): string | null {
   }
 }
 
+export type IdeaImplStatus = "concept" | "in_progress" | "implemented" | "paused" | "";
+
+export const IDEA_IMPL_STATUS_LABELS: Record<string, string> = {
+  concept: "构想中",
+  in_progress: "开发中",
+  implemented: "已落地",
+  paused: "已暂停",
+};
+
 export interface Idea {
   id: string;
   agent_id: string;
@@ -73,10 +82,12 @@ export interface Idea {
   title: string;
   description: string;
   status: "active" | "buried" | "archived" | "implemented";
+  impl_status?: IdeaImplStatus;
   category: string;
   tags: string[];
   repo_url?: string;
   demo_url?: string;
+  icon_url?: string;
   forked_from_id?: string;
   like_count: number;
   flower_count: number;

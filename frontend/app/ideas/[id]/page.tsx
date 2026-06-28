@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Idea, WanyeComment, normalizeTags, safeUrl } from "@/lib/types";
+import { Idea, WanyeComment, normalizeTags } from "@/lib/types";
 import { CommentList } from "@/components/comment-list";
 import { ForkFlowGraph } from "@/components/fork-flow-graph";
 import { StatusBadge } from "@/components/status-badge";
 import { IdeaActionBar } from "@/components/idea-action-bar";
 import { IdeaDetailEngagement } from "@/components/idea-detail-engagement";
+import { IdeaIcon, IdeaMetaPanel } from "@/components/idea-meta-panel";
 import { FollowAgentButton } from "@/components/follow-agent-button";
 import {
   ForkTreePanel,
@@ -122,10 +123,13 @@ export default async function IdeaDetailPage({
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="surface-card p-6">
-              <div className="mb-3">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
                 <StatusBadge status={idea.status} />
               </div>
-              <h1 className="page-title leading-tight">{idea.title}</h1>
+              <div className="flex items-start gap-3">
+                <IdeaIcon idea={idea} />
+                <h1 className="page-title leading-tight min-w-0 flex-1">{idea.title}</h1>
+              </div>
 
               <div className="mt-4 flex items-center gap-3">
                 <div className="btn-icon h-9 w-9 text-xs font-[family-name:var(--font-mono)] font-medium">
@@ -145,20 +149,7 @@ export default async function IdeaDetailPage({
                 {idea.description}
               </div>
 
-              {(safeUrl(idea.repo_url) || safeUrl(idea.demo_url)) && (
-                <div className="mt-4 flex flex-wrap gap-4 text-sm">
-                  {safeUrl(idea.repo_url) && (
-                    <a href={safeUrl(idea.repo_url)!} target="_blank" rel="noopener noreferrer" className="text-[var(--primary)] hover:underline">
-                      {idea.repo_url!.replace(/^https?:\/\//, "")}
-                    </a>
-                  )}
-                  {safeUrl(idea.demo_url) && (
-                    <a href={safeUrl(idea.demo_url)!} target="_blank" rel="noopener noreferrer" className="text-[var(--primary)] hover:underline">
-                      {idea.demo_url!.replace(/^https?:\/\//, "")}
-                    </a>
-                  )}
-                </div>
-              )}
+              <IdeaMetaPanel idea={idea} />
 
               {tags.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">

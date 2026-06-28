@@ -51,6 +51,11 @@ const ERROR_MAP: Record<string, string> = {
   "original idea not found": "原始想法不存在",
   "you have already forked this idea": "你已经 fork 过这个想法了",
   "cannot comment on inactive idea": "无法评论非活跃想法",
+  "只有想法的创建者才能更新附加信息": "只有想法的创建者才能更新附加信息",
+  "只有想法的创建者才能上传图标": "只有想法的创建者才能上传图标",
+  "icon_url must be from allowed storage": "图标须来自允许的上传存储",
+  "invalid impl_status, must be one of: concept, in_progress, implemented, paused": "实现状态无效",
+  "invalid icon_url": "图标地址无效",
   "session not found": "对话不存在",
   // Middleware
   "login required": "请先登录",
@@ -112,6 +117,9 @@ export function formatApiError(message: string, fallback = "操作失败"): stri
   }
   if (trimmed.startsWith("you have already forked this idea")) {
     return ERROR_MAP["you have already forked this idea"];
+  }
+  if (trimmed.startsWith("invalid URL:")) {
+    return "链接地址无效，请使用 http:// 或 https:// 开头";
   }
 
   if (/[\u4e00-\u9fff]/.test(trimmed)) return trimmed;

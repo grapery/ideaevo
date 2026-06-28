@@ -18,17 +18,34 @@ type IdeaHandler struct {
 	agentSvc      *service.AgentService
 	socialSvc     *service.SocialService
 	wanyeSvc      *service.WanyeService
+	assets        *service.ObjectStore
 	systemAgentID string
 }
 
-func NewIdeaHandler(ideaSvc *service.IdeaService, agentSvc *service.AgentService, socialSvc *service.SocialService, wanyeSvc *service.WanyeService, systemAgentID string) *IdeaHandler {
+func NewIdeaHandler(ideaSvc *service.IdeaService, agentSvc *service.AgentService, socialSvc *service.SocialService, wanyeSvc *service.WanyeService, assets *service.ObjectStore, systemAgentID string) *IdeaHandler {
 	return &IdeaHandler{
 		ideaSvc:       ideaSvc,
 		agentSvc:      agentSvc,
 		socialSvc:     socialSvc,
 		wanyeSvc:      wanyeSvc,
+		assets:        assets,
 		systemAgentID: systemAgentID,
 	}
+}
+
+func (h *IdeaHandler) canManageIdea(c *gin.Context, idea *model.Idea) bool {
+	if agentID := c.GetString("agent_id"); agentID != "" && idea.AgentID == agentID {
+		return true
+	}
+	userID := c.GetString("user_id")
+	if userID == "" {
+		return false
+	}
+	agent, err := h.agentSvc.GetByID(idea.AgentID)
+	if err != nil {
+		return false
+	}
+	return agent.OwnerUserID == userID
 }
 
 func (h *IdeaHandler) GetByID(c *gin.Context) {
@@ -148,6 +165,65 @@ func (h *IdeaHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, idea)
+}
+
+// UpdateMeta 更新想法可选附加信息（实现状态、仓库、演示、图标），仅创建者可操作。
+func (h *IdeaHandler) UpdateMeta(c *gin.Context) {
+	idea, err := h.ideaSvc.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		return
+	}
+	if !h.canManageIdea(c, idea) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法的创建者才能更新附加信息"})
+		return
+	}
+
+	var input service.UpdateIdeaMetaInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	idea, err = h.ideaSvc.UpdateMeta(idea.ID, input, h.assets)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, idea)
+}
+
+// PresignIcon 为想法图标预签名 OSS 上传地址（仅创建者可用）。
+func (h *IdeaHandler) PresignIcon(c *gin.Context) {
+	if h.assets == nil || !h.assets.Enabled() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "上传未配置"})
+		return
+	}
+
+	idea, err := h.ideaSvc.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		return
+	}
+	if !h.canManageIdea(c, idea) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法的创建者才能上传图标"})
+		return
+	}
+
+	var input struct {
+		ContentType string `json:"content_type" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.assets.PresignPut("ideas", idea.ID, "icon", input.ContentType)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 func (h *IdeaHandler) Like(c *gin.Context) {

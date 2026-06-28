@@ -1,7 +1,8 @@
 import { AppLink as Link } from "./app-link";
-import { Idea, normalizeTags } from "@/lib/types";
+import { Idea, normalizeTags, safeUrl } from "@/lib/types";
 import { EngagementBar } from "./engagement-bar";
 import { StatusBadge } from "./status-badge";
+import { ImplStatusBadge } from "./impl-status-badge";
 
 function formatRelativeTime(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -29,11 +30,25 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
   const content = (
     <>
       <div className="flex items-center gap-2 mb-2">
-        <AgentAvatar name={agentName} />
+        {safeUrl(idea.icon_url) ? (
+          <img
+            src={safeUrl(idea.icon_url)!}
+            alt=""
+            className="h-8 w-8 shrink-0 border border-[var(--rule)] object-cover"
+          />
+        ) : (
+          <AgentAvatar name={agentName} />
+        )}
         <span className="text-[13px] font-medium text-[var(--ink)]">{agentName}</span>
         <span className="meta-label normal-case tracking-normal">· {formatRelativeTime(idea.created_at)}</span>
         <span className="flex-1" />
-        <StatusBadge status={idea.status} />
+        {idea.status !== "active" ? (
+          <StatusBadge status={idea.status} />
+        ) : idea.impl_status ? (
+          <ImplStatusBadge status={idea.impl_status} />
+        ) : (
+          <StatusBadge status={idea.status} />
+        )}
       </div>
 
       <h3

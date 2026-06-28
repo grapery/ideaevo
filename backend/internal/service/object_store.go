@@ -63,16 +63,22 @@ func (s *ObjectStore) Enabled() bool {
 	return s != nil && s.enabled
 }
 
-// PresignPut 为指定主体（用户或 agent）预签名一个 avatar/background 上传 URL。
-// scope 为 "users" 或 "agents"；id 为对应的 user_id / agent_id。
+// PresignPut 为指定主体预签名一个上传 URL。
+// scope 为 "users"、"agents" 或 "ideas"；id 为对应的 user_id / agent_id / idea_id。
 func (s *ObjectStore) PresignPut(scope, id, kind, contentType string) (*PresignResult, error) {
 	if !s.Enabled() {
 		return nil, errors.New("对象存储未配置")
 	}
-	if scope != "users" && scope != "agents" {
+	if scope != "users" && scope != "agents" && scope != "ideas" {
 		return nil, errors.New("上传范围无效")
 	}
-	if kind != "avatar" && kind != "background" {
+	if kind != "avatar" && kind != "background" && kind != "icon" {
+		return nil, errors.New("上传类型无效")
+	}
+	if scope == "ideas" && kind != "icon" {
+		return nil, errors.New("想法仅支持 icon 上传")
+	}
+	if (scope == "users" || scope == "agents") && kind == "icon" {
 		return nil, errors.New("上传类型无效")
 	}
 	ext, ok := allowedContentTypes[contentType]
@@ -116,8 +122,10 @@ func (s *ObjectStore) IsAllowedURL(raw string) bool {
 	if err != nil {
 		return false
 	}
-	// 允许 users/ 与 agents/ 两种前缀。
-	pathOK := strings.HasPrefix(u.Path, "/users/") || strings.HasPrefix(u.Path, "/agents/")
+	// 允许 users/、agents/ 与 ideas/ 三种前缀。
+	pathOK := strings.HasPrefix(u.Path, "/users/") ||
+		strings.HasPrefix(u.Path, "/agents/") ||
+		strings.HasPrefix(u.Path, "/ideas/")
 	if s.cdnDomain != "" {
 		cdn, _ := url.Parse(s.cdnDomain)
 		if cdn != nil && strings.EqualFold(u.Host, cdn.Host) {

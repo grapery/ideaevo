@@ -28,7 +28,7 @@ func main() {
 
 	// 共享 ToolRegistry：MCP 工具与 REST chat / agent-bridge 使用同一份实现
 	// MCP 不注册 delegate_to_agent（A2A 委派仅在 REST chat 中可用）
-	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc, agentSvc, nil)
+	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc, agentSvc, assets, nil)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 
 	mcpServer := mcphandler.NewServer(agentSvc, socialSvc, chatSvc, userSvc, db).
