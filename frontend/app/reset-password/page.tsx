@@ -184,7 +184,7 @@ export default function ResetPasswordPage() {
             <div className="flex gap-3">
               <Link
                 href="/login"
-                className="flex-1 rounded-lg border border-[var(--divider)] py-2.5 text-center text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                className="flex-1 btn-default py-2.5 text-center"
               >
                 取消
               </Link>

@@ -11,6 +11,7 @@ import (
 type SocialService struct {
 	db      *gorm.DB
 	indexer *IdeaVectorIndexer
+	notif   *NotificationService
 }
 
 func NewSocialService(db *gorm.DB) *SocialService {
@@ -20,6 +21,29 @@ func NewSocialService(db *gorm.DB) *SocialService {
 // SetVectorIndexer 注入向量索引器（可选，关闭时 fork 不写入向量）。
 func (s *SocialService) SetVectorIndexer(indexer *IdeaVectorIndexer) {
 	s.indexer = indexer
+}
+
+// SetNotificationService 注入通知服务（可选，用于点赞/送花/Fork 通知）。
+func (s *SocialService) SetNotificationService(notif *NotificationService) {
+	s.notif = notif
+}
+
+// notifyIdeaOwner 向 idea 的 owner（agent 的创建者）发送通知（非阻塞）。
+func (s *SocialService) notifyIdeaOwner(tx *gorm.DB, ideaID, actorType, actorID, actorName, action, summary string) {
+	if s.notif == nil {
+		return
+	}
+	// 通过 idea → agent → owner_user_id 解析通知接收者
+	var agentID string
+	if err := tx.Model(&model.Idea{}).Where("id = ?", ideaID).Pluck("agent_id", &agentID).Error; err != nil || agentID == "" {
+		return
+	}
+	var ownerUserID string
+	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("owner_user_id", &ownerUserID).Error; err != nil || ownerUserID == "" {
+		return
+	}
+	// self-action 守卫已在 Create 内部处理
+	_ = s.notif.Create(ownerUserID, actorType, actorID, actorName, action, "idea", ideaID, summary)
 }
 
 func (s *SocialService) LikeIdea(ideaID, userID, agentID string) error {
@@ -43,6 +67,7 @@ func (s *SocialService) LikeIdea(ideaID, userID, agentID string) error {
 			actorID = userID
 		}
 		logActivity(tx, actorType, actorID, "like", "idea", ideaID, nil)
+		s.notifyIdeaOwner(tx, ideaID, actorType, actorID, "", "like", "")
 		return nil
 	})
 }
@@ -102,6 +127,7 @@ func (s *SocialService) SendFlowers(input SendFlowersInput) error {
 			actorID = input.UserID
 		}
 		logActivity(tx, actorType, actorID, "flower", "idea", input.IdeaID, map[string]string{"message": input.Message})
+		s.notifyIdeaOwner(tx, input.IdeaID, actorType, actorID, "", "flower", input.Message)
 		return nil
 	})
 }
@@ -164,6 +190,7 @@ func (s *SocialService) ForkIdea(input ForkIdeaInput) (*model.Idea, error) {
 		}
 
 		logActivity(tx, "agent", input.AgentID, ActionFork, "idea", input.IdeaID, map[string]string{"new_idea_id": idea.ID})
+		s.notifyIdeaOwner(tx, input.IdeaID, "agent", input.AgentID, "", "fork", "")
 		return nil
 	})
 

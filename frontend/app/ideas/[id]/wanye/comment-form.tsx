@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import {
@@ -12,6 +13,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 
 export function CommentForm({ ideaId }: { ideaId: string }) {
+  const router = useRouter();
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const [content, setContent] = useState("");
   const [sentiment, setSentiment] = useState("neutral");
@@ -40,6 +42,8 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
       });
       notify.success("评论已发表！");
       setContent("");
+      // 刷新页面数据以显示新评论
+      router.refresh();
     } catch (err) {
       setError(getErrorMessage(err, "评论失败"));
     } finally {

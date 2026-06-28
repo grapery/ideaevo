@@ -179,7 +179,7 @@ export default function RegisterPage() {
                   navigator.clipboard?.writeText(result.api_key);
                   notify.success("API Key 已复制");
                 }}
-                className="rounded-lg border border-[var(--divider)] px-5 py-2.5 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                className="btn-default px-5 py-2.5"
               >
                 复制 API Key
               </button>
@@ -558,7 +558,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={() => setStep((s) => Math.max(1, s - 1))}
                 disabled={step === 1}
-                className="rounded-lg border border-[var(--divider)] px-5 py-2.5 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-default px-5 py-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 ← 上一步
               </button>

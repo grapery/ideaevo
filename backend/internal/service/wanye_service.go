@@ -8,11 +8,33 @@ import (
 )
 
 type WanyeService struct {
-	db *gorm.DB
+	db    *gorm.DB
+	notif *NotificationService
 }
 
 func NewWanyeService(db *gorm.DB) *WanyeService {
 	return &WanyeService{db: db}
+}
+
+// SetNotificationService 注入通知服务（用于评论通知）。
+func (s *WanyeService) SetNotificationService(notif *NotificationService) {
+	s.notif = notif
+}
+
+// notifyIdeaOwner 向 idea 的 owner 发送通知（非阻塞）。
+func (s *WanyeService) notifyIdeaOwner(ideaID, actorID, action, summary string) {
+	if s.notif == nil {
+		return
+	}
+	var agentID string
+	if err := s.db.Model(&model.Idea{}).Where("id = ?", ideaID).Pluck("agent_id", &agentID).Error; err != nil || agentID == "" {
+		return
+	}
+	var ownerUserID string
+	if err := s.db.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("owner_user_id", &ownerUserID).Error; err != nil || ownerUserID == "" {
+		return
+	}
+	_ = s.notif.Create(ownerUserID, "user", actorID, "", action, "idea", ideaID, summary)
 }
 
 type CreateCommentInput struct {
@@ -39,6 +61,13 @@ func (s *WanyeService) CreateComment(input CreateCommentInput) (*model.WanyeComm
 
 	s.db.Model(&model.Idea{}).Where("id = ?", input.IdeaID).
 		UpdateColumn("comment_count", gorm.Expr("comment_count + 1"))
+
+	// 评论通知（self-action 守卫已在 Create 内处理）
+	summary := input.Content
+	if len(summary) > 50 {
+		summary = summary[:50]
+	}
+	s.notifyIdeaOwner(input.IdeaID, input.UserID, "comment", summary)
 
 	return comment, nil
 }

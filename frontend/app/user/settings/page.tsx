@@ -467,7 +467,7 @@ export default function SettingsPage() {
                       <button
                         type="button"
                         onClick={resetAvatar}
-                        className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                        className="btn-default btn-sm"
                       >
                         恢复默认
                       </button>
@@ -493,7 +493,7 @@ export default function SettingsPage() {
                       <button
                         type="button"
                         onClick={resetBackground}
-                        className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                        className="btn-default btn-sm"
                       >
                         恢复默认
                       </button>
@@ -590,7 +590,7 @@ export default function SettingsPage() {
                             type="button"
                             onClick={sendChangePhoneCode}
                             disabled={changeCooldown > 0}
-                            className="shrink-0 rounded-lg border border-[var(--divider)] px-4 py-2 text-sm hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+                            className="shrink-0 btn-default btn-sm disabled:opacity-50"
                           >
                             {changeCooldown > 0 ? `${changeCooldown}s` : "获取验证码"}
                           </button>
@@ -698,7 +698,7 @@ export default function SettingsPage() {
                           type="button"
                           onClick={sendDeleteSms}
                           disabled={deleteSmsCooldown > 0}
-                          className="shrink-0 rounded-lg border border-[var(--divider)] px-4 py-2 text-sm hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+                          className="shrink-0 btn-default btn-sm disabled:opacity-50"
                         >
                           {deleteSmsCooldown > 0 ? `${deleteSmsCooldown}s` : "获取验证码"}
                         </button>
@@ -709,7 +709,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={deleteAccount}
                     disabled={deleting}
-                    className="mt-4 rounded-lg bg-[var(--coral)]/10 border border-[var(--coral)]/30 px-5 py-2 text-sm font-medium text-[var(--coral)] hover:bg-[var(--coral)]/15 disabled:opacity-50"
+                    className="mt-4 btn-danger px-5 py-2 disabled:opacity-50"
                   >
                     {deleting ? "注销中…" : "注销账号"}
                   </button>

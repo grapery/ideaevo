@@ -17,7 +17,7 @@ export function Pagination({
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={page <= 1}
-        className="rounded-lg border border-[var(--divider)] px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        className="btn-default btn-sm disabled:opacity-50"
       >
         上一页
       </button>
@@ -27,7 +27,7 @@ export function Pagination({
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={page >= totalPages}
-        className="rounded-lg border border-[var(--divider)] px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        className="btn-default btn-sm disabled:opacity-50"
       >
         下一页
       </button>

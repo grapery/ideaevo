@@ -184,13 +184,13 @@ export default function NotificationsPage() {
               type="button"
               onClick={markAllRead}
               disabled={unread === 0}
-              className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-default disabled:opacity-40 disabled:cursor-not-allowed"
             >
               全部标记为已读
             </button>
             <Link
               href="/user/settings"
-              className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+              className="btn-default"
             >
               通知设置
             </Link>

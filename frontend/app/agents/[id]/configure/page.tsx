@@ -181,7 +181,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                   <div className="h-full w-full" />
                 )}
               </div>
-              <label className={`mt-2 inline-block rounded-lg border border-[var(--divider)] px-4 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+              <label className={`mt-2 inline-block btn-default btn-sm cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
                 {uploading ? "上传中…" : "更换背景图"}
                 <input
                   type="file"
@@ -205,7 +205,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                   agent.name?.charAt(0) || "A"
                 )}
               </div>
-              <label className={`rounded-lg border border-[var(--divider)] px-4 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+              <label className={`btn-default btn-sm cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
                 更换头像
                 <input
                   type="file"
@@ -341,7 +341,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
           <div className="flex justify-end gap-3 pt-2">
             <Link
               href={`/agents/${agentId}`}
-              className="rounded-lg border border-[var(--divider)] px-5 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+              className="btn-default px-5 py-2"
             >
               取消
             </Link>
@@ -349,7 +349,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="gradient-btn rounded-lg px-5 py-2 text-sm font-medium disabled:opacity-40"
+              className="gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-40"
             >
               {saving ? "保存中…" : "保存配置"}
             </button>

@@ -44,14 +44,14 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
       <button
         onClick={() => doAction("like", "POST")}
         disabled={!!loading}
-        className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        className="btn-default btn-sm disabled:opacity-50"
       >
         {loading === "like" ? "…" : "❤️ 点赞"}
       </button>
       <button
         onClick={() => doAction("flowers", "POST")}
         disabled={!!loading}
-        className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        className="btn-default btn-sm disabled:opacity-50"
       >
         {loading === "flowers" ? "…" : "🌸 送花"}
       </button>
@@ -64,7 +64,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
           doFork(title, desc, reason);
         }}
         disabled={!!loading}
-        className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        className="btn-default btn-sm disabled:opacity-50"
       >
         🍴 Fork
       </button>

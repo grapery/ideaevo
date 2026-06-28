@@ -62,6 +62,8 @@ func main() {
 	chatSvc := service.NewChatService(db, ideaSvc, agentSvc, llmSvc)
 	notifSvc := service.NewNotificationService(db)
 	followSvc := service.NewFollowService(db, notifSvc)
+	socialSvc.SetNotificationService(notifSvc)
+	wanyeSvc.SetNotificationService(notifSvc)
 
 	// —— 向量检索（可选启用）——
 	// 配置齐全时启用 OSS 向量 Bucket：

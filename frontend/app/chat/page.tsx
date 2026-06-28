@@ -550,7 +550,7 @@ export default function ChatPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewDialog(false)}
-                  className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm hover:bg-[var(--bg-subtle)]"
+                  className="btn-default btn-sm"
                 >
                   取消
                 </button>

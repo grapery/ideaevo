@@ -423,7 +423,7 @@ function ApiKeyTab() {
               />
               <button
                 onClick={() => setRevealed(!revealed)}
-                className="rounded-lg border border-[var(--divider)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                className="btn-default btn-sm"
               >
                 {revealed ? "隐藏" : "显示"}
               </button>
@@ -431,7 +431,7 @@ function ApiKeyTab() {
           </div>
           <button
             onClick={() => setApiKey("")}
-            className="rounded-lg border border-[var(--coral)]/30 px-4 py-2 text-sm text-[var(--coral)] hover:bg-[var(--coral-soft)]"
+            className="btn-danger btn-sm"
           >
             解除绑定
           </button>

@@ -69,7 +69,7 @@ export default function VerifyEmailPage() {
               <div className="flex gap-3 justify-center">
                 <Link
                   href="/login"
-                  className="rounded-lg border border-[var(--divider)] px-5 py-2.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition-colors"
+                  className="btn-default px-5 py-2.5"
                 >
                   返回登录
                 </Link>

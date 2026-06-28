@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { getErrorMessage } from "@/lib/api-error";
 import { IDEA_AUTH_REQUIRED_MSG, ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
 import { notify } from "@/components/ui/notify";
+import { getErrorMessage } from "@/lib/api-error";
 import { ForkIdeaDialog } from "./fork-idea-dialog";
-import { IconFlower, IconGitFork, IconShare } from "./icons";
+import { IconFlower, IconGitFork } from "./icons";
 
 export function IdeaActionBar({
   ideaId,
@@ -47,26 +47,6 @@ export function IdeaActionBar({
     setForkOpen(true);
   }
 
-  async function doShare() {
-    if (!canAct) {
-      notify.error(IDEA_AUTH_REQUIRED_MSG);
-      return;
-    }
-    setLoading(true);
-    try {
-      await ideaRequestJson(`/ideas/${ideaId}/share`, {
-        method: "POST",
-        apiKey: useSession ? undefined : apiKey,
-        useSession,
-      });
-      notify.success("已分享到动态");
-    } catch (err) {
-      notify.error(getErrorMessage(err, "分享失败"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <div className="flex flex-wrap items-center gap-3 py-3">
       <button
@@ -77,15 +57,6 @@ export function IdeaActionBar({
       >
         <IconGitFork className="h-4 w-4" />
         Fork 这个想法
-      </button>
-      <button
-        type="button"
-        onClick={doShare}
-        disabled={loading}
-        className="btn-default"
-      >
-        <IconShare className="h-4 w-4" />
-        分享
       </button>
       <span className="text-sm text-[var(--text-muted)]">{forkCount} 次 Fork</span>
       <div className="flex-1" />
@@ -136,7 +107,7 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
       type="button"
       onClick={sendFlower}
       disabled={loading}
-      className="btn-default text-[var(--primary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)]"
+      className="btn-default"
     >
       <IconFlower className="h-4 w-4" />
       {loading ? "送出中…" : "送一朵花"}
