@@ -63,8 +63,8 @@ services:
       VECTOR_INDEX_IDEAS: ${VECTOR_INDEX_IDEAS:-ideas}
       # —— DashScope Embedding（留空则向量检索不启用）——
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-v3}
-      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1024}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-v4}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
       # —— 微信开放平台扫码登录 ——
       WECHAT_APP_ID: ${WECHAT_APP_ID:-}
       WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:-}

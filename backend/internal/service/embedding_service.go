@@ -12,7 +12,7 @@ import (
 )
 
 // EmbeddingService 通过阿里云 DashScope（百炼）的 OpenAI 兼容接口生成文本向量。
-// 默认模型 text-embedding-v3，支持 1024/768/512/256/128/64 维。
+// 默认模型 text-embedding-v4，支持 2048/1536/1024/768/512/256/128/64 维。
 type EmbeddingService struct {
 	apiKey     string
 	baseURL    string
@@ -26,10 +26,10 @@ func NewEmbeddingService(apiKey, baseURL, model string, dimensions int) *Embeddi
 		baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 	}
 	if model == "" {
-		model = "text-embedding-v3"
+		model = "text-embedding-v4"
 	}
 	if dimensions <= 0 {
-		dimensions = 1024
+		dimensions = 1536
 	}
 	return &EmbeddingService{
 		apiKey:     apiKey,

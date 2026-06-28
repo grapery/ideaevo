@@ -193,8 +193,8 @@ func (h *IdeaHandler) UpdateMeta(c *gin.Context) {
 	c.JSON(http.StatusOK, idea)
 }
 
-// PresignIcon 为想法图标预签名 OSS 上传地址（仅创建者可用）。
-func (h *IdeaHandler) PresignIcon(c *gin.Context) {
+// PresignUpload 为想法资源（图标 / 描述插图）预签名 OSS 上传地址（仅创建者可用）。
+func (h *IdeaHandler) PresignUpload(c *gin.Context) {
 	if h.assets == nil || !h.assets.Enabled() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "上传未配置"})
 		return
@@ -206,24 +206,81 @@ func (h *IdeaHandler) PresignIcon(c *gin.Context) {
 		return
 	}
 	if !h.canManageIdea(c, idea) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法的创建者才能上传图标"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法的创建者才能上传资源"})
 		return
 	}
 
 	var input struct {
 		ContentType string `json:"content_type" binding:"required"`
+		Kind        string `json:"kind"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	kind := input.Kind
+	if kind == "" {
+		kind = "icon"
+	}
+	if kind != "icon" && kind != "content" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid kind, must be icon or content"})
+		return
+	}
 
-	result, err := h.assets.PresignPut("ideas", idea.ID, "icon", input.ContentType)
+	result, err := h.assets.PresignPut("ideas", idea.ID, kind, input.ContentType)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, result)
+}
+
+// PresignIcon 兼容旧客户端，等同于 kind=icon。
+func (h *IdeaHandler) PresignIcon(c *gin.Context) {
+	h.PresignUpload(c)
+}
+
+func (h *IdeaHandler) GetVersions(c *gin.Context) {
+	versions, err := h.ideaSvc.ListVersions(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"versions": versions})
+}
+
+func (h *IdeaHandler) GetVersion(c *gin.Context) {
+	v, err := h.ideaSvc.GetVersion(c.Param("id"), c.Param("versionId"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "version not found"})
+		return
+	}
+	c.JSON(http.StatusOK, v)
+}
+
+func (h *IdeaHandler) UpdateDescription(c *gin.Context) {
+	idea, err := h.ideaSvc.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		return
+	}
+	if !h.canManageIdea(c, idea) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法的创建者才能编辑描述"})
+		return
+	}
+
+	var input service.UpdateDescriptionInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	idea, err = h.ideaSvc.UpdateDescription(idea.ID, input, h.assets)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, idea)
 }
 
 func (h *IdeaHandler) Like(c *gin.Context) {

@@ -72,13 +72,13 @@ func (s *ObjectStore) PresignPut(scope, id, kind, contentType string) (*PresignR
 	if scope != "users" && scope != "agents" && scope != "ideas" {
 		return nil, errors.New("上传范围无效")
 	}
-	if kind != "avatar" && kind != "background" && kind != "icon" {
+	if kind != "avatar" && kind != "background" && kind != "icon" && kind != "content" {
 		return nil, errors.New("上传类型无效")
 	}
-	if scope == "ideas" && kind != "icon" {
-		return nil, errors.New("想法仅支持 icon 上传")
+	if scope == "ideas" && kind != "icon" && kind != "content" {
+		return nil, errors.New("想法仅支持 icon 或 content 上传")
 	}
-	if (scope == "users" || scope == "agents") && kind == "icon" {
+	if (scope == "users" || scope == "agents") && (kind == "icon" || kind == "content") {
 		return nil, errors.New("上传类型无效")
 	}
 	ext, ok := allowedContentTypes[contentType]

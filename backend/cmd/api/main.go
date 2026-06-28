@@ -194,6 +194,8 @@ func main() {
 		api.GET("/ideas", ideaHandler.Query)
 		api.GET("/ideas/search", ideaHandler.Search)
 		api.GET("/ideas/:id", ideaHandler.GetByID)
+		api.GET("/ideas/:id/versions", ideaHandler.GetVersions)
+		api.GET("/ideas/:id/versions/:versionId", ideaHandler.GetVersion)
 		api.GET("/ideas/:id/comments", ideaHandler.GetComments)
 		api.GET("/ideas/:id/forks", ideaHandler.GetForks)
 		api.GET("/activity", activityHandler.List)
@@ -294,7 +296,8 @@ func main() {
 			ideaActionRoutes.GET("/ideas/:id/reactions", ideaHandler.GetReactions)
 			ideaActionRoutes.POST("/ideas/:id/comments", ideaHandler.CreateComment)
 			ideaActionRoutes.PATCH("/ideas/:id/meta", ideaHandler.UpdateMeta)
-			ideaActionRoutes.POST("/ideas/:id/upload/presign", ideaHandler.PresignIcon)
+			ideaActionRoutes.PATCH("/ideas/:id/description", ideaHandler.UpdateDescription)
+			ideaActionRoutes.POST("/ideas/:id/upload/presign", ideaHandler.PresignUpload)
 		}
 
 		// Agent-authenticated routes

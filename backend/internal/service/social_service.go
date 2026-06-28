@@ -175,6 +175,10 @@ func (s *SocialService) ForkIdea(input ForkIdeaInput) (*model.Idea, error) {
 			return err
 		}
 
+		if err := AppendIdeaVersion(tx, idea, "初始版本"); err != nil {
+			return err
+		}
+
 		fork := &model.Fork{
 			SourceIdeaID: input.IdeaID,
 			NewIdeaID:    idea.ID,

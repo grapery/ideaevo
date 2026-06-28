@@ -7,8 +7,6 @@ import { ForkFlowGraph } from "./fork-flow-graph";
 
 const sidebarCardClass = "surface-card p-5";
 const sidebarTitleClass = "heading-sans text-sm pb-2 mb-3 border-b border-[var(--divider)]";
-const sidebarSoftBlockClass =
-  "rounded-lg bg-[var(--primary-soft)] px-3.5 py-2.5";
 
 interface ForkRecord {
   id: string;
@@ -58,25 +56,6 @@ export function FlowersPanel({ ideaId, flowerCount }: { ideaId: string; flowerCo
         累计 {flowerCount} 朵鲜花
       </p>
       <SendFlowerButton ideaId={ideaId} />
-    </div>
-  );
-}
-
-export function VersionHistoryPanel({ createdAt }: { createdAt: string }) {
-  const createdDate = new Date(createdAt).toLocaleDateString("zh-CN", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-  });
-
-  return (
-    <div className={sidebarCardClass}>
-      <h3 className={`${sidebarTitleClass} mb-3`}>版本历史</h3>
-      <div className={sidebarSoftBlockClass}>
-        <p className="text-sm font-medium text-[var(--primary)]">v1 · 当前</p>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">初始版本</p>
-        <p className="mt-1 text-xs tabular-nums text-[var(--text-muted)]">{createdDate}</p>
-      </div>
     </div>
   );
 }

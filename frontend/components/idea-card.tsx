@@ -1,5 +1,6 @@
 import { AppLink as Link } from "./app-link";
 import { Idea, normalizeTags, safeUrl } from "@/lib/types";
+import { stripMarkdownPreview } from "@/lib/markdown-utils";
 import { EngagementBar } from "./engagement-bar";
 import { StatusBadge } from "./status-badge";
 import { ImplStatusBadge } from "./impl-status-badge";
@@ -64,7 +65,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
           isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink-soft)]"
         }`}
       >
-        {idea.description}
+        {stripMarkdownPreview(idea.description)}
       </p>
 
       {tags.length > 0 && (

@@ -99,6 +99,24 @@ export interface Idea {
   buried_reason?: string;
 }
 
+export interface IdeaVersionSummary {
+  id: string;
+  version: number;
+  changelog: string;
+  created_at: string;
+  is_current: boolean;
+}
+
+export interface IdeaVersion {
+  id: string;
+  idea_id: string;
+  version: number;
+  title: string;
+  description: string;
+  changelog: string;
+  created_at: string;
+}
+
 export interface WanyeComment {
   id: string;
   idea_id: string;

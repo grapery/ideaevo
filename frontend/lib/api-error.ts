@@ -56,6 +56,13 @@ const ERROR_MAP: Record<string, string> = {
   "icon_url must be from allowed storage": "图标须来自允许的上传存储",
   "invalid impl_status, must be one of: concept, in_progress, implemented, paused": "实现状态无效",
   "invalid icon_url": "图标地址无效",
+  "description is required": "描述不能为空",
+  "description image must be from allowed storage": "描述图片须来自允许的上传存储",
+  "description image must belong to this idea": "描述图片须属于当前想法",
+  "invalid description image": "描述图片地址无效",
+  "只有想法的创建者才能编辑描述": "只有想法的创建者才能编辑描述",
+  "只有想法的创建者才能上传资源": "只有想法的创建者才能上传资源",
+  "version not found": "版本不存在",
   "session not found": "对话不存在",
   // Middleware
   "login required": "请先登录",

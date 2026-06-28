@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -75,6 +76,10 @@ func (s *IdeaService) Register(agentID string, input RegisterIdeaInput) (*model.
 
 	if err := s.db.Create(idea).Error; err != nil {
 		return nil, fmt.Errorf("create idea failed: %w", err)
+	}
+
+	if err := AppendIdeaVersion(s.db, idea, "初始版本"); err != nil {
+		return nil, fmt.Errorf("create initial version failed: %w", err)
 	}
 
 	// 向量化索引（异步、降级容错）
@@ -295,6 +300,187 @@ func (s *IdeaService) UpdateMeta(ideaID string, input UpdateIdeaMetaInput, asset
 	}
 
 	if err := s.db.Save(&idea).Error; err != nil {
+		return nil, err
+	}
+
+	if s.indexer != nil && idea.Status == model.IdeaStatusActive {
+		s.indexer.IndexIdea(&idea)
+	}
+
+	return &idea, nil
+}
+
+// IdeaVersionSummary 版本列表项（不含正文，减少传输）。
+type IdeaVersionSummary struct {
+	ID        string    `json:"id"`
+	Version   int       `json:"version"`
+	Changelog string    `json:"changelog"`
+	CreatedAt time.Time `json:"created_at"`
+	IsCurrent bool      `json:"is_current"`
+}
+
+// AppendIdeaVersion 为 idea 追加一条描述版本记录。
+func AppendIdeaVersion(db *gorm.DB, idea *model.Idea, changelog string) error {
+	var maxVer int
+	if err := db.Model(&model.IdeaVersion{}).Where("idea_id = ?", idea.ID).
+		Select("COALESCE(MAX(version), 0)").Scan(&maxVer).Error; err != nil {
+		return err
+	}
+	if strings.TrimSpace(changelog) == "" {
+		if maxVer == 0 {
+			changelog = "初始版本"
+		} else {
+			changelog = fmt.Sprintf("版本 %d", maxVer+1)
+		}
+	}
+	v := &model.IdeaVersion{
+		IdeaID:      idea.ID,
+		Version:     maxVer + 1,
+		Title:       idea.Title,
+		Description: idea.Description,
+		Changelog:   changelog,
+	}
+	return db.Create(v).Error
+}
+
+// EnsureVersions 为尚无版本记录的历史 idea 回填 v1。
+func (s *IdeaService) EnsureVersions(ideaID string) error {
+	var count int64
+	if err := s.db.Model(&model.IdeaVersion{}).Where("idea_id = ?", ideaID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+	var idea model.Idea
+	if err := s.db.First(&idea, "id = ?", ideaID).Error; err != nil {
+		return err
+	}
+	return AppendIdeaVersion(s.db, &idea, "初始版本")
+}
+
+// ListVersions 返回 idea 的描述版本时间线（从旧到新）。
+func (s *IdeaService) ListVersions(ideaID string) ([]IdeaVersionSummary, error) {
+	if err := s.EnsureVersions(ideaID); err != nil {
+		return nil, err
+	}
+	var versions []model.IdeaVersion
+	if err := s.db.Where("idea_id = ?", ideaID).Order("version ASC").Find(&versions).Error; err != nil {
+		return nil, err
+	}
+	currentID := ""
+	if len(versions) > 0 {
+		currentID = versions[len(versions)-1].ID
+	}
+	out := make([]IdeaVersionSummary, len(versions))
+	for i, v := range versions {
+		out[i] = IdeaVersionSummary{
+			ID:        v.ID,
+			Version:   v.Version,
+			Changelog: v.Changelog,
+			CreatedAt: v.CreatedAt,
+			IsCurrent: v.ID == currentID,
+		}
+	}
+	return out, nil
+}
+
+// GetVersion 按版本 ID 获取完整快照。
+func (s *IdeaService) GetVersion(ideaID, versionID string) (*model.IdeaVersion, error) {
+	if err := s.EnsureVersions(ideaID); err != nil {
+		return nil, err
+	}
+	var v model.IdeaVersion
+	if err := s.db.Where("id = ? AND idea_id = ?", versionID, ideaID).First(&v).Error; err != nil {
+		return nil, err
+	}
+	return &v, nil
+}
+
+type UpdateDescriptionInput struct {
+	Description string `json:"description" binding:"required"`
+	Changelog   string `json:"changelog"`
+}
+
+var markdownImageRE = regexp.MustCompile(`!\[[^\]]*\]\(([^)]+)\)`)
+
+func validateDescriptionImages(assets *ObjectStore, ideaID, description string) error {
+	matches := markdownImageRE.FindAllStringSubmatch(description, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	if assets == nil || !assets.Enabled() {
+		return fmt.Errorf("description image must be from allowed storage")
+	}
+	for _, m := range matches {
+		raw := normalizeMarkdownImageURL(m[1])
+		if raw == "" {
+			continue
+		}
+		if !assets.IsAllowedURL(raw) {
+			return fmt.Errorf("description image must be from allowed storage")
+		}
+		key, err := assets.KeyFromURL(raw)
+		if err != nil {
+			return fmt.Errorf("invalid description image")
+		}
+		if !strings.HasPrefix(key, fmt.Sprintf("ideas/%s/content/", ideaID)) {
+			return fmt.Errorf("description image must belong to this idea")
+		}
+		if err := validateUploadedObjectWithRetry(assets, key, "ideas", ideaID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func normalizeMarkdownImageURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	raw = strings.Trim(raw, "\"'")
+	if strings.HasPrefix(raw, "<") && strings.HasSuffix(raw, ">") {
+		raw = strings.Trim(raw, "<>")
+	}
+	return strings.TrimSpace(raw)
+}
+
+func validateUploadedObjectWithRetry(assets *ObjectStore, key, scope, id string) error {
+	var last error
+	for attempt := 0; attempt < 4; attempt++ {
+		if err := assets.ValidateUploadedObject(key, scope, id); err == nil {
+			return nil
+		} else {
+			last = err
+			time.Sleep(200 * time.Millisecond)
+		}
+	}
+	return last
+}
+
+// UpdateDescription 更新 Markdown 描述并追加新版本（仅创建者调用）。
+func (s *IdeaService) UpdateDescription(ideaID string, input UpdateDescriptionInput, assets *ObjectStore) (*model.Idea, error) {
+	desc := strings.TrimSpace(input.Description)
+	if desc == "" {
+		return nil, fmt.Errorf("description is required")
+	}
+	if err := validateDescriptionImages(assets, ideaID, desc); err != nil {
+		return nil, err
+	}
+
+	var idea model.Idea
+	if err := s.db.First(&idea, "id = ?", ideaID).Error; err != nil {
+		return nil, err
+	}
+
+	idea.Description = desc
+	changelog := strings.TrimSpace(input.Changelog)
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&idea).Update("description", desc).Error; err != nil {
+			return err
+		}
+		return AppendIdeaVersion(tx, &idea, changelog)
+	})
+	if err != nil {
 		return nil, err
 	}
 

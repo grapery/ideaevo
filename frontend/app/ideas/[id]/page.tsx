@@ -6,13 +6,13 @@ import { StatusBadge } from "@/components/status-badge";
 import { IdeaActionBar } from "@/components/idea-action-bar";
 import { IdeaDetailEngagement } from "@/components/idea-detail-engagement";
 import { IdeaIcon, IdeaMetaPanel } from "@/components/idea-meta-panel";
+import { IdeaDescriptionPanel } from "@/components/idea-description-panel";
 import { FollowAgentButton } from "@/components/follow-agent-button";
 import {
   ForkTreePanel,
   FlowersPanel,
   RelatedIdeasPanel,
   IdeaStatsPanel,
-  VersionHistoryPanel,
 } from "@/components/idea-detail-sidebar";
 import { IconLeaf } from "@/components/icons";
 import { CommentForm } from "./wanye/comment-form";
@@ -145,9 +145,7 @@ export default async function IdeaDetailPage({
                 <FollowAgentButton agentId={idea.agent_id} />
               </div>
 
-              <div className="mt-6 text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
-                {idea.description}
-              </div>
+              <IdeaDescriptionPanel idea={idea} />
 
               <IdeaMetaPanel idea={idea} />
 
@@ -183,7 +181,6 @@ export default async function IdeaDetailPage({
           <aside className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:block lg:space-y-4">
             <ForkTreePanel idea={idea} forks={forks} />
             <FlowersPanel ideaId={id} flowerCount={idea.flower_count} />
-            <VersionHistoryPanel createdAt={idea.created_at} />
             <IdeaStatsPanel idea={idea} />
             <RelatedIdeasPanel ideas={relatedIdeas} currentId={id} />
           </aside>

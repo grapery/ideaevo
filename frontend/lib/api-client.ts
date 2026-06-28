@@ -1,4 +1,4 @@
-import { Idea, WanyeComment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities } from "./types";
+import { Idea, WanyeComment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities, IdeaVersion, IdeaVersionSummary } from "./types";
 import { getApiBase } from "./api-base";
 import { parseResponseError, formatApiError } from "./api-error";
 
@@ -73,8 +73,29 @@ export const api = {
   presignIdeaIcon: (id: string, contentType: string) =>
     requestWithAuth<{ upload_url: string; public_url: string; key: string; expires_in: number }>(
       `/ideas/${id}/upload/presign`,
-      { method: "POST", body: JSON.stringify({ content_type: contentType }) }
+      { method: "POST", body: JSON.stringify({ content_type: contentType, kind: "icon" }) }
     ),
+
+  presignIdeaAsset: (id: string, kind: "icon" | "content", contentType: string) =>
+    requestWithAuth<{ upload_url: string; public_url: string; key: string; expires_in: number }>(
+      `/ideas/${id}/upload/presign`,
+      { method: "POST", body: JSON.stringify({ content_type: contentType, kind }) }
+    ),
+
+  getIdeaVersions: (id: string) =>
+    request<{ versions: IdeaVersionSummary[] }>(`/ideas/${id}/versions`),
+
+  getIdeaVersion: (id: string, versionId: string) =>
+    request<IdeaVersion>(`/ideas/${id}/versions/${versionId}`),
+
+  updateIdeaDescription: (
+    id: string,
+    data: { description: string; changelog?: string }
+  ) =>
+    requestWithAuth<Idea>(`/ideas/${id}/description`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 
   searchIdeas: (query: string, page = 1) =>
     request<{

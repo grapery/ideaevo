@@ -101,8 +101,8 @@ func Load() *Config {
 		LLM:           ResolveLLMConfig(),
 		SystemAgentID: getEnv("SYSTEM_AGENT_ID", ""),
 
-		AliyunAccessKeyID:     getEnv("ALIYUN_OSS_ACCESS_KEY_ID", getEnv("ALIYUN_ACCESS_KEY_ID", "")),
-		AliyunAccessKeySecret: getEnv("ALIYUN_OSS_ACCESS_KEY_SECRET", getEnv("ALIYUN_ACCESS_KEY_SECRET", "")),
+		AliyunAccessKeyID:     resolveAliyunAccessKeyID(),
+		AliyunAccessKeySecret: resolveAliyunAccessKeySecret(),
 		AliyunVectorBucket:    getEnv("ALIYUN_VECTOR_BUCKET", ""),
 		AliyunVectorRegion:    getEnv("ALIYUN_VECTOR_REGION", "cn-shanghai"),
 		AliyunVectorAccountID: getEnv("ALIYUN_VECTOR_ACCOUNT_ID", ""),
@@ -115,8 +115,8 @@ func Load() *Config {
 		AliyunSMSTemplateCode: getEnv("ALIYUN_SMS_TEMPLATE_CODE", ""),
 
 		DashScopeAPIKey:      getEnv("DASHSCOPE_API_KEY", ""),
-		EmbeddingModel:       getEnv("EMBEDDING_MODEL", "text-embedding-v3"),
-		EmbeddingDimensions:  getEnvInt("EMBEDDING_DIMENSIONS", 1024),
+		EmbeddingModel:       getEnv("EMBEDDING_MODEL", "text-embedding-v4"),
+		EmbeddingDimensions:  getEnvInt("EMBEDDING_DIMENSIONS", 1536),
 
 		VectorIndexIdeas: getEnv("VECTOR_INDEX_IDEAS", "ideas"),
 	}
@@ -232,4 +232,23 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// resolveAliyunAccessKeyID 与 grapery / SMS 共用凭证链，避免 OSS 与 SMS 重复配置。
+func resolveAliyunAccessKeyID() string {
+	return firstNonEmpty(
+		os.Getenv("ALIYUN_OSS_ACCESS_KEY_ID"),
+		os.Getenv("ALIYUN_ACCESS_KEY_ID"),
+		os.Getenv("ALIYUN_SMS_ACCESS_KEY_ID"),
+		os.Getenv("ALIYUN_SMS_ACCESS_ID"),
+	)
+}
+
+func resolveAliyunAccessKeySecret() string {
+	return firstNonEmpty(
+		os.Getenv("ALIYUN_OSS_ACCESS_KEY_SECRET"),
+		os.Getenv("ALIYUN_ACCESS_KEY_SECRET"),
+		os.Getenv("ALIYUN_SMS_ACCESS_KEY_SECRET"),
+		os.Getenv("ALIYUN_SMS_ACCESS_SECRET"),
+	)
 }

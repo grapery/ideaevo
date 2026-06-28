@@ -330,6 +330,15 @@ jobs:
             echo "ALIYUN_SMS_USE_DEFAULT_CREDENTIAL=1"
             echo "ALIYUN_SMS_ACCESS_KEY_ID=${ALIYUN_SMS_ACCESS_ID}"
             echo "ALIYUN_SMS_ACCESS_KEY_SECRET=${ALIYUN_SMS_ACCESS_SECRET}"
+            # OSS 向量检索 + 用户资源（复用上方 SMS/Aliyun Key，见 config.resolveAliyunAccessKey*）
+            echo "ALIYUN_VECTOR_BUCKET=ideaevo-vectors-prod"
+            echo "ALIYUN_VECTOR_REGION=cn-shanghai"
+            echo "ALIYUN_VECTOR_ACCOUNT_ID=1866841989078847"
+            echo "VECTOR_INDEX_IDEAS=ideas"
+            echo "EMBEDDING_MODEL=text-embedding-v4"
+            echo "EMBEDDING_DIMENSIONS=1536"
+            echo "ALIYUN_ASSETS_BUCKET=ideaevo"
+            echo "ALIYUN_ASSETS_REGION=cn-shanghai"
           } > deploy/.env
 
       - name: Copy compose + .env to server
