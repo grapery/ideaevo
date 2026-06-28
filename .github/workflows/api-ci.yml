@@ -4,12 +4,14 @@ name: API CI/CD
 #
 # Repository Variables（Settings → Secrets and variables → Actions → Variables）:
 #   ACR_REGISTRY, ACR_USERNAME, ACR_PASSWORD            — 阿里云容器镜像服务
-#   DB_*（DB_USER / DB_PASSWORD / DB_NAME_DEV / DB_NAME_PROD）、JWT_SECRET …
+#   DB_*（DB_ADDRESS / DB_USERNAME / DB_PASSWORD / DB_NAME_DEV / DB_NAME_PROD）、JWT_SECRET …
+#   DASHSCOPE_API_KEY / DASHVECTOR_ENDPOINT               — 百炼 embedding + DashVector（dev/prod 各 environment 配置）
+#   VECTOR_BACKEND                                        — 可选，默认 dashvector
 #   ALIYUN_SMS_SIGN_NAME / ALIYUN_SMS_TEMPLATE_CODE     — 短信签名与模板（可与 grapery 共用）
 #   ALIYUN_SMS_ACCESS_ID / ALIYUN_SMS_ACCESS_SECRET     — SMS RAM 子账号（写入容器 ALIYUN_SMS_ACCESS_KEY_*）
 #   ALIYUN_SMS_REGION / ALIYUN_SMS_ENDPOINT             — 可选，默认 cn-hangzhou / dysmsapi.aliyuncs.com
 #
-# 部署主机配置（如后续接 SSH 部署）：
+# 部署主机配置：
 #   DEV_DEPLOY_HOST / PROD_DEPLOY_HOST、SSH_USER、SSH_KEY
 
 on:
@@ -22,6 +24,7 @@ on:
       - 'backend/go.sum'
       - 'backend/Dockerfile'
       - '.github/workflows/api-ci.yml'
+      - '.github/scripts/generate-api-deploy-env.sh'
     branches:
       - main
       - develop
@@ -175,6 +178,8 @@ jobs:
           echo "- ALIYUN_SMS_SIGN_NAME: ${{ vars.ALIYUN_SMS_SIGN_NAME != '' && '✅ Set' || '⚠️ Use code default' }}" >> $GITHUB_STEP_SUMMARY
           echo "- ALIYUN_SMS_TEMPLATE_CODE: ${{ vars.ALIYUN_SMS_TEMPLATE_CODE != '' && '✅ Set' || '⚠️ Use code default' }}" >> $GITHUB_STEP_SUMMARY
           echo "- ALIYUN_SMS_ACCESS_ID: ${{ vars.ALIYUN_SMS_ACCESS_ID != '' && '✅ Set' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DASHSCOPE_API_KEY: ${{ vars.DASHSCOPE_API_KEY != '' && '✅ Set' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DASHVECTOR_ENDPOINT: ${{ vars.DASHVECTOR_ENDPOINT != '' && '✅ Set' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
           echo "- ALIYUN_SMS_USE_DEFAULT_CREDENTIAL: 1 (fixed in deploy .env)" >> $GITHUB_STEP_SUMMARY
 
   # ========================================
@@ -233,6 +238,8 @@ jobs:
           echo "- ALIYUN_SMS_SIGN_NAME: ${{ vars.ALIYUN_SMS_SIGN_NAME != '' && '✅ Set' || '⚠️ Use code default' }}" >> $GITHUB_STEP_SUMMARY
           echo "- ALIYUN_SMS_TEMPLATE_CODE: ${{ vars.ALIYUN_SMS_TEMPLATE_CODE != '' && '✅ Set' || '⚠️ Use code default' }}" >> $GITHUB_STEP_SUMMARY
           echo "- ALIYUN_SMS_ACCESS_ID: ${{ vars.ALIYUN_SMS_ACCESS_ID != '' && '✅ Set' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DASHSCOPE_API_KEY: ${{ vars.DASHSCOPE_API_KEY != '' && '✅ Set' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DASHVECTOR_ENDPOINT: ${{ vars.DASHVECTOR_ENDPOINT != '' && '✅ Set' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
           echo "- ALIYUN_SMS_USE_DEFAULT_CREDENTIAL: 1 (fixed in deploy .env)" >> $GITHUB_STEP_SUMMARY
 
   # ========================================
@@ -281,10 +288,12 @@ jobs:
           DB_ADDRESS: ${{ vars.DB_ADDRESS }}
           DB_USERNAME: ${{ vars.DB_USERNAME }}
           DB_PASSWORD: ${{ vars.DB_PASSWORD }}
+          DB_NAME: ${{ vars.DB_NAME_DEV || 'ideaevo_dev' }}
           JWT_SECRET: ${{ vars.JWT_SECRET }}
           DASHSCOPE_API_KEY: ${{ vars.DASHSCOPE_API_KEY }}
           DASHVECTOR_ENDPOINT: ${{ vars.DASHVECTOR_ENDPOINT }}
           VECTOR_BACKEND: ${{ vars.VECTOR_BACKEND }}
+          FRONTEND_URL: ${{ vars.IDEAEVO_PUBLIC_API_URL || 'http://121.40.176.39:3001' }}
           HUOSHAN_API_KEY: ${{ vars.HUOSHAN_API_KEY }}
           HUOSHAN_BASE_URL: ${{ vars.HUOSHAN_BASE_URL }}
           HUOSHAN_TEXT_MODEL: ${{ vars.HUOSHAN_TEXT_MODEL }}
@@ -297,55 +306,7 @@ jobs:
           ALIYUN_SMS_ACCESS_SECRET: ${{ vars.ALIYUN_SMS_ACCESS_SECRET }}
         run: |
           mkdir -p deploy
-          SMS_REGION="${ALIYUN_SMS_REGION:-cn-hangzhou}"
-          HUOSHAN_BASE="${HUOSHAN_BASE_URL:-https://ark.cn-beijing.volces.com/api/v3}"
-          {
-            echo "DB_HOST=${DB_ADDRESS}"
-            echo "DB_PORT=3306"
-            echo "DB_USER=${DB_USERNAME}"
-            echo "DB_PASSWORD=${DB_PASSWORD}"
-            echo "DB_NAME=ideaevo_dev"
-            echo "PORT=8080"
-            echo "JWT_SECRET=${JWT_SECRET}"
-            echo "JWT_EXPIRY=24h"
-            # LLM 对话：优先火山方舟（与 grapery 共用 GitHub vars）；勿把 DASHSCOPE 写入 LLM_API_KEY
-            if [ -n "${HUOSHAN_API_KEY}" ]; then
-              echo "HUOSHAN_API_KEY=${HUOSHAN_API_KEY}"
-              echo "HUOSHAN_BASE_URL=${HUOSHAN_BASE}"
-              if [ -n "${HUOSHAN_TEXT_MODEL}" ]; then
-                echo "HUOSHAN_TEXT_MODEL=${HUOSHAN_TEXT_MODEL}"
-              fi
-            else
-              echo "LLM_API_KEY=${DASHSCOPE_API_KEY}"
-              echo "LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1"
-              echo "LLM_MODEL=qwen-plus"
-            fi
-            # Embedding 语义检索（独立于 LLM 对话）
-            echo "DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}"
-            echo "FRONTEND_URL=http://121.40.176.39:3001"
-            echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
-            echo "API_URL=http://api:8080"
-            echo "ALIYUN_SMS_SIGN_NAME=${ALIYUN_SMS_SIGN_NAME}"
-            echo "ALIYUN_SMS_TEMPLATE_CODE=${ALIYUN_SMS_TEMPLATE_CODE}"
-            echo "ALIYUN_SMS_REGION=${SMS_REGION}"
-            echo "ALIYUN_SMS_ENDPOINT=${ALIYUN_SMS_ENDPOINT}"
-            echo "ALIYUN_SMS_USE_DEFAULT_CREDENTIAL=1"
-            echo "ALIYUN_SMS_ACCESS_KEY_ID=${ALIYUN_SMS_ACCESS_ID}"
-            echo "ALIYUN_SMS_ACCESS_KEY_SECRET=${ALIYUN_SMS_ACCESS_SECRET}"
-            # 向量检索：默认 DashVector（需 GitHub vars.DASHVECTOR_ENDPOINT）
-            echo "VECTOR_BACKEND=${VECTOR_BACKEND:-dashvector}"
-            echo "DASHVECTOR_ENDPOINT=${DASHVECTOR_ENDPOINT}"
-            echo "DASHVECTOR_METRIC=cosine"
-            echo "VECTOR_INDEX_IDEAS=ideas"
-            echo "EMBEDDING_MODEL=text-embedding-v4"
-            echo "EMBEDDING_DIMENSIONS=1536"
-            # OSS 向量 Bucket（遗留，VECTOR_BACKEND=oss 时使用）
-            echo "ALIYUN_VECTOR_BUCKET=ideaevo-vectors-prod"
-            echo "ALIYUN_VECTOR_REGION=cn-shanghai"
-            echo "ALIYUN_VECTOR_ACCOUNT_ID=1866841989078847"
-            echo "ALIYUN_ASSETS_BUCKET=ideaevo"
-            echo "ALIYUN_ASSETS_REGION=cn-shanghai"
-          } > deploy/.env
+          bash .github/scripts/generate-api-deploy-env.sh > deploy/.env
 
       - name: Copy compose + .env to server
         uses: appleboy/scp-action@v0.1.4
@@ -400,3 +361,121 @@ jobs:
           echo "- Host: \`${{ vars.DEV_DEPLOY_HOST }}:8090\`" >> $GITHUB_STEP_SUMMARY
           echo "- Health: http://${{ vars.DEV_DEPLOY_HOST }}:8090/health" >> $GITHUB_STEP_SUMMARY
           echo "- Image: \`${{ env.API_IMAGE }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- DASHSCOPE_API_KEY: ${{ vars.DASHSCOPE_API_KEY != '' && '✅ from vars' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DASHVECTOR_ENDPOINT: ${{ vars.DASHVECTOR_ENDPOINT != '' && '✅ from vars' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
+
+  # ========================================
+  # SSH 部署 - Production
+  # ========================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: docker-production
+    environment: production
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
+    env:
+      DEPLOY_DIR: /opt/ideaevo-prod
+      API_IMAGE: ${{ vars.ACR_REGISTRY }}/grapery-prod/ideaevo-api:prod
+      WEB_IMAGE: ${{ vars.ACR_REGISTRY }}/grapery-prod/ideaevo-web:prod
+      ACR_REGISTRY: ${{ vars.ACR_REGISTRY }}
+      API_PORT: ${{ vars.IDEAEVO_PROD_API_PORT || '8091' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Format SSH key
+        env:
+          RAW_SSH_KEY: ${{ vars.SSH_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          raw = os.environ["RAW_SSH_KEY"].strip()
+          m = re.match(r"-----BEGIN ([A-Z ]+)-----\s+(.*?)\s+-----END ([A-Z ]+)-----", raw, re.S)
+          if not m:
+              open(os.environ["GITHUB_WORKSPACE"] + "/ssh_key", "w").write(raw + "\n")
+          else:
+              body = m.group(2).replace(" ", "").replace("\n", "")
+              wrapped = "\n".join(body[i:i+64] for i in range(0, len(body), 64))
+              pem = f"-----BEGIN {m.group(1).strip()}-----\n{wrapped}\n-----END {m.group(3).strip()}-----\n"
+              open(os.environ["GITHUB_WORKSPACE"] + "/ssh_key", "w").write(pem)
+          os.chmod(os.environ["GITHUB_WORKSPACE"] + "/ssh_key", 0o600)
+          PY
+
+      - name: Generate .env for server
+        env:
+          DB_ADDRESS: ${{ vars.DB_ADDRESS }}
+          DB_USERNAME: ${{ vars.DB_USERNAME }}
+          DB_PASSWORD: ${{ vars.DB_PASSWORD }}
+          DB_NAME: ${{ vars.DB_NAME_PROD || 'ideaevo' }}
+          JWT_SECRET: ${{ vars.JWT_SECRET }}
+          DASHSCOPE_API_KEY: ${{ vars.DASHSCOPE_API_KEY }}
+          DASHVECTOR_ENDPOINT: ${{ vars.DASHVECTOR_ENDPOINT }}
+          VECTOR_BACKEND: ${{ vars.VECTOR_BACKEND }}
+          FRONTEND_URL: ${{ vars.IDEAEVO_PUBLIC_API_URL || 'https://www.ideavalues.xyz' }}
+          HUOSHAN_API_KEY: ${{ vars.HUOSHAN_API_KEY }}
+          HUOSHAN_BASE_URL: ${{ vars.HUOSHAN_BASE_URL }}
+          HUOSHAN_TEXT_MODEL: ${{ vars.HUOSHAN_TEXT_MODEL }}
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          ALIYUN_SMS_SIGN_NAME: ${{ vars.ALIYUN_SMS_SIGN_NAME }}
+          ALIYUN_SMS_TEMPLATE_CODE: ${{ vars.ALIYUN_SMS_TEMPLATE_CODE }}
+          ALIYUN_SMS_REGION: ${{ vars.ALIYUN_SMS_REGION }}
+          ALIYUN_SMS_ENDPOINT: ${{ vars.ALIYUN_SMS_ENDPOINT }}
+          ALIYUN_SMS_ACCESS_ID: ${{ vars.ALIYUN_SMS_ACCESS_ID }}
+          ALIYUN_SMS_ACCESS_SECRET: ${{ vars.ALIYUN_SMS_ACCESS_SECRET }}
+        run: |
+          mkdir -p deploy
+          bash .github/scripts/generate-api-deploy-env.sh > deploy/.env
+
+      - name: Copy compose + .env to server
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ vars.PROD_DEPLOY_HOST }}
+          username: ${{ vars.SSH_USER }}
+          key_path: ${{ github.workspace }}/ssh_key
+          source: "docker-compose.server.yml,deploy/.env"
+          target: ${{ env.DEPLOY_DIR }}
+          overwrite: true
+
+      - name: Deploy via docker compose
+        uses: appleboy/ssh-action@v0.1.10
+        env:
+          API_IMAGE: ${{ env.API_IMAGE }}
+          WEB_IMAGE: ${{ env.WEB_IMAGE }}
+          ACR_REGISTRY: ${{ vars.ACR_REGISTRY }}
+          ACR_USERNAME: ${{ vars.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ vars.ACR_PASSWORD }}
+          DB_ADDRESS: ${{ vars.DB_ADDRESS }}
+          DB_ROOT_USER: ${{ vars.DB_USERNAME }}
+          DB_ROOT_PASSWORD: ${{ vars.DB_PASSWORD }}
+          API_PORT: ${{ env.API_PORT }}
+        with:
+          host: ${{ vars.PROD_DEPLOY_HOST }}
+          username: ${{ vars.SSH_USER }}
+          key_path: ${{ github.workspace }}/ssh_key
+          envs: API_IMAGE,WEB_IMAGE,ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,DB_ADDRESS,DB_ROOT_USER,DB_ROOT_PASSWORD,API_PORT
+          script: |
+            mysql -h"$DB_ADDRESS" -u"$DB_ROOT_USER" -p"$DB_ROOT_PASSWORD" \
+              -e "CREATE DATABASE IF NOT EXISTS ideaevo DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" \
+              2>/dev/null && echo "✅ database ideaevo ready" || echo "⚠️ database create skipped"
+            mkdir -p ${{ env.DEPLOY_DIR }}
+            cd ${{ env.DEPLOY_DIR }}
+            echo "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" -u "$ACR_USERNAME" --password-stdin
+            [ -f deploy/.env ] && mv -f deploy/.env .env
+            export API_IMAGE="$API_IMAGE"
+            export WEB_IMAGE="$WEB_IMAGE"
+            export IDEAEVO_API_PORT="$API_PORT"
+            docker compose -f docker-compose.server.yml -p ideaevo-prod pull api
+            docker compose -f docker-compose.server.yml -p ideaevo-prod up -d api
+            sleep 12
+            docker logs ideaevo-api --tail 10 2>&1 || true
+            curl -sf "http://localhost:${API_PORT}/health" && echo "✅ api healthy" || echo "⚠️ api health check failed"
+
+      - name: Deploy notification
+        run: |
+          echo "## 🚀 Deployed API to Production" >> $GITHUB_STEP_SUMMARY
+          echo "- Host: \`${{ vars.PROD_DEPLOY_HOST }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ env.API_IMAGE }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- DASHSCOPE_API_KEY: ${{ vars.DASHSCOPE_API_KEY != '' && '✅ from vars' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DASHVECTOR_ENDPOINT: ${{ vars.DASHVECTOR_ENDPOINT != '' && '✅ from vars' || '❌ Missing' }}" >> $GITHUB_STEP_SUMMARY
