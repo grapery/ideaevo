@@ -283,6 +283,8 @@ jobs:
           DB_PASSWORD: ${{ vars.DB_PASSWORD }}
           JWT_SECRET: ${{ vars.JWT_SECRET }}
           DASHSCOPE_API_KEY: ${{ vars.DASHSCOPE_API_KEY }}
+          DASHVECTOR_ENDPOINT: ${{ vars.DASHVECTOR_ENDPOINT }}
+          VECTOR_BACKEND: ${{ vars.VECTOR_BACKEND }}
           HUOSHAN_API_KEY: ${{ vars.HUOSHAN_API_KEY }}
           HUOSHAN_BASE_URL: ${{ vars.HUOSHAN_BASE_URL }}
           HUOSHAN_TEXT_MODEL: ${{ vars.HUOSHAN_TEXT_MODEL }}
@@ -330,13 +332,17 @@ jobs:
             echo "ALIYUN_SMS_USE_DEFAULT_CREDENTIAL=1"
             echo "ALIYUN_SMS_ACCESS_KEY_ID=${ALIYUN_SMS_ACCESS_ID}"
             echo "ALIYUN_SMS_ACCESS_KEY_SECRET=${ALIYUN_SMS_ACCESS_SECRET}"
-            # OSS 向量检索 + 用户资源（复用上方 SMS/Aliyun Key，见 config.resolveAliyunAccessKey*）
-            echo "ALIYUN_VECTOR_BUCKET=ideaevo-vectors-prod"
-            echo "ALIYUN_VECTOR_REGION=cn-shanghai"
-            echo "ALIYUN_VECTOR_ACCOUNT_ID=1866841989078847"
+            # 向量检索：默认 DashVector（需 GitHub vars.DASHVECTOR_ENDPOINT）
+            echo "VECTOR_BACKEND=${VECTOR_BACKEND:-dashvector}"
+            echo "DASHVECTOR_ENDPOINT=${DASHVECTOR_ENDPOINT}"
+            echo "DASHVECTOR_METRIC=cosine"
             echo "VECTOR_INDEX_IDEAS=ideas"
             echo "EMBEDDING_MODEL=text-embedding-v4"
             echo "EMBEDDING_DIMENSIONS=1536"
+            # OSS 向量 Bucket（遗留，VECTOR_BACKEND=oss 时使用）
+            echo "ALIYUN_VECTOR_BUCKET=ideaevo-vectors-prod"
+            echo "ALIYUN_VECTOR_REGION=cn-shanghai"
+            echo "ALIYUN_VECTOR_ACCOUNT_ID=1866841989078847"
             echo "ALIYUN_ASSETS_BUCKET=ideaevo"
             echo "ALIYUN_ASSETS_REGION=cn-shanghai"
           } > deploy/.env

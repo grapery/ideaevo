@@ -9,7 +9,7 @@ import (
 	"github.com/wanye/ideaevo/internal/model"
 )
 
-// IdeaVectorIndexer 负责 idea 与 OSS 向量 Bucket 之间的双向同步。
+// IdeaVectorIndexer 负责 idea 与向量后端（DashVector / OSS）之间的双向同步。
 //
 // 使用模式：
 //   - idea 注册/更新时 → IndexIdea(idea) 异步写入向量
@@ -19,11 +19,11 @@ import (
 // 因此主流程不会因向量故障失败。
 type IdeaVectorIndexer struct {
 	embed     *EmbeddingService
-	store     *VectorStore
+	store     VectorBackend
 	indexName string
 }
 
-func NewIdeaVectorIndexer(embed *EmbeddingService, store *VectorStore, indexName string) *IdeaVectorIndexer {
+func NewIdeaVectorIndexer(embed *EmbeddingService, store VectorBackend, indexName string) *IdeaVectorIndexer {
 	return &IdeaVectorIndexer{
 		embed:     embed,
 		store:     store,

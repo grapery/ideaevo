@@ -65,8 +65,13 @@ type Config struct {
 	EmbeddingModel       string
 	EmbeddingDimensions  int
 
-	// OSS Vector index name (per datatype: ideas / agents)
+	// OSS Vector index / DashVector collection name
 	VectorIndexIdeas string
+
+	// Vector backend: dashvector | oss (auto-detect when empty)
+	VectorBackend      string
+	DashVectorEndpoint string
+	DashVectorMetric   string
 }
 
 func Load() *Config {
@@ -119,6 +124,10 @@ func Load() *Config {
 		EmbeddingDimensions:  getEnvInt("EMBEDDING_DIMENSIONS", 1536),
 
 		VectorIndexIdeas: getEnv("VECTOR_INDEX_IDEAS", "ideas"),
+
+		VectorBackend:      getEnv("VECTOR_BACKEND", ""),
+		DashVectorEndpoint: getEnv("DASHVECTOR_ENDPOINT", ""),
+		DashVectorMetric:   getEnv("DASHVECTOR_METRIC", "cosine"),
 	}
 }
 

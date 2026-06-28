@@ -17,12 +17,12 @@ import (
 // 转换公式：similarity = 1 - distance/2 （OSS 默认 cosine_distance ∈ [0,2]）。
 type VectorSimilaritySearcher struct {
 	embed     *EmbeddingService
-	store     *VectorStore
+	store     VectorBackend
 	db        *gorm.DB
 	indexName string
 }
 
-func NewVectorSimilaritySearcher(db *gorm.DB, embed *EmbeddingService, store *VectorStore, indexName string) *VectorSimilaritySearcher {
+func NewVectorSimilaritySearcher(db *gorm.DB, embed *EmbeddingService, store VectorBackend, indexName string) *VectorSimilaritySearcher {
 	return &VectorSimilaritySearcher{
 		db:        db,
 		embed:     embed,

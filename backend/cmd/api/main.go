@@ -65,34 +65,36 @@ func main() {
 	socialSvc.SetNotificationService(notifSvc)
 	wanyeSvc.SetNotificationService(notifSvc)
 
-	// —— 向量检索（可选启用）——
-	// 配置齐全时启用 OSS 向量 Bucket：
-	//   1. idea 创建/fork/状态变更 → 自动同步 embedding 到 OSS
-	//   2. dedup 查重 + chat RAG → 走向量语义检索（替代 MySQL LIKE 降级）
-	// 任一前置条件缺失时全部降级，不影响主流程。
+	// —— 向量检索（可选启用：DashVector 或 OSS 向量 Bucket）——
+	//   1. idea 创建/fork/状态变更 → 自动同步 embedding
+	//   2. dedup 查重 + chat RAG → 向量语义检索
+	// VECTOR_BACKEND=dashvector 时需 DASHVECTOR_ENDPOINT + DASHSCOPE_API_KEY
+	// VECTOR_BACKEND=oss 时需 OSS 向量 Bucket 全套变量
 	embedSvc := service.NewEmbeddingService(cfg.DashScopeAPIKey, "", cfg.EmbeddingModel, cfg.EmbeddingDimensions)
-	vectorStore, storeErr := service.NewVectorStore(service.VectorStoreConfig{
-		AccessKeyID:     cfg.AliyunAccessKeyID,
-		AccessKeySecret: cfg.AliyunAccessKeySecret,
-		Bucket:          cfg.AliyunVectorBucket,
-		Region:          cfg.AliyunVectorRegion,
-		AccountID:       cfg.AliyunVectorAccountID,
-	})
+	vectorStore, backendName, storeErr := service.NewVectorBackend(cfg)
 	if storeErr != nil {
-		log.Printf("[vector] disabled: %v (ideas will use MySQL LIKE fallback)", storeErr)
+		log.Printf("[vector] disabled: %v", storeErr)
 	} else if !embedSvc.Enabled() {
-		log.Printf("[vector] disabled: DASHSCOPE_API_KEY not set (ideas will use MySQL LIKE fallback)")
+		log.Printf("[vector] disabled: DASHSCOPE_API_KEY not set")
+	} else if vectorStore == nil || !vectorStore.Enabled() {
+		log.Printf("[vector] disabled: backend %s not enabled", backendName)
 	} else {
-		log.Printf("[vector] enabled: bucket=%s region=%s index=%s dims=%d",
-			cfg.AliyunVectorBucket, cfg.AliyunVectorRegion, cfg.VectorIndexIdeas, cfg.EmbeddingDimensions)
+		switch backendName {
+		case "dashvector":
+			log.Printf("[vector] enabled: backend=dashvector endpoint=%s collection=%s dims=%d",
+				cfg.DashVectorEndpoint, cfg.VectorIndexIdeas, cfg.EmbeddingDimensions)
+		default:
+			log.Printf("[vector] enabled: backend=oss bucket=%s region=%s index=%s dims=%d",
+				cfg.AliyunVectorBucket, cfg.AliyunVectorRegion, cfg.VectorIndexIdeas, cfg.EmbeddingDimensions)
+		}
 
 		indexer := service.NewIdeaVectorIndexer(embedSvc, vectorStore, cfg.VectorIndexIdeas)
 		ideaSvc.SetVectorIndexer(indexer)
 		socialSvc.SetVectorIndexer(indexer)
 
 		vectorSearcher := service.NewVectorSimilaritySearcher(db, embedSvc, vectorStore, cfg.VectorIndexIdeas)
-			ideaSvc.SetSearcher(vectorSearcher) // 相关想法分析（/ideas/search）
-			chatSvc.SetRAG(embedSvc, vectorSearcher)
+		ideaSvc.SetSearcher(vectorSearcher)
+		chatSvc.SetRAG(embedSvc, vectorSearcher)
 	}
 
 	// —— 工具系统（MCP / REST chat / agent-bridge 三入口共享）——
