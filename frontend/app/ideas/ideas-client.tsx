@@ -48,11 +48,8 @@ export function IdeasClient({
             <button
               key={f.value}
               onClick={() => updateParams(f.value, initialSort)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                initialStatus === f.value
-                  ? "gradient-btn"
-                  : "border border-[var(--divider)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-              }`}
+              className="filter-chip"
+              data-active={initialStatus === f.value ? "true" : undefined}
             >
               {f.label}
             </button>

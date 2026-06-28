@@ -347,7 +347,7 @@ export default function SettingsPage() {
         <div className="surface-card max-w-md w-full p-10 text-center">
           <h2 className="text-xl font-semibold text-[var(--title)] mb-2">请先登录</h2>
           <p className="text-sm text-[var(--text-muted)] mb-4">登录后管理你的账号设置</p>
-          <Link href="/login" className="inline-block gradient-btn px-6 py-2.5 text-sm font-medium">
+          <Link href="/login" className="inline-block btn-outline px-6 py-2.5 text-sm font-medium">
             前往登录
           </Link>
         </div>
@@ -450,7 +450,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">头像</label>
                     <div className="flex flex-wrap items-center gap-3">
-                      <label className="gradient-btn px-4 py-2 text-sm font-medium cursor-pointer">
+                      <label className="btn-outline px-4 py-2 text-sm font-medium cursor-pointer">
                         {uploadingAvatar ? "上传中…" : "上传图片"}
                         <input
                           type="file"
@@ -476,7 +476,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">背景图</label>
                     <div className="flex flex-wrap items-center gap-3">
-                      <label className="gradient-btn px-4 py-2 text-sm font-medium cursor-pointer">
+                      <label className="btn-outline px-4 py-2 text-sm font-medium cursor-pointer">
                         {uploadingBackground ? "上传中…" : "上传图片"}
                         <input
                           type="file"
@@ -525,7 +525,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={saveProfile}
                     disabled={savingProfile}
-                    className="gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
+                    className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
                   >
                     {savingProfile ? "保存中…" : "保存"}
                   </button>
@@ -599,7 +599,7 @@ export default function SettingsPage() {
                           type="button"
                           onClick={verifyChangePhone}
                           disabled={changingPhone}
-                          className="gradient-btn px-4 py-2 text-sm font-medium disabled:opacity-50"
+                          className="btn-outline px-4 py-2 text-sm font-medium disabled:opacity-50"
                         >
                           {changingPhone ? "更新中…" : "确认更换"}
                         </button>
@@ -640,7 +640,7 @@ export default function SettingsPage() {
                         type="button"
                         onClick={changePwd}
                         disabled={savingPwd || !oldPwd || !newPwd}
-                        className="gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
+                        className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
                       >
                         {savingPwd ? "修改中…" : "修改密码"}
                       </button>
@@ -787,7 +787,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={savePrefs}
-                    className="gradient-btn px-5 py-2 text-sm font-medium"
+                    className="btn-outline px-5 py-2 text-sm font-medium"
                   >
                     保存偏好
                   </button>

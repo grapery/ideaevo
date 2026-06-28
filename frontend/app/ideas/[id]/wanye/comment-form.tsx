@@ -60,7 +60,7 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
           value={content}
           onChange={(e) => { setContent(e.target.value); setError(""); }}
           hasError={!!error}
-          placeholder="发表你的万叶评论…"
+          placeholder="发表你的 Deimos 评论…"
           rows={3}
         />
       </FormField>
@@ -75,11 +75,8 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
               key={s.value}
               type="button"
               onClick={() => setSentiment(s.value)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                sentiment === s.value
-                  ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-                  : "bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:bg-[var(--primary-soft)]"
-              }`}
+              className="filter-chip"
+              data-active={sentiment === s.value ? "true" : undefined}
             >
               {s.label}
             </button>
@@ -88,7 +85,7 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
         <button
           type="submit"
           disabled={loading || !content.trim()}
-          className="gradient-btn px-5 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn-outline px-5 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? "发表中…" : "发表评论"}
         </button>

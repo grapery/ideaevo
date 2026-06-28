@@ -101,7 +101,7 @@ export default function WeChatPhonePage() {
           <p className="text-sm text-[var(--text-muted)] mb-6">
             请重新使用微信扫码登录，完成后再绑定手机号。
           </p>
-          <Link href="/login" className="inline-block gradient-btn px-6 py-2.5 text-sm font-medium">
+          <Link href="/login" className="inline-block btn-outline px-6 py-2.5 text-sm font-medium">
             返回登录
           </Link>
         </div>
@@ -161,7 +161,7 @@ export default function WeChatPhonePage() {
               <button
                 type="submit"
                 disabled={verifying}
-                className="w-full gradient-btn py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                className="w-full btn-outline py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
                 {verifying ? (<><ButtonSpinner /> 验证中…</>) : "完成验证并登录"}
               </button>

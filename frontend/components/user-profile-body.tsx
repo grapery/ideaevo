@@ -448,7 +448,7 @@ function ApiKeyTab() {
               placeholder="wanye_xxxxxxxx"
               className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm"
             />
-            <button onClick={handleSet} className="gradient-btn px-5 py-2 text-sm font-medium">
+            <button onClick={handleSet} className="btn-outline px-5 py-2 text-sm font-medium">
               确认
             </button>
           </div>

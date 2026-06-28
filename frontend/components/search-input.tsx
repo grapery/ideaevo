@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, FormEvent } from "react";
 import { IconSearch } from "./icons";
 
-type SearchInputVariant = "pill" | "rounded" | "inline";
+type SearchInputVariant = "pill" | "rounded" | "inline" | "editorial";
 
 type SearchInputProps = {
   variant?: SearchInputVariant;
@@ -23,13 +23,14 @@ type SearchInputProps = {
 };
 
 const variantClasses: Record<SearchInputVariant, string> = {
-  pill: "h-10 rounded-full input-field-subtle pl-9 pr-4 text-sm",
-  rounded: "rounded-xl input-field pl-12 pr-4 py-3 text-sm",
-  inline: "flex-1 bg-transparent text-[15px] text-[var(--title)] placeholder:text-[var(--text-muted)] outline-none py-1.5",
+  pill: "h-8 input-field-subtle pl-8 pr-3 text-[13px]",
+  rounded: "input-field pl-9 pr-3 py-2 text-[13px]",
+  editorial: "h-8 input-field pl-8 pr-3 text-[13px]",
+  inline: "flex-1 bg-transparent text-[13px] text-[var(--title)] placeholder:text-[var(--text-muted)] outline-none py-1",
 };
 
 export function SearchInput({
-  variant = "pill",
+  variant = "editorial",
   className = "",
   id = "nav-search",
   name = "q",
@@ -71,8 +72,8 @@ export function SearchInput({
   if (variant === "inline" && submitLabel) {
     return (
       <form onSubmit={handleSubmit} className={className}>
-        <div className="flex items-center gap-3 rounded-[20px] border border-[var(--border)] bg-[var(--bg-subtle)] px-5 py-2.5 transition-colors focus-within:border-[var(--primary)] focus-within:bg-white focus-within:shadow-[var(--shadow)]">
-          <IconSearch className="h-4 w-4 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
+        <div className="flex items-center gap-2 border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-1.5 focus-within:border-[var(--ink)]">
+          <IconSearch className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
           <label htmlFor={id} className="sr-only">{placeholder}</label>
           <input
             id={id}
@@ -88,7 +89,7 @@ export function SearchInput({
           <button
             type="submit"
             disabled={loading || !query.trim()}
-            className="gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50 shrink-0 inline-flex items-center gap-2"
+            className="btn-outline btn-sm disabled:opacity-50 shrink-0"
           >
             {loading ? "搜索中…" : submitLabel}
           </button>
@@ -100,9 +101,7 @@ export function SearchInput({
   const inputEl = (
     <>
       <IconSearch
-        className={`pointer-events-none absolute top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)] ${
-          variant === "rounded" ? "left-4" : "left-3"
-        }`}
+        className="pointer-events-none absolute top-1/2 -translate-y-1/2 left-2.5 h-3.5 w-3.5 text-[var(--text-muted)]"
         aria-hidden="true"
       />
       <label htmlFor={id} className="sr-only">{placeholder}</label>

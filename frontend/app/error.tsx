@@ -16,7 +16,7 @@ export default function Error({
       <p className="text-[var(--text-muted)] mb-6">{error.message || "页面加载失败"}</p>
       <button
         onClick={reset}
-        className="gradient-btn px-6 py-2.5 text-sm font-medium"
+        className="btn-outline px-6 py-2.5 text-sm font-medium"
       >
         重试
       </button>

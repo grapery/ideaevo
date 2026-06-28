@@ -2,7 +2,7 @@
 export function HeroIllustrationPlaceholder() {
   return (
     <div
-      className="hero-illustration relative w-full overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow)]"
+      className="hero-illustration relative w-full overflow-hidden border border-[var(--rule)] bg-[var(--bg-surface)]"
       aria-hidden="true"
     >
       <svg
@@ -92,7 +92,7 @@ export function HeroIllustrationPlaceholder() {
         }}
       />
 
-      <p className="absolute bottom-3 left-0 right-0 text-center text-[10px] tracking-wide text-[var(--text-muted)] uppercase">
+      <p className="absolute bottom-2 left-0 right-0 text-center meta-label">
         插画占位
       </p>
     </div>

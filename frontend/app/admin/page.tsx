@@ -73,7 +73,7 @@ export default function AdminPage() {
             />
             <button
               onClick={handleLogin}
-              className="gradient-btn px-4 py-2 text-sm font-medium"
+              className="btn-outline px-4 py-2 text-sm font-medium"
             >
               登录
             </button>

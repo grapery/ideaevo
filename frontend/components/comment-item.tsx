@@ -1,47 +1,86 @@
 import { WanyeComment } from "@/lib/types";
 
-const sentimentConfig: Record<string, { text: string; cls: string }> = {
-  positive: { text: "认可", cls: "bg-[var(--teal-soft)] text-[var(--teal)]" },
-  neutral: { text: "讨论", cls: "bg-[var(--bg-subtle)] text-[var(--text-secondary)]" },
-  constructive: { text: "建议", cls: "bg-[var(--coral-soft)] text-[var(--coral)]" },
+const sentimentConfig: Record<string, { text: string; border: string }> = {
+  positive: { text: "认可", border: "var(--accent-live)" },
+  neutral: { text: "讨论", border: "var(--ink-faint)" },
+  constructive: { text: "建议", border: "var(--accent-stamp)" },
 };
 
-export function CommentItem({ comment }: { comment: WanyeComment }) {
+function displayName(userId: string) {
+  if (!userId) return "匿名";
+  if (userId.startsWith("agent_")) return `Agent ${userId.slice(6, 12)}`;
+  return userId.length > 12 ? `${userId.slice(0, 8)}…` : userId;
+}
+
+export function CommentItem({
+  comment,
+  depth = 0,
+  replyTo,
+}: {
+  comment: WanyeComment;
+  depth?: number;
+  replyTo?: WanyeComment;
+}) {
   const sentiment = sentimentConfig[comment.sentiment || "neutral"];
   const isAgent = !comment.user_id || comment.user_id.startsWith("agent_");
-  const displayName = comment.user_id || "匿名";
+  const name = displayName(comment.user_id);
+  const isReply = depth > 0;
 
   return (
-    <div className="rounded-[20px] border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow)]">
-      <div className="flex items-start gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-xs font-semibold text-[var(--primary)]">
-          {isAgent ? "A" : displayName.charAt(0).toUpperCase()}
+    <div
+      className={
+        isReply
+          ? "ml-5 border-l border-[var(--rule)] pl-4 py-1"
+          : "surface-card p-3 border-l-[3px]"
+      }
+      style={!isReply ? { borderLeftColor: sentiment.border } : undefined}
+    >
+      <div className="flex items-start gap-2.5">
+        <div className="btn-icon h-7 w-7 text-[9px] font-[family-name:var(--font-mono)] shrink-0">
+          {isAgent ? "A" : name.charAt(0).toUpperCase()}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-[var(--title)]">{displayName}</span>
-            <span className="text-xs text-[var(--text-muted)]">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`font-medium text-[var(--ink)] ${isReply ? "text-[12px]" : "text-[13px]"}`}>
+              {name}
+            </span>
+            {replyTo && (
+              <span className="text-[11px] text-[var(--ink-faint)]">
+                回复{" "}
+                <span className="text-[var(--accent-link)]">
+                  {displayName(replyTo.user_id)}
+                </span>
+              </span>
+            )}
+            <span className="meta-label normal-case tracking-normal">
               {new Date(comment.created_at).toLocaleDateString("zh-CN")}
             </span>
             {sentiment && (
-              <span className={`rounded-full px-2 py-0.5 text-xs ${sentiment.cls}`}>
+              <span
+                className="badge-pill text-[9px]"
+                style={{ borderLeftColor: sentiment.border, color: "var(--ink-soft)" }}
+              >
                 {sentiment.text}
               </span>
             )}
           </div>
-          <p className="mt-2 text-sm text-[var(--text-secondary)] leading-relaxed">{comment.content}</p>
-          <button type="button" className="mt-2 text-xs text-[var(--text-muted)] hover:text-[var(--primary)]">
-            回复
-          </button>
+          <p
+            className={`mt-1 leading-relaxed text-[var(--ink-soft)] ${
+              isReply ? "text-[12px]" : "text-[13px]"
+            }`}
+          >
+            {comment.content}
+          </p>
+          {!isReply && (
+            <button
+              type="button"
+              className="mt-1.5 meta-label normal-case tracking-normal hover:text-[var(--accent-link)]"
+            >
+              回复
+            </button>
+          )}
         </div>
       </div>
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="mt-3 ml-11 space-y-3">
-          {comment.replies.map((reply) => (
-            <CommentItem key={reply.id} comment={reply} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

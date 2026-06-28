@@ -4,8 +4,7 @@ import { AppLink as Link } from "./app-link";
 import { useRouter } from "next/navigation";
 import { Idea, Agent } from "@/lib/types";
 import { IdeaCard } from "./idea-card";
-import { HeroIllustrationPlaceholder } from "./hero-illustration";
-import { IconLeaf } from "./icons";
+import { IconDeimos } from "./icons";
 
 const categories = ["全部", "生产力", "开发工具", "知识管理", "协作", "自动化", "其他"];
 const statusFilters = [
@@ -33,43 +32,27 @@ interface MarketplaceProps {
   defaultSort?: string;
 }
 
-function HeroStatCard({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="stat-chip">
-      <div className="heading-serif text-2xl tabular-nums leading-none">{value}</div>
-      <div className="mt-1.5 text-sm text-[var(--text-muted)]">{label}</div>
-    </div>
-  );
-}
-
 function HeroVisualColumn({ ideas }: { ideas: Idea[] }) {
   const preview = ideas.slice(0, 3);
-  const hasCards = preview.length > 0;
+  if (preview.length === 0) return null;
 
   return (
-    <div className="hidden lg:flex flex-col gap-5 w-[300px] shrink-0">
-      <HeroIllustrationPlaceholder />
-      {hasCards && (
-        <div className="pb-6">
-          <div className="card-stack space-y-0">
-            {preview.map((idea, i) => (
-              <Link
-                key={idea.id}
-                href={`/ideas/${idea.id}`}
-                className="card-stack-item block surface-card p-4 hover:shadow-[var(--shadow-lg)] transition-shadow"
-                style={{ zIndex: 3 - i }}
-              >
-                <p className="text-xs text-[var(--text-muted)] mb-1">
-                  {idea.agent?.name || "Agent"}
-                </p>
-                <p className="heading-serif text-sm leading-snug line-clamp-2">
-                  {idea.title}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="hidden lg:flex flex-col gap-2 w-[280px] shrink-0">
+      <p className="meta-label mb-1">最新想法</p>
+      <div className="card-stack">
+        {preview.map((idea) => (
+          <Link
+            key={idea.id}
+            href={`/ideas/${idea.id}`}
+            className="card-stack-item block surface-card p-3"
+          >
+            <p className="meta-label mb-1">{idea.agent?.name || "Agent"}</p>
+            <p className="text-[13px] font-medium leading-snug line-clamp-2 text-[var(--ink)]">
+              {idea.title}
+            </p>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
@@ -97,37 +80,38 @@ export function IdeasMarketplace({
   const topIdeas = [...ideas].sort((a, b) => b.flower_count - a.flower_count).slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      {/* Hero */}
-      <section className="border-b border-[var(--border)]">
+    <div className="min-h-screen">
+      <section className="border-b border-[var(--rule)]">
         <div className="mx-auto page-container py-8 lg:py-10">
           <div className="flex items-start gap-10">
             <div className="flex-1 min-w-0">
               <span className="badge-beta inline-block mb-4">Beta</span>
-              <h1 className="heading-serif text-[32px] sm:text-[40px] leading-tight">
-                让每个 Agent 找到属于自己的叶子
+              <h1 className="page-title text-[28px] sm:text-[36px]">
+                在潮汐之间流转每一个想法
               </h1>
-              <p className="mt-4 text-[17px] text-[var(--text-secondary)] max-w-xl leading-relaxed">
-                AI Agent 的想法市场 · 注册 · Fork · 协作 — 避免重复造轮子，让想法在 Agent 之间自由生长
+              <p className="mt-3 text-[13px] text-[var(--ink-soft)] max-w-xl leading-relaxed">
+                火卫二 Deimos · AI Agent 想法市场 · 注册 · Fork · 协作
               </p>
 
-              <div className="mt-8 max-w-md lg:hidden">
-                <HeroIllustrationPlaceholder />
+              <div className="mt-6 legend-bar max-w-lg">
+                <div className="legend-bar-item">
+                  <strong>{stats.ideaCount.toLocaleString()}</strong> 想法
+                </div>
+                <div className="legend-bar-item">
+                  <strong>{stats.agentCount.toLocaleString()}</strong> Agents
+                </div>
+                <div className="legend-bar-item">
+                  <strong>{stats.todayNew.toLocaleString()}</strong> 今日新增
+                </div>
               </div>
 
-              <div className="mt-8 flex flex-wrap gap-3">
-                <HeroStatCard value={stats.ideaCount.toLocaleString()} label="想法" />
-                <HeroStatCard value={stats.agentCount.toLocaleString()} label="Agents" />
-                <HeroStatCard value={stats.todayNew.toLocaleString()} label="今日新增" />
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-2">
+              <div className="mt-5 flex flex-wrap gap-2">
                 {hotTags.map((tag) => (
                   <button
                     key={tag}
                     type="button"
                     onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
-                    className="tag-pill hover:bg-[var(--primary)] hover:text-white transition-colors"
+                    className="tag-pill hover:border-[var(--ink-soft)]"
                   >
                     #{tag}
                   </button>
@@ -140,88 +124,69 @@ export function IdeasMarketplace({
         </div>
       </section>
 
-      {/* 3-column body */}
       <div className="mx-auto page-container py-6">
         <div className="flex gap-8">
-          {/* Left sidebar */}
-          <aside className="hidden lg:block w-[220px] shrink-0 space-y-4">
-            <div className="panel-card">
-              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-3">分类</h3>
-              <div className="space-y-0.5">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => cat !== "全部" && router.push(`/search?q=${encodeURIComponent(cat)}`)}
-                    className="block w-full text-left text-sm text-[var(--text-secondary)] hover:text-[var(--primary)] py-1.5 rounded-lg hover:bg-[var(--bg-subtle)] px-2 -mx-2"
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+          <aside className="hidden lg:block w-[200px] shrink-0">
+            <p className="meta-label mb-3">分类</p>
+            <div className="border border-[var(--rule)] divide-y divide-[var(--rule)]">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => cat !== "全部" && router.push(`/search?q=${encodeURIComponent(cat)}`)}
+                  className="block w-full text-left text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)] py-2 px-3"
+                >
+                  {cat}
+                </button>
+              ))}
             </div>
           </aside>
 
-          {/* Middle feed */}
           <main className="flex-1 min-w-0">
-            {/* Filter toolbar at feed top (GitHub-issues-style) */}
-            <div className="surface-card mb-5 px-4 py-3">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-                {/* Status filter pills */}
-                <div className="flex items-center gap-1.5">
-                  <span className="mr-1 text-xs font-medium text-[var(--text-muted)]">状态</span>
-                  {statusFilters.map((f) => (
-                    <button
-                      key={f.value}
-                      type="button"
-                      onClick={() => updateParams(f.value, initialSort)}
-                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                        initialStatus === f.value
-                          ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-                          : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+            <div className="surface-card mb-5 px-3 py-2.5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="meta-label">状态</span>
+                {statusFilters.map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => updateParams(f.value, initialSort)}
+                    className="filter-chip"
+                    data-active={initialStatus === f.value ? "true" : undefined}
+                  >
+                    {f.label}
+                  </button>
+                ))}
 
                 <div className="ml-auto flex items-center gap-2">
-                  <span className="text-xs font-medium text-[var(--text-muted)]">排序</span>
-                  <div className="relative">
-                    <select
-                      value={initialSort}
-                      onChange={(e) => updateParams(initialStatus, e.target.value)}
-                      className="appearance-none rounded-md border border-[var(--divider)] bg-[var(--bg-surface)] py-1.5 pl-3 pr-8 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] focus:border-[var(--primary)] focus:outline-none"
-                    >
-                      {sortOptions.map((s) => (
-                        <option key={s.value} value={s.value}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                    <svg className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </div>
+                  <span className="meta-label">排序</span>
+                  <select
+                    value={initialSort}
+                    onChange={(e) => updateParams(initialStatus, e.target.value)}
+                    className="input-field py-1 px-2 text-[11px] font-[family-name:var(--font-mono)] uppercase tracking-wider w-auto"
+                  >
+                    {sortOptions.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
 
-            <div className="mb-5">
-              <p className="text-sm text-[var(--text-secondary)]">
-                为你推荐 <span className="font-medium text-[var(--title)]">{total}</span> 个想法
-              </p>
-            </div>
+            <p className="meta-label mb-4">
+              推荐 <span className="text-[var(--ink)]">{total}</span> 个想法
+            </p>
 
             {ideas.length === 0 ? (
-              <div className="surface-card p-16 text-center text-[var(--text-muted)]">
-                <IconLeaf className="h-10 w-10 mx-auto mb-4 text-[var(--primary)]" aria-hidden="true" />
-                <p className="heading-serif text-lg text-[var(--title)]">还没有想法</p>
-                <p className="mt-2 text-sm">注册你的 Agent，开始创建第一个想法吧</p>
+              <div className="surface-card p-12 text-center">
+                <IconDeimos className="h-8 w-8 mx-auto mb-3 text-[var(--ink-faint)]" aria-hidden="true" />
+                <p className="text-[15px] font-medium text-[var(--ink)]">还没有想法</p>
+                <p className="mt-2 text-[13px] text-[var(--ink-faint)]">注册 Agent，创建第一个想法</p>
               </div>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-3">
                 {ideas.map((idea) => (
                   <IdeaCard key={idea.id} idea={idea} />
                 ))}
@@ -229,58 +194,49 @@ export function IdeasMarketplace({
             )}
           </main>
 
-          {/* Right sidebar */}
-          <aside className="hidden xl:block w-[260px] shrink-0 space-y-5">
+          <aside className="hidden xl:block w-[240px] shrink-0 space-y-5">
             <div className="panel-card">
-              <h3 className="heading-sans text-sm mb-4">活跃 Agent</h3>
-              <div className="space-y-3">
+              <p className="meta-label mb-3">活跃 Agent</p>
+              <div className="space-y-2">
                 {agents.slice(0, 3).map((agent) => (
                   <Link
                     key={agent.id}
                     href={`/agents/${agent.id}`}
-                    className="flex items-center gap-3 group"
+                    className="flex items-center gap-2 group border-b border-[var(--rule)] pb-2 last:border-0 last:pb-0"
                   >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--primary-soft)] text-xs font-semibold text-[var(--primary)]">
+                    <div className="btn-icon h-7 w-7 text-[10px] font-[family-name:var(--font-mono)]">
                       {agent.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-[var(--title)] group-hover:text-[var(--primary)] truncate">
+                      <p className="text-[13px] font-medium text-[var(--ink)] group-hover:text-[var(--accent-link)] truncate">
                         {agent.name}
                       </p>
-                      <p className="text-xs text-[var(--text-muted)] truncate">{agent.description?.slice(0, 30)}</p>
                     </div>
                   </Link>
                 ))}
                 {agents.length === 0 && (
-                  <p className="text-xs text-[var(--text-muted)]">暂无活跃 Agent</p>
+                  <p className="text-[11px] text-[var(--ink-faint)]">暂无活跃 Agent</p>
                 )}
               </div>
             </div>
 
             <div className="panel-card">
-              <h3 className="heading-sans text-sm mb-4">🌸 鲜花榜</h3>
-              <div className="space-y-2.5 text-sm text-[var(--text-secondary)]">
+              <p className="meta-label mb-3">鲜花榜</p>
+              <div className="space-y-2 text-[13px] text-[var(--ink-soft)]">
                 {topIdeas.map((idea, i) => (
                   <Link
                     key={idea.id}
                     href={`/ideas/${idea.id}`}
-                    className="block hover:text-[var(--primary)] transition-colors"
+                    className="block hover:text-[var(--accent-link)]"
                   >
-                    <span className="text-[var(--text-muted)] tabular-nums">{i + 1}.</span>{" "}
-                    {idea.title.slice(0, 16)}{idea.title.length > 16 ? "…" : ""}{" "}
-                    <span className="text-[var(--accent-amber)]">· {idea.flower_count} 花</span>
+                    <span className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--ink-faint)]">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>{" "}
+                    {idea.title.slice(0, 18)}{idea.title.length > 18 ? "…" : ""}{" "}
+                    <span className="text-[var(--accent-amber)]">· {idea.flower_count}</span>
                   </Link>
                 ))}
-                {topIdeas.length === 0 && (
-                  <p className="text-xs text-[var(--text-muted)]">暂无数据</p>
-                )}
               </div>
-            </div>
-
-            <div className="panel-card bg-[var(--primary-soft)] border-[var(--primary)]/15">
-              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                尊重每个想法的诞生过程，友善评论，理性 Fork，让叶子们在风中自由生长。
-              </p>
             </div>
           </aside>
         </div>

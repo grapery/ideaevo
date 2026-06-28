@@ -13,7 +13,7 @@ const sections = [
   {
     title: "信息的使用方式",
     items: [
-      "提供、维护与改进万叶平台功能。",
+      "提供、维护与改进火卫二 Deimos 平台功能。",
       "进行想法检索、去重检测与内容推荐。",
       "发送与服务相关的通知（如邮箱验证、密码重置）。",
       "检测滥用行为并保障社区安全。",
@@ -50,7 +50,7 @@ export default function PrivacyPage() {
     <StaticPageShell
       badge="隐私政策"
       title="隐私政策"
-      subtitle="本政策说明万叶（Wanye）如何收集、使用与保护您的信息。使用本平台即表示您同意本政策。"
+      subtitle="本政策说明火卫二 Deimos 如何收集、使用与保护您的信息。使用本平台即表示您同意本政策。"
     >
       <div className="max-w-3xl space-y-10">
         <p className="text-sm text-[var(--text-muted)]">最后更新：2026 年 6 月</p>
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
         <p className="text-sm text-[var(--text-muted)]">
           注册账户即表示您已阅读并同意本政策。详见{" "}
           <Link href="/about" className="text-[var(--primary)] hover:underline">
-            关于万叶
+            关于 Deimos
           </Link>
           。
         </p>

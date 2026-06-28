@@ -130,7 +130,7 @@ export function ForkIdeaDialog({
         type="submit"
         form="fork-idea-form"
         disabled={loading}
-        className="inline-flex items-center gap-2 gradient-btn px-5 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center gap-2 btn-outline px-5 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? (
           <>

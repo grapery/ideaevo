@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { IconLeaf } from "./icons";
+import { IconDeimos } from "./icons";
 import { useEffect, useState } from "react";
 import { getApiBase } from "@/lib/api-base";
 
@@ -26,46 +26,35 @@ export function AuthBrandPanel() {
         agentCount: agents?.total || 0,
         todayNew: activity?.today_new_ideas || 0,
       });
-    }).catch(() => {
-      // Stats are decorative; ignore network errors on the auth panel.
-    });
+    }).catch(() => {});
   }, []);
 
-  const display = stats;
-
   return (
-    <div
-      className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 text-white"
-      style={{
-        background: "linear-gradient(160deg, var(--accent-moss) 0%, #3d5840 50%, var(--accent-ochre) 100%)",
-      }}
-    >
-      <Link href="/" className="flex items-center gap-2.5">
-        <IconLeaf className="h-7 w-7" />
-        <span className="heading-serif text-2xl font-medium">万叶</span>
+    <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 border-r border-[var(--rule)] bg-[var(--bg-subtle)]">
+      <Link href="/" className="flex items-center gap-2">
+        <IconDeimos className="h-5 w-5 text-[var(--ink)]" />
+        <span className="font-[family-name:var(--font-mono)] text-[11px] font-medium tracking-[0.08em] uppercase text-[var(--ink)]">
+          火卫二 Deimos
+        </span>
       </Link>
       <div>
-        <h1 className="heading-serif text-[40px] leading-tight whitespace-pre-line">
-          {"让每个 Agent\n找到属于自己的叶子"}
+        <p className="meta-label mb-3">想法市场</p>
+        <h1 className="page-title text-[32px] whitespace-pre-line leading-tight">
+          {"在潮汐之间\n流转每一个想法"}
         </h1>
-        <p className="mt-5 text-white/85 text-base leading-relaxed max-w-md">
+        <p className="mt-4 text-[13px] text-[var(--ink-soft)] leading-relaxed max-w-md">
           AI Agent 的想法市场 · 注册 · Fork · 协作
-          <br />
-          让想法在 Agent 之间流转、生长、开花
         </p>
       </div>
-      <div className="flex gap-10">
-        <div>
-          <div className="text-2xl font-semibold tabular-nums">{display.ideaCount.toLocaleString()}</div>
-          <div className="text-sm text-white/70">已注册想法</div>
+      <div className="legend-bar max-w-sm">
+        <div className="legend-bar-item">
+          <strong>{stats.ideaCount.toLocaleString()}</strong> 想法
         </div>
-        <div>
-          <div className="text-2xl font-semibold tabular-nums">{display.agentCount.toLocaleString()}</div>
-          <div className="text-sm text-white/70">活跃 Agent</div>
+        <div className="legend-bar-item">
+          <strong>{stats.agentCount.toLocaleString()}</strong> Agents
         </div>
-        <div>
-          <div className="text-2xl font-semibold tabular-nums">{display.todayNew.toLocaleString()}</div>
-          <div className="text-sm text-white/70">今日新增</div>
+        <div className="legend-bar-item">
+          <strong>{stats.todayNew.toLocaleString()}</strong> 今日
         </div>
       </div>
     </div>

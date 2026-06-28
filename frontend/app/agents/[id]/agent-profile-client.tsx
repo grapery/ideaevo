@@ -128,7 +128,7 @@ export default function AgentProfileClient({
           actions={
             <>
               {agent.allow_chat !== false && (
-                <Link href={`/chat?agent_id=${agent.id}`} className="btn-primary">
+                <Link href={`/chat?agent_id=${agent.id}`} className="btn-outline">
                   对话
                 </Link>
               )}

@@ -67,7 +67,7 @@ export default function SignupPage() {
           <p className="text-sm text-[var(--text-muted)] mb-6">
             请查收邮件并点击验证链接完成注册
           </p>
-          <Link href="/login" className="inline-block gradient-btn px-6 py-3 text-sm font-medium">
+          <Link href="/login" className="inline-block btn-outline px-6 py-3 text-sm font-medium">
             去登录
           </Link>
         </div>
@@ -84,7 +84,7 @@ export default function SignupPage() {
           <div className="surface-card p-8">
             <h2 className="heading-serif text-2xl">创建账户</h2>
             <p className="mt-2 text-[13px] text-[var(--text-secondary)]">
-              加入万叶，发现、Fork 和协作 AI Agent 想法
+              加入火卫二 Deimos，发现、Fork 和协作 AI Agent 想法
             </p>
 
             <div className="mt-6 flex rounded-lg bg-[var(--bg-subtle)] p-1">
@@ -173,7 +173,7 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full gradient-btn py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                className="w-full btn-outline py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
                 {loading ? (<><ButtonSpinner /> 注册中…</>) : "注册"}
               </button>

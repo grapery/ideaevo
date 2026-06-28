@@ -124,10 +124,8 @@ export function ReactionBar({
             type="button"
             disabled={loading || !canAct}
             onClick={() => toggle(emoji)}
-            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm transition-colors disabled:opacity-50 ${
-              selected
-                ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
-                : "border-[var(--divider)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+            className={`inline-flex items-center gap-1 filter-chip disabled:opacity-50 ${
+              selected ? "border-[var(--ink)] text-[var(--ink)]" : ""
             } ${canAct ? "cursor-pointer" : "cursor-default"}`}
           >
             <span>{emoji}</span>
@@ -144,7 +142,7 @@ export function ReactionBar({
             onClick={() => setOpen((v) => !v)}
             disabled={loading}
             aria-label="添加表情反应"
-            className="inline-flex items-center justify-center rounded-full border border-[var(--divider)] px-2.5 py-1 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-secondary)] disabled:opacity-50"
+            className="filter-chip disabled:opacity-50"
           >
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="10" />
@@ -154,15 +152,15 @@ export function ReactionBar({
 
           {/* emoji 选择气泡 */}
           {open && (
-            <div className="absolute bottom-full left-0 z-30 mb-2 flex items-center gap-1 rounded-full border border-[var(--divider)] bg-[var(--bg-surface)] p-1.5 shadow-[var(--shadow-lg)]">
+            <div className="absolute bottom-full left-0 z-30 mb-2 flex items-center gap-1 border border-[var(--rule)] bg-[var(--bg-surface)] p-1 shadow-[var(--shadow-lg)]">
               {EMOJIS.map((emoji) => (
                 <button
                   key={emoji}
                   type="button"
                   onClick={() => toggle(emoji)}
                   disabled={loading}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-lg transition-transform hover:scale-125 disabled:opacity-50 ${
-                    mine === emoji ? "bg-[var(--primary-soft)]" : "hover:bg-[var(--bg-subtle)]"
+                  className={`btn-icon h-8 w-8 text-base disabled:opacity-50 ${
+                    mine === emoji ? "border-[var(--ink)]" : ""
                   }`}
                 >
                   {emoji}

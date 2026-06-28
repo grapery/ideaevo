@@ -53,7 +53,7 @@ export function IdeaActionBar({
         type="button"
         onClick={openFork}
         disabled={loading}
-        className="btn-primary"
+        className="btn-outline"
       >
         <IconGitFork className="h-4 w-4" />
         Fork 这个想法

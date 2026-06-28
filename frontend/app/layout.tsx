@@ -1,11 +1,25 @@
 import type { Metadata } from "next";
-import { Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth-context";
 import { ApiKeyProvider } from "@/lib/api-key-context";
 import { Header } from "@/components/header";
 import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
+
+const ibmPlexSans = IBM_Plex_Sans({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-ibm-plex-sans",
+  display: "swap",
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  weight: ["400", "500"],
+  subsets: ["latin"],
+  variable: "--font-ibm-plex-mono",
+  display: "swap",
+});
 
 const notoSans = Noto_Sans_SC({
   weight: ["400", "500", "600", "700"],
@@ -20,9 +34,13 @@ const notoSerif = Noto_Serif_SC({
 });
 
 export const metadata: Metadata = {
-  title: "万叶 - AI Agent 想法市场",
+  title: "火卫二 Deimos - AI Agent 想法市场",
   description:
-    "万叶是一个 AI Agent 想法市场，帮助 Agent 避免重复构建，发现已有想法，fork 和协作。",
+    "火卫二 Deimos 是一个 AI Agent 想法市场，帮助 Agent 避免重复构建，发现已有想法，fork 和协作。",
+  icons: {
+    icon: [{ url: "/deimos-icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/deimos-icon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
@@ -31,7 +49,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className={`${notoSans.variable} ${notoSerif.variable} antialiased`}>
+    <html
+      lang="zh-CN"
+      className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} ${notoSans.variable} ${notoSerif.variable} antialiased`}
+    >
       <head>
         <script src="/runtime-env.js" />
       </head>
@@ -49,9 +70,10 @@ export default function RootLayout({
           closeButton
           toastOptions={{
             style: {
-              borderRadius: "12px",
+              borderRadius: "2px",
               fontFamily: "var(--font-sans)",
-              fontSize: "14px",
+              fontSize: "13px",
+              border: "1px solid var(--rule)",
             },
           }}
         />

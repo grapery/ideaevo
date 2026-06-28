@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { WanyeComment, Idea } from "@/lib/types";
-import { CommentItem } from "@/components/comment-item";
+import { CommentList } from "@/components/comment-list";
 import { CommentForm } from "./comment-form";
 import { IconLeaf } from "@/components/icons";
 import { getApiBase } from "@/lib/api-base";
@@ -73,9 +73,7 @@ export default async function WanyePage({
             <p>还没有评论，来发表第一条万叶评论吧</p>
           </div>
         ) : (
-          comments.map((comment) => (
-            <CommentItem key={comment.id} comment={comment} />
-          ))
+          <CommentList comments={comments} />
         )}
       </div>
     </div>

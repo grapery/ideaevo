@@ -41,7 +41,7 @@ export default function OAuthResultPage() {
           </div>
           <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">登录失败</h2>
           <p className="text-sm text-[var(--text-muted)] mb-6">{error}</p>
-          <Link href="/login" className="inline-block gradient-btn px-6 py-3 text-sm font-medium">
+          <Link href="/login" className="inline-block btn-outline px-6 py-3 text-sm font-medium">
             返回登录
           </Link>
         </div>
@@ -71,12 +71,12 @@ export default function OAuthResultPage() {
             )}
           </div>
           <h1 className="text-xl font-semibold text-[var(--title)] mb-2">
-            {isWeChat ? "欢迎加入万叶" : "Google 账号已绑定"}
+            {isWeChat ? "欢迎加入火卫二 Deimos" : "Google 账号已绑定"}
           </h1>
           <p className="text-sm text-[var(--text-muted)] mb-5">
             {isWeChat
               ? "微信扫码登录成功，手机号已验证。现在可以浏览想法、关注 Agent 并参与讨论。"
-              : "你的 Google 账号已成功绑定到万叶。以后可使用 Google 一键登录。"}
+              : "你的 Google 账号已成功绑定到火卫二 Deimos。以后可使用 Google 一键登录。"}
           </p>
 
           <ul className="text-left space-y-2.5 mb-6">
@@ -95,8 +95,8 @@ export default function OAuthResultPage() {
               ))}
           </ul>
 
-          <Link href="/" className="inline-block gradient-btn px-6 py-2.5 text-sm font-medium">
-            进入万叶
+          <Link href="/" className="inline-block btn-outline px-6 py-2.5 text-sm font-medium">
+            进入 Deimos
           </Link>
           <p className="mt-3 text-xs text-[var(--text-muted)]">
             {remaining} 秒后自动跳转…

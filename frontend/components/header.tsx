@@ -8,6 +8,9 @@ import { SearchInput } from "./search-input";
 import { IconBell, IconUser } from "./icons";
 import { notificationApi } from "@/lib/api-client";
 
+const navLinkClass =
+  "meta-label hover:text-[var(--ink)] transition-colors underline-offset-[3px] hover:underline decoration-dotted";
+
 export function Header() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -24,7 +27,7 @@ export function Header() {
       const res = await notificationApi.unreadCount();
       setUnread(res.unread || 0);
     } catch {
-      // ignore - likely not logged in or endpoint unavailable
+      // ignore
     }
   }, [user]);
 
@@ -57,29 +60,29 @@ export function Header() {
   }, [dropdownOpen]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--bg-canvas)]/90 backdrop-blur-md">
-        <div className="mx-auto page-container">
-        <div className="flex h-16 items-center gap-5">
-          <Logo />
-          <SearchInput className="hidden md:block flex-1 max-w-[320px] mx-4" />
+    <header className="sticky top-0 z-50 border-b border-[var(--rule)] bg-[var(--bg-canvas)]/96 backdrop-blur-sm">
+      <div className="mx-auto page-container">
+        <div className="flex h-10 items-center gap-4">
+          <Logo compact />
+          <SearchInput className="hidden md:block flex-1 max-w-[280px]" variant="editorial" />
 
           <div className="flex-1" />
 
-          <nav className="hidden md:flex items-center gap-6">
-            <Link href="/ideas" className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]">想法</Link>
-            <Link href="/chat" className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]">对话</Link>
-            <Link href="/activity" className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]">动态</Link>
-            <Link href="/docs/mcp" className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]">文档</Link>
+          <nav className="hidden md:flex items-center gap-5">
+            <Link href="/ideas" className={navLinkClass}>想法</Link>
+            <Link href="/chat" className={navLinkClass}>对话</Link>
+            <Link href="/activity" className={navLinkClass}>动态</Link>
+            <Link href="/docs/mcp" className={navLinkClass}>文档</Link>
           </nav>
 
           <Link
             href="/notifications"
-            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--primary)] ml-4 relative"
+            className="btn-icon hidden sm:inline-flex relative ml-2"
             aria-label="通知"
           >
-            <IconBell />
+            <IconBell className="h-4 w-4" />
             {unread > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-[var(--coral)] text-white text-[10px] font-semibold tabular-nums">
+              <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center border border-[var(--coral)] bg-[var(--bg-surface)] text-[var(--coral)] text-[8px] font-medium tabular-nums">
                 {unread > 99 ? "99+" : unread}
               </span>
             )}
@@ -90,36 +93,36 @@ export function Header() {
               <button
                 type="button"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40"
+                className="btn-icon"
                 aria-label="账户菜单"
               >
                 {user.avatar_url ? (
-                  <img src={user.avatar_url} alt="" width={48} height={48} className="h-12 w-12 rounded-full" />
+                  <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--primary)]">
+                  <span className="text-[10px] font-medium font-[family-name:var(--font-mono)]">
                     {user.name.charAt(0).toUpperCase()}
-                  </div>
+                  </span>
                 )}
               </button>
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-44 rounded-[20px] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-lg)] py-1.5">
+                <div className="absolute right-0 mt-1 w-44 border border-[var(--rule)] bg-[var(--bg-surface)] py-1 shadow-[var(--shadow-lg)]">
                   <Link
                     href="/notifications"
-                    className="block px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
                     onClick={() => setDropdownOpen(false)}
                   >
                     通知中心
                   </Link>
                   <Link
-                    href={user ? `/users/${user.id}` : "/login"}
-                    className="block px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                    href={`/users/${user.id}`}
+                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
                     onClick={() => setDropdownOpen(false)}
                   >
                     关注 / 粉丝
                   </Link>
                   <Link
                     href="/user/profile"
-                    className="block px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
                     onClick={() => setDropdownOpen(false)}
                   >
                     我的主页
@@ -130,7 +133,7 @@ export function Header() {
                       setDropdownOpen(false);
                       logout();
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                    className="w-full text-left px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
                   >
                     退出
                   </button>
@@ -138,59 +141,52 @@ export function Header() {
               )}
             </div>
           ) : (
-            <Link
-              href="/login"
-              className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40"
-              aria-label="登录"
-            >
-              <IconUser className="h-5 w-5" />
+            <Link href="/login" className="btn-icon hidden sm:inline-flex" aria-label="登录">
+              <IconUser className="h-4 w-4" />
             </Link>
           )}
 
-          <Link
-            href="/chat"
-            className="hidden sm:inline-flex items-center gap-1.5 gradient-btn px-5 py-2.5 text-sm"
-          >
+          <Link href="/chat" className="hidden sm:inline-flex btn-outline btn-sm">
             + 对话创建
           </Link>
 
           <button
             type="button"
-            className="sm:hidden p-2"
+            className="btn-icon sm:hidden"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="菜单"
           >
-            <svg className="h-6 w-6 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
         </div>
 
         {menuOpen && (
-          <nav className="sm:hidden pb-4 border-t border-[var(--divider)] pt-4 space-y-3">
-            <SearchInput />
-            <Link href="/ideas" className="block text-sm text-[var(--body)]" onClick={() => setMenuOpen(false)}>
+          <nav className="sm:hidden pb-3 border-t border-[var(--rule)] pt-3 space-y-2">
+            <SearchInput variant="editorial" />
+            <Link href="/ideas" className="block text-[13px] text-[var(--ink-soft)] py-1" onClick={() => setMenuOpen(false)}>
               浏览想法
             </Link>
-            <Link href="/activity" className="block text-sm text-[var(--body)]" onClick={() => setMenuOpen(false)}>
+            <Link href="/activity" className="block text-[13px] text-[var(--ink-soft)] py-1" onClick={() => setMenuOpen(false)}>
               动态
             </Link>
-            <Link href="/docs/mcp" className="block text-sm text-[var(--body)]" onClick={() => setMenuOpen(false)}>
+            <Link href="/docs/mcp" className="block text-[13px] text-[var(--ink-soft)] py-1" onClick={() => setMenuOpen(false)}>
               MCP 文档
             </Link>
-            <Link href="/chat" className="block text-sm text-[var(--body)]" onClick={() => setMenuOpen(false)}>
+            <Link href="/chat" className="block text-[13px] text-[var(--ink-soft)] py-1" onClick={() => setMenuOpen(false)}>
               对话
             </Link>
             {user && (
-              <Link href="/notifications" className="block text-sm text-[var(--body)]" onClick={() => setMenuOpen(false)}>
+              <Link href="/notifications" className="block text-[13px] text-[var(--ink-soft)] py-1" onClick={() => setMenuOpen(false)}>
                 通知
               </Link>
             )}
-            <Link href="/chat" className="block text-sm text-[var(--primary)] font-medium" onClick={() => setMenuOpen(false)}>
+            <Link href="/chat" className="inline-flex btn-outline btn-sm mt-1" onClick={() => setMenuOpen(false)}>
               + 对话创建
             </Link>
             {!user && (
-              <Link href="/login" className="block text-sm text-[var(--primary)]" onClick={() => setMenuOpen(false)}>
+              <Link href="/login" className="block text-[13px] text-[var(--accent-link)] py-1" onClick={() => setMenuOpen(false)}>
                 登录
               </Link>
             )}

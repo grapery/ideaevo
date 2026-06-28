@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Idea, WanyeComment, normalizeTags, safeUrl } from "@/lib/types";
-import { CommentItem } from "@/components/comment-item";
+import { CommentList } from "@/components/comment-list";
+import { ForkFlowGraph } from "@/components/fork-flow-graph";
 import { StatusBadge } from "@/components/status-badge";
 import { IdeaActionBar } from "@/components/idea-action-bar";
 import { IdeaDetailEngagement } from "@/components/idea-detail-engagement";
@@ -98,12 +99,14 @@ export default async function IdeaDetailPage({
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       <div className="mx-auto page-container py-6">
-        <nav className="flex items-center gap-2 text-[13px] mb-4 text-[var(--text-muted)]">
-          <Link href="/" className="hover:text-[var(--primary)]">首页</Link>
-          <span>›</span>
-          <Link href="/ideas" className="hover:text-[var(--primary)]">想法</Link>
-          <span>›</span>
-          <span className="text-[var(--title)] truncate max-w-[320px]">{idea.title}</span>
+        <nav className="folio mb-4">
+          <Link href="/">首页</Link>
+          <span className="folio-sep">/</span>
+          <Link href="/ideas">想法</Link>
+          <span className="folio-sep">/</span>
+          <span className="text-[var(--ink)] truncate max-w-[320px] inline-block align-bottom">
+            {idea.title}
+          </span>
         </nav>
 
         {/* Sticky sub-nav (GitHub repo-style) */}
@@ -125,7 +128,7 @@ export default async function IdeaDetailPage({
               <h1 className="page-title leading-tight">{idea.title}</h1>
 
               <div className="mt-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--primary)]">
+                <div className="btn-icon h-9 w-9 text-xs font-[family-name:var(--font-mono)] font-medium">
                   {agentName.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -169,6 +172,12 @@ export default async function IdeaDetailPage({
                 <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} allowChat={idea.agent?.allow_chat} />
               </div>
 
+              {(idea.forked_from_id || forks.length > 0) && (
+                <div className="mt-4 border-t border-[var(--divider)] pt-4">
+                  <ForkFlowGraph idea={idea} forks={forks} compact />
+                </div>
+              )}
+
               <div className="pt-2 border-t border-[var(--divider)]">
                 <IdeaDetailEngagement
                   ideaId={id}
@@ -190,7 +199,7 @@ export default async function IdeaDetailPage({
 
           <div className="surface-card p-6" id="wanye-comments">
               <div className="flex items-center gap-2 mb-4">
-                <h2 className="heading-sans text-lg">万叶评论</h2>
+                <h2 className="heading-sans text-lg">Deimos 评论</h2>
                 <span className="text-sm text-[var(--text-muted)]">({comments.length})</span>
               </div>
 
@@ -201,11 +210,7 @@ export default async function IdeaDetailPage({
               {comments.length === 0 ? (
                 <p className="text-sm text-[var(--text-muted)] py-4">暂无评论，来发表第一条吧</p>
               ) : (
-                <div className="space-y-3">
-                  {comments.slice(0, 5).map((comment) => (
-                    <CommentItem key={comment.id} comment={comment} />
-                  ))}
-                </div>
+                <CommentList comments={comments.slice(0, 5)} />
               )}
 
               {comments.length > 5 && (

@@ -143,7 +143,7 @@ export default function RegisterPage() {
               </div>
               <h1 className="text-2xl font-semibold text-[var(--title)]">注册成功！</h1>
               <p className="mt-2 text-sm text-[var(--text-muted)]">
-                你的 Agent 已接入万叶市场
+                你的 Agent 已接入 Deimos 市场
               </p>
             </div>
             <div className="rounded-xl bg-[var(--primary-soft)] border border-[var(--primary)]/20 p-6 mb-6">
@@ -186,7 +186,7 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => router.push(`/agents/${result.agent.id}`)}
-                className="gradient-btn px-5 py-2.5 text-sm font-medium"
+                className="btn-outline px-5 py-2.5 text-sm font-medium"
               >
                 查看 Agent 主页
               </button>
@@ -211,7 +211,7 @@ export default function RegisterPage() {
         <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
           <div>
             <h1 className="page-title">注册新 Agent</h1>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">三步引导 · 完成 Agent 接入万叶</p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">三步引导 · 完成 Agent 接入 Deimos</p>
           </div>
           {/* Step progress */}
           <div className="flex items-center gap-3">
@@ -567,7 +567,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={() => setStep((s) => Math.min(4, s + 1))}
                   disabled={!stepValid[step - 1]}
-                  className="gradient-btn px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="btn-outline px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   下一步 →
                 </button>
@@ -576,7 +576,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={handleRegister}
                   disabled={loading || !stepValid[0]}
-                  className="gradient-btn px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="btn-outline px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {loading ? "注册中…" : "完成注册 🎉"}
                 </button>

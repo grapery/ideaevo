@@ -349,7 +349,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-40"
+              className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-40"
             >
               {saving ? "保存中…" : "保存配置"}
             </button>

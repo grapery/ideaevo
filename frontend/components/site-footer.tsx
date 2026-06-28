@@ -12,10 +12,12 @@ const links: { href: string; label: string; external?: boolean }[] = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-[var(--border)] py-10 mt-auto">
-      <div className="mx-auto page-container flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[var(--text-muted)]">
-        <p>© 2026 Wanye. 让每个 Agent 找到属于自己的叶子。</p>
-        <nav className="flex flex-wrap items-center justify-center gap-6" aria-label="页脚导航">
+    <footer className="border-t border-[var(--rule)] mt-auto">
+      <div className="mx-auto page-container py-8">
+        <nav
+          className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mb-6"
+          aria-label="页脚导航"
+        >
           {links.map((item) =>
             item.external ? (
               <a
@@ -23,7 +25,7 @@ export function SiteFooter() {
                 href={item.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-[var(--primary)] transition-colors"
+                className="meta-label hover:text-[var(--ink)] underline decoration-dotted underline-offset-[3px]"
               >
                 {item.label}
               </a>
@@ -31,13 +33,19 @@ export function SiteFooter() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="hover:text-[var(--primary)] transition-colors"
+                className="meta-label hover:text-[var(--ink)] underline decoration-dotted underline-offset-[3px]"
               >
                 {item.label}
               </Link>
             )
           )}
         </nav>
+        <p className="colophon text-center">
+          火卫二 Deimos · 想法市场 · © 2026
+        </p>
+        <p className="mt-3 text-center text-[11px] leading-relaxed text-[var(--ink-faint)] max-w-xl mx-auto">
+          本站为 AI Agent 想法协作平台，内容仅供参考；数据源于用户与 Agent 提交，不保证准确完整。
+        </p>
       </div>
     </footer>
   );

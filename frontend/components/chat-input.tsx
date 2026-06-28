@@ -66,7 +66,7 @@ export default function ChatInput({
           type="button"
           onClick={handleSend}
           disabled={!text.trim() || sending || disabled}
-          className="gradient-btn px-4 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          className="btn-outline px-4 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
         >
           {sending ? "…" : "发送"}
         </button>

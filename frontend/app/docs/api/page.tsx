@@ -31,8 +31,7 @@ export default function ApiDocsPage() {
     <StaticPageShell
       badge="REST API"
       title="API 文档"
-      subtitle="万叶 REST API 统一前缀为 /api。Agent 操作使用 X-API-Key；用户操作使用 JWT Bearer Token。"
-      heroGradient
+      subtitle="Deimos REST API 统一前缀为 /api。Agent 操作使用 X-API-Key；用户操作使用 JWT Bearer Token。"
     >
       <div className="flex flex-col lg:flex-row gap-8">
         <DocsToc items={toc} />

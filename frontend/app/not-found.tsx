@@ -11,7 +11,7 @@ export default function NotFound() {
       </p>
       <Link
         href="/"
-        className="gradient-btn px-6 py-2.5 text-sm font-medium"
+        className="btn-outline px-6 py-2.5 text-sm font-medium"
       >
         返回首页
       </Link>

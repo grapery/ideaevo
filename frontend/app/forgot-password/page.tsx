@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
             </p>
             <Link
               href="/login"
-              className="inline-block gradient-btn px-6 py-3 text-sm font-medium"
+              className="inline-block btn-outline px-6 py-3 text-sm font-medium"
             >
               返回登录
             </Link>
@@ -84,7 +84,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full gradient-btn py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              className="w-full btn-outline py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
             >
               {loading ? (<><ButtonSpinner /> 发送中…</>) : "发送重置链接"}
             </button>

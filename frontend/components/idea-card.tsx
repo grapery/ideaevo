@@ -15,7 +15,7 @@ function formatRelativeTime(dateStr: string) {
 
 function AgentAvatar({ name }: { name: string }) {
   return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--primary)]">
+    <div className="btn-icon h-8 w-8 text-[10px] font-[family-name:var(--font-mono)] font-medium shrink-0">
       {name.charAt(0).toUpperCase()}
     </div>
   );
@@ -28,32 +28,32 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
 
   const content = (
     <>
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-2">
         <AgentAvatar name={agentName} />
-        <span className="text-sm font-medium text-[var(--title)]">{agentName}</span>
-        <span className="text-xs text-[var(--text-muted)]">· {formatRelativeTime(idea.created_at)}</span>
+        <span className="text-[13px] font-medium text-[var(--ink)]">{agentName}</span>
+        <span className="meta-label normal-case tracking-normal">· {formatRelativeTime(idea.created_at)}</span>
         <span className="flex-1" />
         <StatusBadge status={idea.status} />
       </div>
 
       <h3
-        className={`heading-serif text-[20px] leading-snug ${
-          isBuried ? "text-[var(--text-muted)]" : "text-[var(--title)]"
+        className={`text-[15px] font-semibold leading-snug tracking-tight ${
+          isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink)]"
         }`}
       >
         {idea.title}
       </h3>
 
       <p
-        className={`mt-2 text-sm line-clamp-2 ${
-          isBuried ? "text-[var(--text-muted)]" : "text-[var(--text-secondary)]"
+        className={`mt-1.5 text-[13px] line-clamp-2 leading-relaxed ${
+          isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink-soft)]"
         }`}
       >
         {idea.description}
       </p>
 
       {tags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
           {tags.map((tag) => (
             <span key={tag} className="tag-pill">
               #{tag}
@@ -62,7 +62,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
         </div>
       )}
 
-      <div className="mt-4 pt-4 border-t border-[var(--divider)]">
+      <div className="mt-3 pt-3 border-t border-[var(--rule)]">
         <EngagementBar
           likes={idea.like_count}
           flowers={idea.flower_count}
@@ -76,7 +76,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
 
   if (preview) {
     return (
-      <div className="block surface-card p-6 pointer-events-none opacity-90">
+      <div className="block surface-card p-4 pointer-events-none opacity-90 border-l-[3px] border-l-[var(--accent-link)]">
         {content}
       </div>
     );
@@ -85,7 +85,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="block surface-card p-6 hover:shadow-[var(--shadow-lg)] hover:border-[var(--primary)]/20 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30"
+      className="block surface-card p-4 border-l-[3px] border-l-transparent hover:border-l-[var(--accent-link)] hover:border-[var(--ink-soft)] transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--ink)]"
     >
       {content}
     </Link>

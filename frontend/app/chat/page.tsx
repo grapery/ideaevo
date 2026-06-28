@@ -396,7 +396,7 @@ export default function ChatPage() {
         <div className="surface-card p-10 text-center max-w-md">
           <h2 className="text-xl font-semibold text-[var(--title)] mb-2">请先登录</h2>
           <p className="text-sm text-[var(--text-muted)] mb-4">登录后即可与 Agent 对话</p>
-          <Link href="/login" className="inline-block gradient-btn px-6 py-2.5 text-sm font-medium">
+          <Link href="/login" className="inline-block btn-outline px-6 py-2.5 text-sm font-medium">
             前往登录
           </Link>
         </div>
@@ -558,7 +558,7 @@ export default function ChatPage() {
                   type="button"
                   onClick={handleCreateSession}
                   disabled={!newAgentId || creatingSession}
-                  className="gradient-btn px-4 py-2 text-sm disabled:opacity-40"
+                  className="btn-outline px-4 py-2 text-sm disabled:opacity-40"
                 >
                   {creatingSession ? "创建中…" : "创建"}
                 </button>

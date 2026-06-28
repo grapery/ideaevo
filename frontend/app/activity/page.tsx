@@ -51,10 +51,12 @@ async function getActivityFeed(): Promise<ActivityFeed> {
 
 function StatCard({ label, value, trend }: { label: string; value: number | string; trend?: string }) {
   return (
-    <div className="surface-card p-6">
-      <p className="text-sm text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 heading-serif text-[36px] leading-none tabular-nums">{value}</p>
-      {trend && <p className="mt-2 text-xs text-[var(--primary)]">{trend}</p>}
+    <div className="stat-chip">
+      <p className="meta-label mb-1">{label}</p>
+      <p className="font-[family-name:var(--font-mono)] text-[22px] font-medium leading-none tabular-nums text-[var(--ink)]">
+        {value}
+      </p>
+      {trend && <p className="mt-1.5 text-[11px] text-[var(--ink-faint)]">{trend}</p>}
     </div>
   );
 }
@@ -72,9 +74,9 @@ function RankingCard({
 }) {
   const metricLabel = metric === "like_count" ? "赞" : metric === "flower_count" ? "花" : "Fork";
   return (
-    <div className="surface-card p-5">
-      <h3 className="flex items-center gap-2 text-base font-semibold text-[var(--title)] mb-4">
-        <Icon className="h-4 w-4 text-[var(--primary)]" />
+    <div className="panel-card">
+      <h3 className="meta-label mb-3 normal-case tracking-normal text-[var(--ink-soft)] flex items-center gap-2">
+        <Icon className="h-3.5 w-3.5" />
         {title}
       </h3>
       {ideas.length === 0 ? (
@@ -83,12 +85,8 @@ function RankingCard({
         <ol className="space-y-3">
           {ideas.map((idea, i) => (
             <li key={idea.id} className="flex items-center gap-3">
-              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                i === 0 ? "bg-[var(--coral-soft)] text-[var(--coral)]" :
-                i === 1 ? "bg-[var(--primary-soft)] text-[var(--primary)]" :
-                "bg-[var(--bg-subtle)] text-[var(--text-muted)]"
-              }`}>
-                {i + 1}
+              <span className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--ink-faint)] w-5 shrink-0">
+                {String(i + 1).padStart(2, "0")}
               </span>
               <Link
                 href={`/ideas/${idea.id}`}

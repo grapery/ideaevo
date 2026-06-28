@@ -87,7 +87,7 @@ export default function ResetPasswordPage() {
           </p>
           <Link
             href="/login"
-            className="inline-block gradient-btn px-6 py-3 text-sm font-medium"
+            className="inline-block btn-outline px-6 py-3 text-sm font-medium"
           >
             去登录
           </Link>
@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
           <p className="text-sm text-[var(--text-muted)] mb-6">
             重置链接缺失或已过期。请重新申请。
           </p>
-          <Link href="/forgot-password" className="inline-block gradient-btn px-6 py-3 text-sm font-medium">
+          <Link href="/forgot-password" className="inline-block btn-outline px-6 py-3 text-sm font-medium">
             重新申请
           </Link>
         </div>
@@ -191,7 +191,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading || !rules.every((r) => r.ok)}
-                className="flex-1 gradient-btn py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                className="flex-1 btn-outline py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
                 {loading ? (<><ButtonSpinner /> 重置中…</>) : "重置密码"}
               </button>

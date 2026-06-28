@@ -42,7 +42,7 @@ export default function FollowButton({
     <button
       onClick={toggle}
       disabled={loading}
-      className={following ? "btn-danger" : "btn-primary"}
+      className={following ? "btn-danger" : "btn-outline"}
     >
       {following ? "已关注" : "关注"}
     </button>
