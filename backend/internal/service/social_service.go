@@ -247,7 +247,7 @@ type FlowerDonorView struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// GetFlowerDonors 返回某 idea 的送花者列表（最近优先）。
+// GetFlowerDonors 返回某 idea 的去重送花者列表（按最近一次送花时间排序）。
 func (s *SocialService) GetFlowerDonors(ideaID string, limit int) ([]FlowerDonorView, error) {
 	if limit <= 0 || limit > 50 {
 		limit = 20
@@ -255,32 +255,102 @@ func (s *SocialService) GetFlowerDonors(ideaID string, limit int) ([]FlowerDonor
 	var flowers []model.Flower
 	if err := s.db.Where("idea_id = ?", ideaID).
 		Order("created_at DESC").
-		Limit(limit).
 		Find(&flowers).Error; err != nil {
 		return nil, err
 	}
 
-	donors := make([]FlowerDonorView, 0, len(flowers))
+	type actorSlot struct {
+		userID    string
+		agentID   string
+		createdAt time.Time
+	}
+	seen := make(map[string]struct{})
+	slots := make([]actorSlot, 0, limit)
+	userIDs := make([]string, 0)
+	agentIDs := make([]string, 0)
+
 	for _, f := range flowers {
-		view := FlowerDonorView{CreatedAt: f.CreatedAt}
-		if f.UserID != "" {
-			var user model.User
-			if err := s.db.First(&user, "id = ?", f.UserID).Error; err == nil {
-				view.UserID = user.ID
-				view.Name = user.Name
-				view.AvatarURL = user.AvatarURL
-			}
-		} else if f.AgentID != "" {
-			var agent model.Agent
-			if err := s.db.First(&agent, "id = ?", f.AgentID).Error; err == nil {
-				view.AgentID = agent.ID
-				view.Name = agent.Name
-				view.AvatarURL = agent.AvatarURL
-			}
+		var key string
+		slot := actorSlot{createdAt: f.CreatedAt}
+		switch {
+		case f.UserID != "":
+			key = "u:" + f.UserID
+			slot.userID = f.UserID
+		case f.AgentID != "":
+			key = "a:" + f.AgentID
+			slot.agentID = f.AgentID
+		default:
+			continue
 		}
-		if view.Name != "" {
-			donors = append(donors, view)
+		if _, ok := seen[key]; ok {
+			continue
 		}
+		seen[key] = struct{}{}
+		slots = append(slots, slot)
+		if slot.userID != "" {
+			userIDs = append(userIDs, slot.userID)
+		} else {
+			agentIDs = append(agentIDs, slot.agentID)
+		}
+		if len(slots) >= limit {
+			break
+		}
+	}
+
+	userMap := make(map[string]model.User)
+	if len(userIDs) > 0 {
+		var users []model.User
+		if err := s.db.Where("id IN ?", userIDs).Find(&users).Error; err != nil {
+			return nil, err
+		}
+		for _, u := range users {
+			userMap[u.ID] = u
+		}
+	}
+	agentMap := make(map[string]model.Agent)
+	if len(agentIDs) > 0 {
+		var agents []model.Agent
+		if err := s.db.Where("id IN ?", agentIDs).Find(&agents).Error; err != nil {
+			return nil, err
+		}
+		for _, a := range agents {
+			agentMap[a.ID] = a
+		}
+	}
+
+	donors := make([]FlowerDonorView, 0, len(slots))
+	for _, slot := range slots {
+		if slot.userID != "" {
+			user, ok := userMap[slot.userID]
+			if !ok {
+				continue
+			}
+			avatar := user.AvatarURL
+			if avatar == "" {
+				avatar = DefaultAvatarURL(user.ID)
+			}
+			donors = append(donors, FlowerDonorView{
+				UserID:    user.ID,
+				Name:      user.Name,
+				AvatarURL: avatar,
+				CreatedAt: slot.createdAt,
+			})
+			continue
+		}
+		agent, ok := agentMap[slot.agentID]
+		if !ok {
+			continue
+		}
+		avatar := agent.AvatarURL
+		if avatar == "" {
+			avatar = DefaultAgentAvatarURL(agent.ID)
+		}
+		donors = append(donors, FlowerDonorView{
+			AgentID:   agent.ID,
+			Name:      agent.Name,
+			AvatarURL: avatar,
+			CreatedAt: slot.createdAt,
+		})
 	}
 	return donors, nil
 }

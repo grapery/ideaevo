@@ -30,6 +30,7 @@ type AuthService struct {
 	wechatAppID      string
 	wechatAppSecret  string
 	wechatRedirectURL string
+	appleBundleID    string
 }
 
 type GoogleUserInfo struct {
@@ -64,6 +65,7 @@ func NewAuthService(cfg *config.Config) *AuthService {
 		wechatAppID:       cfg.WeChatAppID,
 		wechatAppSecret:   cfg.WeChatAppSecret,
 		wechatRedirectURL: cfg.WeChatRedirectURL,
+		appleBundleID:     cfg.AppleBundleID,
 	}
 
 	if cfg.GoogleClientID != "" {

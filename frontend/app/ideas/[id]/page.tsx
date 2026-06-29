@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Idea, WanyeComment, normalizeTags } from "@/lib/types";
+import { FlowerDonor, Idea, WanyeComment, normalizeTags } from "@/lib/types";
 import { CommentList } from "@/components/comment-list";
 import { ForkFlowGraph } from "@/components/fork-flow-graph";
 import { StatusBadge } from "@/components/status-badge";
@@ -50,6 +50,17 @@ async function getForks(ideaId: string) {
   }
 }
 
+async function getFlowerDonors(ideaId: string): Promise<FlowerDonor[]> {
+  try {
+    const res = await fetch(`${apiBase}/ideas/${ideaId}/flowers`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.donors || [];
+  } catch {
+    return [];
+  }
+}
+
 async function getRelatedIdeas(category: string, excludeId: string): Promise<Idea[]> {
   try {
     const res = await fetch(
@@ -89,10 +100,11 @@ export default async function IdeaDetailPage({
     );
   }
 
-  const [comments, forks, relatedIdeas] = await Promise.all([
+  const [comments, forks, relatedIdeas, flowerDonors] = await Promise.all([
     getComments(id),
     getForks(id),
     idea.category ? getRelatedIdeas(idea.category, id) : Promise.resolve([]),
+    idea.flower_count > 0 ? getFlowerDonors(id) : Promise.resolve([]),
   ]);
 
   const tags = normalizeTags(idea.tags);
@@ -180,7 +192,11 @@ export default async function IdeaDetailPage({
 
           <aside className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:block lg:space-y-4">
             <ForkTreePanel idea={idea} forks={forks} />
-            <FlowersPanel ideaId={id} flowerCount={idea.flower_count} />
+            <FlowersPanel
+              ideaId={id}
+              flowerCount={idea.flower_count}
+              initialDonors={flowerDonors}
+            />
             <IdeaStatsPanel idea={idea} />
             <RelatedIdeasPanel ideas={relatedIdeas} currentId={id} />
           </aside>

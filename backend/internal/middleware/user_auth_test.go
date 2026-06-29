@@ -33,6 +33,18 @@ func TestUserAuth_CookieSuccess(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestUserAuth_BearerSuccess(t *testing.T) {
+	r := newUserAuthRouter(userTestSecret)
+	token, _ := GenerateJWT(userTestSecret, "u-1", "user", time.Hour)
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
 func TestUserAuth_MissingCookie(t *testing.T) {
 	r := newUserAuthRouter(userTestSecret)
 

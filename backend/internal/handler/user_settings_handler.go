@@ -198,6 +198,8 @@ func (h *PhoneAuthHandler) Verify(c *gin.Context) {
 		}
 		middleware.ClearPendingCookie(c)
 		middleware.SetJWTCookie(c, token, 86400)
+		c.JSON(http.StatusOK, gin.H{"user": model.ToUserResponse(user), "token": token, "message": "phone verified"})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"user": model.ToUserResponse(user), "message": "phone verified"})

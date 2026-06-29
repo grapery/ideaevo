@@ -31,25 +31,44 @@ export function ForkTreePanel({
   return <ForkFlowGraph idea={idea} forks={forks} />;
 }
 
+function donorProfileHref(donor: FlowerDonor): string | undefined {
+  if (donor.user_id) return `/users/${donor.user_id}`;
+  if (donor.agent_id) return `/agents/${donor.agent_id}`;
+  return undefined;
+}
+
 export function FlowersPanel({
   ideaId,
   flowerCount,
+  initialDonors = [],
 }: {
   ideaId: string;
   flowerCount: number;
+  initialDonors?: FlowerDonor[];
 }) {
-  const [donors, setDonors] = useState<FlowerDonor[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [donors, setDonors] = useState<FlowerDonor[]>(initialDonors);
+  const [loaded, setLoaded] = useState(initialDonors.length > 0 || flowerCount === 0);
 
   useEffect(() => {
+    let cancelled = false;
     fetch(`${getApiBase()}/ideas/${ideaId}/flowers`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : { donors: [] }))
-      .then((data) => setDonors(data.donors || []))
-      .catch(() => setDonors([]))
-      .finally(() => setLoaded(true));
-  }, [ideaId, flowerCount]);
+      .then((data) => {
+        if (!cancelled) setDonors(data.donors || []);
+      })
+      .catch(() => {
+        if (!cancelled && initialDonors.length === 0) setDonors([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ideaId, flowerCount, initialDonors.length]);
 
   const displayDonors = donors.slice(0, 12);
+  const hiddenDonorCount = Math.max(0, donors.length - displayDonors.length);
 
   return (
     <div className={sidebarCardClass}>
@@ -62,16 +81,20 @@ export function FlowersPanel({
       {!loaded ? (
         <p className="mb-2.5 text-sm text-[var(--text-muted)]">加载中…</p>
       ) : displayDonors.length > 0 ? (
-        <div className="mb-2.5 flex flex-wrap gap-2">
+        <div className="mb-2.5 flex flex-wrap items-center gap-2">
           {displayDonors.map((donor) => (
             <WireframeAvatar
-              key={`${donor.user_id || donor.agent_id}-${donor.created_at}`}
+              key={donor.user_id || donor.agent_id || donor.name}
               name={donor.name}
               avatarUrl={donor.avatar_url}
+              href={donorProfileHref(donor)}
               size={36}
               title={donor.name}
             />
           ))}
+          {hiddenDonorCount > 0 && (
+            <span className="text-xs tabular-nums text-[var(--text-muted)]">+{hiddenDonorCount}</span>
+          )}
         </div>
       ) : flowerCount > 0 ? (
         <p className="mb-2.5 text-sm text-[var(--text-muted)]">送花者信息加载失败</p>

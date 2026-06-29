@@ -35,6 +35,9 @@ type Config struct {
 	WeChatAppSecret   string
 	WeChatRedirectURL string
 
+	// Sign in with Apple (iOS bundle ID as JWT audience)
+	AppleBundleID string
+
 	// Aliyun OSS user assets
 	AliyunAssetsBucket    string
 	AliyunAssetsRegion    string
@@ -101,6 +104,8 @@ func Load() *Config {
 		WeChatAppID:       getEnv("WECHAT_APP_ID", ""),
 		WeChatAppSecret:   getEnv("WECHAT_APP_SECRET", ""),
 		WeChatRedirectURL: getEnv("WECHAT_REDIRECT_URL", ""),
+
+		AppleBundleID: getEnv("APPLE_BUNDLE_ID", "com.wanye.deimos"),
 
 		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 

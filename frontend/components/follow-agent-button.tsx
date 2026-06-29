@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { notify } from "@/components/ui/notify";
 import { agentApi } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/api-error";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthModal } from "@/lib/auth-modal-context";
 
 export function FollowAgentButton({
   agentId,
@@ -17,10 +17,10 @@ export function FollowAgentButton({
   className?: string;
 }) {
   const { user } = useAuth();
+  const { openAuthModal } = useAuthModal();
 
   // 权限校验：agent 关闭了关注 → 隐藏按钮
   if (allowFollow === false) return null;
-  const router = useRouter();
   const [following, setFollowing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
@@ -39,7 +39,7 @@ export function FollowAgentButton({
 
   async function toggle() {
     if (!user) {
-      router.push("/login");
+      openAuthModal();
       return;
     }
     setLoading(true);

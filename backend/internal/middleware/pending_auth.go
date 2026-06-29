@@ -9,28 +9,51 @@ import (
 // PendingOrUserAuth accepts full session (token) or phone-bind pending session (pending_token).
 func PendingOrUserAuth(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		for _, cookieName := range []string{"token", "pending_token"} {
-			token, err := c.Cookie(cookieName)
-			if err != nil || token == "" {
-				continue
+		if token, err := c.Cookie("token"); err == nil && token != "" {
+			if claims, err := parseJWT(token, jwtSecret); err == nil {
+				if userID, _ := claims["user_id"].(string); userID != "" {
+					c.Set("user_id", userID)
+					c.Set("jwt_scope", "")
+					c.Next()
+					return
+				}
 			}
-			claims, err := parseJWT(token, jwtSecret)
-			if err != nil {
-				continue
-			}
-			userID, _ := claims["user_id"].(string)
-			scope, _ := claims["scope"].(string)
-			if userID == "" {
-				continue
-			}
-			if cookieName == "pending_token" && scope != "phone_bind" {
-				continue
-			}
-			c.Set("user_id", userID)
-			c.Set("jwt_scope", scope)
-			c.Next()
-			return
 		}
+
+		if bearer := extractBearerValue(c); bearer != "" && looksLikeJWT(bearer) {
+			if claims, err := parseJWT(bearer, jwtSecret); err == nil {
+				userID, _ := claims["user_id"].(string)
+				scope, _ := claims["scope"].(string)
+				if userID != "" {
+					if scope == "phone_bind" {
+						c.Set("user_id", userID)
+						c.Set("jwt_scope", scope)
+						c.Next()
+						return
+					}
+					if scope == "" {
+						c.Set("user_id", userID)
+						c.Set("jwt_scope", "")
+						c.Next()
+						return
+					}
+				}
+			}
+		}
+
+		if token, err := c.Cookie("pending_token"); err == nil && token != "" {
+			if claims, err := parseJWT(token, jwtSecret); err == nil {
+				userID, _ := claims["user_id"].(string)
+				scope, _ := claims["scope"].(string)
+				if userID != "" && scope == "phone_bind" {
+					c.Set("user_id", userID)
+					c.Set("jwt_scope", scope)
+					c.Next()
+					return
+				}
+			}
+		}
+
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录"})
 		c.Abort()
 	}

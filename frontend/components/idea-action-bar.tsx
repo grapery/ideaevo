@@ -5,6 +5,7 @@ import { useState } from "react";
 import { IDEA_AUTH_REQUIRED_MSG, ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthModal } from "@/lib/auth-modal-context";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { ForkIdeaDialog } from "./fork-idea-dialog";
@@ -25,6 +26,7 @@ export function IdeaActionBar({
 }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const { user } = useAuth();
+  const { openAuthModal } = useAuthModal();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [forkOpen, setForkOpen] = useState(false);
@@ -33,7 +35,7 @@ export function IdeaActionBar({
 
   function openChat() {
     if (!user) {
-      router.push("/login");
+      openAuthModal({ returnUrl: chatHref });
       return;
     }
     router.push(chatHref);

@@ -8,8 +8,8 @@ import (
 
 func UserAuth(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token, err := c.Cookie("token")
-		if err != nil || token == "" {
+		token := extractUserSessionToken(c)
+		if token == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录"})
 			c.Abort()
 			return
@@ -38,7 +38,7 @@ func UserAuth(jwtSecret string) gin.HandlerFunc {
 
 func OptionalUserAuth(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token, _ := c.Cookie("token")
+		token := extractUserSessionToken(c)
 		if token == "" {
 			c.Next()
 			return

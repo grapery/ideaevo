@@ -189,6 +189,49 @@ func (s *UserService) FindOrCreateGoogleUser(googleID, email, name, avatarURL st
 	return &user, nil
 }
 
+func (s *UserService) FindOrCreateAppleUser(appleID, email, name string) (*model.User, error) {
+	var user model.User
+	err := s.db.Where("auth_provider = ? AND auth_provider_id = ?", "apple", appleID).First(&user).Error
+	if err == nil {
+		return &user, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	if email != "" {
+		err = s.db.Where("email = ?", email).First(&user).Error
+		if err == nil {
+			return nil, errors.New("该邮箱已用密码注册，请使用密码登录")
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+	}
+
+	if name == "" {
+		name = "Apple 用户"
+	}
+	if email == "" {
+		email = fmt.Sprintf("apple_%s@apple.local", appleID)
+	}
+
+	user = model.User{
+		Name:           name,
+		Email:          email,
+		AuthProvider:   "apple",
+		AuthProviderID: appleID,
+		AvatarSource:   "default",
+		EmailVerified:  true,
+	}
+	if err := s.db.Create(&user).Error; err != nil {
+		return nil, err
+	}
+	_ = s.applyDefaultMedia(&user)
+	_ = s.db.First(&user, "id = ?", user.ID).Error
+	return &user, nil
+}
+
 type WeChatUserInfo struct {
 	OpenID     string
 	UnionID    string
@@ -423,7 +466,7 @@ func (s *UserService) DeleteAccount(userID string, input DeleteAccountInput, sms
 		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
 			return errors.New("密码不正确")
 		}
-	case "google":
+	case "google", "apple":
 		if input.ConfirmText != "DELETE" {
 			return errors.New("请输入 DELETE 确认注销")
 		}

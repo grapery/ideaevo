@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth-context";
+import { AuthModalProvider } from "@/lib/auth-modal-context";
 import { ApiKeyProvider } from "@/lib/api-key-context";
 import { Header } from "@/components/header";
+import { AuthModal } from "@/components/auth-modal";
 import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
 
@@ -58,11 +60,14 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[var(--bg-canvas)] text-[var(--title)] font-sans flex flex-col">
         <AuthProvider>
-          <ApiKeyProvider>
-            <Header />
-            <main className="flex-1">{children}</main>
-            <SiteFooter />
-          </ApiKeyProvider>
+          <AuthModalProvider>
+            <ApiKeyProvider>
+              <Header />
+              <main className="flex-1">{children}</main>
+              <SiteFooter />
+            </ApiKeyProvider>
+            <AuthModal />
+          </AuthModalProvider>
         </AuthProvider>
         <Toaster
           position="top-center"

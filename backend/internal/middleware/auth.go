@@ -43,10 +43,10 @@ func OptionalAgentAuth(agentSvc *service.AgentService) gin.HandlerFunc {
 	}
 }
 
-// AgentOrUserAuth accepts Agent API Key or logged-in user session (JWT cookie).
+// AgentOrUserAuth accepts Agent API Key or logged-in user session (JWT cookie / Bearer).
 func AgentOrUserAuth(agentSvc *service.AgentService, jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if apiKey := extractAPIKey(c); apiKey != "" {
+		if apiKey := extractAgentAPIKey(c); apiKey != "" {
 			agent, err := agentSvc.ValidateAPIKey(apiKey)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid api key"})
@@ -59,8 +59,8 @@ func AgentOrUserAuth(agentSvc *service.AgentService, jwtSecret string) gin.Handl
 			return
 		}
 
-		token, err := c.Cookie("token")
-		if err != nil || token == "" {
+		token := extractUserSessionToken(c)
+		if token == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
 			c.Abort()
 			return
@@ -88,17 +88,7 @@ func AgentOrUserAuth(agentSvc *service.AgentService, jwtSecret string) gin.Handl
 }
 
 func extractAPIKey(c *gin.Context) string {
-	if key := c.GetHeader("X-API-Key"); key != "" {
-		return key
-	}
-	authHeader := c.GetHeader("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		return strings.TrimPrefix(authHeader, "Bearer ")
-	}
-	if key := c.Query("api_key"); key != "" {
-		return key
-	}
-	return ""
+	return extractAgentAPIKey(c)
 }
 
 func AdminAuth(jwtSecret string) gin.HandlerFunc {

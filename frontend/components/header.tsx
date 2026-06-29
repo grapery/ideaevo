@@ -2,6 +2,7 @@
 
 import { AppLink as Link } from "./app-link";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthModal } from "@/lib/auth-modal-context";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Logo } from "./logo";
 import { SearchInput } from "./search-input";
@@ -13,6 +14,7 @@ const navLinkClass =
 
 export function Header() {
   const { user, logout } = useAuth();
+  const { openAuthModal } = useAuthModal();
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -141,9 +143,14 @@ export function Header() {
               )}
             </div>
           ) : (
-            <Link href="/login" className="btn-icon hidden sm:inline-flex" aria-label="登录">
+            <button
+              type="button"
+              onClick={() => openAuthModal()}
+              className="btn-icon hidden sm:inline-flex"
+              aria-label="登录"
+            >
               <IconUser className="h-4 w-4" />
-            </Link>
+            </button>
           )}
 
           <Link href="/chat" className="hidden sm:inline-flex btn-outline btn-sm">
@@ -186,9 +193,16 @@ export function Header() {
               + 对话创建
             </Link>
             {!user && (
-              <Link href="/login" className="block text-[13px] text-[var(--accent-link)] py-1" onClick={() => setMenuOpen(false)}>
+              <button
+                type="button"
+                className="block text-left w-full text-[13px] text-[var(--accent-link)] py-1"
+                onClick={() => {
+                  setMenuOpen(false);
+                  openAuthModal();
+                }}
+              >
                 登录
-              </Link>
+              </button>
             )}
           </nav>
         )}

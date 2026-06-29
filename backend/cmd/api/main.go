@@ -233,6 +233,7 @@ func main() {
 		api.GET("/auth/user/verify", userAuthHandler.VerifyEmail)
 		api.POST("/auth/user/forgot-password", userAuthHandler.ForgotPassword)
 		api.POST("/auth/user/reset-password", userAuthHandler.ResetPassword)
+		api.POST("/auth/user/apple", userAuthHandler.AppleLogin)
 		api.GET("/auth/google", userAuthHandler.GoogleLogin)
 		api.GET("/auth/google/callback", userAuthHandler.GoogleCallback)
 		api.GET("/auth/wechat", userAuthHandler.WeChatLogin)
