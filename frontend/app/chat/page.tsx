@@ -13,6 +13,10 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
+import {
+  normalizeChatMessages,
+  upsertChatMessage,
+} from "@/lib/chat-messages";
 
 export default function ChatPage() {
   const { user } = useAuth();
@@ -136,7 +140,7 @@ export default function ChatPage() {
   const loadMessages = useCallback(async (sessionId: string) => {
     try {
       const res = await chatApi.getMessages(sessionId);
-      setMessages(res.messages);
+      setMessages(normalizeChatMessages(res.messages));
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     } catch (err) {
       notify.error(getErrorMessage(err, "加载消息失败"));
@@ -189,7 +193,9 @@ export default function ChatPage() {
       }
       try {
         const res = await chatApi.getMessages(sessionId);
-        if (stillActive()) setMessages(res.messages);
+        if (stillActive()) {
+          setMessages(normalizeChatMessages(res.messages));
+        }
         const sessionsRes = await chatApi.listSessions();
         if (stillActive()) setSessions(sessionsRes.sessions);
       } catch {
@@ -234,6 +240,7 @@ export default function ChatPage() {
         (eventType, data) => {
           if (!stillActive()) return;
           const payload = data as {
+            id?: string;
             tool?: string;
             tool_call?: string;
             ok?: boolean;
@@ -243,28 +250,57 @@ export default function ChatPage() {
             target_agent_id?: string;
             task?: string;
             response_summary?: string;
+            session_id?: string;
+            role?: ChatMessageType["role"];
+            created_at?: string;
+            metadata?: ChatMessageType["metadata"];
           };
+
+          if (eventType === "user_message" && payload.id) {
+            setMessages((prev) =>
+              upsertChatMessage(prev, {
+                id: payload.id,
+                session_id: sessionId,
+                role: "user",
+                content: payload.content ?? content,
+                content_type: payload.content_type,
+                created_at: payload.created_at ?? new Date().toISOString(),
+              })
+            );
+            return;
+          }
+
           if (eventType === "assistant_message" && payload.content) {
             assistantContent = payload.content;
-            updateLastAssistant(payload.content, payload.content_type ?? "markdown");
+            const assistant: ChatMessageType = {
+              id: payload.id ?? assistantMsg.id,
+              session_id: sessionId,
+              role: "assistant",
+              content: payload.content,
+              content_type: payload.content_type ?? "markdown",
+              created_at: payload.created_at ?? new Date().toISOString(),
+            };
+            setMessages((prev) => upsertChatMessage(prev, assistant));
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             return;
           }
+
           if (eventType === "tool_call") {
             const isDelegate = payload.tool === "delegate_to_agent";
             const displayText = isDelegate
               ? `🔗 正在与 ${payload.target_agent_name ?? "Agent"} 通信…`
               : `正在调用工具：${payload.tool ?? "unknown"}…`;
-            setMessages((prev) => {
-              const updated = [...prev];
-              const toolMsg: ChatMessageType = {
-                id: `tool-${payload.tool_call ?? Date.now()}`,
-                session_id: sessionId,
-                role: "system",
-                content: displayText,
-                metadata: {
+            const activityMsg: ChatMessageType = {
+              id: payload.id ?? `tool-${payload.tool_call ?? Date.now()}`,
+              session_id: sessionId,
+              role: "system",
+              content: displayText,
+              metadata: {
+                display_kind: "activity",
+                activity: {
                   type: "tool_call",
                   tool: payload.tool,
+                  tool_call: payload.tool_call,
                   ...(isDelegate && {
                     is_a2a: true,
                     target_agent_name: payload.target_agent_name,
@@ -272,37 +308,42 @@ export default function ChatPage() {
                     task: payload.task,
                   }),
                 },
-                created_at: new Date().toISOString(),
-              };
-              const assistantIdx = updated.findIndex((m) => m.id === assistantMsg.id);
-              if (assistantIdx >= 0) updated.splice(assistantIdx, 0, toolMsg);
-              else updated.push(toolMsg);
-              return updated;
-            });
-          } else if (eventType === "tool_result") {
+              },
+              created_at: new Date().toISOString(),
+            };
+            setMessages((prev) => upsertChatMessage(prev, activityMsg));
+            return;
+          }
+
+          if (eventType === "tool_result" && payload.id) {
             const isDelegate = payload.tool === "delegate_to_agent";
-            setMessages((prev) => {
-              const updated = [...prev];
-              const idx = updated.findIndex(
-                (m) =>
-                  m.metadata?.type === "tool_call" &&
-                  (m.metadata as { tool?: string }).tool === payload.tool
-              );
-              if (idx >= 0) {
-                const resultText = isDelegate
-                  ? `${payload.ok ? "✓" : "✗"} ${payload.target_agent_name ?? "Agent"} 回复：${payload.response_summary ?? ""}`
-                  : `${payload.ok ? "✓" : "✗"} ${payload.tool} 完成`;
-                updated[idx] = {
-                  ...updated[idx],
-                  content: resultText,
-                  metadata: {
-                    ...updated[idx].metadata,
-                    ...(isDelegate && payload.ok && { a2a_completed: true }),
+            const resultText = isDelegate
+              ? `${payload.ok ? "✓" : "✗"} ${payload.target_agent_name ?? "Agent"} 回复：${payload.response_summary ?? ""}`
+              : `${payload.ok ? "✓" : "✗"} ${payload.tool} 完成`;
+            setMessages((prev) =>
+              upsertChatMessage(prev, {
+                id: payload.id!,
+                session_id: sessionId,
+                role: "system",
+                content: resultText,
+                metadata: {
+                  display_kind: "activity",
+                  activity: {
+                    type: "tool_result",
+                    tool: payload.tool,
+                    tool_call: payload.tool_call,
+                    ok: payload.ok,
+                    ...(isDelegate && {
+                      is_a2a: true,
+                      target_agent_name: payload.target_agent_name,
+                      a2a_completed: payload.ok,
+                      response_summary: payload.response_summary,
+                    }),
                   },
-                };
-              }
-              return updated;
-            });
+                },
+                created_at: new Date().toISOString(),
+              })
+            );
           }
         }
       );

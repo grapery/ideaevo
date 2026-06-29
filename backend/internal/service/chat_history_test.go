@@ -17,7 +17,7 @@ func TestChatMessageToLLMMessage_RoundTrip_AssistantToolCalls(t *testing.T) {
 		{ID: "call_1", Name: "register_idea", ArgsJSON: json.RawMessage(`{"title":"X"}`)},
 	}
 	// 构造 assistant(tool_calls) 行（模拟 newToolCallAssistantMessage 的产出）
-	meta, _ := json.Marshal(toolMessageMeta{ToolCalls: toolCalls})
+	meta, _ := json.Marshal(messageMeta{ToolCalls: toolCalls})
 	row := model.ChatMessage{
 		Role:     model.MessageRoleAssistant,
 		Content:  "",
@@ -39,7 +39,7 @@ func TestChatMessageToLLMMessage_RoundTrip_AssistantToolCalls(t *testing.T) {
 // TestChatMessageToLLMMessage_RoundTrip_ToolResult 验证 tool 结果消息
 // （role=tool + tool_call_id + name）的序列化/还原。
 func TestChatMessageToLLMMessage_RoundTrip_ToolResult(t *testing.T) {
-	meta, _ := json.Marshal(toolMessageMeta{ToolCallID: "call_1", ToolName: "register_idea"})
+	meta, _ := json.Marshal(messageMeta{ToolCallID: "call_1", ToolName: "register_idea"})
 	row := model.ChatMessage{
 		Role:     model.MessageRoleTool,
 		Content:  `{"ok":true}`,
@@ -104,9 +104,9 @@ func TestTwoStepConfirmation_AcrossSimulatedRequests(t *testing.T) {
 
 	// —— 模拟持久化 + 重建历史（chat_service 里由 newToolCallAssistantMessage /
 	//    newToolResultMessage 落库，buildMessageHistory 用 chatMessageToLLMMessage 还原）——
-	tcMeta, _ := json.Marshal(toolMessageMeta{ToolCalls: []ToolCall{call1}})
+	tcMeta, _ := json.Marshal(messageMeta{ToolCalls: []ToolCall{call1}})
 	assistantRow := model.ChatMessage{Role: model.MessageRoleAssistant, Metadata: string(tcMeta)}
-	trMeta, _ := json.Marshal(toolMessageMeta{ToolCallID: "call_1", ToolName: "register_idea"})
+	trMeta, _ := json.Marshal(messageMeta{ToolCallID: "call_1", ToolName: "register_idea"})
 	toolRow := model.ChatMessage{Role: model.MessageRoleTool, Content: res1[0].Output, Metadata: string(trMeta)}
 
 	rebuiltHistory := []LLMMessage{

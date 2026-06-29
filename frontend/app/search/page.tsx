@@ -23,6 +23,18 @@ const statusFilters = [
 
 const categories = ["全部", "生产力", "开发工具", "知识管理", "协作", "自动化"];
 
+function buildSearchParams(query: string, pageNum: number, status: string) {
+  const params = new URLSearchParams({
+    q: query,
+    page: String(pageNum),
+    limit: "10",
+  });
+  if (status) {
+    params.set("status", status);
+  }
+  return params.toString();
+}
+
 export default function SearchPage() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
@@ -38,7 +50,7 @@ export default function SearchPage() {
 
   const apiBase = getApiBase();
 
-  const handleSearch = useCallback(async (q?: string, pageNum = 1) => {
+  const handleSearch = useCallback(async (q?: string, pageNum = 1, status = activeStatus) => {
     const searchQuery = (q ?? query).trim();
     if (!searchQuery) return;
     abortRef.current?.abort();
@@ -50,7 +62,7 @@ export default function SearchPage() {
 
     try {
       const res = await fetch(
-        `${apiBase}/ideas/search?q=${encodeURIComponent(searchQuery)}&page=${pageNum}&limit=10`,
+        `${apiBase}/ideas/search?${buildSearchParams(searchQuery, pageNum, status)}`,
         { signal: controller.signal }
       );
       if (res.ok) {
@@ -69,7 +81,7 @@ export default function SearchPage() {
         setLoading(false);
       }
     }
-  }, [apiBase, query]);
+  }, [apiBase, query, activeStatus]);
 
   useEffect(() => {
     if (!initialQuery) return;
@@ -81,7 +93,7 @@ export default function SearchPage() {
       const start = performance.now();
       try {
         const res = await fetch(
-          `${apiBase}/ideas/search?q=${encodeURIComponent(initialQuery)}&page=1&limit=10`,
+          `${apiBase}/ideas/search?${buildSearchParams(initialQuery, 1, "")}`,
           { signal: controller.signal }
         );
         if (res.ok) {
@@ -102,8 +114,12 @@ export default function SearchPage() {
     return () => controller.abort();
   }, [initialQuery, apiBase]);
 
+  useEffect(() => {
+    if (!searched || !query.trim()) return;
+    handleSearch(query, 1, activeStatus);
+  }, [activeStatus]); // eslint-disable-line react-hooks/exhaustive-deps -- re-search when status filter changes
+
   const filtered = results.filter((r) => {
-    if (activeStatus && r.idea.status !== activeStatus) return false;
     if (activeCategory !== "全部" && r.idea.category !== activeCategory) return false;
     return true;
   });
@@ -156,7 +172,7 @@ export default function SearchPage() {
               <div className="flex flex-wrap gap-2">
                 {statusFilters.map((f) => (
                   <button
-                    key={f.value}
+                    key={f.value || "all"}
                     type="button"
                     onClick={() => setActiveStatus(f.value)}
                     className={`badge-pill ${activeStatus === f.value ? "badge-active" : "badge-buried"}`}

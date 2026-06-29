@@ -4,7 +4,7 @@ import { CommentList } from "@/components/comment-list";
 import { ForkFlowGraph } from "@/components/fork-flow-graph";
 import { StatusBadge } from "@/components/status-badge";
 import { IdeaActionBar } from "@/components/idea-action-bar";
-import { IdeaDetailEngagement } from "@/components/idea-detail-engagement";
+import { IdeaDetailEngagementSection } from "@/components/idea-detail-engagement-section";
 import { IdeaIcon, IdeaMetaPanel } from "@/components/idea-meta-panel";
 import { IdeaDescriptionPanel } from "@/components/idea-description-panel";
 import { FollowAgentButton } from "@/components/follow-agent-button";
@@ -167,8 +167,8 @@ export default async function IdeaDetailPage({
                 </div>
               )}
 
-              <div className="pt-2 border-t border-[var(--divider)]">
-                <IdeaDetailEngagement
+              <div className="pt-2">
+                <IdeaDetailEngagementSection
                   ideaId={id}
                   likes={idea.like_count}
                   flowers={idea.flower_count}

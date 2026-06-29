@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -72,7 +71,7 @@ func (s *DashVectorStore) PutVector(ctx context.Context, collection, key string,
 	return nil
 }
 
-func (s *DashVectorStore) QueryByVector(ctx context.Context, collection string, query []float32, topK int, _ map[string]any) ([]VectorRecord, error) {
+func (s *DashVectorStore) QueryByVector(ctx context.Context, collection string, query []float32, topK int, filter map[string]any) ([]VectorRecord, error) {
 	if !s.Enabled() {
 		return nil, errors.New("dashvector store disabled")
 	}
@@ -80,10 +79,15 @@ func (s *DashVectorStore) QueryByVector(ctx context.Context, collection string, 
 		topK = 10
 	}
 
-	resp, err := s.client.Query(ctx, collection, dashvector.QueryRequest{
+	req := dashvector.QueryRequest{
 		Vector: query,
 		TopK:   topK,
-	})
+	}
+	if filterExpr := DashVectorFilterExpr(filter); filterExpr != "" {
+		req.Filter = filterExpr
+	}
+
+	resp, err := s.client.Query(ctx, collection, req)
 	if err != nil {
 		return nil, fmt.Errorf("Query(%s) failed: %w", collection, err)
 	}
@@ -127,26 +131,54 @@ func (s *DashVectorStore) AsyncPut(collection, key string, vector []float32, met
 	if !s.Enabled() {
 		return
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		if err := s.PutVector(ctx, collection, key, vector, metadata); err != nil {
-			log.Printf("[vector] dashvector async put %s/%s failed: %v", collection, key, err)
-		}
-	}()
+	col, k, vec, meta := collection, key, vector, metadata
+	store := s
+	asyncPutWithRetry(fmt.Sprintf("dashvector put %s/%s", col, k), func(ctx context.Context) error {
+		return store.PutVector(ctx, col, k, vec, meta)
+	})
 }
 
 func (s *DashVectorStore) AsyncDelete(collection string, keys []string) {
 	if !s.Enabled() {
 		return
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		if err := s.DeleteVectors(ctx, collection, keys); err != nil {
-			log.Printf("[vector] dashvector async delete %s/%v failed: %v", collection, keys, err)
+	col, k := collection, keys
+	store := s
+	asyncDeleteWithRetry(fmt.Sprintf("dashvector delete %s/%v", col, k), func(ctx context.Context) error {
+		return store.DeleteVectors(ctx, col, k)
+	})
+}
+
+// EnsureIdeasCollection 在 DashVector 上创建 ideas collection（已存在则忽略）。
+func EnsureIdeasCollection(ctx context.Context, store *DashVectorStore, name string, dimension int, metric dashvector.Metric) error {
+	if store == nil || !store.Enabled() {
+		return nil
+	}
+	if metric == "" {
+		metric = dashvector.MetricCosine
+	}
+	fields := map[string]dashvector.FieldType{
+		"title":         dashvector.FieldString,
+		"category":      dashvector.FieldString,
+		"agent_id":      dashvector.FieldString,
+		"owner_user_id": dashvector.FieldString,
+		"status":        dashvector.FieldString,
+		"tags":          dashvector.FieldString,
+		"created_at":    dashvector.FieldString,
+		"updated_at":    dashvector.FieldString,
+	}
+	req := dashvector.NewSingleVectorCollectionRequest(name, dimension, metric, fields)
+	_, err := store.client.CreateCollection(ctx, req)
+	if err != nil {
+		if apiErr, ok := err.(*dashvector.APIError); ok {
+			msg := strings.ToLower(apiErr.Message)
+			if strings.Contains(msg, "exist") || strings.Contains(msg, "already") {
+				return nil
+			}
 		}
-	}()
+		return err
+	}
+	return nil
 }
 
 // NewVectorBackend 按配置创建向量后端。VECTOR_BACKEND=dashvector|oss；未指定时：

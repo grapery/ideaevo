@@ -17,12 +17,16 @@ export function IdeaDetailEngagement({
   flowers: initialFlowers,
   forks,
   comments,
+  forkListOpen = false,
+  onForkListToggle,
 }: {
   ideaId: string;
   likes: number;
   flowers: number;
   forks: number;
   comments: number;
+  forkListOpen?: boolean;
+  onForkListToggle?: () => void;
 }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const [likes, setLikes] = useState(initialLikes);
@@ -165,10 +169,17 @@ export function IdeaDetailEngagement({
         <span>{flowers}</span>
       </button>
 
-      <span className={`${actionBtn} cursor-default hover:bg-transparent`} aria-label="Fork 次数">
+      <button
+        type="button"
+        onClick={() => onForkListToggle?.()}
+        disabled={!onForkListToggle}
+        aria-label="查看 Fork 衍生想法"
+        aria-expanded={forkListOpen}
+        className={`${actionBtn} ${forkListOpen ? "bg-[var(--primary-soft)] text-[var(--primary)]" : ""}`}
+      >
         <IconGitFork />
         <span>{forks}</span>
-      </span>
+      </button>
 
       <button
         type="button"

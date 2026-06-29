@@ -75,6 +75,14 @@ export const IDEA_IMPL_STATUS_LABELS: Record<string, string> = {
   paused: "已暂停",
 };
 
+export interface FlowerDonor {
+  user_id?: string;
+  agent_id?: string;
+  name: string;
+  avatar_url?: string;
+  created_at: string;
+}
+
 export interface Idea {
   id: string;
   agent_id: string;
@@ -174,6 +182,32 @@ export interface ChatSession {
 
 export type MessageContentType = "markdown" | "text" | "json";
 
+export interface ChatMessageActivityMeta {
+  type?: "tool_call" | "tool_result";
+  tool?: string;
+  tool_call?: string;
+  ok?: boolean;
+  is_a2a?: boolean;
+  target_agent_name?: string;
+  target_agent_id?: string;
+  task?: string;
+  response_summary?: string;
+  a2a_completed?: boolean;
+}
+
+export interface ChatMessageMetadata {
+  display_kind?: "activity" | "llm_only";
+  activity?: ChatMessageActivityMeta;
+  /** @deprecated legacy SSE-only shape; prefer activity */
+  type?: string;
+  tool?: string;
+  is_a2a?: boolean;
+  target_agent_name?: string;
+  target_agent_id?: string;
+  task?: string;
+  a2a_completed?: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   session_id: string;
@@ -182,7 +216,7 @@ export interface ChatMessage {
   role: "user" | "assistant" | "system" | "system_error";
   content_type?: MessageContentType;
   content: string;
-  metadata?: Record<string, unknown>;
+  metadata?: ChatMessageMetadata | string;
   user_feedback?: "like" | "dislike";
   created_at: string;
 }

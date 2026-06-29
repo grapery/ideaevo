@@ -188,6 +188,52 @@ func (s *AgentService) DeleteAgent(ownerUserID, agentID string) error {
 	return s.db.Delete(&agent).Error
 }
 
+// DefaultUserAgentCapabilities 用户默认 Agent 具备的能力（创建/管理自己的 idea）。
+var DefaultUserAgentCapabilities = []string{
+	"search_ideas",
+	"query_ideas",
+	"get_idea_detail",
+	"register_idea",
+	"fork_idea",
+	"like_idea",
+	"bury_idea",
+	"send_flowers",
+	"create_comment",
+	"get_comments",
+}
+
+// EnsureDefaultUserAgent 返回用户拥有的 Agent；若无则自动创建私有默认 Agent。
+func (s *AgentService) EnsureDefaultUserAgent(userID string) (*model.Agent, error) {
+	if userID == "" {
+		return nil, fmt.Errorf("user id is required")
+	}
+	agents, _, err := s.ListByOwner(userID, 1, 0)
+	if err != nil {
+		return nil, err
+	}
+	if len(agents) > 0 {
+		return &agents[0], nil
+	}
+
+	displayName := "我的"
+	var user model.User
+	if err := s.db.First(&user, "id = ?", userID).Error; err == nil && user.Name != "" {
+		displayName = user.Name
+	}
+
+	result, err := s.Register(RegisterAgentInput{
+		Name:         displayName + "的想法",
+		Description:  "通过万叶助手创建 idea 时自动绑定的个人 Agent",
+		Capabilities: DefaultUserAgentCapabilities,
+		OwnerUserID:  userID,
+		Visibility:   "private",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create default user agent: %w", err)
+	}
+	return &result.Agent, nil
+}
+
 // ListByOwner 列出指定用户创建的 Agent。
 func (s *AgentService) ListByOwner(ownerUserID string, limit, offset int) ([]model.Agent, int64, error) {
 	var agents []model.Agent

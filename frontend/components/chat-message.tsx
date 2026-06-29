@@ -4,7 +4,8 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { notify } from "@/components/ui/notify";
-import { ChatMessage as ChatMessageType, MessageContentType } from "@/lib/types";
+import { ChatMessage as ChatMessageType, ChatMessageMetadata, MessageContentType } from "@/lib/types";
+import { normalizeMessageMetadata } from "@/lib/chat-messages";
 import { IconGitFork } from "./icons";
 
 function resolveContentType(message: ChatMessageType): MessageContentType {
@@ -13,8 +14,39 @@ function resolveContentType(message: ChatMessageType): MessageContentType {
   return "text";
 }
 
+function resolveActivityMeta(metadata?: ChatMessageMetadata | string) {
+  const meta = normalizeMessageMetadata(metadata);
+  const activity = meta?.activity;
+  if (activity) return activity;
+  // legacy SSE-only metadata
+  if (meta?.type === "tool_call" || meta?.tool) {
+    return {
+      type: meta.type === "tool_call" ? "tool_call" as const : undefined,
+      tool: meta.tool,
+      is_a2a: meta.is_a2a,
+      target_agent_name: meta.target_agent_name,
+      target_agent_id: meta.target_agent_id,
+      task: meta.task,
+      a2a_completed: meta.a2a_completed,
+    };
+  }
+  return undefined;
+}
+
+function isActivityMessage(message: ChatMessageType): boolean {
+  const meta = normalizeMessageMetadata(
+    message.metadata as ChatMessageMetadata | string | undefined
+  );
+  return (
+    message.role === "system" &&
+    (meta?.display_kind === "activity" ||
+      meta?.activity != null ||
+      meta?.type === "tool_call")
+  );
+}
+
 function isPersistedMessage(id: string): boolean {
-  return id.length > 0 && !id.startsWith("temp-") && !id.startsWith("error-") && !id.startsWith("tool-");
+  return id.length > 0 && !id.startsWith("temp-") && !id.startsWith("error-");
 }
 
 function JsonBlock({ content }: { content: string }) {
@@ -270,11 +302,11 @@ export default function ChatMessage({
   onFork,
 }: ChatMessageProps) {
   const isUser = message.role === "user";
-  const isSystem = message.role === "system";
-  const meta = message.metadata as { type?: string; is_a2a?: boolean; target_agent_name?: string; target_agent_id?: string; task?: string; a2a_completed?: boolean } | undefined;
-  const isToolCall = meta?.type === "tool_call";
-  const isA2ADelegation = isToolCall && meta?.is_a2a;
-  const a2aCompleted = meta?.a2a_completed;
+  const activity = resolveActivityMeta(message.metadata);
+  const isActivity = isActivityMessage(message);
+  const isA2ADelegation = isActivity && activity?.is_a2a;
+  const a2aCompleted = Boolean(activity?.a2a_completed);
+  const isToolInProgress = isActivity && activity?.type === "tool_call" && !activity?.is_a2a;
   const contentType = resolveContentType(message);
 
   if (isA2ADelegation) {
@@ -297,15 +329,15 @@ export default function ChatMessage({
           </div>
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--primary)] text-white text-[10px] font-semibold">
-              {(meta?.target_agent_name ?? "A").charAt(0).toUpperCase()}
+              {(activity?.target_agent_name ?? "A").charAt(0).toUpperCase()}
             </div>
             <span className="text-sm font-medium text-[var(--title)]">
-              {meta?.target_agent_name ?? "Agent"}
+              {activity?.target_agent_name ?? "Agent"}
             </span>
           </div>
-          {meta?.task && (
+          {activity?.task && (
             <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              📋 {meta.task.length > 80 ? meta.task.slice(0, 80) + "…" : meta.task}
+              📋 {activity.task.length > 80 ? activity.task.slice(0, 80) + "…" : activity.task}
             </p>
           )}
           {a2aCompleted && (
@@ -318,7 +350,7 @@ export default function ChatMessage({
     );
   }
 
-  if (isToolCall) {
+  if (isToolInProgress || (isActivity && !isA2ADelegation)) {
     return (
       <div className="mb-4">
         <span className="inline-flex items-center gap-2 rounded-full bg-[var(--teal-soft)] px-3 py-1 text-xs font-medium text-[var(--teal)]">
@@ -328,7 +360,7 @@ export default function ChatMessage({
     );
   }
 
-  if (isSystem) {
+  if (message.role === "system" && !isActivity) {
     return (
       <div className="mb-4 rounded-xl border border-[var(--primary)] bg-[var(--primary-soft)] p-4 text-sm text-[var(--text-secondary)]">
         {message.content}

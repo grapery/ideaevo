@@ -8,11 +8,62 @@ import (
 	"gorm.io/gorm"
 )
 
+// SearchOptions 控制语义检索的范围与分页。
+type SearchOptions struct {
+	Threshold   float64
+	Limit       int
+	Offset      int
+	Status      string // 默认由调用方设为 "active"；空字符串表示不过滤
+	OwnerUserID string // 空 = 不过滤；非空时仅检索该用户拥有的 idea
+}
+
+// NormalizeSearchOptions 填充默认 threshold / limit。
+func NormalizeSearchOptions(opts SearchOptions) SearchOptions {
+	if opts.Threshold == 0 {
+		opts.Threshold = 0.3
+	}
+	if opts.Limit == 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
+	}
+	return opts
+}
+
 // SimilaritySearcher 抽象 idea 的相似度检索。
 // 默认实现 [LikeSimilaritySearcher] 用 MySQL LIKE + 长度评分做简易降级；
-// 生产场景应在 main.go 中注入 [VectorSimilaritySearcher]（OSS 向量 Bucket）覆盖默认实现。
+// 生产场景应在 main.go 中注入 [VectorSimilaritySearcher]（DashVector / OSS）并通过 [FallbackSimilaritySearcher] 兜底。
 type SimilaritySearcher interface {
-	Search(queryText string, threshold float64, limit int) ([]IdeaMatch, error)
+	Search(queryText string, opts SearchOptions) ([]IdeaMatch, error)
+}
+
+// FallbackSimilaritySearcher 向量检索优先，失败或禁用时降级到 LIKE。
+type FallbackSimilaritySearcher struct {
+	primary  SimilaritySearcher
+	fallback SimilaritySearcher
+}
+
+func NewFallbackSimilaritySearcher(primary, fallback SimilaritySearcher) *FallbackSimilaritySearcher {
+	return &FallbackSimilaritySearcher{primary: primary, fallback: fallback}
+}
+
+func (f *FallbackSimilaritySearcher) Search(queryText string, opts SearchOptions) ([]IdeaMatch, error) {
+	if f.primary != nil {
+		if enabler, ok := f.primary.(interface{ Enabled() bool }); ok && !enabler.Enabled() {
+			// primary disabled → fallback
+		} else {
+			matches, err := f.primary.Search(queryText, opts)
+			if err == nil {
+				return matches, nil
+			}
+			fmt.Printf("[search] vector search failed, falling back to LIKE: %v\n", err)
+		}
+	}
+	if f.fallback != nil {
+		return f.fallback.Search(queryText, opts)
+	}
+	return nil, fmt.Errorf("search unavailable")
 }
 
 // LikeSimilaritySearcher 是 MySQL 环境下的默认降级实现：
@@ -32,17 +83,15 @@ func NewLikeSimilaritySearcher(db *gorm.DB) *LikeSimilaritySearcher {
 	return &LikeSimilaritySearcher{db: db}
 }
 
-func (s *LikeSimilaritySearcher) Search(queryText string, threshold float64, limit int) ([]IdeaMatch, error) {
+func (s *LikeSimilaritySearcher) Search(queryText string, opts SearchOptions) ([]IdeaMatch, error) {
 	queryText = strings.TrimSpace(queryText)
 	if queryText == "" {
 		return nil, nil
 	}
-	if threshold == 0 {
-		threshold = 0.3
-	}
-	if limit <= 0 {
-		limit = 10
-	}
+	opts = NormalizeSearchOptions(opts)
+	threshold := opts.Threshold
+	limit := opts.Limit
+	offset := opts.Offset
 
 	// 第一步：LIKE 粗筛。把 query 拆成 token，每个 token 都查一次（OR 关系）。
 	tokens := tokenize(queryText)
@@ -56,9 +105,24 @@ func (s *LikeSimilaritySearcher) Search(queryText string, threshold float64, lim
 		args = append(args, "%"+t+"%", "%"+t+"%")
 	}
 
+	dbQuery := s.db.Model(&model.Idea{})
+	if opts.Status != "" {
+		dbQuery = dbQuery.Where("ideas.status = ?", opts.Status)
+	}
+	if opts.OwnerUserID != "" {
+		dbQuery = dbQuery.Joins("JOIN agents ON agents.id = ideas.agent_id").
+			Where("agents.owner_user_id = ?", opts.OwnerUserID)
+	}
+	// 多取候选以支持 offset + 内存评分过滤
+	fetchLimit := (limit + offset) * 3
+	if fetchLimit < 30 {
+		fetchLimit = 30
+	}
+
 	var ideas []model.Idea
-	err := s.db.Where("status = 'active' AND ("+likeConditions+")", args...).
-		Limit(limit).
+	err := dbQuery.Where("("+likeConditions+")", args...).
+		Preload("Agent").
+		Limit(fetchLimit).
 		Find(&ideas).Error
 	if err != nil {
 		return nil, fmt.Errorf("like search failed: %w", err)
@@ -83,6 +147,11 @@ func (s *LikeSimilaritySearcher) Search(queryText string, threshold float64, lim
 		}
 	}
 
+	if offset > 0 && offset < len(matches) {
+		matches = matches[offset:]
+	} else if offset >= len(matches) {
+		return nil, nil
+	}
 	if len(matches) > limit {
 		matches = matches[:limit]
 	}

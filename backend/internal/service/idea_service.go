@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -49,6 +50,76 @@ type RegisterIdeaInput struct {
 type IdeaMatch struct {
 	Idea       model.Idea `json:"idea"`
 	Similarity float64    `json:"similarity"`
+}
+
+const registerDuplicateThreshold = 0.80
+
+// FindSimilarForRegister 在注册前检索与用户草稿高度相似的 idea（自有 + 全站）。
+func (s *IdeaService) FindSimilarForRegister(ownerUserID, title, description string) ([]IdeaMatch, error) {
+	if s.searcher == nil {
+		return nil, nil
+	}
+	query := strings.TrimSpace(title + "\n" + description)
+	if query == "" {
+		return nil, nil
+	}
+
+	seen := make(map[string]bool)
+	var out []IdeaMatch
+
+	if ownerUserID != "" {
+		mine, err := s.searcher.Search(query, SearchOptions{
+			OwnerUserID: ownerUserID,
+			Threshold:   registerDuplicateThreshold,
+			Limit:       3,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, m := range mine {
+			if seen[m.Idea.ID] {
+				continue
+			}
+			out = append(out, m)
+			seen[m.Idea.ID] = true
+		}
+	}
+
+	global, err := s.searcher.Search(query, SearchOptions{
+		Status:    "active",
+		Threshold: registerDuplicateThreshold,
+		Limit:     3,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, m := range global {
+		if seen[m.Idea.ID] {
+			continue
+		}
+		out = append(out, m)
+		seen[m.Idea.ID] = true
+	}
+	sortIdeaMatchesBySimilarity(out)
+	return out, nil
+}
+
+// sortIdeaMatchesBySimilarity 按相似度降序排列。
+func sortIdeaMatchesBySimilarity(matches []IdeaMatch) {
+	sort.Slice(matches, func(i, j int) bool {
+		return matches[i].Similarity > matches[j].Similarity
+	})
+}
+
+// MaxIdeaMatchSimilarity 返回列表中最高相似度。
+func MaxIdeaMatchSimilarity(matches []IdeaMatch) float64 {
+	max := 0.0
+	for _, m := range matches {
+		if m.Similarity > max {
+			max = m.Similarity
+		}
+	}
+	return max
 }
 
 func (s *IdeaService) Register(agentID string, input RegisterIdeaInput) (*model.Idea, error) {
@@ -155,17 +226,12 @@ func (s *IdeaService) Query(filter QueryFilter) ([]model.Idea, int64, error) {
 	return ideas, total, nil
 }
 
-func (s *IdeaService) Search(queryText string, threshold float64, limit int) ([]IdeaMatch, error) {
+func (s *IdeaService) Search(queryText string, opts SearchOptions) ([]IdeaMatch, error) {
 	if s.searcher == nil {
 		return nil, fmt.Errorf("semantic search unavailable (no searcher configured)")
 	}
-	if threshold == 0 {
-		threshold = 0.3
-	}
-	if limit == 0 {
-		limit = 10
-	}
-	return s.searcher.Search(queryText, threshold, limit)
+	opts = NormalizeSearchOptions(opts)
+	return s.searcher.Search(queryText, opts)
 }
 
 func (s *IdeaService) Bury(ideaID, agentID, reason string) (*model.Idea, error) {
@@ -208,13 +274,12 @@ func (s *IdeaService) UpdateStatus(ideaID, status string) (*model.Idea, error) {
 		return nil, err
 	}
 
-	// 同步向量索引状态
+	// 同步向量索引状态：向量库仅保留 active idea
 	if s.indexer != nil {
-		if status == "buried" || status == "archived" {
-			s.indexer.RemoveIdea(idea.ID)
-		} else if status == "active" {
-			// 状态可能从 buried 恢复为 active，需要重新索引
+		if status == string(model.IdeaStatusActive) {
 			s.indexer.IndexIdea(&idea)
+		} else {
+			s.indexer.RemoveIdea(idea.ID)
 		}
 	}
 

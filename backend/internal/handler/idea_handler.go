@@ -101,7 +101,23 @@ func (h *IdeaHandler) Search(c *gin.Context) {
 	}
 	offset := (page - 1) * limit
 
-	results, err := h.ideaSvc.Search(query, threshold, limit)
+	status := c.Query("status")
+	if status == "" {
+		status = "active"
+	}
+	if status != "" && !validStatuses[status] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status filter"})
+		return
+	}
+
+	opts := service.SearchOptions{
+		Threshold: threshold,
+		Limit:     limit,
+		Offset:    offset,
+		Status:    status,
+	}
+
+	results, err := h.ideaSvc.Search(query, opts)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -500,6 +516,30 @@ func (h *IdeaHandler) GetForks(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, forks)
+}
+
+func (h *IdeaHandler) GetForkChildren(c *gin.Context) {
+	ideas, err := h.socialSvc.GetPublicForkChildren(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if ideas == nil {
+		ideas = []model.Idea{}
+	}
+	c.JSON(http.StatusOK, gin.H{"ideas": ideas})
+}
+
+func (h *IdeaHandler) GetFlowers(c *gin.Context) {
+	donors, err := h.socialSvc.GetFlowerDonors(c.Param("id"), 20)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if donors == nil {
+		donors = []service.FlowerDonorView{}
+	}
+	c.JSON(http.StatusOK, gin.H{"donors": donors})
 }
 
 // GetUserIdeas 返回某用户拥有的所有 idea（跨其拥有的 agent 聚合），供用户主页展示。

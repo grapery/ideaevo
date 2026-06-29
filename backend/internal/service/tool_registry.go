@@ -25,6 +25,8 @@ type Principal struct {
 
 	// 可选：是否为平台内置助手（拥有更广权限，如代用户操作）
 	IsSystemAssistant bool
+	// AuthorAgentReady 为 true 表示 IsSystemAssistant 场景下已绑定用户默认 Agent（可写）。
+	AuthorAgentReady bool
 }
 
 // ToolInput 是工具收到的参数集合（来自 LLM tool_call.arguments 或 MCP 入参）。
@@ -168,6 +170,17 @@ func ToolFloat(in ToolInput, key string) float64 {
 		return v
 	}
 	return 0
+}
+
+// ToolBool 取布尔参数。
+func ToolBool(in ToolInput, key string) bool {
+	switch v := in[key].(type) {
+	case bool:
+		return v
+	case string:
+		return v == "true" || v == "1"
+	}
+	return false
 }
 
 // ToolStrSlice 取字符串切片参数。

@@ -15,6 +15,7 @@ import (
 	"github.com/wanye/ideaevo/internal/middleware"
 	"github.com/wanye/ideaevo/internal/seed"
 	"github.com/wanye/ideaevo/internal/service"
+	"github.com/wanye/ideaevo/pkg/dashvector"
 )
 
 func main() {
@@ -66,10 +67,9 @@ func main() {
 	wanyeSvc.SetNotificationService(notifSvc)
 
 	// —— 向量检索（可选启用：DashVector 或 OSS 向量 Bucket）——
-	//   1. idea 创建/fork/状态变更 → 自动同步 embedding
-	//   2. dedup 查重 + chat RAG → 向量语义检索
-	// VECTOR_BACKEND=dashvector 时需 DASHVECTOR_ENDPOINT + DASHSCOPE_API_KEY
-	// VECTOR_BACKEND=oss 时需 OSS 向量 Bucket 全套变量
+	likeSearcher := service.NewLikeSimilaritySearcher(db)
+	searcher := service.SimilaritySearcher(likeSearcher)
+
 	embedSvc := service.NewEmbeddingService(cfg.DashScopeAPIKey, "", cfg.EmbeddingModel, cfg.EmbeddingDimensions)
 	vectorStore, backendName, storeErr := service.NewVectorBackend(cfg)
 	if storeErr != nil {
@@ -83,19 +83,40 @@ func main() {
 		case "dashvector":
 			log.Printf("[vector] enabled: backend=dashvector endpoint=%s collection=%s dims=%d",
 				cfg.DashVectorEndpoint, cfg.VectorIndexIdeas, cfg.EmbeddingDimensions)
+			if dvStore, ok := vectorStore.(*service.DashVectorStore); ok {
+				ensureCtx, ensureCancel := context.WithTimeout(context.Background(), 30*time.Second)
+				if err := service.EnsureIdeasCollection(ensureCtx, dvStore, cfg.VectorIndexIdeas, cfg.EmbeddingDimensions, dashvector.Metric(cfg.DashVectorMetric)); err != nil {
+					log.Printf("[vector] WARN: ensure collection %s: %v", cfg.VectorIndexIdeas, err)
+				}
+				ensureCancel()
+			}
 		default:
 			log.Printf("[vector] enabled: backend=oss bucket=%s region=%s index=%s dims=%d",
 				cfg.AliyunVectorBucket, cfg.AliyunVectorRegion, cfg.VectorIndexIdeas, cfg.EmbeddingDimensions)
 		}
 
-		indexer := service.NewIdeaVectorIndexer(embedSvc, vectorStore, cfg.VectorIndexIdeas)
+		indexer := service.NewIdeaVectorIndexer(db, embedSvc, vectorStore, cfg.VectorIndexIdeas)
 		ideaSvc.SetVectorIndexer(indexer)
 		socialSvc.SetVectorIndexer(indexer)
 
 		vectorSearcher := service.NewVectorSimilaritySearcher(db, embedSvc, vectorStore, cfg.VectorIndexIdeas)
-		ideaSvc.SetSearcher(vectorSearcher)
-		chatSvc.SetRAG(embedSvc, vectorSearcher)
+		searcher = service.NewFallbackSimilaritySearcher(vectorSearcher, likeSearcher)
+		chatSvc.SetRAG(embedSvc, searcher)
+
+		if cfg.VectorReindexOnStart {
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+				defer cancel()
+				n, err := service.ReconcileAllActiveIdeas(ctx, db, indexer)
+				if err != nil {
+					log.Printf("[vector] reindex on start failed: %v", err)
+				} else {
+					log.Printf("[vector] reindex on start queued %d active ideas", n)
+				}
+			}()
+		}
 	}
+	ideaSvc.SetSearcher(searcher)
 
 	// —— 工具系统（MCP / REST chat / agent-bridge 三入口共享）——
 	// 先创建不含 delegate 的 registry，后面注入 delegate 函数。
@@ -200,6 +221,8 @@ func main() {
 		api.GET("/ideas/:id/versions/:versionId", ideaHandler.GetVersion)
 		api.GET("/ideas/:id/comments", ideaHandler.GetComments)
 		api.GET("/ideas/:id/forks", ideaHandler.GetForks)
+		api.GET("/ideas/:id/fork-children", ideaHandler.GetForkChildren)
+		api.GET("/ideas/:id/flowers", ideaHandler.GetFlowers)
 		api.GET("/activity", activityHandler.List)
 		api.GET("/activity/stats", activityHandler.Stats)
 		api.GET("/activity/feed", activityHandler.Feed)

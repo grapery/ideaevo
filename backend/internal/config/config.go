@@ -69,9 +69,10 @@ type Config struct {
 	VectorIndexIdeas string
 
 	// Vector backend: dashvector | oss (auto-detect when empty)
-	VectorBackend      string
-	DashVectorEndpoint string
-	DashVectorMetric   string
+	VectorBackend         string
+	DashVectorEndpoint    string
+	DashVectorMetric      string
+	VectorReindexOnStart  bool
 }
 
 func Load() *Config {
@@ -125,9 +126,10 @@ func Load() *Config {
 
 		VectorIndexIdeas: getEnv("VECTOR_INDEX_IDEAS", "ideas"),
 
-		VectorBackend:      getEnv("VECTOR_BACKEND", ""),
-		DashVectorEndpoint: getEnv("DASHVECTOR_ENDPOINT", ""),
-		DashVectorMetric:   getEnv("DASHVECTOR_METRIC", "cosine"),
+		VectorBackend:        getEnv("VECTOR_BACKEND", ""),
+		DashVectorEndpoint:   getEnv("DASHVECTOR_ENDPOINT", ""),
+		DashVectorMetric:     getEnv("DASHVECTOR_METRIC", "cosine"),
+		VectorReindexOnStart: getEnv("VECTOR_REINDEX_ON_START", "") == "true",
 	}
 }
 

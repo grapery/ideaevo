@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Idea } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { Idea, FlowerDonor } from "@/lib/types";
 import { SendFlowerButton } from "./idea-action-bar";
 import { ForkFlowGraph } from "./fork-flow-graph";
+import { WireframeAvatar } from "./wireframe-avatar";
+import { getApiBase } from "@/lib/api-base";
+import { IconGitFork, IconMessage } from "./icons";
 
 const sidebarCardClass = "surface-card p-5";
 const sidebarTitleClass = "heading-sans text-sm pb-2 mb-3 border-b border-[var(--divider)]";
@@ -27,8 +31,25 @@ export function ForkTreePanel({
   return <ForkFlowGraph idea={idea} forks={forks} />;
 }
 
-export function FlowersPanel({ ideaId, flowerCount }: { ideaId: string; flowerCount: number }) {
-  const avatarCount = Math.min(flowerCount, 8);
+export function FlowersPanel({
+  ideaId,
+  flowerCount,
+}: {
+  ideaId: string;
+  flowerCount: number;
+}) {
+  const [donors, setDonors] = useState<FlowerDonor[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch(`${getApiBase()}/ideas/${ideaId}/flowers`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { donors: [] }))
+      .then((data) => setDonors(data.donors || []))
+      .catch(() => setDonors([]))
+      .finally(() => setLoaded(true));
+  }, [ideaId, flowerCount]);
+
+  const displayDonors = donors.slice(0, 12);
 
   return (
     <div className={sidebarCardClass}>
@@ -38,17 +59,22 @@ export function FlowersPanel({ ideaId, flowerCount }: { ideaId: string; flowerCo
         </span>
         收到的花
       </h3>
-      {avatarCount > 0 ? (
+      {!loaded ? (
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">加载中…</p>
+      ) : displayDonors.length > 0 ? (
         <div className="mb-2.5 flex flex-wrap gap-2">
-          {Array.from({ length: avatarCount }).map((_, i) => (
-            <div
-              key={i}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[13px] font-semibold text-[var(--primary)]"
-            >
-              {String.fromCharCode(65 + (i % 26))}
-            </div>
+          {displayDonors.map((donor) => (
+            <WireframeAvatar
+              key={`${donor.user_id || donor.agent_id}-${donor.created_at}`}
+              name={donor.name}
+              avatarUrl={donor.avatar_url}
+              size={36}
+              title={donor.name}
+            />
           ))}
         </div>
+      ) : flowerCount > 0 ? (
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">送花者信息加载失败</p>
       ) : (
         <p className="mb-2.5 text-sm text-[var(--text-muted)]">还没有人送花</p>
       )}
@@ -67,11 +93,24 @@ export function RelatedIdeasPanel({ ideas, currentId }: { ideas: Idea[]; current
   return (
     <div className={sidebarCardClass}>
       <h3 className={`${sidebarTitleClass} mb-3`}>相关想法</h3>
-      <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
+      <ul className="space-y-3 text-sm">
         {related.map((item) => (
           <li key={item.id}>
-            <Link href={`/ideas/${item.id}`} className="hover:text-[var(--primary)]">
-              • {item.title}
+            <Link
+              href={`/ideas/${item.id}`}
+              className="block text-[var(--text-secondary)] hover:text-[var(--primary)]"
+            >
+              <span className="font-medium text-[var(--title)]">{item.title}</span>
+              <span className="mt-1 flex items-center gap-3 text-[11px] tabular-nums text-[var(--text-muted)]">
+                <span className="inline-flex items-center gap-0.5">
+                  <IconMessage className="h-3 w-3" />
+                  {item.comment_count}
+                </span>
+                <span className="inline-flex items-center gap-0.5">
+                  <IconGitFork className="h-3 w-3" />
+                  {item.fork_count}
+                </span>
+              </span>
             </Link>
           </li>
         ))}

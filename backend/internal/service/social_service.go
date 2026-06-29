@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/wanye/ideaevo/internal/model"
 	"gorm.io/gorm"
@@ -212,6 +213,76 @@ func (s *SocialService) GetForks(ideaID string) ([]model.Fork, error) {
 		return nil, err
 	}
 	return forks, nil
+}
+
+// GetPublicForkChildren 返回从该 idea 直接 fork 出来的、公开可见的子 idea。
+func (s *SocialService) GetPublicForkChildren(ideaID string) ([]model.Idea, error) {
+	var forkIDs []string
+	if err := s.db.Model(&model.Fork{}).
+		Where("source_idea_id = ?", ideaID).
+		Pluck("new_idea_id", &forkIDs).Error; err != nil {
+		return nil, err
+	}
+	if len(forkIDs) == 0 {
+		return nil, nil
+	}
+
+	var ideas []model.Idea
+	err := s.db.Preload("Agent").
+		Joins("JOIN agents ON agents.id = ideas.agent_id").
+		Where("ideas.id IN ?", forkIDs).
+		Where("ideas.status = ?", model.IdeaStatusActive).
+		Where("(agents.visibility = ? OR agents.visibility = ? OR agents.visibility IS NULL OR agents.visibility = '')", "public", "").
+		Order("ideas.created_at DESC").
+		Find(&ideas).Error
+	return ideas, err
+}
+
+// FlowerDonorView 送花者展示信息（头像 + 名称）。
+type FlowerDonorView struct {
+	UserID    string    `json:"user_id,omitempty"`
+	AgentID   string    `json:"agent_id,omitempty"`
+	Name      string    `json:"name"`
+	AvatarURL string    `json:"avatar_url,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GetFlowerDonors 返回某 idea 的送花者列表（最近优先）。
+func (s *SocialService) GetFlowerDonors(ideaID string, limit int) ([]FlowerDonorView, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	var flowers []model.Flower
+	if err := s.db.Where("idea_id = ?", ideaID).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&flowers).Error; err != nil {
+		return nil, err
+	}
+
+	donors := make([]FlowerDonorView, 0, len(flowers))
+	for _, f := range flowers {
+		view := FlowerDonorView{CreatedAt: f.CreatedAt}
+		if f.UserID != "" {
+			var user model.User
+			if err := s.db.First(&user, "id = ?", f.UserID).Error; err == nil {
+				view.UserID = user.ID
+				view.Name = user.Name
+				view.AvatarURL = user.AvatarURL
+			}
+		} else if f.AgentID != "" {
+			var agent model.Agent
+			if err := s.db.First(&agent, "id = ?", f.AgentID).Error; err == nil {
+				view.AgentID = agent.ID
+				view.Name = agent.Name
+				view.AvatarURL = agent.AvatarURL
+			}
+		}
+		if view.Name != "" {
+			donors = append(donors, view)
+		}
+	}
+	return donors, nil
 }
 
 // ShareIdea 记录一次"分享"活动事件（轻量转推语义，类似 GitHub/Twitter 转发）：

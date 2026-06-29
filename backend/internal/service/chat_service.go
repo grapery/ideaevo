@@ -43,14 +43,15 @@ type ForkSessionInput struct {
 }
 
 type ChatService struct {
-	db        *gorm.DB
-	ideaSvc   *IdeaService
-	agentSvc  *AgentService
-	llm       *LLMService
-	embed     *EmbeddingService
-	searcher  SimilaritySearcher // 可选，用于 RAG 检索
-	tools     *ToolExecutor      // 可选，启用后支持 tool use
-	toolNames []string           // 给 LLM 暴露的工具白名单（空=全部）
+	db            *gorm.DB
+	ideaSvc       *IdeaService
+	agentSvc      *AgentService
+	llm           *LLMService
+	embed         *EmbeddingService
+	searcher      SimilaritySearcher // 可选，用于 RAG 检索
+	ideaRetriever *IdeaContextRetriever
+	tools         *ToolExecutor      // 可选，启用后支持 tool use
+	toolNames     []string           // 给 LLM 暴露的工具白名单（空=全部）
 }
 
 func NewChatService(db *gorm.DB, ideaSvc *IdeaService, agentSvc *AgentService, llm *LLMService) *ChatService {
@@ -62,6 +63,7 @@ func NewChatService(db *gorm.DB, ideaSvc *IdeaService, agentSvc *AgentService, l
 func (s *ChatService) SetRAG(embed *EmbeddingService, searcher SimilaritySearcher) {
 	s.embed = embed
 	s.searcher = searcher
+	s.ideaRetriever = NewIdeaContextRetriever(searcher, embed, s.ideaSvc)
 }
 
 // SetTools 注入工具执行器以启用 tool use（让 LLM 能调用 search/register/like 等操作）。
@@ -210,18 +212,19 @@ func (s *ChatService) assistantFromLLM(session *model.ChatSession, raw string) m
 // tool 相关字段（tool_calls / tool_call_id / tool_name）序列化进 Metadata JSON，
 // 不需要改表结构。GetMessages 会过滤掉 role=tool 行，不返回给前端展示。
 
-// toolMessageMeta 是持久化进 ChatMessage.Metadata 的 tool 元数据。
-// assistant 行用 ToolCalls；tool 行用 ToolCallID + ToolName。
-type toolMessageMeta struct {
-	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
-	ToolCallID string     `json:"tool_call_id,omitempty"`
-	ToolName   string     `json:"tool_name,omitempty"`
-}
+// messageMeta 定义见 chat_message_display.go。
+//
+// OpenAI 协议要求多轮 tool use 的历史完整保留：
+//   assistant(tool_calls=[...]) -> tool(tool_call_id=..., content=result) -> ...
+// llm_only 行仅用于 buildMessageHistory；activity 行仅用于用户 UI。
 
 // newToolCallAssistantMessage 构造 LLM 决定调用工具时的 assistant 消息
 // （OpenAI role=assistant + tool_calls）。content 可能为空。
 func (s *ChatService) newToolCallAssistantMessage(session *model.ChatSession, content string, toolCalls []ToolCall) model.ChatMessage {
-	meta, _ := json.Marshal(toolMessageMeta{ToolCalls: toolCalls})
+	meta := messageMeta{
+		DisplayKind: displayKindLLMOnly,
+		ToolCalls:   toolCalls,
+	}
 	return model.ChatMessage{
 		SessionID:   session.ID,
 		Role:        model.MessageRoleAssistant,
@@ -229,13 +232,17 @@ func (s *ChatService) newToolCallAssistantMessage(session *model.ChatSession, co
 		ActorID:     session.AgentID,
 		ContentType: model.MessageContentText,
 		Content:     content,
-		Metadata:    string(meta),
+		Metadata:    marshalMessageMeta(meta),
 	}
 }
 
 // newToolResultMessage 构造工具执行结果消息（OpenAI role=tool）。
 func (s *ChatService) newToolResultMessage(session *model.ChatSession, toolCallID, toolName, output string) model.ChatMessage {
-	meta, _ := json.Marshal(toolMessageMeta{ToolCallID: toolCallID, ToolName: toolName})
+	meta := messageMeta{
+		DisplayKind: displayKindLLMOnly,
+		ToolCallID:  toolCallID,
+		ToolName:    toolName,
+	}
 	return model.ChatMessage{
 		SessionID:   session.ID,
 		Role:        model.MessageRoleTool,
@@ -243,8 +250,41 @@ func (s *ChatService) newToolResultMessage(session *model.ChatSession, toolCallI
 		ActorID:     session.AgentID,
 		ContentType: model.MessageContentJSON,
 		Content:     output,
-		Metadata:    string(meta),
+		Metadata:    marshalMessageMeta(meta),
 	}
+}
+
+// newActivityMessage 构造用户可见的工具进度消息（role=system, display_kind=activity）。
+func (s *ChatService) newActivityMessage(session *model.ChatSession, toolCallID, toolName, content string, activity map[string]any) model.ChatMessage {
+	meta := messageMeta{
+		DisplayKind: displayKindActivity,
+		ToolCallID:  toolCallID,
+		ToolName:    toolName,
+		Activity:    activity,
+	}
+	return model.ChatMessage{
+		SessionID:   session.ID,
+		Role:        model.MessageRoleSystem,
+		ActorType:   model.MessageActorAgent,
+		ActorID:     session.AgentID,
+		ContentType: model.MessageContentText,
+		Content:     content,
+		Metadata:    marshalMessageMeta(meta),
+	}
+}
+
+func (s *ChatService) updateActivityMessage(msgID, content string, activity map[string]any) error {
+	var existing model.ChatMessage
+	if err := s.db.First(&existing, "id = ?", msgID).Error; err != nil {
+		return err
+	}
+	meta := parseMessageMeta(existing.Metadata)
+	meta.DisplayKind = displayKindActivity
+	meta.Activity = mergeActivityMaps(meta.Activity, activity)
+	return s.db.Model(&existing).Updates(map[string]any{
+		"content":  content,
+		"metadata": marshalMessageMeta(meta),
+	}).Error
 }
 
 // chatMessageToLLMMessage 把持久化的 ChatMessage 还原为 LLM 可用的 LLMMessage，
@@ -254,7 +294,7 @@ func chatMessageToLLMMessage(m model.ChatMessage) LLMMessage {
 	if m.Metadata == "" || m.Metadata == "{}" {
 		return msg
 	}
-	var meta toolMessageMeta
+	var meta messageMeta
 	if err := json.Unmarshal([]byte(m.Metadata), &meta); err != nil {
 		return msg
 	}
@@ -363,14 +403,9 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 		return nil, fmt.Errorf("failed to save user message: %w", err)
 	}
 
-	principal := Principal{
-		Source:    "rest",
-		UserID:    userID,
-		AgentID:   session.AgentID,
-		SessionID: sessionID,
-	}
-	if session.IdeaID != nil {
-		principal.IdeaID = *session.IdeaID
+	principal, err := s.buildPrincipal(session, userID, sessionID)
+	if err != nil {
+		return nil, err
 	}
 
 	assistantMsg, toolResults, tokensUsed, err := s.runConversation(session, input.Content, principal)
@@ -417,7 +452,7 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 	ctx, cancel := context.WithTimeout(context.Background(), maxToolHistoryMs*time.Millisecond)
 	defer cancel()
 
-	systemPrompt := s.buildSystemPromptWithRAG(session, userContent)
+	systemPrompt := s.buildSystemPromptWithRAG(session, userContent, s.buildMessageHistory(session.ID))
 
 	history := s.buildMessageHistory(session.ID)
 	history = append(history, LLMMessage{Role: "user", Content: userContent})
@@ -464,27 +499,46 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 			log.Printf("[chat] persist tool_calls message failed: %v", err)
 		}
 
-		// P1: 推送工具调用进度事件（"正在搜索 idea..."）
+		// P1: 推送工具调用进度事件（"正在搜索 idea..."）并落库 activity 消息
+		activityByToolCall := make(map[string]string, len(resp.ToolCalls))
 		for _, tc := range resp.ToolCalls {
 			eventData := map[string]any{
 				"tool":      tc.Name,
 				"tool_call": tc.ID,
 				"args":      json.RawMessage(tc.ArgsJSON),
 			}
+			activity := map[string]any{
+				"type":      "tool_call",
+				"tool":      tc.Name,
+				"tool_call": tc.ID,
+			}
 			// delegate_to_agent 特殊处理：解析目标 Agent 名
 			if tc.Name == "delegate_to_agent" {
+				activity["is_a2a"] = true
 				var argsMap map[string]any
 				if json.Unmarshal(tc.ArgsJSON, &argsMap) == nil {
 					if targetID, ok := argsMap["target_agent_id"].(string); ok {
 						if targetAgent, err := s.agentSvc.GetByID(targetID); err == nil {
 							eventData["target_agent_name"] = targetAgent.Name
 							eventData["target_agent_id"] = targetID
+							activity["target_agent_name"] = targetAgent.Name
+							activity["target_agent_id"] = targetID
 							if task, ok := argsMap["task"].(string); ok {
 								eventData["task"] = task
+								activity["task"] = task
 							}
 						}
 					}
 				}
+			}
+			targetName, _ := eventData["target_agent_name"].(string)
+			actMsg := s.newActivityMessage(session, tc.ID, tc.Name,
+				buildToolCallActivityContent(tc.Name, targetName), activity)
+			if err := s.db.Create(&actMsg).Error; err != nil {
+				log.Printf("[chat] persist activity message failed: %v", err)
+			} else {
+				activityByToolCall[tc.ID] = actMsg.ID
+				eventData["id"] = actMsg.ID
 			}
 			s.pushEvent(progressCh, "tool_call", eventData)
 		}
@@ -496,30 +550,51 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 		}
 		allToolResults = append(allToolResults, results...)
 
-		// 推送工具结果进度事件
+		// 推送工具结果进度事件并更新 activity 消息
 		for _, r := range results {
 			eventData := map[string]any{
-				"tool":       r.Name,
-				"tool_call":  r.ToolCallID,
-				"ok":         r.OK,
-				"output":     json.RawMessage(r.Output),
-				"display":    r.Display,
+				"tool":      r.Name,
+				"tool_call": r.ToolCallID,
+				"ok":        r.OK,
+				"output":    json.RawMessage(r.Output),
+				"display":   r.Display,
+			}
+			activity := map[string]any{
+				"type":      "tool_result",
+				"tool":      r.Name,
+				"tool_call": r.ToolCallID,
+				"ok":        r.OK,
 			}
 			// delegate_to_agent 结果：解析目标 Agent 名和回复摘要
+			var responseSummary string
 			if r.Name == "delegate_to_agent" && r.OK {
+				activity["is_a2a"] = true
 				var outMap map[string]any
 				if json.Unmarshal([]byte(r.Output), &outMap) == nil {
 					if name, ok := outMap["target_agent"].(string); ok {
 						eventData["target_agent_name"] = name
+						activity["target_agent_name"] = name
 					}
 					if response, ok := outMap["response"].(string); ok {
-						// 截取摘要（避免过长）
 						summary := response
 						if len(summary) > 200 {
 							summary = summary[:200] + "…"
 						}
 						eventData["response_summary"] = summary
+						responseSummary = summary
+						activity["response_summary"] = summary
 					}
+				}
+			}
+			if r.OK {
+				activity["a2a_completed"] = r.Name == "delegate_to_agent"
+			}
+			targetName, _ := eventData["target_agent_name"].(string)
+			resultContent := buildToolResultActivityContent(r.Name, targetName, r.OK, responseSummary)
+			if actID, ok := activityByToolCall[r.ToolCallID]; ok {
+				eventData["id"] = actID
+				if err := s.updateActivityMessage(actID, resultContent, activity); err != nil {
+					log.Printf("[chat] update activity message failed: %v", err)
 				}
 			}
 			s.pushEvent(progressCh, "tool_result", eventData)
@@ -566,15 +641,21 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 }
 
 // pushEvent 向 progress channel 安全推送事件（nil channel / 已关闭均会忽略）。
-// 非阻塞，避免消费者过慢阻塞整个对话循环。
+// 带持久化 id 的关键事件阻塞发送，避免 UI 丢失 upsert 目标。
 func (s *ChatService) pushEvent(ch chan<- StreamEvent, typ string, data any) {
 	if ch == nil {
 		return
 	}
 	defer func() { _ = recover() }() // 防止 send on closed channel panic
+	ev := StreamEvent{Type: typ, Data: data}
+	switch typ {
+	case "user_message", "assistant_message", "tool_call", "tool_result":
+		ch <- ev
+		return
+	}
 	select {
-	case ch <- StreamEvent{Type: typ, Data: data}:
-	default: // 消费者跟不上就丢弃进度事件（不影响业务）
+	case ch <- ev:
+	default: // 非关键进度事件可丢弃
 	}
 }
 
@@ -624,14 +705,9 @@ func (s *ChatService) SendMessageStream(sessionID, userID, content string) (<-ch
 		return nil, nil, fmt.Errorf("failed to save user message: %w", err)
 	}
 
-	principal := Principal{
-		Source:    "rest",
-		UserID:    userID,
-		AgentID:   session.AgentID,
-		SessionID: sessionID,
-	}
-	if session.IdeaID != nil {
-		principal.IdeaID = *session.IdeaID
+	principal, err := s.buildPrincipal(session, userID, sessionID)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// tools 启用时：流式即工具循环 + 进度事件
@@ -644,7 +720,7 @@ func (s *ChatService) SendMessageStream(sessionID, userID, content string) (<-ch
 }
 
 func (s *ChatService) streamNoTools(session *model.ChatSession, userMsg *model.ChatMessage, userID, content string) (<-chan StreamChunk, *model.ChatMessage, error) {
-	systemPrompt := s.buildSystemPromptWithRAG(session, content)
+	systemPrompt := s.buildSystemPromptWithRAG(session, content, s.buildMessageHistory(session.ID))
 	history := s.buildMessageHistory(session.ID)
 
 	streamCh, err := s.llm.ChatStream(systemPrompt, history)
@@ -727,10 +803,16 @@ func (s *ChatService) GetMessages(sessionID, userID string, beforeID string, lim
 		limit = 50
 	}
 
+	// 多取若干倍再按 UI 可见性过滤，避免 llm_only / 空 assistant 行挤掉可见消息。
+	fetchLimit := limit * 4
+	if fetchLimit > 200 {
+		fetchLimit = 200
+	}
+
 	// 前端历史列表不展示 role=tool 的中间消息（流式期间已通过 SSE tool_call/tool_result 事件展示）；
 	// 这些行仅用于 buildMessageHistory 重建 LLM 上下文。
 	q := s.db.Where("session_id = ? AND role != ?", sessionID, model.MessageRoleTool).
-		Order("created_at DESC").Limit(limit)
+		Order("created_at DESC").Limit(fetchLimit)
 
 	if beforeID != "" {
 		var before model.ChatMessage
@@ -743,6 +825,8 @@ func (s *ChatService) GetMessages(sessionID, userID string, beforeID string, lim
 	if err := q.Find(&messages).Error; err != nil {
 		return nil, err
 	}
+
+	messages = filterVisibleMessages(messages, limit)
 
 	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
 		messages[i], messages[j] = messages[j], messages[i]
@@ -925,31 +1009,81 @@ func (s *ChatService) buildSystemPrompt(session *model.ChatSession) string {
 	return prompt
 }
 
-// buildSystemPromptWithRAG 在原 system prompt 基础上，根据用户最新消息检索相关 idea，
-// 把它们的标题/描述作为"参考资料"注入到 prompt，让 LLM 引用平台已有的相似想法。
-// RAG 配置缺失或检索失败时静默降级为普通 prompt。
-func (s *ChatService) buildSystemPromptWithRAG(session *model.ChatSession, userMessage string) string {
+// buildPrincipal 构造工具执行身份。万叶助手会话中写操作归属用户默认 Agent。
+func (s *ChatService) buildPrincipal(session *model.ChatSession, userID, sessionID string) (Principal, error) {
+	p := Principal{
+		Source:    "rest",
+		UserID:    userID,
+		AgentID:   session.AgentID,
+		SessionID: sessionID,
+	}
+	if session.IdeaID != nil {
+		p.IdeaID = *session.IdeaID
+	}
+	if userID != "" && IsSystemAgent(s.db, session.AgentID) {
+		p.IsSystemAssistant = true
+		agent, err := s.agentSvc.EnsureDefaultUserAgent(userID)
+		if err != nil {
+			return Principal{}, fmt.Errorf("failed to resolve user agent for write operations: %w", err)
+		}
+		p.AgentID = agent.ID
+		p.AuthorAgentReady = true
+	}
+	return p, nil
+}
+
+// buildSystemPromptWithRAG 在原 system prompt 基础上，按意图注入 idea 检索结果。
+func (s *ChatService) buildSystemPromptWithRAG(session *model.ChatSession, userMessage string, history []LLMMessage) string {
 	base := s.buildSystemPrompt(session)
+	intent := DetectIdeaIntent(session, userMessage, history)
 
-	if s.searcher == nil || s.embed == nil || !s.embed.Enabled() {
-		return base + responseFormatInstructions
-	}
-
-	matches, err := s.searcher.Search(userMessage, 0.55, 3)
-	if err != nil || len(matches) == 0 {
-		return base + responseFormatInstructions
-	}
-
-	ragSection := "\n\n## 平台中已有的相似想法（可供参考、对比、引用）："
-	for i, m := range matches {
-		ragSection += fmt.Sprintf("\n%d. 【%s】%s", i+1, m.Idea.Title, m.Idea.Description)
-		if m.Idea.Category != "" {
-			ragSection += fmt.Sprintf("（分类：%s）", m.Idea.Category)
+	switch intent {
+	case IdeaIntentCreateOrRefine:
+		if section := s.buildCreateIntentRAG(session, userMessage, history); section != "" {
+			return base + section + responseFormatInstructions
+		}
+	case IdeaIntentExplore:
+		if section := s.buildExploreIntentRAG(session, userMessage, history); section != "" {
+			return base + section + responseFormatInstructions
 		}
 	}
-	ragSection += "\n\n请在回答中适当参考上述想法，但不要简单复述；结合用户的问题给出有针对性的回应。"
+	return base + responseFormatInstructions
+}
 
-	return base + ragSection + responseFormatInstructions
+func (s *ChatService) buildCreateIntentRAG(session *model.ChatSession, userMessage string, history []LLMMessage) string {
+	if s.ideaRetriever != nil && s.ideaRetriever.Enabled() {
+		bundle, err := s.ideaRetriever.Retrieve(session, userMessage, history)
+		if err == nil && bundle != nil {
+			if section := FormatIdeaContextSection(bundle); section != "" {
+				return section
+			}
+		}
+	}
+	if s.ideaRetriever != nil {
+		bundle, err := s.ideaRetriever.RetrievePortfolioFallback(session)
+		if err == nil && bundle != nil {
+			return FormatPortfolioFallbackSection(bundle)
+		}
+	}
+	return ""
+}
+
+func (s *ChatService) buildExploreIntentRAG(session *model.ChatSession, userMessage string, history []LLMMessage) string {
+	if s.ideaRetriever != nil && s.ideaRetriever.Enabled() {
+		bundle, err := s.ideaRetriever.RetrieveExplore(session, userMessage, history)
+		if err == nil {
+			return FormatExploreContextSection(bundle)
+		}
+	}
+	return exploreSearchToolHint
+}
+
+func formatRAGIdeaLine(n int, m IdeaMatch) string {
+	line := fmt.Sprintf("\n%d. 【%s】%s", n, m.Idea.Title, m.Idea.Description)
+	if m.Idea.Category != "" {
+		line += fmt.Sprintf("（分类：%s）", m.Idea.Category)
+	}
+	return line
 }
 
 func (s *ChatService) buildMessageHistory(sessionID string) []LLMMessage {

@@ -35,6 +35,9 @@ build: ## Build all
 test: ## Run tests
 	cd backend && go test ./...
 
+reindex-ideas: ## Reconcile all active ideas into vector index
+	@$(ENV_LOAD); cd backend && go run ./cmd/reindex-ideas
+
 docker-up: ## Start all Docker services
 	docker compose up -d
 

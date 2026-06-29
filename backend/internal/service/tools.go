@@ -59,22 +59,23 @@ func NewSearchIdeasTool(ideaSvc *IdeaService) *SearchIdeasTool {
 
 func (t *SearchIdeasTool) Name() string { return "search_ideas" }
 func (t *SearchIdeasTool) Description() string {
-	return "Search the marketplace for ideas matching a natural-language query. " +
-		"Use this when the user asks to find/discover/explore ideas, or wants similar ideas. " +
-		"Returns ranked matches with title, description, category, and stats."
+	return "Search ideas matching a natural-language query (vector search with LIKE fallback). " +
+		"Use scope=mine before register_idea to check the user's portfolio; scope=global for marketplace discovery. " +
+		"Returns ranked matches with id, title, excerpt, category, and similarity."
 }
 func (t *SearchIdeasTool) Parameters() json.RawMessage {
 	return rawJSON(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"query":     stringProp("Natural-language search query, e.g. 'AI productivity tools' or '有意思的想法'"),
+			"scope":     stringEnumProp("Search scope: mine=user's ideas only, global=marketplace (default), all=all active ideas", "mine", "global", "all"),
 			"threshold": numberProp("Similarity threshold 0-1. Lower = more results. Default 0.3"),
 			"limit":     numberProp("Max results (default 10, max 30)"),
 		},
 		"required": []string{"query"},
 	})
 }
-func (t *SearchIdeasTool) Execute(ctx context.Context, _ Principal, in ToolInput) (*ToolResult, error) {
+func (t *SearchIdeasTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
 	query, err := ToolStrReq(in, "query")
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
@@ -84,7 +85,33 @@ func (t *SearchIdeasTool) Execute(ctx context.Context, _ Principal, in ToolInput
 	if limit == 0 {
 		limit = 10
 	}
-	matches, err := t.ideaSvc.Search(query, threshold, limit)
+	if limit > 30 {
+		limit = 30
+	}
+
+	scope := ToolStr(in, "scope")
+	if scope == "" {
+		scope = "global"
+	}
+
+	opts := SearchOptions{
+		Threshold: threshold,
+		Limit:     limit,
+		Status:    "active",
+	}
+	switch scope {
+	case "mine":
+		if p.UserID == "" {
+			return &ToolResult{OK: false, Error: "scope=mine requires a logged-in user"}, nil
+		}
+		opts.OwnerUserID = p.UserID
+	case "all":
+		opts.Status = "active"
+	default:
+		opts.Status = "active"
+	}
+
+	matches, err := t.ideaSvc.Search(query, opts)
 	if err != nil {
 		return nil, fmt.Errorf("search_ideas failed: %w", err)
 	}
@@ -124,13 +151,14 @@ func NewQueryIdeasTool(ideaSvc *IdeaService) *QueryIdeasTool {
 
 func (t *QueryIdeasTool) Name() string { return "query_ideas" }
 func (t *QueryIdeasTool) Description() string {
-	return "List ideas by filter (status/category/sort). Use for browsing 'popular', 'newest', " +
-		"'most forked' ideas, or filtering by category. Does NOT do semantic search."
+	return "List ideas by filter (status/category/sort). Set mine=true to list only the current user's ideas. " +
+		"Does NOT do semantic search — use search_ideas for that."
 }
 func (t *QueryIdeasTool) Parameters() json.RawMessage {
 	return rawJSON(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"mine":     map[string]any{"type": "boolean", "description": "If true, only ideas owned by the current user"},
 			"status":   stringEnumProp("Filter by status", "active", "buried", "archived", "implemented"),
 			"category": stringProp("Filter by category: tool, service, integration, automation, creative, data, other"),
 			"sort":     stringEnumProp("Sort order", "newest", "popular", "most_forked", "most_liked", "most_flowers"),
@@ -139,18 +167,25 @@ func (t *QueryIdeasTool) Parameters() json.RawMessage {
 		},
 	})
 }
-func (t *QueryIdeasTool) Execute(ctx context.Context, _ Principal, in ToolInput) (*ToolResult, error) {
+func (t *QueryIdeasTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
 	limit := ToolInt(in, "limit")
 	if limit == 0 {
 		limit = 20
 	}
-	ideas, total, err := t.ideaSvc.Query(QueryFilter{
+	filter := QueryFilter{
 		Status:   ToolStr(in, "status"),
 		Category: ToolStr(in, "category"),
 		Sort:     ToolStr(in, "sort"),
 		Limit:    limit,
 		Offset:   ToolInt(in, "offset"),
-	})
+	}
+	if ToolBool(in, "mine") {
+		if p.UserID == "" {
+			return &ToolResult{OK: false, Error: "mine=true requires a logged-in user"}, nil
+		}
+		filter.OwnerUserID = p.UserID
+	}
+	ideas, total, err := t.ideaSvc.Query(filter)
 	if err != nil {
 		return nil, fmt.Errorf("query_ideas failed: %w", err)
 	}
@@ -245,9 +280,36 @@ func (t *RegisterIdeaTool) Execute(ctx context.Context, p Principal, in ToolInpu
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
+	title := ToolStr(in, "title")
+	description := ToolStr(in, "description")
+	if p.UserID != "" {
+		similar, simErr := t.ideaSvc.FindSimilarForRegister(p.UserID, title, description)
+		if simErr != nil {
+			return nil, fmt.Errorf("duplicate check failed: %w", simErr)
+		}
+		if len(similar) > 0 && MaxIdeaMatchSimilarity(similar) >= registerDuplicateThreshold {
+			summaries := make([]map[string]any, 0, len(similar))
+			for _, m := range similar {
+				summaries = append(summaries, map[string]any{
+					"id":         m.Idea.ID,
+					"title":      m.Idea.Title,
+					"similarity": m.Similarity,
+					"excerpt":    truncate(m.Idea.Description, 120),
+				})
+			}
+			return &ToolResult{
+				OK:    false,
+				Error: "idea too similar to existing ideas; consider merging or differentiating",
+				Data: map[string]any{
+					"similar_ideas": summaries,
+					"message":       "与已有 idea 高度相似，建议扩展现有 idea 或调整标题/描述后再注册",
+				},
+			}, nil
+		}
+	}
 	idea, err := t.ideaSvc.Register(authorID, RegisterIdeaInput{
-		Title:       ToolStr(in, "title"),
-		Description: ToolStr(in, "description"),
+		Title:       title,
+		Description: description,
 		Category:    ToolStr(in, "category"),
 		Tags:        ToolStrSlice(in, "tags"),
 		RepoURL:     ToolStr(in, "repo_url"),
@@ -579,16 +641,12 @@ func (t *GetCommentsTool) Execute(ctx context.Context, _ Principal, in ToolInput
 // ---- helpers ----
 
 // requireAuthor 从 Principal 中确定执行写操作的作者 ID。
-// 页面用户：尚未有专属 agent → 用 UserID 兜底（仅 IsSystemAssistant 时允许）
-// Agent：直接用 AgentID
 func requireAuthor(p Principal) (string, error) {
 	if p.AgentID != "" {
+		if p.IsSystemAssistant && !p.AuthorAgentReady {
+			return "", fmt.Errorf("user agent not available; cannot perform write operations")
+		}
 		return p.AgentID, nil
-	}
-	if p.IsSystemAssistant && p.UserID != "" {
-		// 万叶助手代用户操作时，把 UserID 作为 agent_id 占位。
-		// 更严谨的实现应该为每个用户自动创建 shadow agent，这里先支持基础场景。
-		return "user:" + p.UserID, nil
 	}
 	return "", fmt.Errorf("this action requires authentication (no agent or user identity)")
 }
