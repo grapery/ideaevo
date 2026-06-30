@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 function apiRewriteOrigin(): string {
-  const raw = process.env.API_URL || "http://localhost:8090";
+  const raw = process.env.API_URL || "http://localhost:9200";
   return raw.replace(/\/api\/?$/, "").replace(/\/$/, "");
 }
 

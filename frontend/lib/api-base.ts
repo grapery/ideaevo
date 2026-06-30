@@ -1,4 +1,4 @@
-const DEFAULT_API_ORIGIN = "http://localhost:8090";
+const DEFAULT_API_ORIGIN = "http://localhost:9200";
 
 /** Normalize origin or /api URL to a base ending with /api (SSR + CSR). */
 export function getApiBase(): string {

@@ -25,7 +25,7 @@ mcp-sse: ## Start the MCP server (SSE)
 
 web: ## Start the Next.js frontend
 	@$(ENV_LOAD); \
-	echo "window.__ENV_API_URL__ = \"$${API_URL:-http://localhost:8090}\";" > frontend/public/runtime-env.js; \
+	echo "window.__ENV_API_URL__ = \"$${API_URL:-http://localhost:9200}\";" > frontend/public/runtime-env.js; \
 	cd frontend && PORT=3000 npm run dev
 
 build: ## Build all
