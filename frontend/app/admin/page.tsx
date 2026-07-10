@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { notify } from "@/components/ui/notify";
 import { PasswordInput } from "@/components/ui/password-input";
 import { parseResponseError, getErrorMessage } from "@/lib/api-error";
@@ -16,12 +16,48 @@ interface Comment {
   created_at: string;
 }
 
+interface AdminCommentsResponse {
+  comments: Comment[];
+  total: number;
+}
+
 export default function AdminPage() {
   const [token, setToken] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loadingComments, setLoadingComments] = useState(false);
 
   const apiBase = getApiBase();
+
+  const loadComments = useCallback(async () => {
+    if (!token.trim()) return;
+    setLoadingComments(true);
+    try {
+      const res = await fetch(
+        `${apiBase}/admin/comments?moderated=false&limit=50`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!res.ok) throw new Error(await parseResponseError(res, "加载评论失败"));
+      const data = (await res.json()) as AdminCommentsResponse;
+      setComments(data.comments ?? []);
+      setTotal(data.total ?? data.comments?.length ?? 0);
+    } catch (err) {
+      notify.error(getErrorMessage(err, "加载评论失败"));
+      setComments([]);
+      setTotal(0);
+    } finally {
+      setLoadingComments(false);
+    }
+  }, [apiBase, token]);
+
+  useEffect(() => {
+    if (authenticated) {
+      void loadComments();
+    }
+  }, [authenticated, loadComments]);
 
   function handleLogin() {
     if (token.trim()) {
@@ -29,7 +65,7 @@ export default function AdminPage() {
     }
   }
 
-  async function moderateComment(commentId: string, approved: boolean) {
+  async function moderateComment(commentId: string, hide: boolean) {
     try {
       const res = await fetch(
         `${apiBase}/admin/comments/${commentId}/moderate`,
@@ -39,12 +75,13 @@ export default function AdminPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ moderated: approved }),
+          body: JSON.stringify({ moderated: hide }),
         }
       );
       if (!res.ok) throw new Error(await parseResponseError(res, "操作失败"));
-      notify.success(approved ? "评论已通过" : "评论已拒绝");
+      notify.success(hide ? "评论已拒绝" : "评论已通过");
       setComments((prev) => prev.filter((c) => c.id !== commentId));
+      setTotal((prev) => Math.max(0, prev - 1));
     } catch (err) {
       notify.error(getErrorMessage(err, "操作失败"));
     }
@@ -95,10 +132,9 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* Stats overview */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="surface-card p-4 text-center">
-          <div className="text-2xl font-semibold text-[var(--title)]">-</div>
+          <div className="text-2xl font-semibold text-[var(--title)]">{total}</div>
           <div className="text-xs text-[var(--text-muted)]">待审核评论</div>
         </div>
         <div className="surface-card p-4 text-center">
@@ -111,9 +147,21 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Comments list */}
-      <h2 className="text-lg font-semibold mb-4 text-[var(--title)]">待审核评论</h2>
-      {comments.length === 0 ? (
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-[var(--title)]">待审核评论</h2>
+        <button
+          onClick={() => void loadComments()}
+          disabled={loadingComments}
+          className="text-sm text-[var(--primary)] hover:opacity-80 disabled:opacity-50"
+        >
+          {loadingComments ? "加载中…" : "刷新"}
+        </button>
+      </div>
+      {loadingComments && comments.length === 0 ? (
+        <div className="surface-card p-8 text-center">
+          <p className="text-[var(--text-muted)]">加载中…</p>
+        </div>
+      ) : comments.length === 0 ? (
         <div className="surface-card p-8 text-center">
           <p className="text-[var(--text-muted)]">暂无待审核评论</p>
         </div>
@@ -128,18 +176,18 @@ export default function AdminPage() {
                 <div>
                   <p className="text-sm text-[var(--title)]">{comment.content}</p>
                   <p className="text-xs text-[var(--text-muted)] mt-1">
-                    by {comment.user_id} · {comment.sentiment}
+                    idea {comment.idea_id} · by {comment.user_id} · {comment.sentiment}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => moderateComment(comment.id, true)}
+                    onClick={() => moderateComment(comment.id, false)}
                     className="rounded-lg bg-[var(--teal-soft)] px-3 py-1.5 text-xs font-medium text-[var(--teal)] hover:opacity-80"
                   >
                     通过
                   </button>
                   <button
-                    onClick={() => moderateComment(comment.id, false)}
+                    onClick={() => moderateComment(comment.id, true)}
                     className="rounded-lg bg-[var(--coral-soft)] px-3 py-1.5 text-xs font-medium text-[var(--coral)] hover:opacity-80"
                   >
                     拒绝

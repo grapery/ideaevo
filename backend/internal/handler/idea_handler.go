@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wanye/ideaevo/internal/model"
@@ -48,27 +50,70 @@ func (h *IdeaHandler) canManageIdea(c *gin.Context, idea *model.Idea) bool {
 	return agent.OwnerUserID == userID
 }
 
+// resolveAuthorAgentID 确定写操作的 Agent 作者 ID。
+// API Key 认证 → 当前 Agent；JWT 用户 → 自动绑定/创建默认个人 Agent（与聊天 buildPrincipal 一致）。
+func (h *IdeaHandler) resolveAuthorAgentID(c *gin.Context) (string, error) {
+	if agentID := c.GetString("agent_id"); agentID != "" {
+		return agentID, nil
+	}
+	userID := extractUserID(c)
+	if userID == "" {
+		return "", fmt.Errorf("请先登录或提供 API Key")
+	}
+	agent, err := h.agentSvc.EnsureDefaultUserAgent(userID)
+	if err != nil {
+		return "", fmt.Errorf("无法解析用户 Agent: %w", err)
+	}
+	return agent.ID, nil
+}
+
+// resolvePublishAgentID 确定发布想法时的 Agent 作者 ID。
+// API Key → 当前 Agent；JWT 用户 → 可选 agent_id（须为本人拥有），否则默认个人 Agent。
+func (h *IdeaHandler) resolvePublishAgentID(c *gin.Context, requestedAgentID string) (string, error) {
+	if agentID := c.GetString("agent_id"); agentID != "" {
+		return agentID, nil
+	}
+	userID := extractUserID(c)
+	if userID == "" {
+		return "", fmt.Errorf("请先登录或提供 API Key")
+	}
+	if requestedAgentID != "" {
+		agent, err := h.agentSvc.GetByID(requestedAgentID)
+		if err != nil {
+			return "", fmt.Errorf("Agent 不存在")
+		}
+		if agent.OwnerUserID != userID {
+			return "", fmt.Errorf("无权使用该 Agent 发布")
+		}
+		return agent.ID, nil
+	}
+	return h.resolveAuthorAgentID(c)
+}
+
 func (h *IdeaHandler) GetByID(c *gin.Context) {
 	idea, err := h.ideaSvc.GetByID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
-	c.JSON(http.StatusOK, idea)
+	ideas := []model.Idea{*idea}
+	h.agentSvc.AttachOwnersToIdeas(ideas)
+	c.JSON(http.StatusOK, ideas[0])
 }
 
 func (h *IdeaHandler) Query(c *gin.Context) {
 	var filter service.QueryFilter
 	if err := c.ShouldBindQuery(&filter); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 
 	ideas, total, err := h.ideaSvc.Query(filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
+	h.agentSvc.AttachOwnersToIdeas(ideas)
 
 	c.JSON(http.StatusOK, gin.H{
 		"ideas":  ideas,
@@ -106,7 +151,7 @@ func (h *IdeaHandler) Search(c *gin.Context) {
 		status = "active"
 	}
 	if status != "" && !validStatuses[status] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status filter"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyMessage("invalid status filter")})
 		return
 	}
 
@@ -119,8 +164,11 @@ func (h *IdeaHandler) Search(c *gin.Context) {
 
 	results, err := h.ideaSvc.Search(query, opts)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
+	}
+	for i := range results {
+		service.EnrichIdea(&results[i].Idea)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -132,21 +180,91 @@ func (h *IdeaHandler) Search(c *gin.Context) {
 }
 
 func (h *IdeaHandler) Bury(c *gin.Context) {
-	agentID := c.GetString("agent_id")
+	idea, err := h.ideaSvc.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+	if !h.canManageIdea(c, idea) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法的创建者才能埋葬"})
+		return
+	}
+
 	var input struct {
 		Reason string `json:"reason" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 
-	idea, err := h.ideaSvc.Bury(c.Param("id"), agentID, input.Reason)
+	idea, err = h.ideaSvc.Bury(idea.ID, idea.AgentID, input.Reason)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, idea)
+}
+
+// Create 注册新想法（JWT 用户或 Agent API Key）。
+func (h *IdeaHandler) Create(c *gin.Context) {
+	var input struct {
+		Title       string   `json:"title" binding:"required"`
+		Description string   `json:"description" binding:"required"`
+		Category    string   `json:"category"`
+		Tags        []string `json:"tags"`
+		RepoURL     string   `json:"repo_url"`
+		DemoURL     string   `json:"demo_url"`
+		AgentID     string   `json:"agent_id"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	category := input.Category
+	if category == "" {
+		category = "other"
+	}
+
+	agentID, err := h.resolvePublishAgentID(c, input.AgentID)
+	if err != nil {
+		status := http.StatusUnauthorized
+		if strings.Contains(err.Error(), "无权") || strings.Contains(err.Error(), "不存在") {
+			status = http.StatusForbidden
+		}
+		c.JSON(status, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+
+	ownerUserID := extractUserID(c)
+	if ownerUserID != "" {
+		similar, simErr := h.ideaSvc.FindSimilarForRegister(ownerUserID, input.Title, input.Description)
+		if simErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(simErr)})
+			return
+		}
+		if len(similar) > 0 && service.MaxIdeaMatchSimilarity(similar) >= 0.80 {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":         "与已有 idea 高度相似，建议扩展现有 idea 或调整标题/描述后再发布",
+				"similar_ideas": similar,
+			})
+			return
+		}
+	}
+
+	idea, err := h.ideaSvc.Register(agentID, service.RegisterIdeaInput{
+		Title:       input.Title,
+		Description: input.Description,
+		Category:    category,
+		Tags:        input.Tags,
+		RepoURL:     input.RepoURL,
+		DemoURL:     input.DemoURL,
+	})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	c.JSON(http.StatusCreated, idea)
 }
 
 func (h *IdeaHandler) UpdateStatus(c *gin.Context) {
@@ -155,19 +273,19 @@ func (h *IdeaHandler) UpdateStatus(c *gin.Context) {
 		Status string `json:"status" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 
 	if !validStatuses[input.Status] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status, must be one of: active, buried, archived, implemented"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "状态取值无效，可选: active, buried, archived, implemented"})
 		return
 	}
 
 	// 权限校验：只有 idea 的创建者 Agent 才能修改状态
 	idea, err := h.ideaSvc.GetByID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
 	if idea.AgentID != agentID {
@@ -177,7 +295,7 @@ func (h *IdeaHandler) UpdateStatus(c *gin.Context) {
 
 	idea, err = h.ideaSvc.UpdateStatus(c.Param("id"), input.Status)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, idea)
@@ -187,7 +305,7 @@ func (h *IdeaHandler) UpdateStatus(c *gin.Context) {
 func (h *IdeaHandler) UpdateMeta(c *gin.Context) {
 	idea, err := h.ideaSvc.GetByID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
 	if !h.canManageIdea(c, idea) {
@@ -197,13 +315,32 @@ func (h *IdeaHandler) UpdateMeta(c *gin.Context) {
 
 	var input service.UpdateIdeaMetaInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 
 	idea, err = h.ideaSvc.UpdateMeta(idea.ID, input, h.assets)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, idea)
+}
+
+// ResetIcon restores the idea icon to the default DiceBear image (creator only).
+func (h *IdeaHandler) ResetIcon(c *gin.Context) {
+	idea, err := h.ideaSvc.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+	if !h.canManageIdea(c, idea) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法的创建者才能重置图标"})
+		return
+	}
+	idea, err = h.ideaSvc.ResetIcon(idea.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, idea)
@@ -218,7 +355,7 @@ func (h *IdeaHandler) PresignUpload(c *gin.Context) {
 
 	idea, err := h.ideaSvc.GetByID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
 	if !h.canManageIdea(c, idea) {
@@ -231,7 +368,7 @@ func (h *IdeaHandler) PresignUpload(c *gin.Context) {
 		Kind        string `json:"kind"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	kind := input.Kind
@@ -239,13 +376,13 @@ func (h *IdeaHandler) PresignUpload(c *gin.Context) {
 		kind = "icon"
 	}
 	if kind != "icon" && kind != "content" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid kind, must be icon or content"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "上传类型无效，必须为 icon 或 content"})
 		return
 	}
 
 	result, err := h.assets.PresignPut("ideas", idea.ID, kind, input.ContentType)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, result)
@@ -259,7 +396,7 @@ func (h *IdeaHandler) PresignIcon(c *gin.Context) {
 func (h *IdeaHandler) GetVersions(c *gin.Context) {
 	versions, err := h.ideaSvc.ListVersions(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"versions": versions})
@@ -268,7 +405,7 @@ func (h *IdeaHandler) GetVersions(c *gin.Context) {
 func (h *IdeaHandler) GetVersion(c *gin.Context) {
 	v, err := h.ideaSvc.GetVersion(c.Param("id"), c.Param("versionId"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "version not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "版本不存在"})
 		return
 	}
 	c.JSON(http.StatusOK, v)
@@ -277,7 +414,7 @@ func (h *IdeaHandler) GetVersion(c *gin.Context) {
 func (h *IdeaHandler) UpdateDescription(c *gin.Context) {
 	idea, err := h.ideaSvc.GetByID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
 	if !h.canManageIdea(c, idea) {
@@ -287,13 +424,13 @@ func (h *IdeaHandler) UpdateDescription(c *gin.Context) {
 
 	var input service.UpdateDescriptionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 
 	idea, err = h.ideaSvc.UpdateDescription(idea.ID, input, h.assets)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, idea)
@@ -302,7 +439,7 @@ func (h *IdeaHandler) UpdateDescription(c *gin.Context) {
 func (h *IdeaHandler) Like(c *gin.Context) {
 	ideaID := c.Param("id")
 	if _, err := h.ideaSvc.GetByID(ideaID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
 
@@ -314,7 +451,7 @@ func (h *IdeaHandler) Like(c *gin.Context) {
 	}
 
 	if err := h.socialSvc.LikeIdea(ideaID, userID, agentIDStr); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "liked"})
@@ -323,7 +460,7 @@ func (h *IdeaHandler) Like(c *gin.Context) {
 func (h *IdeaHandler) GetLikeStatus(c *gin.Context) {
 	ideaID := c.Param("id")
 	if _, err := h.ideaSvc.GetByID(ideaID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
 
@@ -341,7 +478,7 @@ func (h *IdeaHandler) GetLikeStatus(c *gin.Context) {
 func (h *IdeaHandler) Unlike(c *gin.Context) {
 	ideaID := c.Param("id")
 	if _, err := h.ideaSvc.GetByID(ideaID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
 
@@ -356,11 +493,11 @@ func (h *IdeaHandler) SendFlowers(c *gin.Context) {
 	ideaID := c.Param("id")
 	idea, err := h.ideaSvc.GetByID(ideaID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
 	if idea.Status != model.IdeaStatusActive {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot send flowers to inactive idea"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无法给非活跃的想法送花"})
 		return
 	}
 
@@ -378,7 +515,7 @@ func (h *IdeaHandler) SendFlowers(c *gin.Context) {
 		AgentID: agentIDStr,
 		Message: input.Message,
 	}); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "flowers sent"})
@@ -388,11 +525,11 @@ func (h *IdeaHandler) Fork(c *gin.Context) {
 	ideaID := c.Param("id")
 	idea, err := h.ideaSvc.GetByID(ideaID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
 	if idea.Status != model.IdeaStatusActive {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot fork inactive idea"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无法 fork 非活跃的想法"})
 		return
 	}
 
@@ -403,13 +540,13 @@ func (h *IdeaHandler) Fork(c *gin.Context) {
 		Category    string `json:"category"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 
-	agentIDStr := extractAgentID(c, h.systemAgentID)
-	if agentIDStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
+	agentIDStr, err := h.resolveAuthorAgentID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 
@@ -422,7 +559,7 @@ func (h *IdeaHandler) Fork(c *gin.Context) {
 		Category:    input.Category,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	c.JSON(http.StatusCreated, newIdea)
@@ -434,7 +571,7 @@ func (h *IdeaHandler) Share(c *gin.Context) {
 	ideaID := c.Param("id")
 	idea, err := h.ideaSvc.GetByID(ideaID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
 	if idea.Status != model.IdeaStatusActive {
@@ -459,16 +596,16 @@ func (h *IdeaHandler) Share(c *gin.Context) {
 	}
 
 	if err := h.socialSvc.ShareIdea(ideaID, actorType, actorID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "shared"})
 }
 
 func (h *IdeaHandler) GetComments(c *gin.Context) {
-	comments, err := h.wanyeSvc.GetComments(c.Param("id"))
+	comments, err := h.wanyeSvc.GetCommentsEnriched(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, comments)
@@ -478,7 +615,7 @@ func (h *IdeaHandler) CreateComment(c *gin.Context) {
 	ideaID := c.Param("id")
 	idea, err := h.ideaSvc.GetByID(ideaID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "idea not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
 	if idea.Status != model.IdeaStatusActive {
@@ -488,7 +625,7 @@ func (h *IdeaHandler) CreateComment(c *gin.Context) {
 
 	var input service.CreateCommentInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	input.IdeaID = ideaID
@@ -503,7 +640,7 @@ func (h *IdeaHandler) CreateComment(c *gin.Context) {
 
 	comment, err := h.wanyeSvc.CreateComment(input)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	c.JSON(http.StatusCreated, comment)
@@ -512,7 +649,7 @@ func (h *IdeaHandler) CreateComment(c *gin.Context) {
 func (h *IdeaHandler) GetForks(c *gin.Context) {
 	forks, err := h.socialSvc.GetForks(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, forks)
@@ -521,19 +658,20 @@ func (h *IdeaHandler) GetForks(c *gin.Context) {
 func (h *IdeaHandler) GetForkChildren(c *gin.Context) {
 	ideas, err := h.socialSvc.GetPublicForkChildren(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
 	if ideas == nil {
 		ideas = []model.Idea{}
 	}
+	h.agentSvc.AttachOwnersToIdeas(ideas)
 	c.JSON(http.StatusOK, gin.H{"ideas": ideas})
 }
 
 func (h *IdeaHandler) GetFlowers(c *gin.Context) {
 	donors, err := h.socialSvc.GetFlowerDonors(c.Param("id"), 20)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
 	if donors == nil {
@@ -565,9 +703,10 @@ func (h *IdeaHandler) GetUserIdeas(c *gin.Context) {
 		Sort:        "newest",
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
+	h.agentSvc.AttachOwnersToIdeas(ideas)
 	c.JSON(http.StatusOK, gin.H{"ideas": ideas, "total": total})
 }
 
@@ -578,7 +717,7 @@ func (h *IdeaHandler) React(c *gin.Context) {
 		Emoji string `json:"emoji" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	userID, agentID := resolveActor(c)
@@ -587,7 +726,7 @@ func (h *IdeaHandler) React(c *gin.Context) {
 		return
 	}
 	if err := h.socialSvc.ReactToIdea(ideaID, userID, agentID, input.Emoji); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"emoji": input.Emoji})
@@ -602,7 +741,7 @@ func (h *IdeaHandler) Unreact(c *gin.Context) {
 		return
 	}
 	if err := h.socialSvc.UnreactIdea(ideaID, userID, agentID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "unreacted"})
@@ -613,7 +752,7 @@ func (h *IdeaHandler) GetReactions(c *gin.Context) {
 	ideaID := c.Param("id")
 	counts, err := h.socialSvc.GetReactionCounts(ideaID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
 	userID, agentID := resolveActor(c)

@@ -7,7 +7,7 @@ import { userApi, chatApi } from "@/lib/api-client";
 import { getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/lib/auth-context";
 import { useApiKey } from "@/lib/api-key-context";
-import { Idea, User, ChatSession } from "@/lib/types";
+import { Idea, User, ChatSession, Agent } from "@/lib/types";
 import { IdeaCard } from "@/components/idea-card";
 import { ActivityList, ActivityLog } from "@/components/activity-list";
 import UserCard from "@/components/user-card";
@@ -24,10 +24,11 @@ const AppLink = AppLinkComponent as unknown as React.ComponentType<{
   children: React.ReactNode;
 }>;
 
-type Tab = "overview" | "ideas" | "activity" | "followers" | "following" | "sessions" | "api";
+type Tab = "overview" | "ideas" | "agents" | "activity" | "followers" | "following" | "sessions" | "api";
 
 interface ProfileStats {
   idea_count?: number;
+  agent_count?: number;
   follower_count?: number;
   following_count?: number;
   session_count?: number;
@@ -59,6 +60,7 @@ export function UserProfileBody({
 
   // 各 tab 数据，按需懒加载。
   const [ideas, setIdeas] = useState<Idea[] | null>(null);
+  const [agents, setAgents] = useState<Agent[] | null>(null);
   const [activity, setActivity] = useState<ActivityLog[] | null>(null);
   const [followers, setFollowers] = useState<User[] | null>(null);
   const [following, setFollowing] = useState<User[] | null>(null);
@@ -72,6 +74,15 @@ export function UserProfileBody({
       setIdeas(res.ideas ?? []);
     } catch {
       setIdeas([]);
+    }
+  }, [userId]);
+
+  const loadAgents = useCallback(async () => {
+    try {
+      const res = await userApi.getUserAgents(userId, 50);
+      setAgents(res.agents ?? []);
+    } catch {
+      setAgents([]);
     }
   }, [userId]);
 
@@ -125,10 +136,11 @@ export function UserProfileBody({
 
   // tab 切换时按需加载。
   useEffect(() => {
+    if (tab === "agents" && agents === null) loadAgents();
     if (tab === "followers" && followers === null) loadFollowers();
     if (tab === "following" && following === null) loadFollowing();
     if (tab === "sessions" && sessions === null) loadSessions();
-  }, [tab, followers, following, sessions, loadFollowers, loadFollowing, loadSessions]);
+  }, [tab, agents, followers, following, sessions, loadAgents, loadFollowers, loadFollowing, loadSessions]);
 
   // 允许 header 统计点击通过自定义事件跳转 tab。
   useEffect(() => {
@@ -144,6 +156,7 @@ export function UserProfileBody({
     [
       { key: "overview", label: "概览" },
       { key: "ideas", label: "想法", count: stats.idea_count ?? 0 },
+      { key: "agents", label: "Agent", count: stats.agent_count ?? 0 },
       { key: "activity", label: "动态" },
       { key: "followers", label: "关注者", count: followersTotal },
       { key: "following", label: "关注中", count: followingTotal },
@@ -172,6 +185,11 @@ export function UserProfileBody({
                 <p className="text-[var(--text-muted)]">{user.email}</p>
               )}
               <p className="text-[var(--text-muted)]">{formatJoinDate(user.created_at)}</p>
+              {isOwn && (
+                <Link href="/user/agents" className="inline-block text-sm text-[var(--primary)] hover:underline">
+                  管理我的 Agent →
+                </Link>
+              )}
               {(user.role === "admin" || user.role === "moderator") && (
                 <span className="badge-pill badge-active">{user.role === "admin" ? "管理员" : "版主"}</span>
               )}
@@ -181,6 +199,7 @@ export function UserProfileBody({
           <AboutCard title="数据概览">
             <div className="space-y-2.5">
               <StatRow label="想法" value={ideaCount} />
+              <StatRow label="Agent" value={stats.agent_count ?? 0} />
               <StatRow label="关注者" value={followersTotal} />
               <StatRow label="关注中" value={followingTotal} />
               {isOwn && <StatRow label="对话" value={stats.session_count ?? 0} />}
@@ -224,6 +243,32 @@ export function UserProfileBody({
           <div className="space-y-4">
             {ideas.map((idea) => (
               <IdeaCard key={idea.id} idea={idea} />
+            ))}
+          </div>
+        ))}
+
+      {tab === "agents" &&
+        (agents === null ? (
+          <Loading />
+        ) : agents.length === 0 ? (
+          <ProfileEmptyState text={isOwn ? "你还没有 Agent" : "这个用户还没有公开的 Agent"} />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {agents.map((agent) => (
+              <Link
+                key={agent.id}
+                href={`/agents/${agent.id}`}
+                className="surface-card p-4 hover:border-[var(--ink-faint)] transition-colors"
+              >
+                <p className="font-medium text-[var(--ink)]">{agent.name}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">
+                  {agent.description || "暂无描述"}
+                </p>
+                <p className="meta-label mt-2">
+                  {agent.visibility === "private" ? "私有" : "公开"}
+                  {agent.follower_count != null ? ` · ${agent.follower_count} 关注者` : ""}
+                </p>
+              </Link>
             ))}
           </div>
         ))}

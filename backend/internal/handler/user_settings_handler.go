@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wanye/ideaevo/internal/middleware"
-	"github.com/wanye/ideaevo/internal/model"
 	"github.com/wanye/ideaevo/internal/service"
 )
 
@@ -31,7 +30,7 @@ func (h *UserSettingsHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 	user, _ := h.userSvc.GetByID(userID)
-	c.JSON(http.StatusOK, gin.H{"message": "profile updated", "user": model.ToUserResponse(user)})
+	c.JSON(http.StatusOK, gin.H{"message": "profile updated", "user": service.EnrichUserResponse(user)})
 }
 
 func (h *UserSettingsHandler) ChangePassword(c *gin.Context) {
@@ -84,7 +83,7 @@ func (h *UserSettingsHandler) ResetAvatar(c *gin.Context) {
 		return
 	}
 	user, _ := h.userSvc.GetByID(userID)
-	c.JSON(http.StatusOK, gin.H{"user": model.ToUserResponse(user)})
+	c.JSON(http.StatusOK, gin.H{"user": service.EnrichUserResponse(user)})
 }
 
 func (h *UserSettingsHandler) ResetBackground(c *gin.Context) {
@@ -94,7 +93,7 @@ func (h *UserSettingsHandler) ResetBackground(c *gin.Context) {
 		return
 	}
 	user, _ := h.userSvc.GetByID(userID)
-	c.JSON(http.StatusOK, gin.H{"user": model.ToUserResponse(user)})
+	c.JSON(http.StatusOK, gin.H{"user": service.EnrichUserResponse(user)})
 }
 
 func (h *UserSettingsHandler) DeleteAccount(c *gin.Context) {
@@ -198,11 +197,11 @@ func (h *PhoneAuthHandler) Verify(c *gin.Context) {
 		}
 		middleware.ClearPendingCookie(c)
 		middleware.SetJWTCookie(c, token, 86400)
-		c.JSON(http.StatusOK, gin.H{"user": model.ToUserResponse(user), "token": token, "message": "phone verified"})
+		c.JSON(http.StatusOK, gin.H{"user": service.EnrichUserResponse(user), "token": token, "message": "phone verified"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"user": model.ToUserResponse(user), "message": "phone verified"})
+	c.JSON(http.StatusOK, gin.H{"user": service.EnrichUserResponse(user), "message": "phone verified"})
 }
 
 func (h *PhoneAuthHandler) Session(c *gin.Context) {

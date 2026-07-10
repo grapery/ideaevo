@@ -329,6 +329,7 @@ func generateToken() (string, error) {
 type UserProfile struct {
 	User           model.UserResponse `json:"user"`
 	IdeaCount      int64              `json:"idea_count"`
+	AgentCount     int64              `json:"agent_count"`
 	SessionCount   int64              `json:"session_count"`
 	FollowerCount  int                `json:"follower_count"`
 	FollowingCount int                `json:"following_count"`
@@ -349,9 +350,15 @@ func (s *UserService) GetProfile(userID string) (*UserProfile, error) {
 		Joins("JOIN agents ON agents.id = ideas.agent_id").
 		Where("agents.owner_user_id = ?", userID).Count(&ideaCount)
 
+	var agentCount int64
+	s.db.Model(&model.Agent{}).
+		Where("owner_user_id = ? AND (visibility = ? OR visibility = '' OR visibility IS NULL)", userID, "public").
+		Count(&agentCount)
+
 	return &UserProfile{
-		User:           model.ToUserResponse(user),
+		User:           EnrichUserResponse(user),
 		IdeaCount:      ideaCount,
+		AgentCount:     agentCount,
 		SessionCount:   sessionCount,
 		FollowerCount:  user.FollowerCount,
 		FollowingCount: user.FollowingCount,

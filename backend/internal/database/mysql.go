@@ -43,8 +43,12 @@ func Connect(cfg *config.Config) *gorm.DB {
 		&model.Follow{},
 		&model.AgentFollow{},
 		&model.Notification{},
+		&model.NotificationPreferences{},
+		&model.UserDevice{},
 		&model.PhoneVerification{},
 		&model.A2ATask{},
+		&model.UserBlock{},
+		&model.ContentReport{},
 	); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}

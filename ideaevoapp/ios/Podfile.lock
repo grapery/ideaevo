@@ -1,0 +1,16 @@
+PODS:
+  - WechatOpenSDK (2.0.5)
+
+DEPENDENCIES:
+  - WechatOpenSDK (= 2.0.5)
+
+SPEC REPOS:
+  trunk:
+    - WechatOpenSDK
+
+SPEC CHECKSUMS:
+  WechatOpenSDK: a363db41205f57abbc05bb6b80bf2d2ed1ea40bf
+
+PODFILE CHECKSUM: f1e8bcbb3364d28ed5fa0f90e06d2dc129d8df72
+
+COCOAPODS: 1.16.2

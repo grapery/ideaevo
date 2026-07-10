@@ -42,7 +42,7 @@ func (h *UserAuthHandler) Register(c *gin.Context) {
 	}
 
 	middleware.SetJWTCookie(c, token, 86400)
-	c.JSON(http.StatusCreated, gin.H{"user": model.ToUserResponse(user), "token": token, "message": "注册成功，请查收验证邮件"})
+	c.JSON(http.StatusCreated, gin.H{"user": service.EnrichUserResponse(user), "token": token, "message": "注册成功，请查收验证邮件"})
 }
 
 func (h *UserAuthHandler) Login(c *gin.Context) {
@@ -68,7 +68,7 @@ func (h *UserAuthHandler) Login(c *gin.Context) {
 	}
 
 	middleware.SetJWTCookie(c, token, 86400)
-	c.JSON(http.StatusOK, gin.H{"user": model.ToUserResponse(user), "token": token})
+	c.JSON(http.StatusOK, gin.H{"user": service.EnrichUserResponse(user), "token": token})
 }
 
 func (h *UserAuthHandler) VerifyEmail(c *gin.Context) {
@@ -122,6 +122,7 @@ func (h *UserAuthHandler) AppleLogin(c *gin.Context) {
 		IdentityToken string `json:"identity_token" binding:"required"`
 		Email         string `json:"email"`
 		Name          string `json:"name"`
+		Nonce         string `json:"nonce"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
@@ -133,7 +134,7 @@ func (h *UserAuthHandler) AppleLogin(c *gin.Context) {
 		return
 	}
 
-	identity, err := h.authSvc.VerifyAppleIdentityToken(input.IdentityToken)
+	identity, err := h.authSvc.VerifyAppleIdentityTokenWithNonce(input.IdentityToken, strings.TrimSpace(input.Nonce))
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "apple_auth_failed"})
 		return
@@ -158,7 +159,94 @@ func (h *UserAuthHandler) AppleLogin(c *gin.Context) {
 	}
 
 	middleware.SetJWTCookie(c, token, 86400)
-	c.JSON(http.StatusOK, gin.H{"user": model.ToUserResponse(user), "token": token})
+	c.JSON(http.StatusOK, gin.H{"user": service.EnrichUserResponse(user), "token": token})
+}
+
+func (h *UserAuthHandler) GoogleTokenLogin(c *gin.Context) {
+	var input struct {
+		IDToken string `json:"id_token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+
+	if !h.authSvc.GoogleMobileEnabled() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "google_not_configured"})
+		return
+	}
+
+	info, err := h.authSvc.VerifyGoogleIDToken(input.IDToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "google_auth_failed"})
+		return
+	}
+
+	user, err := h.userSvc.FindOrCreateGoogleUser(info.ID, info.Email, info.Name, info.Picture)
+	if err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": ServiceError(err)})
+		return
+	}
+
+	token, err := h.authSvc.GenerateUserJWT(user.ID, string(user.Role))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": FriendlyMessage("failed to generate token")})
+		return
+	}
+
+	middleware.SetJWTCookie(c, token, 86400)
+	c.JSON(http.StatusOK, gin.H{"user": service.EnrichUserResponse(user), "token": token})
+}
+
+func (h *UserAuthHandler) WeChatCodeLogin(c *gin.Context) {
+	var input struct {
+		Code string `json:"code" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+
+	if !h.authSvc.WeChatCredentialsConfigured() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "wechat_not_configured"})
+		return
+	}
+
+	info, err := h.authSvc.ExchangeWeChatCode(input.Code)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "wechat_oauth_failed"})
+		return
+	}
+
+	user, err := h.userSvc.FindOrCreateWeChatUser(info)
+	if err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": ServiceError(err)})
+		return
+	}
+
+	h.finalizeWeChatMobileLogin(c, user)
+}
+
+func (h *UserAuthHandler) finalizeWeChatMobileLogin(c *gin.Context, user *model.User) {
+	if !user.PhoneVerified {
+		pending, err := h.authSvc.GeneratePendingJWT(user.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": FriendlyMessage("failed to generate token")})
+			return
+		}
+		middleware.SetPendingCookie(c, pending, 900)
+		c.JSON(http.StatusOK, gin.H{"status": "pending", "pending_token": pending})
+		return
+	}
+
+	token, err := h.authSvc.GenerateUserJWT(user.ID, string(user.Role))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": FriendlyMessage("failed to generate token")})
+		return
+	}
+
+	middleware.SetJWTCookie(c, token, 86400)
+	c.JSON(http.StatusOK, gin.H{"user": service.EnrichUserResponse(user), "token": token})
 }
 
 func (h *UserAuthHandler) Me(c *gin.Context) {
@@ -168,7 +256,7 @@ func (h *UserAuthHandler) Me(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("user not found")})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"user": model.ToUserResponse(user)})
+	c.JSON(http.StatusOK, gin.H{"user": service.EnrichUserResponse(user)})
 }
 
 func (h *UserAuthHandler) Logout(c *gin.Context) {

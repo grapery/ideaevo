@@ -12,7 +12,9 @@ import { api } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
+import { resolveEntityMediaURL } from "@/lib/avatar";
 import { ImplStatusBadge } from "@/components/impl-status-badge";
+import { IdeaBuryButton } from "@/components/idea-bury-button";
 
 function formatRepoLabel(url: string) {
   try {
@@ -68,6 +70,20 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
       notify.error(getErrorMessage(err));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleIconReset() {
+    setUploading(true);
+    try {
+      const updated = await api.resetIdeaIcon(idea.id);
+      setIconUrl(updated.icon_url || "");
+      notify.success("已恢复默认图标");
+      router.refresh();
+    } catch (err) {
+      notify.error(getErrorMessage(err));
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -154,12 +170,12 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
 
           <div>
             <span className="meta-label mb-1 block">想法图标</span>
-            <div className="flex items-center gap-3">
-              {iconUrl && safeUrl(iconUrl) ? (
-                <img src={safeUrl(iconUrl)!} alt="" className="h-10 w-10 border border-[var(--rule)] object-cover" />
-              ) : (
-                <div className="btn-icon h-10 w-10 text-xs text-[var(--ink-faint)]">—</div>
-              )}
+            <div className="flex flex-wrap items-center gap-3">
+              <img
+                src={resolveEntityMediaURL("idea", idea.id, iconUrl || idea.icon_url)}
+                alt=""
+                className="h-10 w-10 rounded-[8px] border border-[var(--rule)] object-cover"
+              />
               <input
                 ref={fileRef}
                 type="file"
@@ -179,15 +195,14 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
               >
                 {uploading ? "上传中…" : iconUrl ? "更换图标" : "上传图标"}
               </button>
-              {iconUrl && (
-                <button
-                  type="button"
-                  className="text-[12px] text-[var(--ink-faint)] hover:text-[var(--ink)]"
-                  onClick={() => setIconUrl("")}
-                >
-                  移除
-                </button>
-              )}
+              <button
+                type="button"
+                className="text-[12px] text-[var(--ink-faint)] hover:text-[var(--ink)]"
+                disabled={uploading}
+                onClick={() => void handleIconReset()}
+              >
+                恢复默认
+              </button>
             </div>
           </div>
 
@@ -199,6 +214,12 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
           >
             {saving ? "保存中…" : "保存"}
           </button>
+
+          {idea.status === "active" && (
+            <div className="border-t border-[var(--divider)] pt-3">
+              <IdeaBuryButton idea={idea} />
+            </div>
+          )}
         </div>
       ) : hasDisplay ? (
         <div className="min-w-0 flex-1 space-y-2">
@@ -225,11 +246,19 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
               </a>
             )}
           </div>
+          {canEdit && idea.status === "active" && (
+            <div className="pt-2">
+              <IdeaBuryButton idea={idea} />
+            </div>
+          )}
         </div>
       ) : (
-        <p className="text-[12px] text-[var(--ink-faint)]">
-          可补充实现状态、仓库、演示链接与图标（均为可选）
-        </p>
+        <div className="space-y-2">
+          <p className="text-[12px] text-[var(--ink-faint)]">
+            可补充实现状态、仓库、演示链接与图标（均为可选）
+          </p>
+          {canEdit && idea.status === "active" && <IdeaBuryButton idea={idea} />}
+        </div>
       )}
     </div>
   );
@@ -237,13 +266,13 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
 
 /** 标题旁的小图标 */
 export function IdeaIcon({ idea }: { idea: Idea }) {
-  const icon = safeUrl(idea.icon_url);
+  const icon = resolveEntityMediaURL("idea", idea.id, idea.icon_url);
   if (!icon) return null;
   return (
     <img
       src={icon}
       alt=""
-      className="h-9 w-9 shrink-0 border border-[var(--rule)] object-cover"
+      className="h-9 w-9 shrink-0 rounded-[8px] border border-[var(--rule)] object-cover"
     />
   );
 }

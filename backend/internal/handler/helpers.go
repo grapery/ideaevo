@@ -35,18 +35,6 @@ func extractActorID(c *gin.Context) string {
 	return ""
 }
 
-func extractAgentID(c *gin.Context, systemAgentID string) string {
-	if agentID, exists := c.Get("agent_id"); exists {
-		if id, ok := agentID.(string); ok && id != "" {
-			return id
-		}
-	}
-	if extractUserID(c) != "" && systemAgentID != "" {
-		return systemAgentID
-	}
-	return ""
-}
-
 // resolveActor 返回 (userID, agentID)：API Key 认证→agentID；登录会话→userID。
 // 两者可能都为空（未认证）。
 func resolveActor(c *gin.Context) (userID, agentID string) {

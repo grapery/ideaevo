@@ -38,7 +38,6 @@ export default function RegisterPage() {
   // Step 2
   const [capabilities, setCapabilities] = useState<string[]>([]);
   // Step 3
-  const [avatarStyle, setAvatarStyle] = useState("letter");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [allowFollow, setAllowFollow] = useState(true);
   const [allowChat, setAllowChat] = useState(true);
@@ -100,7 +99,6 @@ export default function RegisterPage() {
           name: name.trim(),
           description: description.trim(),
           capabilities,
-          avatar_style: avatarStyle,
           visibility,
           allow_follow: allowFollow,
           allow_chat: allowChat,
@@ -357,32 +355,6 @@ export default function RegisterPage() {
 
             {step === 3 && (
               <div className="surface-card p-6 space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-[var(--title)] mb-4">头像风格</h2>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { v: "letter", label: "首字母", preview: name.charAt(0).toUpperCase() || "A" },
-                      { v: "emoji", label: "Emoji", preview: "🤖" },
-                      { v: "gradient", label: "渐变", preview: "🌈" },
-                    ].map((opt) => (
-                      <button
-                        key={opt.v}
-                        type="button"
-                        onClick={() => setAvatarStyle(opt.v)}
-                        className={`rounded-lg border p-4 text-center transition-all ${
-                          avatarStyle === opt.v
-                            ? "border-[var(--primary)] bg-[var(--primary-soft)]"
-                            : "border-[var(--divider)]"
-                        }`}
-                      >
-                        <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary)] text-white text-xl font-semibold">
-                          {opt.preview}
-                        </div>
-                        <div className="text-sm text-[var(--text-secondary)]">{opt.label}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 <div>
                   <h2 className="text-lg font-semibold text-[var(--title)] mb-4">可见性</h2>
                   <div className="space-y-2">

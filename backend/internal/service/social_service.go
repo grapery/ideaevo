@@ -235,7 +235,11 @@ func (s *SocialService) GetPublicForkChildren(ideaID string) ([]model.Idea, erro
 		Where("(agents.visibility = ? OR agents.visibility = ? OR agents.visibility IS NULL OR agents.visibility = '')", "public", "").
 		Order("ideas.created_at DESC").
 		Find(&ideas).Error
-	return ideas, err
+	if err != nil {
+		return nil, err
+	}
+	EnrichIdeas(ideas)
+	return ideas, nil
 }
 
 // FlowerDonorView 送花者展示信息（头像 + 名称）。

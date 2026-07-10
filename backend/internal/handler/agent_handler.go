@@ -9,13 +9,14 @@ import (
 )
 
 type AgentHandler struct {
-	agentSvc *service.AgentService
-	ideaSvc  *service.IdeaService
-	assets   *service.ObjectStore
+	agentSvc  *service.AgentService
+	ideaSvc   *service.IdeaService
+	assets    *service.ObjectStore
+	followSvc *service.FollowService
 }
 
-func NewAgentHandler(agentSvc *service.AgentService, ideaSvc *service.IdeaService, assets *service.ObjectStore) *AgentHandler {
-	return &AgentHandler{agentSvc: agentSvc, ideaSvc: ideaSvc, assets: assets}
+func NewAgentHandler(agentSvc *service.AgentService, ideaSvc *service.IdeaService, assets *service.ObjectStore, followSvc *service.FollowService) *AgentHandler {
+	return &AgentHandler{agentSvc: agentSvc, ideaSvc: ideaSvc, assets: assets, followSvc: followSvc}
 }
 
 func (h *AgentHandler) GetByID(c *gin.Context) {
@@ -31,6 +32,33 @@ func (h *AgentHandler) GetByID(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
 			return
 		}
+	}
+	if userID := c.GetString("user_id"); userID != "" && h.followSvc != nil {
+		following, err := h.followSvc.IsFollowingAgent(userID, agent.ID)
+		if err == nil {
+			agent.IsFollowing = &following
+		}
+	}
+	c.JSON(http.StatusOK, agent)
+}
+
+// ResetAvatar restores the agent avatar to the default DiceBear image (owner only).
+func (h *AgentHandler) ResetAvatar(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "login required"})
+		return
+	}
+	agent, err := h.agentSvc.ResetAvatar(userID, c.Param("id"))
+	if err != nil {
+		status := http.StatusInternalServerError
+		if fmt.Sprint(err) == "forbidden: not the agent owner" {
+			status = http.StatusForbidden
+		} else if len(fmt.Sprint(err)) >= 5 && fmt.Sprint(err)[:5] == "agent" {
+			status = http.StatusNotFound
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
 	}
 	c.JSON(http.StatusOK, agent)
 }
@@ -156,6 +184,30 @@ func (h *AgentHandler) UpdateAgent(c *gin.Context) {
 	c.JSON(http.StatusOK, agent)
 }
 
+// RotateAPIKey 为 Agent 重新生成 API Key（仅 owner；明文 Key 仅此次响应返回）。
+func (h *AgentHandler) RotateAPIKey(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "login required"})
+		return
+	}
+
+	apiKey, err := h.agentSvc.RotateAPIKey(userID, c.Param("id"))
+	if err != nil {
+		status := http.StatusInternalServerError
+		msg := err.Error()
+		if msg == "forbidden: not the agent owner" || msg == "forbidden: system agents cannot rotate keys" {
+			status = http.StatusForbidden
+		} else if len(msg) >= 5 && msg[:5] == "agent" {
+			status = http.StatusNotFound
+		}
+		c.JSON(status, gin.H{"error": msg})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"api_key": apiKey})
+}
+
 // DeleteAgent 删除 Agent（仅 owner）。
 func (h *AgentHandler) DeleteAgent(c *gin.Context) {
 	userID := c.GetString("user_id")
@@ -196,6 +248,31 @@ func (h *AgentHandler) ListMyAgents(c *gin.Context) {
 	}
 
 	agents, total, err := h.agentSvc.ListByOwner(userID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"agents": agents,
+		"total":  total,
+	})
+}
+
+// ListUserAgents 返回某用户拥有的 Agent（公开主页用；非本人仅 public）。
+func (h *AgentHandler) ListUserAgents(c *gin.Context) {
+	limit := 20
+	offset := 0
+	if v := c.Query("limit"); v != "" {
+		fmt.Sscanf(v, "%d", &limit)
+	}
+	if v := c.Query("offset"); v != "" {
+		fmt.Sscanf(v, "%d", &offset)
+	}
+
+	ownerID := c.Param("id")
+	viewerID := c.GetString("user_id")
+	agents, total, err := h.agentSvc.ListByOwnerForProfile(ownerID, viewerID, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

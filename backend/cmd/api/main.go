@@ -62,7 +62,9 @@ func main() {
 	}
 	chatSvc := service.NewChatService(db, ideaSvc, agentSvc, llmSvc)
 	notifSvc := service.NewNotificationService(db)
+	prefsSvc := service.NewNotificationPreferencesService(db)
 	followSvc := service.NewFollowService(db, notifSvc)
+	modSvc := service.NewModerationService(db)
 	socialSvc.SetNotificationService(notifSvc)
 	wanyeSvc.SetNotificationService(notifSvc)
 
@@ -167,7 +169,7 @@ func main() {
 
 	ideaHandler := handler.NewIdeaHandler(ideaSvc, agentSvc, socialSvc, wanyeSvc, assets, systemAgentID)
 	agentSvc.SetObjectStore(assets)
-	agentHandler := handler.NewAgentHandler(agentSvc, ideaSvc, assets)
+	agentHandler := handler.NewAgentHandler(agentSvc, ideaSvc, assets, followSvc)
 	authHandler := handler.NewAuthHandler(agentSvc)
 	commentHandler := handler.NewCommentHandler(wanyeSvc)
 	activityHandler := handler.NewActivityHandler(db, followSvc, socialSvc)
@@ -176,9 +178,11 @@ func main() {
 	followHandler := handler.NewFollowHandler(followSvc, userSvc)
 	userHandler := handler.NewUserHandler(userSvc)
 	notifHandler := handler.NewNotificationHandler(notifSvc)
+	prefsHandler := handler.NewNotificationPreferencesHandler(prefsSvc)
 	settingsHandler := handler.NewUserSettingsHandler(userSvc, smsSvc, assets)
 	phoneHandler := handler.NewPhoneAuthHandler(userSvc, smsSvc, authSvc)
 	bridgeHandler := handler.NewAgentBridgeHandler(bridgeSvc)
+	modHandler := handler.NewModerationHandler(modSvc)
 
 	// —— A2A（Agent-to-Agent 协议）——
 	a2aSvc := a2a.NewService(db, chatSvc)
@@ -201,10 +205,9 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	rl := middleware.NewRateLimiter(100, time.Minute)
+	chatRL := middleware.NewRateLimiter(100, time.Minute)
 
 	api := r.Group("/api")
-	api.Use(rl.Middleware())
 	{
 		// Agent 注册要求登录（自动绑定 owner_user_id）
 		// MCP 等无浏览器场景用 API Key 认证已有 Agent，不走此路由
@@ -234,6 +237,8 @@ func main() {
 		api.POST("/auth/user/forgot-password", userAuthHandler.ForgotPassword)
 		api.POST("/auth/user/reset-password", userAuthHandler.ResetPassword)
 		api.POST("/auth/user/apple", userAuthHandler.AppleLogin)
+		api.POST("/auth/user/google", userAuthHandler.GoogleTokenLogin)
+		api.POST("/auth/user/wechat", userAuthHandler.WeChatCodeLogin)
 		api.GET("/auth/google", userAuthHandler.GoogleLogin)
 		api.GET("/auth/google/callback", userAuthHandler.GoogleCallback)
 		api.GET("/auth/wechat", userAuthHandler.WeChatLogin)
@@ -254,18 +259,23 @@ func main() {
 			userRoutes.GET("/auth/user/me", userAuthHandler.Me)
 			userRoutes.POST("/auth/user/logout", userAuthHandler.Logout)
 
-			// Chat sessions
+			// Chat sessions（列表/管理不限流；仅消息发送限流）
 			userRoutes.POST("/sessions", chatHandler.CreateSession)
 			userRoutes.GET("/sessions", chatHandler.ListSessions)
 			userRoutes.GET("/sessions/:id", chatHandler.GetSession)
 			userRoutes.PATCH("/sessions/:id", chatHandler.RenameSession)
 			userRoutes.DELETE("/sessions/:id", chatHandler.DeleteSession)
-			userRoutes.POST("/sessions/:id/messages", chatHandler.SendMessage)
-			userRoutes.GET("/sessions/:id/stream", chatHandler.SendMessageStream)
 			userRoutes.GET("/sessions/:id/messages", chatHandler.GetMessages)
 			userRoutes.POST("/sessions/:id/messages/:message_id/feedback", chatHandler.SetMessageFeedback)
 			userRoutes.DELETE("/sessions/:id/messages/:message_id/feedback", chatHandler.ClearMessageFeedback)
 			userRoutes.POST("/sessions/:id/fork", chatHandler.ForkSession)
+
+			chatMsgRoutes := userRoutes.Group("")
+			chatMsgRoutes.Use(chatRL.Middleware())
+			{
+				chatMsgRoutes.POST("/sessions/:id/messages", chatHandler.SendMessage)
+				chatMsgRoutes.GET("/sessions/:id/stream", chatHandler.SendMessageStream)
+			}
 
 			// User profile
 			userRoutes.GET("/user/profile", userHandler.GetMyProfile)
@@ -285,6 +295,12 @@ func main() {
 			userRoutes.POST("/notifications/read/:id", notifHandler.MarkRead)
 			userRoutes.POST("/notifications/read-all", notifHandler.MarkAllRead)
 
+			// Notification preferences & devices
+			userRoutes.GET("/user/notification-preferences", prefsHandler.Get)
+			userRoutes.PATCH("/user/notification-preferences", prefsHandler.Update)
+			userRoutes.POST("/user/devices", prefsHandler.RegisterDevice)
+			userRoutes.DELETE("/user/devices/:id", prefsHandler.DeleteDevice)
+
 			// Social follow
 			userRoutes.POST("/users/:id/follow", followHandler.Follow)
 			userRoutes.DELETE("/users/:id/follow", followHandler.Unfollow)
@@ -299,23 +315,34 @@ func main() {
 			userRoutes.PUT("/agents/:id", agentHandler.UpdateAgent)
 			userRoutes.DELETE("/agents/:id", agentHandler.DeleteAgent)
 			userRoutes.POST("/agents/:id/upload/presign", agentHandler.PresignUpload)
+			userRoutes.POST("/agents/:id/avatar/reset", agentHandler.ResetAvatar)
+			userRoutes.POST("/agents/:id/rotate-api-key", agentHandler.RotateAPIKey)
+
+			// UGC moderation
+			userRoutes.GET("/user/blocks", modHandler.ListBlocks)
+			userRoutes.POST("/users/:id/block", modHandler.BlockUser)
+			userRoutes.DELETE("/users/:id/block", modHandler.UnblockUser)
+			userRoutes.POST("/reports", modHandler.SubmitReport)
 		}
 
 		// Public user profile (with optional auth for follow status)
 		api.GET("/users/:id/profile", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetProfile)
+		api.GET("/users/:id/agents", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.ListUserAgents)
 		api.GET("/users/:id/ideas", ideaHandler.GetUserIdeas)
-		api.GET("/users/:id/followers", followHandler.GetFollowers)
-		api.GET("/users/:id/following", followHandler.GetFollowing)
+		api.GET("/users/:id/followers", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetFollowers)
+		api.GET("/users/:id/following", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetFollowing)
 
 		// Idea interactions — Agent API Key or logged-in user session
 		ideaActionRoutes := api.Group("")
 		ideaActionRoutes.Use(middleware.AgentOrUserAuth(agentSvc, cfg.JWTSecret))
 		{
+			ideaActionRoutes.POST("/ideas", ideaHandler.Create)
 			ideaActionRoutes.GET("/ideas/:id/like", ideaHandler.GetLikeStatus)
 			ideaActionRoutes.POST("/ideas/:id/like", ideaHandler.Like)
 			ideaActionRoutes.DELETE("/ideas/:id/like", ideaHandler.Unlike)
 			ideaActionRoutes.POST("/ideas/:id/flowers", ideaHandler.SendFlowers)
 			ideaActionRoutes.POST("/ideas/:id/fork", ideaHandler.Fork)
+			ideaActionRoutes.POST("/ideas/:id/bury", ideaHandler.Bury)
 			ideaActionRoutes.POST("/ideas/:id/share", ideaHandler.Share)
 			ideaActionRoutes.POST("/ideas/:id/reactions", ideaHandler.React)
 			ideaActionRoutes.DELETE("/ideas/:id/reactions", ideaHandler.Unreact)
@@ -324,6 +351,7 @@ func main() {
 			ideaActionRoutes.PATCH("/ideas/:id/meta", ideaHandler.UpdateMeta)
 			ideaActionRoutes.PATCH("/ideas/:id/description", ideaHandler.UpdateDescription)
 			ideaActionRoutes.POST("/ideas/:id/upload/presign", ideaHandler.PresignUpload)
+			ideaActionRoutes.POST("/ideas/:id/icon/reset", ideaHandler.ResetIcon)
 		}
 
 		// Agent-authenticated routes
@@ -332,7 +360,6 @@ func main() {
 		{
 			agentRoutes.GET("/auth/me", authHandler.Me)
 			agentRoutes.PATCH("/ideas/:id/status", ideaHandler.UpdateStatus)
-			agentRoutes.POST("/ideas/:id/bury", ideaHandler.Bury)
 			agentRoutes.PATCH("/comments/:id", commentHandler.Update)
 			agentRoutes.DELETE("/comments/:id", commentHandler.Delete)
 
@@ -344,6 +371,7 @@ func main() {
 		adminRoutes := api.Group("")
 		adminRoutes.Use(middleware.AdminAuth(cfg.JWTSecret))
 		{
+			adminRoutes.GET("/admin/comments", commentHandler.ListAdmin)
 			adminRoutes.PATCH("/admin/comments/:id/moderate", commentHandler.Moderate)
 		}
 	}
@@ -351,14 +379,11 @@ func main() {
 	// —— A2A 协议端点（Agent Card 发现 + JSON-RPC task 处理）——
 	// Agent Card 发现端点保持公开（A2A 规范要求）。
 	// JSON-RPC task 端点要求鉴权（AgentOrUserAuth：API Key 或 JWT）。
-	rl2 := middleware.NewRateLimiter(100, time.Minute) // A2A 独立限流
 	a2aPublic := r.Group("/a2a")
-	a2aPublic.Use(rl2.Middleware())
 	a2aPublic.GET("/.well-known/agent.json", a2aHandler.GetAgentCards)
 	a2aPublic.GET("/agents/:agentId/.well-known/agent.json", a2aHandler.GetAgentCard)
 
 	a2aAuth := r.Group("/a2a")
-	a2aAuth.Use(rl2.Middleware())
 	a2aAuth.Use(middleware.AgentOrUserAuth(agentSvc, cfg.JWTSecret))
 	a2aAuth.POST("/agents/:agentId", a2aHandler.HandleJSONRPC)
 	log.Printf("[a2a] endpoints registered at /a2a (discovery=public, tasks=auth)")

@@ -123,6 +123,13 @@ export function Header() {
                     关注 / 粉丝
                   </Link>
                   <Link
+                    href="/user/agents"
+                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    我的 Agent
+                  </Link>
+                  <Link
                     href="/user/profile"
                     className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
                     onClick={() => setDropdownOpen(false)}
@@ -153,8 +160,11 @@ export function Header() {
             </button>
           )}
 
+          <Link href="/ideas/new" className="hidden sm:inline-flex btn-outline btn-sm">
+            + 发布想法
+          </Link>
           <Link href="/chat" className="hidden sm:inline-flex btn-outline btn-sm">
-            + 对话创建
+            对话
           </Link>
 
           <button

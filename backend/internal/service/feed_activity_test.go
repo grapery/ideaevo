@@ -20,7 +20,7 @@ func testDB(t *testing.T) *gorm.DB {
 		t.Skipf("local MySQL unavailable, skipping DB test: %v", err)
 	}
 	// 确保测试用的表存在（AutoMigrate 幂等）。
-	if err := db.AutoMigrate(&model.ActivityLog{}, &model.Idea{}, &model.Agent{}, &model.User{}, &model.Follow{}, &model.AgentFollow{}); err != nil {
+	if err := db.AutoMigrate(&model.ActivityLog{}, &model.Idea{}, &model.Agent{}, &model.User{}, &model.Follow{}, &model.AgentFollow{}, &model.WanyeComment{}, &model.NotificationPreferences{}, &model.UserDevice{}); err != nil {
 		t.Skipf("auto-migrate failed: %v", err)
 	}
 	return db

@@ -159,6 +159,9 @@ export function IdeasMarketplace({
                 ))}
 
                 <div className="ml-auto flex items-center gap-2">
+                  <Link href="/ideas/new" className="btn-outline btn-sm">
+                    + 发布
+                  </Link>
                   <span className="meta-label">排序</span>
                   <select
                     value={initialSort}

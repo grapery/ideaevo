@@ -1,0 +1,70 @@
+# WeChat OpenSDK (official Tencent CocoaPods distribution).
+# Run `pod install`, then open `Deimos.xcworkspace` or `Deimos.xcodeproj`.
+platform :ios, '17.0'
+
+target 'Deimos' do
+  use_frameworks!
+  pod 'WechatOpenSDK', '2.0.5'
+end
+
+SIMULATOR_LDFLAGS = '$(inherited) -ObjC -l"c++" -l"sqlite3.0" -l"z" -framework "CoreGraphics" -framework "Security" -framework "UIKit" -framework "WebKit"'
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '17.0'
+      config.build_settings.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
+    end
+  end
+
+  installer.aggregate_targets.each do |aggregate_target|
+    aggregate_target.xcconfigs.each do |config_name, _config_file|
+      xcconfig_path = aggregate_target.xcconfig_path(config_name)
+      next unless File.exist?(xcconfig_path)
+
+      text = File.read(xcconfig_path)
+      text.gsub!(/^EXCLUDED_ARCHS\[sdk=iphonesimulator\*\] = arm64\n/, '')
+      text.gsub!(/-l"WechatOpenSDK" /, '')
+      File.write(xcconfig_path, text)
+    end
+
+    aggregate_target.user_project.native_targets.each do |target|
+      next unless target.name == 'Deimos'
+
+      target.build_configurations.each do |config|
+        config.build_settings.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
+        config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'x86_64'
+        config.build_settings['OTHER_LDFLAGS[sdk=iphonesimulator*]'] = SIMULATOR_LDFLAGS
+        config.build_settings['OTHER_LDFLAGS[sdk=iphoneos*]'] = '$(inherited) -l"WechatOpenSDK"'
+      end
+    end
+
+    aggregate_target.user_project.save
+  end
+end
+
+post_integrate do |installer|
+  installer.aggregate_targets.each do |aggregate_target|
+    user_project = aggregate_target.user_project
+
+    user_project.native_targets.each do |target|
+      next unless target.name == 'Deimos'
+
+      target.frameworks_build_phase.files.to_a.each do |build_file|
+        ref = build_file.file_ref
+        next unless ref
+
+        if ref.path == 'Pods_Deimos.framework' || ref.name == 'Pods_Deimos.framework'
+          build_file.remove_from_project
+        end
+      end
+    end
+
+    frameworks_group = user_project.main_group.find_subpath('Frameworks', false)
+    frameworks_group&.files&.to_a&.each do |ref|
+      ref.remove_from_project if ref.path == 'Pods_Deimos.framework'
+    end
+
+    user_project.save
+  end
+end

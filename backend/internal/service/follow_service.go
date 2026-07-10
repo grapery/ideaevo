@@ -111,6 +111,22 @@ func (s *FollowService) IsFollowing(followerID, followingID string) (bool, error
 	return count > 0, nil
 }
 
+func (s *FollowService) FollowingIDsAmong(viewerID string, userIDs []string) ([]string, error) {
+	if viewerID == "" || len(userIDs) == 0 {
+		return nil, nil
+	}
+	var follows []model.Follow
+	if err := s.db.Where("follower_id = ? AND following_id IN ?", viewerID, userIDs).
+		Find(&follows).Error; err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(follows))
+	for _, f := range follows {
+		out = append(out, f.FollowingID)
+	}
+	return out, nil
+}
+
 func (s *FollowService) FollowAgent(userID, agentID string) error {
 	var agent model.Agent
 	if err := s.db.Where("id = ?", agentID).First(&agent).Error; err != nil {

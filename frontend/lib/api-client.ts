@@ -1,6 +1,18 @@
-import { Idea, WanyeComment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities, IdeaVersion, IdeaVersionSummary } from "./types";
+import { Idea, WanyeComment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities, IdeaVersion, IdeaVersionSummary, Agent } from "./types";
 import { getApiBase } from "./api-base";
 import { parseResponseError, formatApiError } from "./api-error";
+
+export class ApiRequestError extends Error {
+  status: number;
+  body?: Record<string, unknown>;
+
+  constructor(message: string, status: number, body?: Record<string, unknown>) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+    this.body = body;
+  }
+}
 
 async function fetchApi(path: string, options?: RequestInit): Promise<Response> {
   try {
@@ -19,7 +31,20 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   });
   if (!res.ok) {
-    throw new Error(await parseResponseError(res));
+    let body: Record<string, unknown> | undefined;
+    try {
+      body = await res.json();
+    } catch {
+      body = undefined;
+    }
+    const raw = body?.error ?? body?.message;
+    const message =
+      typeof raw === "string"
+        ? formatApiError(raw, `请求失败 (${res.status})`)
+        : Array.isArray(raw) && typeof raw[0] === "string"
+          ? formatApiError(raw[0], `请求失败 (${res.status})`)
+          : formatApiError(res.statusText, `请求失败 (${res.status})`);
+    throw new ApiRequestError(message, res.status, body);
   }
   return res.json();
 }
@@ -36,7 +61,20 @@ async function requestWithAuth<T>(path: string, options?: RequestInit): Promise<
     credentials: "include",
   });
   if (!res.ok) {
-    throw new Error(await parseResponseError(res));
+    let body: Record<string, unknown> | undefined;
+    try {
+      body = await res.json();
+    } catch {
+      body = undefined;
+    }
+    const raw = body?.error ?? body?.message;
+    const message =
+      typeof raw === "string"
+        ? formatApiError(raw, `请求失败 (${res.status})`)
+        : Array.isArray(raw) && typeof raw[0] === "string"
+          ? formatApiError(raw[0], `请求失败 (${res.status})`)
+          : formatApiError(res.statusText, `请求失败 (${res.status})`);
+    throw new ApiRequestError(message, res.status, body);
   }
   return res.json();
 }
@@ -76,6 +114,9 @@ export const api = {
       { method: "POST", body: JSON.stringify({ content_type: contentType, kind: "icon" }) }
     ),
 
+  resetIdeaIcon: (id: string) =>
+    requestWithAuth<Idea>(`/ideas/${id}/icon/reset`, { method: "POST" }),
+
   presignIdeaAsset: (id: string, kind: "icon" | "content", contentType: string) =>
     requestWithAuth<{ upload_url: string; public_url: string; key: string; expires_in: number }>(
       `/ideas/${id}/upload/presign`,
@@ -95,6 +136,26 @@ export const api = {
     requestWithAuth<Idea>(`/ideas/${id}/description`, {
       method: "PATCH",
       body: JSON.stringify(data),
+    }),
+
+  createIdea: (data: {
+    title: string;
+    description: string;
+    category?: string;
+    tags?: string[];
+    repo_url?: string;
+    demo_url?: string;
+    agent_id?: string;
+  }) =>
+    requestWithAuth<Idea>(`/ideas`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  buryIdea: (id: string, reason: string) =>
+    requestWithAuth<Idea>(`/ideas/${id}/bury`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
     }),
 
   searchIdeas: (query: string, page = 1) =>
@@ -189,6 +250,11 @@ export const api = {
 };
 
 export const agentApi = {
+  listMyAgents: (limit = 50, offset = 0) =>
+    requestWithAuth<{ agents: Agent[]; total: number }>(
+      `/my/agents?limit=${limit}&offset=${offset}`
+    ),
+
   getFollowStatus: (id: string) =>
     request<{ is_following: boolean }>(`/agents/${id}/follow`, {
       credentials: "include",
@@ -215,6 +281,17 @@ export const agentApi = {
       `/agents/${agentId}/upload/presign`,
       { method: "POST", body: JSON.stringify({ kind, content_type: contentType }) }
     ),
+
+  resetAvatar: (agentId: string) =>
+    requestWithAuth<{ id: string; avatar_url?: string; name?: string }>(
+      `/agents/${agentId}/avatar/reset`,
+      { method: "POST" }
+    ),
+
+  rotateApiKey: (agentId: string) =>
+    requestWithAuth<{ api_key: string }>(`/agents/${agentId}/rotate-api-key`, {
+      method: "POST",
+    }),
 };
 
 export const authApi = {
@@ -475,6 +552,11 @@ export const userApi = {
   getUserIdeas: (id: string, limit = 50, offset = 0) =>
     request<{ ideas: Idea[]; total: number }>(
       `/users/${id}/ideas?limit=${limit}&offset=${offset}`
+    ),
+
+  getUserAgents: (id: string, limit = 20, offset = 0) =>
+    request<{ agents: Agent[]; total: number }>(
+      `/users/${id}/agents?limit=${limit}&offset=${offset}`
     ),
 
   follow: (id: string) =>

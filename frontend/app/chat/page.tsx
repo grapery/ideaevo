@@ -257,9 +257,10 @@ export default function ChatPage() {
           };
 
           if (eventType === "user_message" && payload.id) {
+            const messageId = payload.id;
             setMessages((prev) =>
               upsertChatMessage(prev, {
-                id: payload.id,
+                id: messageId,
                 session_id: sessionId,
                 role: "user",
                 content: payload.content ?? content,

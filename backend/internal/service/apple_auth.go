@@ -2,7 +2,9 @@ package service
 
 import (
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -49,6 +51,10 @@ func (s *AuthService) AppleEnabled() bool {
 }
 
 func (s *AuthService) VerifyAppleIdentityToken(tokenStr string) (*AppleIdentity, error) {
+	return s.VerifyAppleIdentityTokenWithNonce(tokenStr, "")
+}
+
+func (s *AuthService) VerifyAppleIdentityTokenWithNonce(tokenStr, rawNonce string) (*AppleIdentity, error) {
 	if !s.AppleEnabled() {
 		return nil, fmt.Errorf("apple sign in not configured")
 	}
@@ -100,6 +106,17 @@ func (s *AuthService) VerifyAppleIdentityToken(tokenStr string) (*AppleIdentity,
 	}
 
 	email, _ := claims["email"].(string)
+	if rawNonce != "" {
+		claimNonce, _ := claims["nonce"].(string)
+		if claimNonce == "" {
+			return nil, errors.New("apple token missing nonce")
+		}
+		sum := sha256.Sum256([]byte(rawNonce))
+		expected := hex.EncodeToString(sum[:])
+		if claimNonce != expected {
+			return nil, errors.New("apple token nonce mismatch")
+		}
+	}
 	return &AppleIdentity{Sub: sub, Email: email}, nil
 }
 

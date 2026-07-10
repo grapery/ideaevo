@@ -1,0 +1,158 @@
+import SwiftUI
+
+/// Ardot Master Board icon mapping (`Ic/*` components exported via MCP).
+enum DeimosIcon: String {
+    case heart
+    case flower
+    case comment
+    case fork
+    case home
+    case chat
+    case activity
+    case profile
+    case search
+    case bell
+    case share
+    case send
+    case sparkles
+    case chevronBack
+    case chevronRight
+    case gear
+    case lock
+    case edit
+    case sliders
+    case info
+    case shield
+    case plus
+    case phone
+    case trash
+    case globe
+    case close
+    case check
+    case users
+    case document
+    case externalLink
+    case more
+    case wifiOff
+
+    /// Vector assets exported from Ardot (`35:*` / `88:*` icon components).
+    var assetName: String? {
+        switch self {
+        case .heart: return "deimos-heart"
+        case .flower: return "deimos-flower"
+        case .comment: return "deimos-comment"
+        case .fork: return "deimos-fork"
+        case .home: return "deimos-home"
+        case .chat: return "deimos-chat"
+        case .activity: return "deimos-activity"
+        case .profile: return "deimos-profile"
+        case .search: return "deimos-search"
+        case .bell: return "deimos-bell"
+        case .send: return "deimos-send"
+        case .share: return "deimos-share"
+        case .chevronBack: return "deimos-chevron-back"
+        case .chevronRight: return "deimos-chevron-right"
+        case .gear: return "deimos-gear"
+        case .lock: return "deimos-lock"
+        case .edit: return "deimos-edit"
+        case .sparkles: return "deimos-sparkles"
+        case .sliders: return "deimos-sliders"
+        case .info: return "deimos-info"
+        case .shield: return "deimos-shield"
+        case .plus: return "deimos-plus"
+        case .phone: return "deimos-phone"
+        case .trash: return "deimos-trash"
+        case .globe: return "deimos-globe"
+        case .close: return "deimos-close"
+        case .check: return "deimos-check"
+        case .users: return "deimos-users"
+        case .document: return "deimos-document"
+        case .externalLink: return "deimos-external-link"
+        case .more: return "deimos-more"
+        default: return nil
+        }
+    }
+
+    /// SF Symbol fallback when no exported asset exists.
+    var sfSymbol: String {
+        switch self {
+        case .heart: return "heart"
+        case .flower: return "flower"
+        case .comment: return "bubble.left"
+        case .fork: return "point.3.connected.trianglepath.dotted"
+        case .home: return "house"
+        case .chat: return "bubble.left.and.bubble.right"
+        case .activity: return "chart.bar"
+        case .profile: return "person"
+        case .search: return "magnifyingglass"
+        case .bell: return "bell"
+        case .share: return "square.and.arrow.up"
+        case .send: return "paperplane.fill"
+        case .sparkles: return "sparkles"
+        case .chevronBack: return "chevron.left"
+        case .chevronRight: return "chevron.right"
+        case .gear: return "gearshape"
+        case .lock: return "lock"
+        case .edit: return "pencil"
+        case .sliders: return "slider.horizontal.3"
+        case .info: return "info.circle"
+        case .shield: return "shield"
+        case .plus: return "plus"
+        case .phone: return "phone"
+        case .trash: return "trash"
+        case .globe: return "globe"
+        case .close: return "xmark"
+        case .check: return "checkmark"
+        case .users: return "person.2"
+        case .document: return "doc.text"
+        case .externalLink: return "arrow.up.right"
+        case .more: return "ellipsis"
+        case .wifiOff: return "wifi.exclamationmark"
+        }
+    }
+}
+
+struct DeimosIconView: View {
+    let icon: DeimosIcon
+    var size: CGFloat = 16
+    var color: Color = AtlasColors.inkFaint
+
+    var body: some View {
+        Group {
+            if let assetName = icon.assetName {
+                Image(assetName)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Image(systemName: icon.sfSymbol)
+                    .font(.system(size: size, weight: .regular))
+            }
+        }
+        .frame(width: size, height: size)
+        .foregroundStyle(color)
+    }
+}
+
+extension View {
+    /// zdesign card: subtle shadow (opacity 0.05, radius 8). Cards float gently.
+    func atlasElevatedCard() -> some View {
+        shadow(color: AtlasMetrics.shadowCardColor, radius: AtlasMetrics.shadowCardRadius, y: AtlasMetrics.shadowCardY)
+    }
+
+    /// Settings / list group card — subtle shadow (no stroke).
+    func atlasSettingsGroupShadow() -> some View {
+        shadow(color: AtlasMetrics.shadowCardColor, radius: AtlasMetrics.shadowCardRadius, y: AtlasMetrics.shadowCardY)
+    }
+
+    /// Toolbar float chrome · `C/ToolbarFloat` — white pill/circle + soft shadow.
+    func atlasToolbarFloat(cornerRadius: CGFloat = 999) -> some View {
+        background(AtlasColors.surface)
+        .shadow(color: AtlasMetrics.shadowFloatColor, radius: AtlasMetrics.shadowFloatRadius, y: AtlasMetrics.shadowFloatY)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+
+    func atlasPagePadding() -> some View {
+        padding(.horizontal, AtlasMetrics.pageX)
+    }
+}

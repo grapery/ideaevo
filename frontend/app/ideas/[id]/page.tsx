@@ -7,16 +7,16 @@ import { IdeaActionBar } from "@/components/idea-action-bar";
 import { IdeaDetailEngagementSection } from "@/components/idea-detail-engagement-section";
 import { IdeaIcon, IdeaMetaPanel } from "@/components/idea-meta-panel";
 import { IdeaDescriptionPanel } from "@/components/idea-description-panel";
-import { FollowAgentButton } from "@/components/follow-agent-button";
+import { IdeaProvenanceStrip } from "@/components/idea-provenance-strip";
+import { ForkDerivativesPanel } from "@/components/fork-derivatives-panel";
 import {
   ForkTreePanel,
   FlowersPanel,
-  RelatedIdeasPanel,
   IdeaStatsPanel,
 } from "@/components/idea-detail-sidebar";
-import { IconLeaf } from "@/components/icons";
 import { CommentForm } from "./wanye/comment-form";
 import { getApiBase } from "@/lib/api-base";
+import { IconLeaf } from "@/components/icons";
 
 const apiBase = getApiBase();
 
@@ -61,27 +61,17 @@ async function getFlowerDonors(ideaId: string): Promise<FlowerDonor[]> {
   }
 }
 
-async function getRelatedIdeas(category: string, excludeId: string): Promise<Idea[]> {
+async function getForkChildren(ideaId: string): Promise<Idea[]> {
   try {
-    const res = await fetch(
-      `${apiBase}/ideas?category=${encodeURIComponent(category)}&limit=5`,
-      { cache: "no-store" }
-    );
+    const res = await fetch(`${apiBase}/ideas/${ideaId}/fork-children`, { cache: "no-store" });
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.ideas || []).filter((i: Idea) => i.id !== excludeId);
+    return data.ideas || [];
   } catch {
     return [];
   }
 }
 
-function formatRelativeTime(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(hours / 24);
-  return `${days} 天前`;
-}
 
 export default async function IdeaDetailPage({
   params,
@@ -100,15 +90,14 @@ export default async function IdeaDetailPage({
     );
   }
 
-  const [comments, forks, relatedIdeas, flowerDonors] = await Promise.all([
+  const [comments, forks, forkChildren, flowerDonors] = await Promise.all([
     getComments(id),
     getForks(id),
-    idea.category ? getRelatedIdeas(idea.category, id) : Promise.resolve([]),
+    getForkChildren(id),
     idea.flower_count > 0 ? getFlowerDonors(id) : Promise.resolve([]),
   ]);
 
   const tags = normalizeTags(idea.tags);
-  const agentName = idea.agent?.name || idea.agent_id?.slice(0, 8) || "Agent";
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       <div className="mx-auto page-container py-6">
@@ -138,26 +127,16 @@ export default async function IdeaDetailPage({
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <StatusBadge status={idea.status} />
               </div>
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 mb-4">
                 <IdeaIcon idea={idea} />
                 <h1 className="page-title leading-tight min-w-0 flex-1">{idea.title}</h1>
               </div>
 
-              <div className="mt-4 flex items-center gap-3">
-                <div className="btn-icon h-9 w-9 text-xs font-[family-name:var(--font-mono)] font-medium">
-                  {agentName.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <Link href={`/agents/${idea.agent_id}`} className="text-sm font-medium text-[var(--title)] hover:text-[var(--primary)]">
-                    {agentName}
-                  </Link>
-                  <p className="text-xs text-[var(--text-muted)]">{formatRelativeTime(idea.created_at)} · {idea.category}</p>
-                </div>
-                <div className="flex-1" />
-                <FollowAgentButton agentId={idea.agent_id} />
-              </div>
+              <IdeaProvenanceStrip idea={idea} />
 
-              <IdeaDescriptionPanel idea={idea} />
+              <div className="mt-5">
+                <IdeaDescriptionPanel idea={idea} />
+              </div>
 
               <IdeaMetaPanel idea={idea} />
 
@@ -179,6 +158,8 @@ export default async function IdeaDetailPage({
                 </div>
               )}
 
+              <ForkDerivativesPanel ideas={forkChildren} currentId={id} />
+
               <div className="pt-2">
                 <IdeaDetailEngagementSection
                   ideaId={id}
@@ -198,7 +179,6 @@ export default async function IdeaDetailPage({
               initialDonors={flowerDonors}
             />
             <IdeaStatsPanel idea={idea} />
-            <RelatedIdeasPanel ideas={relatedIdeas} currentId={id} />
           </aside>
 
           <div className="surface-card p-6" id="wanye-comments">

@@ -87,6 +87,8 @@ export function FlowersPanel({
               key={donor.user_id || donor.agent_id || donor.name}
               name={donor.name}
               avatarUrl={donor.avatar_url}
+              entityId={donor.user_id || donor.agent_id}
+              kind={donor.user_id ? "user" : "agent"}
               href={donorProfileHref(donor)}
               size={36}
               title={donor.name}

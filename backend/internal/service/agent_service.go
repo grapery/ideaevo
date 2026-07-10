@@ -97,10 +97,40 @@ func (s *AgentService) Register(input RegisterAgentInput) (*RegisterAgentResult,
 		return nil, fmt.Errorf("create agent: %w", err)
 	}
 
+	avatar := DefaultAgentAvatarURL(agent.ID)
+	if err := s.db.Model(agent).Update("avatar_url", avatar).Error; err != nil {
+		return nil, fmt.Errorf("set default avatar: %w", err)
+	}
+	agent.AvatarURL = avatar
+
 	return &RegisterAgentResult{
 		Agent:  *agent,
 		APIKey: apiKey,
 	}, nil
+}
+
+// RotateAPIKey 为 Agent 重新生成 API Key（仅 owner；新 Key 仅返回一次）。
+func (s *AgentService) RotateAPIKey(ownerUserID, agentID string) (string, error) {
+	var agent model.Agent
+	if err := s.db.First(&agent, "id = ?", agentID).Error; err != nil {
+		return "", fmt.Errorf("agent not found: %w", err)
+	}
+	if agent.OwnerUserID == "" {
+		return "", fmt.Errorf("forbidden: system agents cannot rotate keys")
+	}
+	if agent.OwnerUserID != ownerUserID {
+		return "", fmt.Errorf("forbidden: not the agent owner")
+	}
+
+	apiKey, err := generateAPIKey()
+	if err != nil {
+		return "", fmt.Errorf("generate api key: %w", err)
+	}
+	hash := hashAPIKey(apiKey)
+	if err := s.db.Model(&agent).Update("api_key_hash", hash).Error; err != nil {
+		return "", fmt.Errorf("update api key: %w", err)
+	}
+	return apiKey, nil
 }
 
 // UpdateAgent 更新 Agent 配置。仅 owner（或系统 agent）可更新。
@@ -170,7 +200,24 @@ func (s *AgentService) UpdateAgent(ownerUserID, agentID string, input UpdateAgen
 		s.db.First(&agent, "id = ?", agentID)
 	}
 
+	EnrichAgent(&agent)
 	return &agent, nil
+}
+
+// ResetAvatar restores the agent avatar to the default DiceBear URL (owner only).
+func (s *AgentService) ResetAvatar(ownerUserID, agentID string) (*model.Agent, error) {
+	var agent model.Agent
+	if err := s.db.First(&agent, "id = ?", agentID).Error; err != nil {
+		return nil, fmt.Errorf("agent not found: %w", err)
+	}
+	if agent.OwnerUserID != ownerUserID {
+		return nil, fmt.Errorf("forbidden: not the agent owner")
+	}
+	url := DefaultAgentAvatarURL(agentID)
+	if err := s.db.Model(&agent).Update("avatar_url", url).Error; err != nil {
+		return nil, err
+	}
+	return s.GetByID(agentID)
 }
 
 // DeleteAgent 删除 Agent。仅 owner 可删除。
@@ -245,7 +292,152 @@ func (s *AgentService) ListByOwner(ownerUserID string, limit, offset int) ([]mod
 		Find(&agents).Error; err != nil {
 		return nil, 0, err
 	}
+	EnrichAgents(agents)
+	s.attachFollowerCounts(agents)
 	return agents, total, nil
+}
+
+// ListByOwnerForProfile 用户主页展示其 Agent；非本人仅返回 public。
+func (s *AgentService) ListByOwnerForProfile(ownerUserID, viewerUserID string, limit, offset int) ([]model.Agent, int64, error) {
+	if limit == 0 {
+		limit = 20
+	}
+	query := s.db.Model(&model.Agent{}).Where("owner_user_id = ?", ownerUserID)
+	if viewerUserID != ownerUserID {
+		query = query.Where("visibility = ? OR visibility = '' OR visibility IS NULL", "public")
+	}
+	var total int64
+	query.Count(&total)
+	var agents []model.Agent
+	if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&agents).Error; err != nil {
+		return nil, 0, err
+	}
+	EnrichAgents(agents)
+	s.attachFollowerCounts(agents)
+	ptrs := make([]*model.Agent, len(agents))
+	for i := range agents {
+		ptrs[i] = &agents[i]
+	}
+	s.attachOwners(ptrs)
+	return agents, total, nil
+}
+
+// AttachOwnersToIdeas 为 idea 列表中的 agent 填充 owner 信息（User→Agent→Idea 三角）。
+func (s *AgentService) AttachOwnersToIdeas(ideas []model.Idea) {
+	if len(ideas) == 0 {
+		return
+	}
+	ptrs := make([]*model.Agent, 0, len(ideas))
+	for i := range ideas {
+		ptrs = append(ptrs, &ideas[i].Agent)
+	}
+	s.attachOwners(ptrs)
+}
+
+func (s *AgentService) attachFollowerCounts(agents []model.Agent) {
+	if len(agents) == 0 {
+		return
+	}
+	ids := make([]string, len(agents))
+	for i, a := range agents {
+		ids[i] = a.ID
+	}
+	type row struct {
+		AgentID string
+		Cnt     int64
+	}
+	var rows []row
+	s.db.Table("agent_follows").
+		Select("agent_id, COUNT(*) as cnt").
+		Where("agent_id IN ?", ids).
+		Group("agent_id").
+		Scan(&rows)
+	counts := make(map[string]int, len(rows))
+	for _, r := range rows {
+		counts[r.AgentID] = int(r.Cnt)
+	}
+	for i := range agents {
+		agents[i].FollowerCount = counts[agents[i].ID]
+	}
+}
+
+func (s *AgentService) attachOwners(agents []*model.Agent) {
+	if len(agents) == 0 {
+		return
+	}
+	ownerIDs := make(map[string]struct{})
+	for _, a := range agents {
+		if a != nil && a.OwnerUserID != "" {
+			ownerIDs[a.OwnerUserID] = struct{}{}
+		}
+	}
+	if len(ownerIDs) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(ownerIDs))
+	for id := range ownerIDs {
+		ids = append(ids, id)
+	}
+	type ownerRow struct {
+		ID        string
+		Name      string
+		AvatarURL string
+	}
+	var rows []ownerRow
+	s.db.Table("users").Select("id, name, avatar_url").Where("id IN ?", ids).Scan(&rows)
+	ownerMap := make(map[string]model.AgentOwner, len(rows))
+	for _, r := range rows {
+		ownerMap[r.ID] = model.AgentOwner{
+			ID:        r.ID,
+			Name:      r.Name,
+			AvatarURL: ResolveUserAvatar(r.ID, r.AvatarURL),
+		}
+	}
+	for _, a := range agents {
+		if a == nil || a.OwnerUserID == "" {
+			continue
+		}
+		if o, ok := ownerMap[a.OwnerUserID]; ok {
+			copy := o
+			a.Owner = &copy
+		}
+	}
+}
+
+func (s *AgentService) enrichActivityTargets(activities []model.ActivityLog) {
+	if len(activities) == 0 {
+		return
+	}
+	ideaIDs := make(map[string]struct{})
+	for _, a := range activities {
+		if a.TargetType == "idea" && a.TargetID != "" {
+			ideaIDs[a.TargetID] = struct{}{}
+		}
+	}
+	if len(ideaIDs) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(ideaIDs))
+	for id := range ideaIDs {
+		ids = append(ids, id)
+	}
+	type ideaRow struct {
+		ID    string
+		Title string
+	}
+	var ideas []ideaRow
+	s.db.Table("ideas").Select("id, title").Where("id IN ?", ids).Scan(&ideas)
+	titleMap := make(map[string]string, len(ideas))
+	for _, idea := range ideas {
+		titleMap[idea.ID] = idea.Title
+	}
+	for i := range activities {
+		if activities[i].TargetType == "idea" {
+			if title, ok := titleMap[activities[i].TargetID]; ok {
+				activities[i].TargetTitle = title
+			}
+		}
+	}
 }
 
 func (s *AgentService) ValidateAPIKey(apiKey string) (*model.Agent, error) {
@@ -262,6 +454,9 @@ func (s *AgentService) GetByID(id string) (*model.Agent, error) {
 	if err := s.db.First(&agent, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
+	EnrichAgent(&agent)
+	s.attachFollowerCounts([]model.Agent{agent})
+	s.attachOwners([]*model.Agent{&agent})
 	return &agent, nil
 }
 
@@ -274,6 +469,8 @@ func (s *AgentService) List(limit, offset int) ([]model.Agent, int64, error) {
 	if err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&agents).Error; err != nil {
 		return nil, 0, err
 	}
+	EnrichAgents(agents)
+	s.attachFollowerCounts(agents)
 	return agents, total, nil
 }
 
@@ -304,6 +501,7 @@ func (s *AgentService) Stats(agentID string) (*AgentStats, error) {
 	var recent []model.ActivityLog
 	s.db.Where("actor_id = ? AND actor_type = 'agent'", agentID).
 		Order("created_at DESC").Limit(10).Find(&recent)
+	s.enrichActivityTargets(recent)
 	stats.RecentActivity = recent
 
 	return &stats, nil

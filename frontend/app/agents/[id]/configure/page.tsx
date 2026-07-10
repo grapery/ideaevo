@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { notify } from "@/components/ui/notify";
 import { IconLeaf } from "@/components/icons";
 import { agentApi } from "@/lib/api-client";
+import { AgentApiKeyPanel } from "@/components/agent-api-key-panel";
 
 const LLM_MODELS = [
   { value: "", label: "全局默认" },
@@ -108,6 +109,20 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
       notify.error(err instanceof Error ? err.message : "保存失败");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function resetAvatar() {
+    if (!agentId) return;
+    setUploading(true);
+    try {
+      const res = await agentApi.resetAvatar(agentId);
+      setAgent((prev) => (prev ? { ...prev, avatar_url: res.avatar_url } : prev));
+      notify.success("已恢复默认头像");
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : "重置失败");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -218,6 +233,14 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                   }}
                 />
               </label>
+              <button
+                type="button"
+                className="btn-outline btn-sm"
+                disabled={uploading}
+                onClick={() => void resetAvatar()}
+              >
+                恢复默认
+              </button>
             </div>
           </div>
 
@@ -354,6 +377,10 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               {saving ? "保存中…" : "保存配置"}
             </button>
           </div>
+        </div>
+
+        <div className="mt-6 surface-card p-6">
+          <AgentApiKeyPanel agentId={agentId} agentName={agent.name} />
         </div>
 
         {/* A2A 协议信息 */}

@@ -31,6 +31,7 @@ type AuthService struct {
 	wechatAppSecret  string
 	wechatRedirectURL string
 	appleBundleID    string
+	googleIOSClientID string
 }
 
 type GoogleUserInfo struct {
@@ -66,6 +67,7 @@ func NewAuthService(cfg *config.Config) *AuthService {
 		wechatAppSecret:   cfg.WeChatAppSecret,
 		wechatRedirectURL: cfg.WeChatRedirectURL,
 		appleBundleID:     cfg.AppleBundleID,
+		googleIOSClientID: cfg.GoogleIOSClientID,
 	}
 
 	if cfg.GoogleClientID != "" {
@@ -152,7 +154,11 @@ func (s *AuthService) ExchangeGoogleCode(code string) (*GoogleUserInfo, error) {
 }
 
 func (s *AuthService) WeChatEnabled() bool {
-	return s.wechatAppID != "" && s.wechatAppSecret != "" && s.wechatRedirectURL != ""
+	return s.WeChatCredentialsConfigured() && s.wechatRedirectURL != ""
+}
+
+func (s *AuthService) WeChatCredentialsConfigured() bool {
+	return s.wechatAppID != "" && s.wechatAppSecret != ""
 }
 
 func (s *AuthService) WeChatAuthURL(state string) string {
@@ -169,7 +175,7 @@ func (s *AuthService) WeChatAuthURL(state string) string {
 }
 
 func (s *AuthService) ExchangeWeChatCode(code string) (*WeChatUserInfo, error) {
-	if !s.WeChatEnabled() {
+	if !s.WeChatCredentialsConfigured() {
 		return nil, fmt.Errorf("wechat oauth not configured")
 	}
 

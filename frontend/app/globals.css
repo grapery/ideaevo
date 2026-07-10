@@ -52,7 +52,9 @@
   /* Elevation & shape — editorial flat */
   --shadow: none;
   --shadow-lg: 0 1px 4px rgba(20, 23, 27, 0.06);
+  --shadow-float: 0 2px 12px rgba(20, 23, 27, 0.07), 0 1px 3px rgba(20, 23, 27, 0.04);
   --radius-card: 2px;
+  --radius-float: 16px;
   --radius-pill: 2px;
   --radius-btn: 2px;
 
@@ -262,6 +264,14 @@ a {
   border: 1px solid var(--rule);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-lg);
+}
+
+.profile-float-card {
+  position: relative;
+  background: var(--bg-surface);
+  border: 1px solid var(--rule-light);
+  border-radius: var(--radius-float);
+  box-shadow: var(--shadow-float);
 }
 
 .card-stack {

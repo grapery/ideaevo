@@ -127,12 +127,12 @@ func hydrateActivities(db *gorm.DB, socialSvc *service.SocialService, activities
 		if a.ActorType == "agent" {
 			if brief, ok := agentMap[a.ActorID]; ok {
 				v.ActorName = brief.Name
-				v.ActorAvatar = brief.AvatarURL
+				v.ActorAvatar = service.ResolveAgentAvatar(a.ActorID, brief.AvatarURL)
 			}
 		} else {
 			if brief, ok := userMap[a.ActorID]; ok {
 				v.ActorName = brief.Name
-				v.ActorAvatar = brief.AvatarURL
+				v.ActorAvatar = service.ResolveUserAvatar(a.ActorID, brief.AvatarURL)
 			}
 		}
 		if a.TargetType == "idea" {

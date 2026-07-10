@@ -74,13 +74,61 @@ func (s *WanyeService) CreateComment(input CreateCommentInput) (*model.WanyeComm
 
 func (s *WanyeService) GetComments(ideaID string) ([]model.WanyeComment, error) {
 	var comments []model.WanyeComment
-	if err := s.db.Where("idea_id = ? AND parent_id IS NULL", ideaID).
-		Preload("Replies").
+	if err := s.db.Where("idea_id = ? AND parent_id IS NULL AND is_moderated = ?", ideaID, false).
+		Preload("Replies", "is_moderated = ?", false).
 		Order("created_at DESC").
 		Find(&comments).Error; err != nil {
 		return nil, err
 	}
 	return comments, nil
+}
+
+func (s *WanyeService) GetCommentsEnriched(ideaID string) ([]CommentView, error) {
+	comments, err := s.GetComments(ideaID)
+	if err != nil {
+		return nil, err
+	}
+	return EnrichComments(s.db, comments), nil
+}
+
+type AdminCommentFilter struct {
+	Moderated *bool
+	IdeaID    string
+	Limit     int
+	Offset    int
+}
+
+func (s *WanyeService) ListCommentsAdmin(filter AdminCommentFilter) ([]model.WanyeComment, int64, error) {
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	offset := filter.Offset
+	if offset < 0 {
+		offset = 0
+	}
+
+	q := s.db.Model(&model.WanyeComment{})
+	if filter.Moderated != nil {
+		q = q.Where("is_moderated = ?", *filter.Moderated)
+	}
+	if filter.IdeaID != "" {
+		q = q.Where("idea_id = ?", filter.IdeaID)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var comments []model.WanyeComment
+	if err := q.Order("created_at DESC").Limit(limit).Offset(offset).Find(&comments).Error; err != nil {
+		return nil, 0, err
+	}
+	return comments, total, nil
 }
 
 func (s *WanyeService) UpdateComment(id, userID, content string) (*model.WanyeComment, error) {
@@ -96,10 +144,15 @@ func (s *WanyeService) UpdateComment(id, userID, content string) (*model.WanyeCo
 }
 
 func (s *WanyeService) DeleteComment(id, userID string) error {
-	result := s.db.Where("id = ? AND user_id = ?", id, userID).Delete(&model.WanyeComment{})
-	if result.RowsAffected == 0 {
+	var comment model.WanyeComment
+	if err := s.db.Where("id = ? AND user_id = ?", id, userID).First(&comment).Error; err != nil {
 		return fmt.Errorf("comment not found")
 	}
+	if err := s.db.Delete(&comment).Error; err != nil {
+		return err
+	}
+	s.db.Model(&model.Idea{}).Where("id = ? AND comment_count > 0", comment.IdeaID).
+		UpdateColumn("comment_count", gorm.Expr("comment_count - 1"))
 	return nil
 }
 

@@ -1,0 +1,128 @@
+{
+  "project": "Deimos Mobile",
+  "slug": "ideaevoapp",
+  "version": "0.8.0",
+  "platform": "ios",
+  "board": {
+    "fileId": "698461866257245",
+    "pageId": "47:1",
+    "pageName": "Master Board"
+  },
+  "frame": {
+    "width": 390,
+    "height": 844,
+    "device": "iPhone 14",
+    "scale": 3
+  },
+  "theme": {
+    "bgCanvas": "#FAFAFA",
+    "bgSurface": "#FFFFFF",
+    "fill": "#F5F5F5",
+    "ink": "#0A0A0A",
+    "inkSoft": "#3D3D3D",
+    "inkFaint": "#8E8E93",
+    "rule": "#EBEBEB",
+    "entityUser": "#FFF4A8",
+    "entityAgent": "#D4F56A",
+    "entityIdea": "#B8F5EC",
+    "accentFork": "#FF6B35",
+    "destructive": "#FF3B30",
+    "radiusCard": 16,
+    "radiusSheet": 20,
+    "pageX": 16,
+    "sectionGap": 16,
+    "fontSans": "Inter",
+    "fontCJK": "PingFang SC"
+  },
+  "designSystem": [
+    { "id": "DS", "name": "Design System v5", "ardotNode": "93:713" },
+    { "id": "C/Triangle", "name": "RelationshipTriangle", "ardotNode": "93:747" },
+    { "id": "C/PillTabBar", "name": "PillTabBar", "ardotNode": "93:1789" }
+  ],
+  "primaryScreens": [
+    { "id": "S02", "name": "首页 Feed", "ardotNode": "93:927" },
+    { "id": "S06", "name": "对话列表", "ardotNode": "93:1013" },
+    { "id": "S08", "name": "动态", "ardotNode": "93:952" },
+    { "id": "S09", "name": "我的", "ardotNode": "93:1049" }
+  ],
+  "featureScreens": [
+    { "id": "S04", "name": "想法详情", "ardotNode": "93:759" },
+    { "id": "S05", "name": "评论", "ardotNode": "93:991" },
+    { "id": "S04P", "name": "发布想法", "ardotNode": "93:1123" },
+    { "id": "S04D", "name": "Fork 谱系", "ardotNode": "93:1136" },
+    { "id": "S03", "name": "聊天线程", "ardotNode": "93:904" },
+    { "id": "S03S", "name": "搜索结果", "ardotNode": "93:1170" },
+    { "id": "S09B", "name": "他人主页", "ardotNode": "93:833" },
+    { "id": "S09C", "name": "粉丝/关注", "ardotNode": "93:1151" },
+    { "id": "S10", "name": "Agent 主页", "ardotNode": "93:868" },
+    { "id": "S13", "name": "发现 Agent", "ardotNode": "93:1111" },
+    { "id": "S14B", "name": "我的 Agents", "ardotNode": "93:1093" },
+    { "id": "S01", "name": "登录", "ardotNode": "93:1035" },
+    { "id": "S01R", "name": "注册", "ardotNode": "93:1358" },
+    { "id": "S01C", "name": "忘记密码", "ardotNode": "93:1185" },
+    { "id": "S08N", "name": "通知", "ardotNode": "93:972" },
+    { "id": "S11", "name": "设置", "ardotNode": "93:1074" },
+    { "id": "S11F", "name": "关于火卫二", "ardotNode": "93:1262" },
+    { "id": "S06C", "name": "Agent 选择器", "ardotNode": "93:1242" },
+    { "id": "S14", "name": "Agent 编辑器", "ardotNode": "93:1393" },
+    { "id": "S14N", "name": "新建 Agent", "ardotNode": "93:1612" },
+    { "id": "S04E", "name": "想法 Owner 编辑", "ardotNode": "93:1422" },
+    { "id": "S04V", "name": "版本对比", "ardotNode": "93:1590" },
+    { "id": "S11E", "name": "编辑资料", "ardotNode": "93:1450" },
+    { "id": "S11A", "name": "账户与安全", "ardotNode": "93:1471" },
+    { "id": "S11N", "name": "通知偏好", "ardotNode": "93:1494" },
+    { "id": "S11L", "name": "法律与隐私", "ardotNode": "93:1517" },
+    { "id": "S11P", "name": "App 偏好", "ardotNode": "93:1581" },
+    { "id": "S03F", "name": "聊天反馈态", "ardotNode": "93:1535" }
+  ],
+  "sheetsAndDialogs": [
+    { "id": "S12A", "name": "登录拦截 Sheet", "ardotNode": "93:1196" },
+    { "id": "S12F", "name": "Fork Sheet", "ardotNode": "93:1206" },
+    { "id": "S12B", "name": "埋葬 Sheet", "ardotNode": "93:1221" },
+    { "id": "S12D", "name": "注销 Dialog", "ardotNode": "93:1233" },
+    { "id": "S12G", "name": "删除 Agent Dialog", "ardotNode": "93:1603" },
+    { "id": "S11PH", "name": "Phone 绑定 Sheet", "ardotNode": "93:1631" },
+    { "id": "S12T", "name": "Toast", "ardotNode": "93:1317" }
+  ],
+  "statesAndEmpty": [
+    { "id": "S02L", "name": "首页 Loading", "ardotNode": "93:1279" },
+    { "id": "S02E", "name": "首页 Empty", "ardotNode": "93:1305" },
+    { "id": "S02O", "name": "首页 Offline", "ardotNode": "93:1376" },
+    { "id": "S03E", "name": "搜索无结果", "ardotNode": "93:1324" },
+    { "id": "S09CE", "name": "关注空态", "ardotNode": "93:1335" },
+    { "id": "S14BE", "name": "Agent 空态", "ardotNode": "93:1348" },
+    { "id": "S06E", "name": "对话空态", "ardotNode": "93:1556" },
+    { "id": "S08F", "name": "关注需登录", "ardotNode": "93:1567" },
+    { "id": "S08E", "name": "动态空态", "ardotNode": "93:1646" }
+  ],
+  "detailComponents": [
+    { "id": "S04F", "name": "送花者网格特写", "ardotNode": "93:1671" }
+  ],
+  "tabBarAndCompliance": [
+    { "id": "S00", "name": "Tab IA", "ardotNode": "93:1805" },
+    { "id": "S02G", "name": "Guest Browse", "ardotNode": "93:1905" },
+    { "id": "S11PP", "name": "Privacy Policy", "ardotNode": "93:1818" },
+    { "id": "S11TS", "name": "Terms of Service", "ardotNode": "93:1834" },
+    { "id": "S11CG", "name": "Community Guidelines", "ardotNode": "93:1850" },
+    { "id": "S11CS", "name": "Contact Support", "ardotNode": "93:1893" },
+    { "id": "S12RC", "name": "Report Content", "ardotNode": "93:1865" },
+    { "id": "S12BU", "name": "Block User", "ardotNode": "93:1884" },
+    { "id": "S04M", "name": "Idea Action Menu", "ardotNode": "93:1940" }
+  ],
+  "gapCompletion": [
+    { "id": "S08A", "name": "Activity Full", "ardotNode": "93:1951" },
+    { "id": "S06RN", "name": "Chat Rename Sheet", "ardotNode": "93:1994" },
+    { "id": "S06DL", "name": "Delete Session Dialog", "ardotNode": "93:2003" },
+    { "id": "S01V", "name": "Verify Email Link", "ardotNode": "93:2012" },
+    { "id": "S01RL", "name": "Reset Password Link", "ardotNode": "93:2020" },
+    { "id": "S11WX", "name": "WeChat Phone Bind", "ardotNode": "93:2031" },
+    { "id": "S04CTA", "name": "Idea Chat CTA", "ardotNode": "93:2044" },
+    { "id": "S04SIM", "name": "Similar Ideas Warning", "ardotNode": "93:2052" },
+    { "id": "S09M", "name": "User Action Menu", "ardotNode": "93:2063" },
+    { "id": "S14AK", "name": "API Key Reveal", "ardotNode": "93:2074" },
+    { "id": "S00L", "name": "App Bootstrap Loading", "ardotNode": "93:2084" },
+    { "id": "S08NE", "name": "Notifications Empty", "ardotNode": "93:2088" },
+    { "id": "S05E", "name": "Comments Empty", "ardotNode": "93:2096" },
+    { "id": "S11BL", "name": "Blocklist", "ardotNode": "93:2108" }
+  ]
+}

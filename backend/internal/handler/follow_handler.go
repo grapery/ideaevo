@@ -41,6 +41,7 @@ func (h *FollowHandler) Unfollow(c *gin.Context) {
 
 func (h *FollowHandler) GetFollowers(c *gin.Context) {
 	userID := c.Param("id")
+	viewerID := c.GetString("user_id")
 	limit, offset := getPagination(c)
 
 	users, total, err := h.followSvc.GetFollowers(userID, limit, offset)
@@ -48,11 +49,12 @@ func (h *FollowHandler) GetFollowers(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"users": toUserResponses(users), "total": total})
+	c.JSON(http.StatusOK, followListResponse(users, total, viewerID, h.followSvc))
 }
 
 func (h *FollowHandler) GetFollowing(c *gin.Context) {
 	userID := c.Param("id")
+	viewerID := c.GetString("user_id")
 	limit, offset := getPagination(c)
 
 	users, total, err := h.followSvc.GetFollowing(userID, limit, offset)
@@ -60,13 +62,32 @@ func (h *FollowHandler) GetFollowing(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"users": toUserResponses(users), "total": total})
+	c.JSON(http.StatusOK, followListResponse(users, total, viewerID, h.followSvc))
+}
+
+func followListResponse(users []model.User, total int64, viewerID string, followSvc *service.FollowService) gin.H {
+	resp := gin.H{
+		"users": toUserResponses(users),
+		"total": total,
+	}
+	if viewerID != "" && len(users) > 0 {
+		ids := make([]string, len(users))
+		for i := range users {
+			ids[i] = users[i].ID
+		}
+		if followingIDs, err := followSvc.FollowingIDsAmong(viewerID, ids); err == nil {
+			resp["following_ids"] = followingIDs
+		}
+	} else {
+		resp["following_ids"] = []string{}
+	}
+	return resp
 }
 
 func toUserResponses(users []model.User) []model.UserResponse {
 	out := make([]model.UserResponse, len(users))
 	for i := range users {
-		out[i] = model.ToUserResponse(&users[i])
+		out[i] = service.EnrichUserResponse(&users[i])
 	}
 	return out
 }

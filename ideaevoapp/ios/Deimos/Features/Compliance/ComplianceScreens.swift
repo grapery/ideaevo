@@ -1,0 +1,513 @@
+import SwiftUI
+import UserNotifications
+
+// MARK: - S21 Onboarding
+
+/// First-launch onboarding: value proposition + notification permission priming.
+struct OnboardingView: View {
+    var onComplete: () -> Void
+
+    var body: some View {
+        ZStack {
+            AtlasColors.aiGradient.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Skip button
+                HStack {
+                    Spacer()
+                    Button("跳过") { onComplete() }
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .padding(.trailing, 20)
+                        .padding(.top, 8)
+                }
+
+                Spacer()
+
+                // Illustration
+                ZStack {
+                    Circle()
+                        .fill(.white.opacity(0.12))
+                        .frame(width: 200, height: 200)
+                    DeimosIconView(icon: .sparkles, size: 100, color: .white)
+                }
+
+                // Headline
+                Text("GitHub for Ideas")
+                    .font(.system(size: 34, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 24)
+
+                Text("和 AI Agent 一起，发现、创建、Fork、演化每一个想法")
+                    .font(.system(size: 17))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+                    .padding(.top, 8)
+
+                // Feature list
+                VStack(alignment: .leading, spacing: 14) {
+                    onboardingFeature(icon: .fork, title: "Fork 演化", desc: "每个想法可 Fork、协作、版本溯源")
+                    onboardingFeature(icon: .sparkles, title: "AI 助手", desc: "与 Agent 对话，自动发现相似想法")
+                    onboardingFeature(icon: .flower, title: "送花互动", desc: "给喜欢的想法送花、评论、协作")
+                }
+                .padding(.horizontal, 32)
+                .padding(.top, 32)
+
+                Spacer()
+
+                // CTA
+                VStack(spacing: 10) {
+                    Button {
+                        requestNotificationPermission()
+                    } label: {
+                        HStack(spacing: 8) {
+                            DeimosIconView(icon: .bell, size: 20, color: AtlasColors.aiStart)
+                            Text("开启通知，不错过新想法")
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundStyle(AtlasColors.aiEnd)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 58)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .shadow(color: .black.opacity(0.15), radius: 24, y: 8)
+                    }
+                    .buttonStyle(.plain)
+
+                    Text("我们会在有人 Fork、送花或评论你的想法时通知你")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+                .padding(.bottom, 40)
+            }
+        }
+    }
+
+    private func onboardingFeature(icon: DeimosIcon, title: String, desc: String) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.white.opacity(0.2))
+                    .frame(width: 40, height: 40)
+                DeimosIconView(icon: icon, size: 22, color: .white)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+                Text(desc)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in
+            DispatchQueue.main.async { onComplete() }
+        }
+    }
+}
+
+// MARK: - S24 Force Update
+
+struct ForceUpdateView: View {
+    let version: String
+    var onUpdate: () -> Void
+
+    var body: some View {
+        ZStack {
+            AtlasColors.aiGradient.ignoresSafeArea()
+
+            VStack(spacing: 24) {
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(.white.opacity(0.15))
+                        .frame(width: 100, height: 100)
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 44, weight: .medium))
+                        .foregroundStyle(.white)
+                }
+
+                Text("发现新版本")
+                    .font(.system(size: 26, weight: .heavy))
+                    .foregroundStyle(.white)
+
+                Text("v\(version) 带来了全新的 AI 对话体验和性能优化。请更新到最新版本后继续使用。")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+                    .lineSpacing(4)
+
+                Spacer()
+
+                Button {
+                    onUpdate()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 20))
+                        Text("立即更新")
+                            .font(.system(size: 17, weight: .bold))
+                    }
+                    .foregroundStyle(AtlasColors.aiEnd)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 40)
+            }
+        }
+    }
+}
+
+// MARK: - S25 Offline / No Network
+
+struct OfflineView: View {
+    var onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(AtlasColors.chipSelectedBg)
+                    .frame(width: 120, height: 120)
+                Image(systemName: "wifi.slash")
+                    .font(.system(size: 48))
+                    .foregroundStyle(AtlasColors.primary)
+            }
+
+            Text("无法连接网络")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+
+            Text("请检查你的网络连接。我们会在网络恢复后自动重试。")
+                .font(.system(size: 15))
+                .foregroundStyle(AtlasColors.inkSoft)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 48)
+
+            Spacer()
+
+            Button {
+                onRetry()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 16))
+                    Text("重试")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(width: 200, height: 52)
+                .background(AtlasColors.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, 60)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AtlasColors.canvas)
+    }
+}
+
+// MARK: - S26 About / Compliance
+
+struct AboutView: View {
+    var onPrivacyPolicy: () -> Void
+    var onTerms: () -> Void
+    var onCommunity: () -> Void
+    var onReport: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                // Logo card
+                VStack(spacing: 8) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .fill(AtlasColors.aiGradient)
+                            .frame(width: 72, height: 72)
+                        DeimosIconView(icon: .sparkles, size: 40, color: .white)
+                    }
+                    Text("万叶 Deimos")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Text("版本 1.0.0 (1)")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(24)
+                .background(AtlasColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .atlasElevatedCard()
+
+                // Legal menu
+                VStack(spacing: 0) {
+                    aboutRow(icon: .lock, iconColor: AtlasColors.primary, iconBg: AtlasColors.chipSelectedBg, label: "隐私政策", action: onPrivacyPolicy)
+                    aboutDivider
+                    aboutRow(icon: .document, iconColor: AtlasColors.aiStart, iconBg: AtlasColors.purpleSoft, label: "用户协议", action: onTerms)
+                    aboutDivider
+                    aboutRow(icon: .users, iconColor: AtlasColors.accentWarning, iconBg: AtlasColors.accentWarningSoft, label: "社区准则", action: onCommunity)
+                    aboutDivider
+                    aboutRow(icon: .info, iconColor: AtlasColors.destructive, iconBg: AtlasColors.destructive.opacity(0.08), label: "投诉举报", action: onReport)
+                }
+                .background(AtlasColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .atlasElevatedCard()
+
+                // ICP compliance
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("备案信息")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                    icpRow(label: "ICP 备案号", value: "京ICP备2026000001号")
+                    icpRow(label: "软件著作权", value: "2026SR000001")
+                    icpRow(label: "运营公司", value: "北京万叶科技有限公司")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(AtlasColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .atlasElevatedCard()
+
+                // Footer
+                VStack(spacing: 4) {
+                    Text("Copyright 2026 北京万叶科技有限公司")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                    Text("support@wanye.app")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.primary)
+                }
+                .padding(.top, 8)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 40)
+        }
+        .background(AtlasColors.canvas)
+        .navigationTitle("关于万叶")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func aboutRow(icon: DeimosIcon, iconColor: Color, iconBg: Color, label: String, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(iconBg)
+                        .frame(width: 30, height: 30)
+                    DeimosIconView(icon: icon, size: 16, color: iconColor)
+                }
+                Text(label)
+                    .font(.system(size: 15))
+                    .foregroundStyle(AtlasColors.ink)
+                Spacer()
+                DeimosIconView(icon: .chevronRight, size: 16, color: AtlasColors.inkFaint)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 50)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var aboutDivider: some View {
+        Divider().overlay(AtlasColors.rule).padding(.leading, 52)
+    }
+
+    private func icpRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundStyle(AtlasColors.inkSoft)
+            Spacer()
+            Text(value)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(AtlasColors.ink)
+        }
+    }
+}
+
+// MARK: - S22 Privacy Policy (full in-app)
+
+struct PrivacyPolicyView: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("万叶隐私政策")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Text("最后更新：2026 年 6 月 28 日")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                }
+
+                privacySection(title: "一、我们收集哪些信息",
+                    body: "当您注册账号时，我们会收集您的邮箱地址和昵称。如果您使用 Apple/Google/微信登录，我们会接收 OAuth 提供商返回的唯一标识符。您发布的想法、评论和聊天消息内容将被存储用于服务运行。")
+
+                privacySection(title: "二、我们如何使用信息",
+                    body: "提供想法市场核心功能、语义搜索（使用向量化嵌入）、AI 对话及通知推送。我们不会出售您的个人信息给第三方。")
+
+                privacySection(title: "三、您的权利",
+                    body: "根据《个人信息保护法》及 GDPR/CCPA，您有权访问、更正、导出和删除您的个人数据。您可以在「设置 > 账号与安全」中操作，或联系 privacy@wanye.app。")
+
+                privacySection(title: "四、数据安全",
+                    body: "我们使用行业标准的安全措施保护您的数据，包括传输层加密（TLS）和安全存储。API Key 使用哈希存储，不以明文形式保存。")
+
+                privacySection(title: "五、未成年人保护",
+                    body: "本服务面向 16 岁及以上用户。我们不会有意收集未成年人的个人信息。")
+
+                privacySection(title: "六、联系我们",
+                    body: "如有任何隐私相关问题，请联系：privacy@wanye.app")
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 20)
+            .padding(.bottom, 40)
+        }
+        .background(AtlasColors.surface)
+        .navigationTitle("隐私政策")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func privacySection(title: String, body: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+            Text(body)
+                .font(.system(size: 15))
+                .foregroundStyle(AtlasColors.inkSoft)
+                .lineSpacing(5)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+// MARK: - S27 Rate App Sheet
+
+struct RateAppSheet: View {
+    @Binding var isPresented: Bool
+    @State private var rating = 4
+
+    var body: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(AtlasColors.aiGradient)
+                    .frame(width: 64, height: 64)
+                DeimosIconView(icon: .sparkles, size: 36, color: .white)
+            }
+
+            Text("喜欢万叶吗？")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+
+            Text("你的评分是对我们最大的鼓励")
+                .font(.system(size: 15))
+                .foregroundStyle(AtlasColors.inkSoft)
+
+            // Stars
+            HStack(spacing: 10) {
+                ForEach(1...5, id: \.self) { star in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) { rating = star }
+                    } label: {
+                        Image(systemName: star <= rating ? "star.fill" : "star")
+                            .font(.system(size: 32))
+                            .foregroundStyle(star <= rating ? AtlasColors.accentWarning : AtlasColors.rule)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Button {
+                if let url = URL(string: "https://apps.apple.com/app/idXXXXXXXXX") {
+                    UIApplication.shared.open(url)
+                }
+                isPresented = false
+            } label: {
+                Text("前往 App Store 评分")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(AtlasColors.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            Button("稍后再说") { isPresented = false }
+                .font(.system(size: 15))
+                .foregroundStyle(AtlasColors.inkFaint)
+        }
+        .padding(28)
+        .frame(maxWidth: 360)
+        .background(AtlasColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+}
+
+// MARK: - S28 Maintenance
+
+struct MaintenanceView: View {
+    var body: some View {
+        ZStack {
+            AtlasColors.primaryGradient.ignoresSafeArea()
+
+            VStack(spacing: 24) {
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(.white.opacity(0.15))
+                        .frame(width: 100, height: 100)
+                    Image(systemName: "wrench.and.screwdriver.fill")
+                        .font(.system(size: 44))
+                        .foregroundStyle(.white)
+                }
+
+                Text("系统维护中")
+                    .font(.system(size: 26, weight: .heavy))
+                    .foregroundStyle(.white)
+
+                Text("万叶正在进行升级维护，很快就会回来。感谢你的耐心等待！")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+
+                HStack(spacing: 6) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 14))
+                    Text("预计 30 分钟内恢复")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(.white.opacity(0.2))
+                .clipShape(Capsule())
+
+                Spacer()
+            }
+        }
+    }
+}

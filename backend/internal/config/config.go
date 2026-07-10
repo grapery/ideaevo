@@ -29,6 +29,7 @@ type Config struct {
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
+	GoogleIOSClientID  string
 
 	// WeChat Open Platform
 	WeChatAppID       string
@@ -100,6 +101,7 @@ func Load() *Config {
 		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", ""),
+		GoogleIOSClientID:  getEnv("GOOGLE_IOS_CLIENT_ID", ""),
 
 		WeChatAppID:       getEnv("WECHAT_APP_ID", ""),
 		WeChatAppSecret:   getEnv("WECHAT_APP_SECRET", ""),

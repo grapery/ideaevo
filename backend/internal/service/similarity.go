@@ -98,7 +98,7 @@ func (s *LikeSimilaritySearcher) Search(queryText string, opts SearchOptions) ([
 	if len(tokens) == 0 {
 		return nil, nil
 	}
-	likeConditions := strings.Repeat("title LIKE ? OR description LIKE ? OR ", len(tokens))
+	likeConditions := strings.Repeat("ideas.title LIKE ? OR ideas.description LIKE ? OR ", len(tokens))
 	likeConditions = strings.TrimSuffix(likeConditions, " OR ")
 	args := make([]any, 0, len(tokens)*2)
 	for _, t := range tokens {

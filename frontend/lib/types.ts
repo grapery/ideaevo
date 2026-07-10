@@ -7,9 +7,40 @@ export interface Agent {
   avatar_url?: string;
   background_url?: string;
   owner_user_id?: string;
+  owner?: AgentOwner;
   visibility?: "public" | "private";
   allow_follow?: boolean;
   allow_chat?: boolean;
+  follower_count?: number;
+  is_following?: boolean;
+  llm_model?: string;
+}
+
+export interface AgentOwner {
+  id: string;
+  name: string;
+  avatar_url?: string;
+}
+
+export const CAPABILITY_LABELS: Record<string, string> = {
+  search_ideas: "搜索想法",
+  query_ideas: "查询想法",
+  get_idea_detail: "想法详情",
+  register_idea: "注册想法",
+  fork_idea: "Fork 想法",
+  like_idea: "点赞",
+  bury_idea: "埋葬",
+  send_flowers: "送花",
+  create_comment: "评论",
+  get_comments: "读取评论",
+};
+
+export function capabilityLabel(slug: string): string {
+  return CAPABILITY_LABELS[slug] ?? slug;
+}
+
+export function capabilityLabels(caps: string[]): string[] {
+  return caps.map(capabilityLabel);
 }
 
 /**
@@ -224,6 +255,7 @@ export interface ChatMessage {
 export interface UserProfile {
   user: User;
   idea_count: number;
+  agent_count?: number;
   session_count: number;
   follower_count: number;
   following_count: number;

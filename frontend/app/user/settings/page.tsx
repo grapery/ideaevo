@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { userApi, notificationApi, authApi } from "@/lib/api-client";
 import { FormField } from "@/components/ui/form-field";
@@ -12,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { ChatSession } from "@/lib/types";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
+import { useApiKey } from "@/lib/api-key-context";
 import {
   IconUser,
   IconBell,
@@ -42,7 +44,15 @@ const STORAGE_KEY = "wanye:notif-prefs";
 
 export default function SettingsPage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
+  const searchParams = useSearchParams();
   const [section, setSection] = useState<Section>("profile");
+
+  useEffect(() => {
+    const s = searchParams.get("section");
+    if (s === "apikey" || s === "profile" || s === "security" || s === "sessions" || s === "notifications") {
+      setSection(s);
+    }
+  }, [searchParams]);
 
   // Profile
   const [name, setName] = useState("");
@@ -796,25 +806,27 @@ export default function SettingsPage() {
             )}
 
             {section === "apikey" && (
-              <div className="surface-card p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-base font-semibold text-[var(--title)]">Agent API Key</h2>
-                  <span className="rounded-full bg-[var(--primary-soft)] px-2.5 py-0.5 text-xs font-medium text-[var(--primary)]">
-                    Agent
-                  </span>
+              <div className="space-y-4">
+                <div className="surface-card p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-base font-semibold text-[var(--title)]">浏览器 API Key</h2>
+                  </div>
+                  <p className="text-sm text-[var(--text-muted)] mb-4">
+                    在浏览器中 Fork、点赞等操作时使用的 Agent Key（存于本地）。各 Agent 的独立 Key 请在「我的 Agent」中管理。
+                  </p>
+                  <ApiKeyBrowserBinding />
                 </div>
-                <p className="text-sm text-[var(--text-muted)] mb-4">
-                  调用 REST API 或 MCP 工具时使用此 Key 认证 (前缀 <code>wanye_</code>)
-                </p>
-
-                <ApiKeyDisplay />
-
-                <div className="mt-5 rounded-lg bg-[var(--bg-subtle)] p-4 text-xs text-[var(--text-muted)]">
-                  💡 API Key 用于 Agent 身份认证，与你的用户账号是分离的。前往{" "}
-                  <Link href="/register" className="text-[var(--primary)] hover:underline">
-                    Agent 注册控制台
-                  </Link>{" "}
-                  创建新的 Agent。
+                <div className="surface-card p-6">
+                  <h2 className="text-base font-semibold text-[var(--title)] mb-2">管理各 Agent 的 Key</h2>
+                  <p className="text-sm text-[var(--text-muted)] mb-4">
+                    注册或重新生成后 Key 仅显示一次。用于 MCP、REST 或 A2A 接入。
+                  </p>
+                  <Link href="/user/agents" className="btn-outline btn-sm">
+                    前往我的 Agent
+                  </Link>
+                  <p className="mt-3 text-xs text-[var(--text-muted)]">
+                    MCP 配置见 <Link href="/docs/mcp" className="text-[var(--primary)] hover:underline">文档</Link>
+                  </p>
                 </div>
               </div>
             )}
@@ -839,39 +851,77 @@ function Toggle({
   return <Switch id={id} label={label} checked={on} onChange={onChange} />;
 }
 
-function ApiKeyDisplay() {
+function ApiKeyBrowserBinding() {
+  const { apiKey, setApiKey, agentId, agentName, isReady } = useApiKey();
+  const [inputKey, setInputKey] = useState("");
   const [revealed, setRevealed] = useState(false);
-  const [copied, setCopied] = useState(false);
 
-  // Demo key — real per-user key storage not yet in backend
-  const apiKey = "wanye_3a8f••••••••••••••••3a8f";
-  const display = revealed ? apiKey : "wanye_••••••••••••••••••3a8f";
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 input-field py-3">
-        <code className="flex-1 font-mono text-sm text-[var(--title)]">{display}</code>
-        <button
-          type="button"
-          onClick={() => setRevealed((v) => !v)}
-          className="rounded-md px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-        >
-          {revealed ? "隐藏" : "显示"}
-        </button>
+  return isReady ? (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)]/50 p-4">
+        <p className="text-sm text-[var(--text-muted)]">当前绑定的 Agent</p>
+        <p className="text-base font-medium text-[var(--title)] mt-1">{agentName || "Agent"}</p>
+        {agentId && (
+          <p className="text-xs text-[var(--text-muted)] mt-1 font-mono">{agentId}</p>
+        )}
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-[var(--title)] mb-1.5">API Key</label>
+        <div className="flex gap-2">
+          <input
+            type={revealed ? "text" : "password"}
+            readOnly
+            value={apiKey || ""}
+            className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm font-mono text-[var(--text-secondary)]"
+          />
+          <button type="button" onClick={() => setRevealed(!revealed)} className="btn-default btn-sm">
+            {revealed ? "隐藏" : "显示"}
+          </button>
+        </div>
+      </div>
+      <button type="button" onClick={() => setApiKey("")} className="btn-danger btn-sm">
+        解除绑定
+      </button>
+    </div>
+  ) : (
+    <div className="space-y-3">
+      <label className="block text-sm font-medium text-[var(--title)]">输入 Agent API Key</label>
+      <div className="max-w-md flex gap-2">
+        <input
+          type="password"
+          value={inputKey}
+          onChange={(e) => setInputKey(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && inputKey.trim()) {
+              setApiKey(inputKey.trim());
+              setInputKey("");
+            }
+          }}
+          placeholder="wanye_xxxxxxxx"
+          className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm"
+        />
         <button
           type="button"
           onClick={() => {
-            navigator.clipboard?.writeText(apiKey);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
+            if (inputKey.trim()) {
+              setApiKey(inputKey.trim());
+              setInputKey("");
+            }
           }}
-          className="rounded-md px-2.5 py-1 text-xs text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+          className="btn-outline px-5 py-2 text-sm font-medium"
         >
-          {copied ? "已复制" : "复制"}
+          确认
         </button>
       </div>
-      <p className="mt-2 text-xs text-[var(--text-muted)]">
-        创建于 2026-03-15 · 最近使用 2 分钟前 · 共调用 1,247 次
+      <p className="text-xs text-[var(--text-muted)]">
+        还没有 Key？在{" "}
+        <Link href="/user/agents" className="text-[var(--primary)] hover:underline">
+          我的 Agent
+        </Link>{" "}
+        重新生成，或{" "}
+        <Link href="/register" className="text-[var(--primary)] hover:underline">
+          注册新 Agent
+        </Link>
       </p>
     </div>
   );

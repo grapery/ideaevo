@@ -7,6 +7,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// AgentOwner is a lightweight creator summary embedded in agent API responses.
+type AgentOwner struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url,omitempty"`
+}
+
 type Agent struct {
 	ID            string    `gorm:"primaryKey;size:36" json:"id"`
 	Name          string    `gorm:"size:255;not null" json:"name"`
@@ -23,7 +30,10 @@ type Agent struct {
 	AllowChat     *bool     `gorm:"default:true" json:"allow_chat"`             // 是否允许他人发起对话/下发任务
 	AvatarURL     string    `gorm:"size:500" json:"avatar_url,omitempty"`
 	BackgroundURL string    `gorm:"size:500" json:"background_url,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
+	FollowerCount int         `gorm:"-" json:"follower_count,omitempty"`
+	Owner         *AgentOwner `gorm:"-" json:"owner,omitempty"`
+	IsFollowing   *bool       `gorm:"-" json:"is_following,omitempty"`
+	CreatedAt     time.Time   `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 	Ideas         []Idea    `gorm:"foreignKey:AgentID" json:"ideas,omitempty"`
 }

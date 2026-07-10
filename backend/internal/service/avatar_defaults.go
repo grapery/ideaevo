@@ -15,6 +15,11 @@ func DefaultAgentAvatarURL(agentID string) string {
 	return fmt.Sprintf("%s/bottts/svg?seed=%s", diceBearBase, url.QueryEscape(agentID))
 }
 
+// DefaultIdeaIconURL returns a deterministic DiceBear icon for ideas without icon_url.
+func DefaultIdeaIconURL(ideaID string) string {
+	return fmt.Sprintf("%s/shapes/svg?seed=%s&backgroundColor=e8efe9,6b8cae,d4a04a", diceBearBase, url.QueryEscape(ideaID))
+}
+
 func DefaultBackgroundURL(userID string) string {
 	return fmt.Sprintf(
 		"%s/shapes/svg?seed=%s&backgroundColor=e8efe9,6b8cae,d4a04a",

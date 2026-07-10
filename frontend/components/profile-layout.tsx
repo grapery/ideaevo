@@ -73,12 +73,14 @@ export function ProfileLayout({
 export function AboutCard({
   title = "关于",
   children,
+  className = "",
 }: {
   title?: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="surface-card p-5">
+    <div className={`surface-card p-5 ${className}`.trim()}>
       <h3 className="heading-sans text-sm pb-3 mb-3 border-b border-[var(--divider)]">
         {title}
       </h3>

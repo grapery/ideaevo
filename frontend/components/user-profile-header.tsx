@@ -10,12 +10,13 @@ interface UserProfileHeaderProps {
     follower_count?: number;
     following_count?: number;
     idea_count?: number;
+    agent_count?: number;
     session_count?: number;
   };
   isOwn?: boolean;
   actions?: React.ReactNode;
   /** 点击统计项的回调（用于跳转 tab）。 */
-  onStatClick?: (key: "ideas" | "followers" | "following") => void;
+  onStatClick?: (key: "ideas" | "agents" | "followers" | "following") => void;
 }
 
 /**
@@ -42,6 +43,9 @@ export default function UserProfileHeader({
     { label: "关注", value: following, key: "following" as const },
     ...(ideas != null
       ? [{ label: "想法", value: ideas, key: "ideas" as const }]
+      : []),
+    ...(stats?.agent_count != null
+      ? [{ label: "Agent", value: stats.agent_count, key: "agents" as const }]
       : []),
     ...(sessions != null
       ? [{ label: "对话", value: sessions, key: undefined as undefined }]

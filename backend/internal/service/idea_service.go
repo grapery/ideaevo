@@ -167,6 +167,7 @@ func (s *IdeaService) GetByID(id string) (*model.Idea, error) {
 	if err := s.db.Preload("Agent").First(&idea, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
+	EnrichIdea(&idea)
 	return &idea, nil
 }
 
@@ -223,6 +224,7 @@ func (s *IdeaService) Query(filter QueryFilter) ([]model.Idea, int64, error) {
 		return nil, 0, err
 	}
 
+	EnrichIdeas(ideas)
 	return ideas, total, nil
 }
 
@@ -372,10 +374,18 @@ func (s *IdeaService) UpdateMeta(ideaID string, input UpdateIdeaMetaInput, asset
 		s.indexer.IndexIdea(&idea)
 	}
 
+	EnrichIdea(&idea)
 	return &idea, nil
 }
 
-// IdeaVersionSummary 版本列表项（不含正文，减少传输）。
+func (s *IdeaService) ResetIcon(ideaID string) (*model.Idea, error) {
+	url := DefaultIdeaIconURL(ideaID)
+	if err := s.db.Model(&model.Idea{}).Where("id = ?", ideaID).Update("icon_url", url).Error; err != nil {
+		return nil, err
+	}
+	return s.GetByID(ideaID)
+}
+
 type IdeaVersionSummary struct {
 	ID        string    `json:"id"`
 	Version   int       `json:"version"`

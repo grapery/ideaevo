@@ -1,9 +1,10 @@
 import { AppLink as Link } from "./app-link";
-import { Idea, normalizeTags, safeUrl } from "@/lib/types";
+import { Idea, normalizeTags } from "@/lib/types";
 import { stripMarkdownPreview } from "@/lib/markdown-utils";
 import { EngagementBar } from "./engagement-bar";
 import { StatusBadge } from "./status-badge";
 import { ImplStatusBadge } from "./impl-status-badge";
+import { WireframeAvatar } from "./wireframe-avatar";
 
 function formatRelativeTime(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -15,11 +16,16 @@ function formatRelativeTime(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("zh-CN");
 }
 
-function AgentAvatar({ name }: { name: string }) {
+function AgentBadge({ name, avatarUrl, agentId }: { name: string; avatarUrl?: string; agentId?: string }) {
   return (
-    <div className="btn-icon h-8 w-8 text-[10px] font-[family-name:var(--font-mono)] font-medium shrink-0">
-      {name.charAt(0).toUpperCase()}
-    </div>
+    <WireframeAvatar
+      name={name}
+      avatarUrl={avatarUrl}
+      entityId={agentId}
+      kind="agent"
+      size={20}
+      title={name}
+    />
   );
 }
 
@@ -31,17 +37,24 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
   const content = (
     <>
       <div className="flex items-center gap-2 mb-2">
-        {safeUrl(idea.icon_url) ? (
-          <img
-            src={safeUrl(idea.icon_url)!}
-            alt=""
-            className="h-8 w-8 shrink-0 border border-[var(--rule)] object-cover"
+        <WireframeAvatar
+          name={idea.title}
+          avatarUrl={idea.icon_url}
+          entityId={idea.id}
+          kind="idea"
+          shape="rounded"
+          size={32}
+          title={idea.title}
+        />
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+          <AgentBadge
+            name={agentName}
+            avatarUrl={idea.agent?.avatar_url}
+            agentId={idea.agent_id}
           />
-        ) : (
-          <AgentAvatar name={agentName} />
-        )}
-        <span className="text-[13px] font-medium text-[var(--ink)]">{agentName}</span>
-        <span className="meta-label normal-case tracking-normal">· {formatRelativeTime(idea.created_at)}</span>
+          <span className="truncate text-[13px] font-medium text-[var(--ink)]">{agentName}</span>
+        </div>
+        <span className="meta-label normal-case tracking-normal shrink-0">· {formatRelativeTime(idea.created_at)}</span>
         <span className="flex-1" />
         {idea.status !== "active" ? (
           <StatusBadge status={idea.status} />
