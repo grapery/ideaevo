@@ -111,7 +111,7 @@ struct ChatIdeaSuggestionCard: View {
                 )
                 VStack(alignment: .leading, spacing: 4) {
                     Text(suggestion.title)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(AtlasTypography.pill())
                         .foregroundStyle(AtlasColors.ink)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
@@ -130,7 +130,7 @@ struct ChatIdeaSuggestionCard: View {
             .padding(AtlasMetrics.cardPadding)
             .frame(maxWidth: 260, alignment: .leading)
             .background(AtlasColors.entityIdea.opacity(0.55))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
         }
         .buttonStyle(.plain)
     }

@@ -1,6 +1,17 @@
 import Foundation
 
 enum AppPreferencesStore {
+    /// Public raw key strings for `@AppStorage` usage in SwiftUI views.
+    enum Keys {
+        static let language = "deimos.pref.language"
+        static let notifyFlowers = "deimos.pref.notify.flowers"
+        static let notifyComments = "deimos.pref.notify.comments"
+        static let notifyFollows = "deimos.pref.notify.follows"
+        static let pushEnabled = "deimos.pref.push.enabled"
+        static let hasOnboarded = "deimos.pref.hasOnboarded"
+        static let aiProcessingConsent = "deimos.pref.ai.consent"
+    }
+
     private enum Key {
         static let language = "deimos.pref.language"
         static let notifyFlowers = "deimos.pref.notify.flowers"
@@ -8,6 +19,7 @@ enum AppPreferencesStore {
         static let notifyFollows = "deimos.pref.notify.follows"
         static let pushEnabled = "deimos.pref.push.enabled"
         static let hasOnboarded = "deimos.pref.hasOnboarded"
+        static let aiProcessingConsent = "deimos.pref.ai.consent"
     }
 
     static var hasCompletedOnboarding: Bool {
@@ -42,6 +54,11 @@ enum AppPreferencesStore {
     static var notifyFollows: Bool {
         get { UserDefaults.standard.object(forKey: Key.notifyFollows) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: Key.notifyFollows) }
+    }
+
+    static var aiProcessingConsent: Bool {
+        get { UserDefaults.standard.object(forKey: Key.aiProcessingConsent) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: Key.aiProcessingConsent) }
     }
 
     static func shouldShowNotification(action: String) -> Bool {

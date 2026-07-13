@@ -140,9 +140,20 @@ struct IdeaOwnerEditView: View {
     private var editorContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                settingsBackHeader(title: "编辑想法", dismiss: dismiss)
+                // S27 Back button row — 36×36 r18 bg=#F4F5F8 (Ardot S27 189:67)
+                HStack(spacing: 8) {
+                    AtlasNavBackButton { dismiss() }
+                    Spacer()
+                }
+                .padding(.horizontal, 8)
+
+                // S27 Screen Title — 28pt Bold ink (Ardot 189:69)
+                Text("编辑 Idea")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(AtlasColors.ink)
 
                 if let idea = viewModel.idea {
+                    // S27 Idea core identity — #F8FAFC card r16 (Ardot 189:70)
                     HStack(spacing: 12) {
                         EntityAvatar.idea(id: idea.id, url: idea.iconLink, name: idea.title, size: 44)
                         VStack(alignment: .leading, spacing: 4) {
@@ -150,15 +161,16 @@ struct IdeaOwnerEditView: View {
                                 .font(AtlasTypography.overline())
                                 .foregroundStyle(AtlasColors.inkFaint)
                             Text(idea.title)
-                                .font(AtlasTypography.screenTitle())
+                                .font(.system(size: 20, weight: .bold))
                                 .foregroundStyle(AtlasColors.ink)
                                 .lineLimit(2)
                         }
                     }
-                    .padding(AtlasMetrics.cardPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(AtlasColors.entityIdea.opacity(0.45))
-                    .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(Color(hex: 0xF8FAFC))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
 
                 settingsGroupedCard {
@@ -224,8 +236,8 @@ struct IdeaOwnerEditView: View {
                                 } label: {
                                     HStack {
                                         Text("v\(version.version)")
-                                            .font(.system(size: 13, weight: .semibold))
-                                            .foregroundStyle(version.isCurrent ? AtlasColors.accentActive : AtlasColors.ink)
+                                            .font(AtlasTypography.badge())
+                                            .foregroundStyle(version.isCurrent ? AtlasColors.olive : AtlasColors.ink)
                                         Text(version.changelog)
                                             .font(.system(size: 12))
                                             .foregroundStyle(AtlasColors.inkSoft)
@@ -233,7 +245,7 @@ struct IdeaOwnerEditView: View {
                                         Spacer()
                                         Text("对比 ›")
                                             .font(.system(size: 11))
-                                            .foregroundStyle(AtlasColors.accentActive)
+                                            .foregroundStyle(AtlasColors.olive)
                                     }
                                     .padding(.horizontal, AtlasMetrics.cardPadding)
                                 }
@@ -250,9 +262,25 @@ struct IdeaOwnerEditView: View {
                         .foregroundStyle(AtlasColors.coral)
                 }
 
-                AtlasPrimaryButton(title: "保存想法变更", isLoading: viewModel.isSaving) {
+                // S27 Save button — lemonInk bg, white text, 48h, r12 (Ardot 189:72)
+                Button {
                     Task { await saveAll() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if viewModel.isSaving {
+                            ProgressView().tint(.white)
+                        }
+                        Text("保存并写入新版本")
+                            .font(.system(size: 15, weight: .bold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .foregroundStyle(.white)
+                    .background(AtlasColors.lemonInk)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isSaving)
 
                 if viewModel.idea?.status == "active" {
                     VStack(alignment: .leading, spacing: 8) {
@@ -266,7 +294,7 @@ struct IdeaOwnerEditView: View {
                             buryReason = ""
                             showBuryConfirm = true
                         }
-                        .font(.system(size: 14, weight: .medium))
+                        .font(AtlasTypography.caption())
                         .foregroundStyle(AtlasColors.coral)
                     }
                     .padding(AtlasMetrics.cardPadding)
@@ -279,7 +307,7 @@ struct IdeaOwnerEditView: View {
                     )
                 }
             }
-            .padding(.horizontal, AtlasMetrics.pageX)
+            .padding(.horizontal, AtlasMetrics.detailX)
             .padding(.bottom, 40)
         }
     }
@@ -287,12 +315,12 @@ struct IdeaOwnerEditView: View {
     private var uploadSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("描述插图")
-                .font(AtlasTypography.cardTitle())
-                .foregroundStyle(AtlasColors.ink)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AtlasColors.inkSoft)
             PhotosPicker(selection: $imageItem, matching: .images) {
                 Text("选择图片并插入 Markdown")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(AtlasColors.accentActive)
+                    .foregroundStyle(AtlasColors.olive)
             }
             if let progress = viewModel.uploadProgress {
                 ProgressView(value: progress)
@@ -309,8 +337,11 @@ struct IdeaOwnerEditView: View {
         .padding(AtlasMetrics.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AtlasColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-        .atlasElevatedCard()
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AtlasColors.border, lineWidth: 1)
+        )
         .onChange(of: imageItem) { _, item in
             guard let item else { return }
             Task { await insertImage(item) }
@@ -320,8 +351,8 @@ struct IdeaOwnerEditView: View {
     private var iconSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("想法图标")
-                .font(AtlasTypography.cardTitle())
-                .foregroundStyle(AtlasColors.ink)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AtlasColors.inkSoft)
             HStack(spacing: 12) {
                 if let idea = viewModel.idea {
                     EntityAvatar.idea(id: idea.id, url: idea.iconLink, name: idea.title, size: 48)
@@ -329,7 +360,7 @@ struct IdeaOwnerEditView: View {
                 PhotosPicker(selection: $iconItem, matching: .images) {
                     Text("上传图标")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(AtlasColors.accentActive)
+                        .foregroundStyle(AtlasColors.olive)
                 }
                 Button("恢复默认") {
                     Task { await resetIcon() }
@@ -341,8 +372,11 @@ struct IdeaOwnerEditView: View {
         .padding(AtlasMetrics.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AtlasColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-        .atlasElevatedCard()
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AtlasColors.border, lineWidth: 1)
+        )
         .onChange(of: iconItem) { _, item in
             guard let item else { return }
             Task { await uploadIcon(item) }
@@ -350,10 +384,10 @@ struct IdeaOwnerEditView: View {
     }
 
     private func metaField(_ title: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 11))
-                .foregroundStyle(AtlasColors.inkFaint)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AtlasColors.inkSoft)
             AtlasTextField(
                 placeholder: title,
                 text: text,
@@ -361,7 +395,12 @@ struct IdeaOwnerEditView: View {
                 height: 44
             )
             .padding(.horizontal, 4)
-            .background(AtlasColors.fill)
+            .background(AtlasColors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous)
+                    .stroke(AtlasColors.border, lineWidth: 1)
+            )
         }
     }
 

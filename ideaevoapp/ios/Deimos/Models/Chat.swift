@@ -54,6 +54,23 @@ struct SessionResponse: Decodable, Sendable {
     let session: ChatSession
 }
 
+/// Result of archiving a chat session — contains extracted summary.
+struct ArchiveResult: Decodable, Sendable {
+    let sessionID: String
+    let summary: String
+    let archivedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case sessionID = "session_id"
+        case summary
+        case archivedAt = "archived_at"
+    }
+}
+
+struct ArchiveResultResponse: Decodable, Sendable {
+    let result: ArchiveResult
+}
+
 struct MessagesResponse: Decodable, Sendable {
     let messages: [ChatMessage]
 }

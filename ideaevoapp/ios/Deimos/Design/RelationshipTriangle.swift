@@ -60,7 +60,7 @@ struct RelationshipTriangle: View {
 
     private var connector: some View {
         Text("→")
-            .font(.system(size: 11, weight: .semibold))
+            .font(AtlasTypography.overline())
             .foregroundStyle(AtlasColors.inkFaint)
             .frame(width: 12)
     }
@@ -82,7 +82,7 @@ struct RelationshipTriangle: View {
                 HStack(spacing: 8) {
                     avatar()
                     Text(name)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(AtlasTypography.caption())
                         .foregroundStyle(AtlasColors.ink)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)

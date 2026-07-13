@@ -136,30 +136,23 @@ struct ActivityScreen: View {
     @State private var showRankings = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            AtlasTabScreenHeader(title: "协作") {
-                scopeToolbarControl
+        // Content Wrapper (S08 179:182): VERTICAL itemSpacing=16, padding=[20,20,0,0]
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // Activity Title (S08 179:184): "动态" 36pt ExtraBold ink
+                Text("动态")
+                    .font(.system(size: 36, weight: .heavy))
+                    .foregroundStyle(AtlasColors.ink)
+
+                // Activity Segments (S08 179:185): HORIZONTAL itemSpacing=4, padding=[4,4,0,4], r20, bg=#F4F5F8
+                activitySegments
+
+                content
             }
-
-            AtlasSegmentedPill(items: ["全部", "与我相关"], selection: $viewModel.segment)
-                .padding(.horizontal, AtlasMetrics.pageX)
-                .padding(.bottom, 12)
-
-            AtlasEmbeddedSearchBar(
-                placeholder: "搜索事件、排行、关注动态",
-                text: $viewModel.searchQuery,
-                onSubmit: {}
-            )
-            .padding(.horizontal, AtlasMetrics.pageX)
-            .padding(.bottom, 12)
-
-            actionFilterChips
-                .padding(.horizontal, AtlasMetrics.pageX)
-                .padding(.bottom, 12)
-
-            content
+            .padding(.horizontal, 20)
+            .padding(.top, 0)
+            .padding(.bottom, AtlasMetrics.bottomClear)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: showAuthSheet)
         .navigationBarHidden(true)
@@ -183,10 +176,6 @@ struct ActivityScreen: View {
                 viewModel.segment = 0
                 showAuthSheet = true
             }
-            if newValue != 0 {
-                showStats = false
-                showRankings = false
-            }
         }
         .onChange(of: session.isAuthenticated) { _, _ in
             Task {
@@ -195,56 +184,48 @@ struct ActivityScreen: View {
         }
     }
 
+    /// Activity Segments (S08 179:185): 3 segments (关注/提及/系统), active lemonStrong lemonInk.
+    private var activitySegments: some View {
+        let labels = ["关注", "提及", "系统"]
+        return HStack(spacing: 4) {
+            ForEach(labels.indices, id: \.self) { index in
+                let isSelected = viewModel.segment == index
+                Button {
+                    viewModel.segment = index
+                } label: {
+                    Text(labels[index])
+                        .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                        .foregroundStyle(isSelected ? AtlasColors.lemonInk : Color(hex: 0x687083))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 32)
+                        .background(isSelected ? AtlasColors.lemonStrong : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(Color(hex: 0xF4F5F8))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
     @ViewBuilder
     private var content: some View {
         if viewModel.segment == 1 && !session.isAuthenticated {
             followingLoginPrompt
+                .padding(.top, 40)
         } else if viewModel.isLoading && viewModel.activities.isEmpty && viewModel.segment == 0 {
-            loadingSkeleton
+            HomeFeedLoadingSkeleton()
+                .padding(.top, 16)
         } else if viewModel.isOffline && viewModel.activities.isEmpty {
             errorState
         } else {
-            feedScroll
-        }
-    }
-
-    private var loadingSkeleton: some View {
-        ScrollView {
-            HomeFeedLoadingSkeleton()
-                .padding(.horizontal, AtlasMetrics.pageX)
-                .padding(.top, 16)
+            feedSection
         }
     }
 
     private var feedScroll: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                if viewModel.isOffline, let message = viewModel.errorMessage {
-                    AtlasOfflineBanner(message: message) {
-                        Task {
-                            await viewModel.load(segment: viewModel.segment, isAuthenticated: session.isAuthenticated)
-                        }
-                    }
-                }
-
-                if viewModel.segment == 0 {
-                    if showStats {
-                        statsRow
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-
-                    if showRankings {
-                        rankingsCard
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                }
-
-                feedSection
-            }
-            .padding(.horizontal, AtlasMetrics.pageX)
-            .padding(.top, 16)
-            .padding(.bottom, 16)
-        }
+        feedSection
     }
 
     private var actionFilterChips: some View {
@@ -318,7 +299,7 @@ struct ActivityScreen: View {
 
                 if viewModel.currentRanking.isEmpty {
                     Text(viewModel.isSearchActive ? "没有匹配的排行" : "暂无数据")
-                        .font(.system(size: 13))
+                        .font(AtlasTypography.meta())
                         .foregroundStyle(AtlasColors.inkFaint)
                         .padding(.horizontal, AtlasMetrics.cardPadding)
                         .padding(.bottom, AtlasMetrics.cardPadding)
@@ -333,7 +314,7 @@ struct ActivityScreen: View {
                                     .foregroundStyle(AtlasColors.inkFaint)
                                     .frame(width: 24, alignment: .leading)
                                 Text(idea.title)
-                                    .font(.system(size: 13))
+                                    .font(AtlasTypography.meta())
                                     .foregroundStyle(AtlasColors.ink)
                                     .lineLimit(1)
                                 Spacer(minLength: 8)
@@ -363,25 +344,56 @@ struct ActivityScreen: View {
             followingEmptyState
                 .padding(.top, 12)
         } else {
-            ForEach(Array(viewModel.filteredActivities.enumerated()), id: \.element.id) { index, activity in
-                Group {
+            LazyVStack(spacing: 16) {
+                ForEach(viewModel.filteredActivities) { activity in
                     if let ideaID = activity.ideaID {
                         Button {
                             selectedRoute = IdeaRoute(id: ideaID)
                         } label: {
-                            ActivityCell(activity: activity)
+                            activityCard(activity)
                         }
                         .buttonStyle(.plain)
                     } else {
-                        ActivityCell(activity: activity)
+                        activityCard(activity)
                     }
-                }
-
-                if index < viewModel.filteredActivities.count - 1 {
-                    FeedRowDivider()
                 }
             }
         }
+    }
+
+    /// S08 Activity Card (179:192): #F8FAFC + border r20, VERTICAL itemSpacing=8,
+    /// padding=[16,0,14,16], headline 15pt SemiBold + body 12pt Regular + meta 11pt Medium olive.
+    private func activityCard(_ activity: ActivityView) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Headline (S08 179:193): 15pt SemiBold ink
+            Text(activity.feedHeadline)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+                .lineLimit(2)
+
+            // Body (S08 179:194): 12pt Regular #687083
+            if let desc = activity.targetDesc, !desc.isEmpty {
+                Text(desc.plainSummary)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color(hex: 0x687083))
+                    .lineLimit(3)
+            }
+
+            // Meta (S08 179:195): 11pt Medium olive
+            Text("\(activity.createdAt.relativeShort) · \(activity.actionLabel)")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(AtlasColors.olive)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 14)
+        .background(Color(hex: 0xF8FAFC))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AtlasColors.border, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     @ViewBuilder
@@ -395,7 +407,7 @@ struct ActivityScreen: View {
                         .font(AtlasTypography.cardTitle())
                         .foregroundStyle(AtlasColors.ink)
                     Text(emptyDescription)
-                        .font(.system(size: 13))
+                        .font(AtlasTypography.meta())
                         .foregroundStyle(AtlasColors.inkSoft)
                 }
                 .padding(AtlasMetrics.cardPadding)

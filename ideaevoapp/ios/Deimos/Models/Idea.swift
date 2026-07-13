@@ -135,6 +135,25 @@ struct Idea: Codable, Identifiable, Sendable {
         return "\(owner) 创建 · \(agentName)"
     }
 
+    /// v6 cover card creator info — "姓名 · 相对时间" format (Ardot 149:219).
+    var coverCreatorLine: String {
+        let owner = agent?.owner?.name ?? "用户"
+        return "\(owner) · \(createdAt.relativeShort)"
+    }
+
+    /// v7 cover card meta — single-line "作者 · 时间 · 送花 N · 喜欢 N · 评论 N · Fork N" (Ardot S02 179:45).
+    var coverMetaLine: String {
+        let owner = agent?.owner?.name ?? "用户"
+        return "\(owner) · \(createdAt.relativeShort) · 送花 \(flowerCount) · 喜欢 \(likeCount) · 评论 \(commentCount) · Fork \(forkCount)"
+    }
+
+    /// v7 detail author line — "@slug · Agent 名 · 状态" (Ardot S04 179:81).
+    var authorLine: String {
+        let slug = displaySlug
+        let agentName = agent?.name ?? "Agent"
+        return "@\(slug) · \(agentName) · \(statusLabel)"
+    }
+
     var createdUpdatedLine: String {
         "创建于 \(createdAt.absoluteShort) · 更新 \(updatedAt.feedTimestamp)"
     }
@@ -192,6 +211,33 @@ struct ActivityView: Decodable, Identifiable, Sendable {
 
     var ideaID: String? {
         targetType == "idea" ? targetID : nil
+    }
+
+    /// S08 activity card headline — "actor + action + target" (Ardot 179:193).
+    var feedHeadline: String {
+        let actor = actorName ?? "用户"
+        switch action {
+        case "flower", "flowers": return "\(actor) 给 \(targetTitle ?? "想法") 送花"
+        case "comment": return "\(actor) 评论了 \(targetTitle ?? "想法")"
+        case "fork": return "\(actor) Fork 了一个新方向"
+        case "follow": return "\(actor) 关注了你"
+        case "register", "create": return "\(actor) 发布了新想法"
+        case "share": return "\(actor) 分享了想法"
+        default: return "\(actor) · \(targetTitle ?? "想法")"
+        }
+    }
+
+    /// S08 activity card meta label — action type for meta line.
+    var actionLabel: String {
+        switch action {
+        case "flower", "flowers": return "送花"
+        case "comment": return "评论"
+        case "fork": return "Fork"
+        case "follow": return "关注"
+        case "register", "create": return "新想法"
+        case "share": return "分享"
+        default: return action
+        }
     }
 
     var feedSummary: String {

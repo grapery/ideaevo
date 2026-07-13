@@ -72,27 +72,23 @@ struct VersionCompareView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let primary = viewModel.primary {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        // Compare picker — lemon-soft card r16 (Ardot 189:102)
                         if let compare = viewModel.compare {
-                            AtlasSegmentedPill(
-                                items: ["v\(compare.version)", "v\(primary.version) 当前"],
-                                selection: Binding(
-                                    get: { viewModel.showingPrimary ? 1 : 0 },
-                                    set: { viewModel.showingPrimary = $0 == 1 }
-                                )
-                            )
+                            comparePickerCard(compare, primary)
 
-                            Text(viewModel.diffSummary)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(AtlasColors.accentActive)
+                            // Description diff — grey card r16 (Ardot 189:104)
+                            descriptionDiffCard(from: compare.description, to: primary.description)
 
-                            diffSection(from: compare.description, to: primary.description)
+                            // Stats delta — white card + border r16 (Ardot 189:163)
+                            statsDeltaCard(compare, primary)
                         } else {
                             versionCard(primary)
                         }
                     }
-                    .padding(.horizontal, AtlasMetrics.pageX)
+                    .padding(.horizontal, AtlasMetrics.detailX)
                     .padding(.vertical, 16)
+                    .padding(.bottom, AtlasMetrics.bottomClear)
                 }
             }
         }
@@ -104,30 +100,57 @@ struct VersionCompareView: View {
         }
     }
 
-    private func versionCard(_ version: IdeaVersionDetail) -> some View {
-        settingsGroupedCard {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("v\(version.version) · \(version.changelog)")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
-                    .padding(.horizontal, AtlasMetrics.cardPadding)
-                    .padding(.top, AtlasMetrics.cardPadding)
-                Text(version.createdAt.relativeShort)
-                    .font(.system(size: 11))
-                    .foregroundStyle(AtlasColors.inkFaint)
-                    .padding(.horizontal, AtlasMetrics.cardPadding)
-                MarkdownBody(markdown: version.description)
-                    .padding(.horizontal, AtlasMetrics.cardPadding)
-                    .padding(.bottom, AtlasMetrics.cardPadding)
+    // MARK: - S31 Compare picker card (lemon-soft, r16, itemSpacing=6)
+
+    /// Version toggle: v{old} → v{new} with tap to switch (Ardot 189:102).
+    private func comparePickerCard(_ compare: IdeaVersionDetail, _ primary: IdeaVersionDetail) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("选择对比版本")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AtlasColors.olive)
+            HStack(spacing: 8) {
+                versionToggleChip("v\(compare.version)", isSelected: !viewModel.showingPrimary) {
+                    viewModel.showingPrimary = false
+                }
+                Text("→")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(AtlasColors.olive)
+                versionToggleChip("v\(primary.version) 当前", isSelected: viewModel.showingPrimary) {
+                    viewModel.showingPrimary = true
+                }
             }
+            Text(viewModel.diffSummary)
+                .font(.system(size: 13))
+                .foregroundStyle(AtlasColors.olive)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(AtlasColors.lemonSoft)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private func diffSection(from old: String, to new: String) -> some View {
+    private func versionToggleChip(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                .foregroundStyle(isSelected ? AtlasColors.lemonInk : AtlasColors.olive)
+                .padding(.horizontal, 12)
+                .frame(height: 32)
+                .background(isSelected ? Color.white : Color.clear)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - S31 Description diff card (#F8FAFC, r16, itemSpacing=8)
+
+    /// Line-by-line diff in a grey card (Ardot 189:104).
+    private func descriptionDiffCard(from old: String, to new: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Diff")
-                .font(AtlasTypography.cardTitle())
-                .foregroundStyle(AtlasColors.ink)
+            Text("描述 Diff")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AtlasColors.inkTertiary)
 
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(computeLineDiff(from: old, to: new)) { line in
@@ -140,23 +163,80 @@ struct VersionCompareView: View {
                         .background(diffBackground(line.kind))
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-
-            if let active = viewModel.activeVersion {
-                settingsGroupedCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("v\(active.version) 正文")
-                            .font(AtlasTypography.cardTitle())
-                            .foregroundStyle(AtlasColors.ink)
-                            .padding(.horizontal, AtlasMetrics.cardPadding)
-                            .padding(.top, AtlasMetrics.cardPadding)
-                        MarkdownBody(markdown: active.description)
-                            .padding(.horizontal, AtlasMetrics.cardPadding)
-                            .padding(.bottom, AtlasMetrics.cardPadding)
-                    }
-                }
-            }
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Color(hex: 0xF8FAFC))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    // MARK: - S31 Stats delta card (white + border, r16)
+
+    /// Description length delta between versions (Ardot 189:163).
+    private func statsDeltaCard(_ compare: IdeaVersionDetail, _ primary: IdeaVersionDetail) -> some View {
+        let oldLen = compare.description.count
+        let newLen = primary.description.count
+        let charDelta = newLen - oldLen
+        let changelogDelta = primary.changelog.isEmpty ? "无" : primary.changelog
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("版本变化摘要")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AtlasColors.inkTertiary)
+
+            HStack(spacing: 16) {
+                statDeltaItem("字数", charDelta)
+                statDeltaItem("版本", primary.version - compare.version)
+            }
+
+            Text("变更说明：\(changelogDelta)")
+                .font(.system(size: 13))
+                .foregroundStyle(AtlasColors.inkSoft)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(AtlasColors.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AtlasColors.border, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func statDeltaItem(_ label: String, _ delta: Int) -> some View {
+        let sign = delta >= 0 ? "+" : ""
+        return VStack(spacing: 2) {
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundStyle(AtlasColors.inkFaint)
+            Text("\(sign)\(delta)")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(delta >= 0 ? AtlasColors.lemonStrong : AtlasColors.destructive)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - S30 Version snapshot card (#F8FAFC r16, itemSpacing=8) (Ardot 189:94)
+
+    /// Single version detail: title / changelog / description snapshot in a grey card.
+    private func versionCard(_ version: IdeaVersionDetail) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("标题：\(version.title)")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+            Text("Changelog：\(version.changelog.isEmpty ? "无" : version.changelog)")
+                .font(.system(size: 15))
+                .foregroundStyle(AtlasColors.inkSoft)
+            MarkdownBody(markdown: version.description)
+                .font(.system(size: 15))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Color(hex: 0xF8FAFC))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private func diffForeground(_ kind: DiffLineKind) -> Color {

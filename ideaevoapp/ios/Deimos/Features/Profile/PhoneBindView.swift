@@ -36,7 +36,7 @@ struct PhoneBindView: View {
                 Button(isSending ? "发送中…" : "获取验证码") {
                     Task { await sendCode() }
                 }
-                .font(.system(size: 14, weight: .medium))
+                .font(AtlasTypography.caption())
                 .foregroundStyle(AtlasColors.ink)
                 .disabled(isSending || phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }

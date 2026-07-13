@@ -231,7 +231,7 @@ struct FollowersFollowingView: View {
                             EmptyView()
                         } else if !isSelf, isFollowed {
                             Text("已关注")
-                                .font(.system(size: 12, weight: .medium))
+                                .font(AtlasTypography.caption())
                                 .foregroundStyle(AtlasColors.accentActive)
                         } else {
                             DeimosIconView(icon: .chevronRight, size: 13, color: AtlasColors.inkFaint)
@@ -255,8 +255,8 @@ struct FollowersFollowingView: View {
 
     private func followButton(user: User, title: String, outline: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(viewModel.followingInProgress.contains(user.id) ? "…" : title)
-                .font(.system(size: 13, weight: .semibold))
+                Text(viewModel.followingInProgress.contains(user.id) ? "…" : title)
+                    .font(AtlasTypography.badge())
                 .foregroundStyle(outline ? AtlasColors.ink : .white)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)

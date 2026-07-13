@@ -135,21 +135,35 @@ struct DeimosIconView: View {
 }
 
 extension View {
-    /// zdesign card: subtle shadow (opacity 0.05, radius 8). Cards float gently.
+    /// v6 card elevation — `0 8px 16px rgba(15,27,45,0.10)`. Ink-colored shadow.
     func atlasElevatedCard() -> some View {
         shadow(color: AtlasMetrics.shadowCardColor, radius: AtlasMetrics.shadowCardRadius, y: AtlasMetrics.shadowCardY)
     }
 
-    /// Settings / list group card — subtle shadow (no stroke).
+    /// v6 profile card elevation — `0 6px 12px rgba(15,27,45,0.05)`. Gentler than content cards.
+    func atlasProfileCard() -> some View {
+        shadow(color: AtlasMetrics.shadowProfileColor, radius: AtlasMetrics.shadowProfileRadius, y: AtlasMetrics.shadowProfileY)
+    }
+
+    /// Settings / list group card — same elevation as content cards.
     func atlasSettingsGroupShadow() -> some View {
         shadow(color: AtlasMetrics.shadowCardColor, radius: AtlasMetrics.shadowCardRadius, y: AtlasMetrics.shadowCardY)
     }
 
-    /// Toolbar float chrome · `C/ToolbarFloat` — white pill/circle + soft shadow.
+    /// v6 toolbar float chrome — bg #F1F3F7, no shadow (flat design).
+    /// For square/circular icon buttons pass default cornerRadius (→ Circle clip).
+    /// For wide text pills pass a finite radius (→ RoundedRectangle clip so text isn't cut off).
+    @ViewBuilder
     func atlasToolbarFloat(cornerRadius: CGFloat = 999) -> some View {
-        background(AtlasColors.surface)
-        .shadow(color: AtlasMetrics.shadowFloatColor, radius: AtlasMetrics.shadowFloatRadius, y: AtlasMetrics.shadowFloatY)
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        if cornerRadius >= 999 {
+            // Icon button: circular chrome
+            background(AtlasColors.surfaceSecondary)
+                .clipShape(Circle())
+        } else {
+            // Text pill: rounded-rectangle chrome matching the requested radius
+            background(AtlasColors.surfaceSecondary)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        }
     }
 
     func atlasPagePadding() -> some View {

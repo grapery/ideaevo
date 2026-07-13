@@ -126,7 +126,7 @@ struct NotificationsView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, AtlasMetrics.pageX)
+                .padding(.horizontal, AtlasMetrics.detailX)
             }
             .padding(.top, 8)
             .padding(.bottom, 12)
@@ -167,6 +167,7 @@ struct NotificationsView: View {
                         }
                     }
                     .padding(.vertical, 4)
+                    .padding(.horizontal, AtlasMetrics.detailX)
                 }
             }
         }

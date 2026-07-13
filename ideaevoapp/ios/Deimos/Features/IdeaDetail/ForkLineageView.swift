@@ -41,6 +41,10 @@ final class ForkLineageViewModel {
     }
 }
 
+/// S34 Fork Lineage (Ardot `189:123`) — 源/当前/子分支脉络.
+///
+/// Layout: title "Fork 脉络" 28pt → source node (grey card) → current node (lemon card) →
+/// child forks list → "查看源版本详情" button (lemonInk bg) → legend card.
 struct ForkLineageView: View {
     let ideaID: String
 
@@ -50,7 +54,13 @@ struct ForkLineageView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            settingsBackHeader(title: "Fork 谱系", dismiss: dismiss)
+            // S34 Back button row — 36×36 r18 bg=#F4F5F8
+            HStack(spacing: 8) {
+                AtlasNavBackButton { dismiss() }
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .frame(height: AtlasToolbarMetrics.barHeight)
 
             if viewModel.isLoading {
                 Spacer()
@@ -63,51 +73,36 @@ struct ForkLineageView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    VStack(spacing: 12) {
-                        if !viewModel.ancestors.isEmpty {
-                            sectionCard("父链") {
-                                ForEach(viewModel.ancestors) { ancestor in
-                                    lineageRow(ancestor, badge: "祖先", accent: AtlasColors.inkFaint)
-                                }
-                            }
+                    VStack(alignment: .leading, spacing: 14) {
+                        // S34 Screen Title — 28pt Bold ink (Ardot 189:126)
+                        Text("Fork 脉络")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundStyle(AtlasColors.ink)
+
+                        // S34 Source idea node — #F8FAFC r16 itemSpacing=6 (Ardot 189:127)
+                        if let source = viewModel.ancestors.last {
+                            sourceNode(source)
                         }
 
+                        // S34 Current fork node — lemon-soft r16 (Ardot 189:129)
                         if let current = viewModel.idea {
-                            sectionCard("当前想法", highlight: true) {
-                                lineageRow(current, badge: "当前", accent: AtlasColors.accentActive)
-                            }
+                            currentNode(current)
                         }
 
-                        sectionCard("直接 Fork (\(viewModel.children.count))") {
-                            if viewModel.children.isEmpty {
-                                Text("暂无公开 Fork 子树")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(AtlasColors.inkFaint)
-                            } else {
-                                ForEach(viewModel.children) { child in
-                                    lineageRow(child, badge: "衍生", accent: AtlasColors.accentFork)
-                                }
-                            }
+                        // S34 Child forks list (Ardot 189:131)
+                        childForksNode
+
+                        // S34 "查看源版本详情" button — lemonInk r12 (Ardot 189:169)
+                        if let source = viewModel.ancestors.last {
+                            viewSourceButton(source)
                         }
 
-                        if !viewModel.forkRecords.isEmpty {
-                            sectionCard("Fork 记录") {
-                                ForEach(viewModel.forkRecords) { record in
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(record.reason)
-                                            .font(.system(size: 13))
-                                            .foregroundStyle(AtlasColors.ink)
-                                        Text(record.createdAt.relativeShort)
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(AtlasColors.inkFaint)
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                            }
-                        }
+                        // S34 Legend card — #F8FAFC r16 (Ardot 189:171)
+                        legendCard
                     }
-                    .padding(.horizontal, AtlasMetrics.pageX)
+                    .padding(.horizontal, AtlasMetrics.detailX)
                     .padding(.vertical, 16)
+                    .padding(.bottom, AtlasMetrics.bottomClear)
                 }
             }
         }
@@ -120,47 +115,124 @@ struct ForkLineageView: View {
         .task { await viewModel.load(ideaID: ideaID) }
     }
 
-    @ViewBuilder
-    private func sectionCard<C: View>(_ title: String, highlight: Bool = false, @ViewBuilder content: () -> C) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(AtlasTypography.cardTitle())
-                .foregroundStyle(AtlasColors.ink)
-            content()
-        }
-        .padding(AtlasMetrics.cardPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(highlight ? AtlasColors.entityIdea.opacity(0.45) : AtlasColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-        .atlasElevatedCard()
-    }
+    // MARK: - Source node (#F8FAFC card)
 
-    private func lineageRow(_ idea: Idea, badge: String, accent: Color) -> some View {
+    /// 源想法 · vX / title · N Fork (Ardot 189:127 — grey bg #F8FAFC r16 itemSpacing=6).
+    private func sourceNode(_ idea: Idea) -> some View {
         Button {
             ideaRoute = IdeaRoute(id: idea.id)
         } label: {
-            HStack(spacing: 12) {
-                EntityAvatar.idea(id: idea.id, url: idea.iconLink, name: idea.title, size: 36)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(idea.title)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(AtlasColors.ink)
-                        .lineLimit(1)
-                    Text("\(idea.forkCount) Fork · \(idea.flowerCount) 花")
-                        .font(.system(size: 11))
-                        .foregroundStyle(AtlasColors.inkFaint)
-                }
-                Spacer()
-                Text(badge)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(accent)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(accent.opacity(0.12))
-                    .clipShape(Capsule())
-                DeimosIconView(icon: .chevronRight, size: 12, color: AtlasColors.inkFaint)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("源想法")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AtlasColors.inkTertiary)
+                Text("\(idea.displayTitle) · \(idea.forkCount) Fork")
+                    .font(.system(size: 15))
+                    .foregroundStyle(AtlasColors.inkTertiary)
+                    .lineLimit(2)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(Color(hex: 0xF8FAFC))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Current node (lemon card)
+
+    /// 当前分支 / title · agent (Ardot 189:129 — lemon-soft bg r16).
+    private func currentNode(_ idea: Idea) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("当前分支")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AtlasColors.olive)
+            Text("\(idea.displayTitle) · \(idea.agent?.name ?? "Agent")")
+                .font(.system(size: 15))
+                .foregroundStyle(AtlasColors.lemonInk)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(AtlasColors.lemonSoft)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    // MARK: - Child forks (Ardot 189:131 — white r16 itemSpacing=1)
+
+    private var childForksNode: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("子分支")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AtlasColors.inkTertiary)
+                .padding(.bottom, 8)
+
+            if viewModel.children.isEmpty {
+                Text("暂无公开 Fork 子树")
+                    .font(.system(size: 15))
+                    .foregroundStyle(AtlasColors.inkFaint)
+            } else {
+                ForEach(viewModel.children) { child in
+                    Button {
+                        ideaRoute = IdeaRoute(id: child.id)
+                    } label: {
+                        HStack {
+                            Text("\(child.displayTitle) · \(child.forkCount) Fork")
+                                .font(.system(size: 15))
+                                .foregroundStyle(AtlasColors.ink)
+                                .lineLimit(1)
+                            Spacer()
+                            DeimosIconView(icon: .chevronRight, size: 12, color: AtlasColors.inkFaint)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(AtlasColors.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AtlasColors.border, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    // MARK: - View source button (Ardot 189:169)
+
+    /// lemonInk bg r12, 48h, white text 15pt Bold.
+    private func viewSourceButton(_ source: Idea) -> some View {
+        Button {
+            ideaRoute = IdeaRoute(id: source.id)
+        } label: {
+            Text("查看源版本详情")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(AtlasColors.lemonInk)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Legend card (Ardot 189:171 — #F8FAFC r16)
+
+    /// #F8FAFC r16 with explanation text 14pt.
+    private var legendCard: some View {
+        Text("灰色是源节点，柠檬色是当前分支。子分支按 Fork 时间排序。")
+            .font(.system(size: 14))
+            .foregroundStyle(AtlasColors.inkTertiary)
+            .lineSpacing(6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(Color(hex: 0xF8FAFC))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

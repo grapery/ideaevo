@@ -11,19 +11,30 @@ struct AtlasPrimaryButton: View {
             HStack(spacing: 8) {
                 if isLoading {
                     ProgressView()
-                        .tint(.white)
+                        .tint(AtlasColors.lemonInk)
                 }
                 Text(title)
-                    .font(AtlasTypography.button())
+                    .font(.system(size: 15, weight: .bold))
             }
             .frame(maxWidth: .infinity)
-            .frame(height: AtlasMetrics.primaryButtonHeight)
-            .foregroundStyle(.white)
-            .background(AtlasColors.primary)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-            .shadow(color: AtlasColors.primary.opacity(0.3), radius: 12, y: 4)
+            .frame(height: 50)
+            .foregroundStyle(AtlasColors.lemonInk)
+            .background(AtlasColors.primaryAction)
+            .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
         }
+        .buttonStyle(AtlasPressableStyle())
         .disabled(isLoading)
+    }
+}
+
+/// Scale(0.97) press feedback — from ardot Motion variable `scale-press: 0.97`.
+/// Emil Kowalski principle: "Buttons must feel responsive — scale(0.97) on :active."
+struct AtlasPressableStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
@@ -63,18 +74,18 @@ struct AtlasLoginPrimaryButton: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 if isLoading {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(AtlasColors.lemonInk)
                 }
                 Text(title)
-                    .font(AtlasTypography.button())
+                    .font(.system(size: 15, weight: .bold))
             }
             .frame(maxWidth: .infinity)
-            .frame(height: AtlasMetrics.primaryButtonHeight)
-            .foregroundStyle(.white)
-            .background(AtlasColors.primary)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-            .shadow(color: AtlasColors.primary.opacity(0.3), radius: 12, y: 4)
+            .frame(height: 50)
+            .foregroundStyle(AtlasColors.lemonInk)
+            .background(AtlasColors.primaryAction)
+            .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
         }
+        .buttonStyle(AtlasPressableStyle())
         .disabled(isLoading)
     }
 }
@@ -88,8 +99,8 @@ struct AtlasSettingsSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(AtlasColors.inkFaint)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AtlasColors.inkSoft)
                 .padding(.leading, 4)
 
             VStack(spacing: 0) {
@@ -97,7 +108,11 @@ struct AtlasSettingsSection<Content: View>: View {
             }
             .background(AtlasColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-            .atlasElevatedCard()
+            .overlay(
+                RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                    .stroke(AtlasColors.borderProfile, lineWidth: 1)
+            )
+            .atlasProfileCard()
         }
     }
 }
@@ -118,13 +133,9 @@ struct AtlasSettingsRow: View {
     var value: String?
 
     var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(iconColor)
-                    .frame(width: 30, height: 30)
-                DeimosIconView(icon: icon, size: 16, color: .white)
-            }
+        HStack(spacing: 14) {
+            // v6: flat icon, no colored rounded rect background. SF Symbol style 22pt.
+            DeimosIconView(icon: icon, size: 22, color: iconColor)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -145,7 +156,7 @@ struct AtlasSettingsRow: View {
                     .foregroundStyle(AtlasColors.inkFaint)
             }
 
-            DeimosIconView(icon: .chevronRight, size: 16, color: AtlasColors.inkFaint.opacity(0.5))
+            DeimosIconView(icon: .chevronRight, size: 15, color: AtlasColors.inkFaint.opacity(0.5))
         }
         .frame(minHeight: AtlasMetrics.settingsRowMinHeight)
         .padding(.horizontal, 16)
@@ -161,16 +172,24 @@ struct AtlasSettingsLogoutButton: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 if isLoading {
-                    ProgressView().tint(AtlasColors.coral)
+                    ProgressView().tint(AtlasColors.destructive)
                 }
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(AtlasColors.destructive)
                 Text("退出登录")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(AtlasTypography.cardTitle())
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .foregroundStyle(AtlasColors.coral)
-            .background(AtlasColors.coral.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .frame(height: 53)
+            .foregroundStyle(AtlasColors.destructive)
+            .background(AtlasColors.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                    .stroke(AtlasColors.border, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+            .atlasProfileCard()
         }
         .disabled(isLoading)
     }
@@ -180,7 +199,8 @@ struct AtlasNavBackButton: View {
     let action: () -> Void
 
     var body: some View {
-        AtlasToolbarFloatIconButton(icon: .chevronBack, action: action)
+        // v6 spec: back button is 40×40 circle (not the default 36pt toolbar size)
+        AtlasToolbarFloatIconButton(icon: .chevronBack, size: AtlasMetrics.backButtonSize, iconSize: 17, action: action)
     }
 }
 
@@ -216,14 +236,14 @@ struct AtlasPushNavBar<Trailing: View>: View {
             }
             if !title.isEmpty {
                 Text(title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(AtlasTypography.cardTitle())
                     .foregroundStyle(AtlasColors.ink)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 96)
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, AtlasMetrics.detailX)
         .frame(height: AtlasToolbarMetrics.barHeight)
         .background(AtlasColors.canvas)
     }
@@ -330,7 +350,7 @@ struct AtlasToolbarFloatTextButton: View {
                 .foregroundStyle(color)
                 .padding(.horizontal, horizontalPadding)
                 .frame(minHeight: AtlasMetrics.touchTarget)
-                .atlasToolbarFloat()
+                .atlasToolbarFloat(cornerRadius: AtlasMetrics.radiusPill)
                 .frame(minHeight: AtlasMetrics.touchTarget)
                 .contentShape(Rectangle())
         }
@@ -351,7 +371,7 @@ struct AtlasToolbarFloatTextLabel: View {
             .foregroundStyle(color)
             .padding(.horizontal, horizontalPadding)
             .frame(height: AtlasToolbarMetrics.controlHeight)
-            .atlasToolbarFloat()
+            .atlasToolbarFloat(cornerRadius: AtlasMetrics.radiusPill)
     }
 }
 
@@ -444,8 +464,8 @@ struct IdeaIdentityHero: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(idea.displayTitle)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(.white)
+                    .font(AtlasTypography.button())
+                    .foregroundStyle(AtlasColors.lemonInk)
                     .lineLimit(1)
 
                 HStack(spacing: 6) {
@@ -459,13 +479,13 @@ struct IdeaIdentityHero: View {
                     }
                     Text(idea.creatorLine)
                         .font(.system(size: 12))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(AtlasColors.olive)
                         .lineLimit(1)
                 }
 
                 Text(idea.createdUpdatedLine)
                     .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(AtlasColors.olive.opacity(0.8))
                     .lineLimit(2)
 
                 IdeaMiniStatsRow(
@@ -473,8 +493,8 @@ struct IdeaIdentityHero: View {
                     flowerCount: idea.flowerCount,
                     likeCount: idea.likeCount,
                     commentCount: idea.commentCount,
-                    iconColor: .white.opacity(0.8),
-                    textColor: .white.opacity(0.9)
+                    iconColor: AtlasColors.lemonInk.opacity(0.7),
+                    textColor: AtlasColors.olive
                 )
             }
 
@@ -490,7 +510,7 @@ struct IdeaIdentityHero: View {
         .frame(minHeight: 110)
         .background(AtlasColors.aiGradient)
         .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusHero, style: .continuous))
-        .shadow(color: AtlasColors.aiStart.opacity(0.2), radius: 12, y: 4)
+        .shadow(color: AtlasColors.lemonStrong.opacity(0.2), radius: 12, y: 4)
     }
 
     @ViewBuilder
@@ -515,7 +535,7 @@ struct IdeaCardHero: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(idea.displayTitle)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AtlasTypography.mobileSubheadline())
                     .foregroundStyle(AtlasColors.ink)
                     .lineLimit(1)
 
@@ -649,10 +669,10 @@ struct FlowersPreviewCard: View {
                         .foregroundStyle(AtlasColors.ink)
                     Spacer()
                     Text("\(flowerCount) 朵")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(AtlasTypography.badge())
                         .foregroundStyle(AtlasColors.accentFork)
                     Text("→")
-                        .font(.system(size: 14))
+                        .font(AtlasTypography.bodyMedium())
                         .foregroundStyle(AtlasColors.inkFaint)
                 }
             }
@@ -660,7 +680,7 @@ struct FlowersPreviewCard: View {
 
             if donors.isEmpty {
                 Text("还没有人送花")
-                    .font(.system(size: 13))
+                    .font(AtlasTypography.meta())
                     .foregroundStyle(AtlasColors.inkFaint)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -675,7 +695,7 @@ struct FlowersPreviewCard: View {
                                     .fill(AtlasColors.fill)
                                     .frame(width: 36, height: 36)
                                 Text("+\(donors.count - 8)")
-                                    .font(.system(size: 11, weight: .semibold))
+                                    .font(AtlasTypography.overline())
                                     .foregroundStyle(AtlasColors.inkSoft)
                             }
                             .overlay(Circle().stroke(AtlasColors.surface, lineWidth: 2))
@@ -722,7 +742,7 @@ struct FlowerContributorRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(donor.name)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AtlasTypography.mobileSubheadline())
                     .foregroundStyle(AtlasColors.ink)
                     .lineLimit(1)
                 Text("送了一朵花 · \(donor.createdAt.absoluteShort)")
@@ -736,7 +756,7 @@ struct FlowerContributorRow: View {
             HStack(spacing: 4) {
                 DeimosIconView(icon: .flower, size: 14, color: AtlasColors.accentFork)
                 Text("1")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AtlasTypography.badge())
                     .foregroundStyle(AtlasColors.accentFork)
             }
         }
@@ -765,7 +785,10 @@ struct FlowerContributorRow: View {
     }
 }
 
-/// Ardot `C/BottomInputBar` · h56 · field h44 + send 40.
+/// S07 Message Input Bar (Ardot 179:132): #F4F5F8 r28 + border, 56h,
+/// text field + send button 40h r20 lemonStrong inside single container.
+/// S07 Message Input Bar (Ardot 179:132): 350×56, r28, bg=#F4F5F8 + border.
+/// Text field hugs content (min 36h when empty) + send button 40×40 r20 lemonStrong.
 struct BottomInputBar: View {
     @Binding var text: String
     let placeholder: String
@@ -780,33 +803,37 @@ struct BottomInputBar: View {
     }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            AtlasMultilineTextField(
-                placeholder: placeholder,
-                text: $text,
-                minHeight: AtlasMetrics.inputHeight,
-                maxHeight: 120,
-                onSubmit: onSend
-            )
-            .padding(.horizontal, 12)
-            .background(AtlasColors.fill)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+        HStack(alignment: .center, spacing: 8) {
+            // Text field — minimal height when empty, expands with content
+            TextField(placeholder, text: $text, axis: .vertical)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AtlasColors.ink)
+                .lineLimit(1...4)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 36, alignment: .center)
 
+            // Send button (S07 179:134): 40×40 r20 lemonStrong, paperplane icon
             Button(action: onSend) {
-                DeimosIconView(icon: .send, size: 14, color: .white)
+                Image(systemName: "paperplane.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(sendEnabled ? AtlasColors.lemonInk : .white)
                     .frame(width: 40, height: 40)
-                    .background(sendEnabled ? AtlasColors.ink : AtlasColors.inkDisabled)
+                    .background(sendEnabled ? AtlasColors.lemonStrong : AtlasColors.inkDisabled)
                     .clipShape(Circle())
             }
             .disabled(!sendEnabled)
+            .padding(.trailing, 4)
         }
-        .padding(.horizontal, AtlasMetrics.pageX)
-        .padding(.vertical, 6)
-        .frame(height: AtlasMetrics.bottomInputBarHeight)
-        .background(AtlasColors.surface)
-        .overlay(alignment: .top) {
-            Rectangle().fill(AtlasColors.rule).frame(height: 0.5)
-        }
+        .frame(minHeight: 48)
+        .background(Color(hex: 0xF4F5F8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(AtlasColors.border, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .padding(.horizontal, 20)
+        .padding(.bottom, 8)
     }
 }
 
@@ -843,7 +870,7 @@ struct AtlasToolbarBellButton: View {
                     .atlasToolbarFloat()
                 if unreadCount > 0 {
                     Text("\(min(unreadCount, 99))")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(AtlasTypography.tabBarLabel())
                         .foregroundStyle(.white)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
@@ -866,16 +893,18 @@ struct AtlasOutlineButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(AtlasTypography.button())
+                .font(.system(size: 15, weight: .semibold))
                 .frame(maxWidth: .infinity)
-                .frame(height: AtlasMetrics.primaryButtonHeight)
+                .frame(height: 50)
                 .foregroundStyle(AtlasColors.ink)
                 .background(AtlasColors.surface)
                 .overlay(
-                    Capsule()
-                        .stroke(AtlasColors.rule, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 25, style: .continuous)
+                        .stroke(AtlasColors.border, lineWidth: 1)
                 )
+                .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
         }
+        .buttonStyle(AtlasPressableStyle())
     }
 }
 
@@ -884,7 +913,7 @@ struct AtlasStatusPill: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 12, weight: .medium))
+            .font(AtlasTypography.caption())
             .foregroundStyle(AtlasColors.accentActive)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
@@ -996,7 +1025,7 @@ struct CompactListCard<Leading: View, Trailing: View>: View {
                     if let timestamp, !timestamp.isEmpty {
                         Text(timestamp)
                             .font(AtlasTypography.meta())
-                            .foregroundStyle(AtlasColors.inkFaint)
+                            .foregroundStyle(AtlasColors.inkSoft)
                     }
                 }
 
@@ -1016,11 +1045,11 @@ struct CompactListCard<Leading: View, Trailing: View>: View {
         .frame(minHeight: layoutStyle == .flat ? 64 : nil, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(layoutStyle == .flat ? Color.clear : cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: layoutStyle == .flat ? 0 : 16))
+        .clipShape(RoundedRectangle(cornerRadius: layoutStyle == .flat ? 0 : AtlasMetrics.radiusCard, style: .continuous))
         .overlay {
             if showsBorder && layoutStyle == .card {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(AtlasColors.rule, lineWidth: 1)
+                RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                    .stroke(AtlasColors.border, lineWidth: 1)
             }
         }
         .modifier(CompactListCardChromeModifier(layoutStyle: layoutStyle))
@@ -1029,13 +1058,13 @@ struct CompactListCard<Leading: View, Trailing: View>: View {
     private var titleFont: Font {
         layoutStyle == .flat
             ? AtlasTypography.mobileBody()
-            : .system(size: 15, weight: .semibold)
+            : AtlasTypography.cardTitle()
     }
 
     private var subtitleFont: Font {
         layoutStyle == .flat
             ? AtlasTypography.mobileSubheadline()
-            : .system(size: 14)
+            : AtlasTypography.feedBody()
     }
 }
 
@@ -1044,7 +1073,7 @@ private struct CompactListCardChromeModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         if layoutStyle == .card {
-            content.atlasSettingsGroupShadow()
+            content.atlasProfileCard()
         } else {
             content
         }
@@ -1129,7 +1158,7 @@ struct IdeaCell: View {
         HStack(spacing: 4) {
             DeimosIconView(icon: icon, size: 16, color: color)
             Text("\(count)")
-                .font(.system(size: 13))
+                .font(AtlasTypography.meta())
                 .foregroundStyle(AtlasColors.inkFaint)
                 .monospacedDigit()
         }
@@ -1210,7 +1239,7 @@ struct IdeaFlatRow: View {
         HStack(spacing: 4) {
             DeimosIconView(icon: icon, size: 16, color: color)
             Text("\(count)")
-                .font(.system(size: 13, weight: .medium))
+                .font(AtlasTypography.meta())
                 .foregroundStyle(AtlasColors.inkFaint)
                 .monospacedDigit()
         }
@@ -1266,7 +1295,7 @@ struct FollowingIdeaCell: View {
             }
 
             Text(activity.feedSummary)
-                .font(.system(size: 13))
+                .font(AtlasTypography.meta())
                 .foregroundStyle(AtlasColors.accentActive)
         }
         .padding(AtlasMetrics.cardPadding)
@@ -1299,11 +1328,11 @@ struct HomeSearchAgentCell: View {
             EntityAvatar.agent(id: agent.id, url: agent.avatarLink, name: agent.name, size: 40)
             VStack(alignment: .leading, spacing: 4) {
                 Text(agent.name)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(AtlasTypography.subtitle())
                     .foregroundStyle(AtlasColors.ink)
                     .lineLimit(1)
                 Text((agent.description ?? agent.capabilities?.joined(separator: " · ") ?? "Agent").plainSummary)
-                    .font(.system(size: 13))
+                    .font(AtlasTypography.meta())
                     .foregroundStyle(AtlasColors.inkSoft)
                     .lineLimit(2)
             }
@@ -1320,48 +1349,55 @@ struct HomeSearchAgentCell: View {
     }
 }
 
-struct PillTabBar: View {
+/// v6 NativeTabBar — native iOS Tab Bar (replaces floating glass PillTabBar).
+///
+/// Per Ardot v6 spec (`149:182` / `149:272`):
+/// - 393×83px (49pt bar + 34pt safe area), edge-to-edge
+/// - White 95% opacity bg, 1px top border `#E7EAF0`
+/// - 4 tabs SPACE_EVENLY, icon 26×26 + label 10pt Medium
+/// - Active: SF Symbol `.fill` + `#2F6BE4` blue tint
+/// - Inactive: `#8A94A6` gray
+struct NativeTabBar: View {
     @Binding var selection: MainTab
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 0) {
             ForEach(MainTab.allCases, id: \.self) { tab in
-                let isSelected = selection == tab
-                Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                        selection = tab
-                    }
-                } label: {
-                    VStack(spacing: 4) {
-                        DeimosIconView(
-                            icon: tab.icon,
-                            size: 18,
-                            color: isSelected ? .white : AtlasColors.inkFaint
-                        )
-                        Text(tab.title)
-                            .font(AtlasTypography.tabBarLabel())
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 54)
-                    .foregroundStyle(isSelected ? Color.white : AtlasColors.inkFaint)
-                    .background(
-                        RoundedRectangle(cornerRadius: AtlasMetrics.tabBarActiveRadius, style: .continuous)
-                            .fill(isSelected ? AtlasColors.primary : Color.clear)
-                    )
-                }
-                .buttonStyle(.plain)
-                .contentShape(Rectangle())
+                tabItem(tab)
             }
         }
-        .padding(4)
-        .frame(height: AtlasMetrics.tabBarHeight)
-        .background(
-            RoundedRectangle(cornerRadius: AtlasMetrics.tabBarRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(AtlasColors.glassOverlay)
-        )
-        .shadow(color: .black.opacity(0.08), radius: 24, y: 4)
-        .padding(.horizontal, AtlasMetrics.pageX)
+        // Bar is 49pt — safeAreaInset already handles bottom safe area padding
+        .frame(height: AtlasMetrics.tabBarBarHeight)
+        .frame(maxWidth: .infinity)
+        .background(Color.white)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(AtlasColors.border)
+                .frame(height: 1)
+        }
+    }
+
+    private func tabItem(_ tab: MainTab) -> some View {
+        let isSelected = selection == tab
+        return Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                selection = tab
+            }
+        } label: {
+            VStack(spacing: 4) {
+                // Per design node tree: icon 16×16 within 26×26 frame
+                Image(systemName: isSelected ? tab.sfSymbolActive : tab.sfSymbol)
+                    .font(.system(size: 16, weight: .regular))
+                    .frame(width: 26, height: 26)
+                Text(tab.title)
+                    .font(AtlasTypography.tabBarLabel())
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: AtlasMetrics.tabBarBarHeight)
+            .foregroundStyle(isSelected ? AtlasColors.lemonStrong : AtlasColors.inkSoft)
+        }
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
     }
 }
 
@@ -1401,7 +1437,7 @@ struct AtlasSearchBarTrigger: View {
         HStack(spacing: 8) {
             DeimosIconView(icon: .search, size: 16, color: AtlasColors.inkFaint)
             Text(placeholder)
-                .font(.system(size: 14))
+                .font(AtlasTypography.bodyMedium())
                 .foregroundStyle(AtlasColors.inkFaint)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -1438,7 +1474,7 @@ struct DeimosHeader: View {
 
                     if unreadCount > 0 {
                         Text("\(min(unreadCount, 99))")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(AtlasTypography.tabBarLabel())
                             .foregroundStyle(.white)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
@@ -1500,8 +1536,8 @@ struct AtlasSegmentedPill: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 40)
                         .background(selection == index ? AtlasColors.surface : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .shadow(color: selection == index ? .black.opacity(0.06) : .clear, radius: 3, y: 1)
+                        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+                        .shadow(color: selection == index ? AtlasMetrics.shadowProfileColor : .clear, radius: 3, y: 1)
                 }
                 .buttonStyle(.plain)
             }
@@ -1509,7 +1545,7 @@ struct AtlasSegmentedPill: View {
         .padding(4)
         .frame(height: 48)
         .background(AtlasColors.surfaceSecondary)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
     }
 }
 
@@ -1564,6 +1600,128 @@ struct AtlasCard<Content: View>: View {
     }
 }
 
+// MARK: - v7 AI Hero Card (Ardot S02 `179:27`)
+
+/// v7 AIHeroCard — lemon solid hero card with title, subtitle, and pill CTA.
+/// Per Ardot node tree: VERTICAL itemSpacing=10, padding=[22,22,0,18], r24, lemon bg, 350×132.
+struct AIHeroCard: View {
+    let title: String
+    let subtitle: String
+    let ctaTitle: String
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(AtlasTypography.heroTitle())
+                .foregroundStyle(AtlasColors.lemonInk)
+                .lineLimit(2)
+
+            Text(subtitle)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AtlasColors.olive)
+
+            Button(action: action) {
+                HStack(spacing: 4) {
+                    Text("\(ctaTitle) →")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(AtlasColors.olive)
+                }
+                .padding(.horizontal, 22)
+                .frame(height: 38)
+                .background(Color.white)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 22)
+        .padding(.top, 0)
+        .padding(.bottom, 18)
+        .frame(height: 132)
+        .background(AtlasColors.lemon)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+}
+
+// MARK: - v7 Idea Cover Card (Ardot S02 `179:40`)
+
+/// v7 IdeaCoverCard — per S02 node tree.
+/// Card: white bg + 1px border #E7EAF0, r24, VERTICAL itemSpacing=0.
+/// Cover: 132h lemonSoft bg, absolute layout — status badge (olive pill top-left) + title (lemonInk 20pt).
+/// Footer: single-line meta text "作者 · 时间 · 送花 N · 喜欢 N · 评论 N · Fork N" 13pt Medium.
+struct IdeaCoverCard: View {
+    let idea: Idea
+    var coverImageURL: URL?
+    var iconNamespace: Namespace.ID?
+    var onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 0) {
+                coverSection
+                metaSection
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AtlasColors.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(AtlasColors.border, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // Cover area — 132h lemonSoft bg, absolute positioned children (Ardot 179:41)
+    private var coverSection: some View {
+        ZStack(alignment: .topLeading) {
+            // Background — lemonSoft #F2FFC5
+            Rectangle()
+                .fill(AtlasColors.lemonSoft)
+                .frame(maxWidth: .infinity)
+
+            // Status badge — top-left, olive #5F7400 bg, white text (Ardot 179:42)
+            if idea.showsFeedStatus {
+                Text(idea.statusLabel)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .frame(height: 24)
+                    .background(AtlasColors.olive)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .padding(.leading, 16)
+                    .padding(.top, 16)
+            }
+
+            // Cover title — lemonInk 20pt ExtraBold (Ardot 179:44)
+            // Positioned at bottom of cover area
+            Text(idea.displayTitle)
+                .font(.system(size: 20, weight: .heavy))
+                .foregroundStyle(AtlasColors.lemonInk)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+        }
+        .frame(height: 132)
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    // Footer — single-line meta text (Ardot 179:45)
+    private var metaSection: some View {
+        Text(idea.coverMetaLine)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(Color(hex: 0x6B7280))
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+    }
+}
+
 struct AtlasTealButton: View {
     let title: String
     var isLoading = false
@@ -1573,18 +1731,18 @@ struct AtlasTealButton: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 if isLoading {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(AtlasColors.lemonInk)
                 }
                 Text(title)
-                    .font(AtlasTypography.button())
+                    .font(.system(size: 15, weight: .bold))
             }
             .frame(maxWidth: .infinity)
-            .frame(height: AtlasMetrics.primaryButtonHeight)
-            .foregroundStyle(.white)
-            .background(AtlasColors.primary)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-            .shadow(color: AtlasColors.primary.opacity(0.3), radius: 12, y: 4)
+            .frame(height: 50)
+            .foregroundStyle(AtlasColors.lemonInk)
+            .background(AtlasColors.primaryAction)
+            .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
         }
+        .buttonStyle(AtlasPressableStyle())
         .disabled(isLoading)
     }
 }
@@ -1596,14 +1754,14 @@ struct AtlasTealOutlineButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(AtlasTypography.pill())
+                .font(.system(size: 15, weight: .semibold))
                 .frame(maxWidth: .infinity)
-                .frame(height: AtlasMetrics.primaryButtonHeight)
+                .frame(height: 50)
                 .foregroundStyle(AtlasColors.ink)
                 .background(AtlasColors.surface)
                 .overlay(
-                    Capsule()
-                        .stroke(AtlasColors.rule, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 25, style: .continuous)
+                        .stroke(AtlasColors.border, lineWidth: 1)
                 )
         }
     }
@@ -1616,7 +1774,7 @@ struct StatChip: View {
     var body: some View {
         VStack(alignment: .center, spacing: 4) {
             Text(value)
-                .font(.system(size: 18, weight: .bold))
+                .font(AtlasTypography.headline())
                 .foregroundStyle(AtlasColors.ink)
             Text(label)
                 .font(.system(size: 10))
@@ -1762,7 +1920,7 @@ struct AtlasOfflineBanner: View {
         .padding(.horizontal, 16)
         .frame(minHeight: 44)
         .background(AtlasColors.entityUser)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
     }
 }
 

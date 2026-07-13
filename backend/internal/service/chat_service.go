@@ -987,6 +987,74 @@ func (s *ChatService) ForkSession(sessionID, userID string, input ForkSessionInp
 	return newSession, nil
 }
 
+// ArchiveResult is the response for archiving a session.
+type ArchiveResult struct {
+	SessionID  string `json:"session_id"`
+	Summary    string `json:"summary"`
+	ArchivedAt string `json:"archived_at"`
+}
+
+// ArchiveSession packages the chat context and extracts a summary using LLM.
+func (s *ChatService) ArchiveSession(sessionID, userID string) (*ArchiveResult, error) {
+	session, err := s.GetSession(sessionID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch all messages
+	var messages []model.ChatMessage
+	if err := s.db.Where("session_id = ? AND role IN ?", sessionID, []string{"user", "assistant"}).
+		Order("created_at ASC").Find(&messages).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch messages: %w", err)
+	}
+
+	if len(messages) == 0 {
+		return nil, fmt.Errorf("no messages to archive")
+	}
+
+	// Build conversation text for summary
+	var convoText string
+	for _, m := range messages {
+		if m.Role == "user" {
+			convoText += fmt.Sprintf("用户: %s\n", m.Content)
+		} else {
+			convoText += fmt.Sprintf("助手: %s\n", m.Content)
+		}
+	}
+
+	// Generate summary using LLM
+	summaryPrompt := "请用 2-3 句话总结以下对话的主要内容和结论，作为归档摘要：\n\n" + convoText
+	llmMessages := []LLMMessage{{Role: "user", Content: summaryPrompt}}
+	resp, err := s.llm.Chat("你是一个对话摘要助手。请简洁准确地总结对话内容。", llmMessages)
+	if err != nil || resp == nil || resp.Content == "" {
+		// Fallback: use first message as summary
+		summary := "对话归档：" + session.Title
+		if len(messages) > 0 {
+			summary += "（" + truncate(messages[0].Content, 50) + "…）"
+		}
+		return &ArchiveResult{
+			SessionID:  sessionID,
+			Summary:    summary,
+			ArchivedAt: time.Now().Format(time.RFC3339),
+		}, nil
+	}
+
+	// Mark session as archived
+	now := time.Now()
+	s.db.Model(&model.ChatSession{}).Where("id = ? AND user_id = ?", sessionID, userID).
+		Update("archived_at", &now)
+
+	logActivity(s.db, "user", userID, "archive_session", "session", sessionID, map[string]string{
+		"summary": resp.Content,
+	})
+
+	return &ArchiveResult{
+		SessionID:  sessionID,
+		Summary:    resp.Content,
+		ArchivedAt: now.Format(time.RFC3339),
+	}, nil
+}
+
 func (s *ChatService) buildSystemPrompt(session *model.ChatSession) string {
 	agent, err := s.agentSvc.GetByID(session.AgentID)
 	if err != nil {

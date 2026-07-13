@@ -20,7 +20,7 @@ private struct AtlasKeyboardToolbarModifier: ViewModifier {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("完成") { KeyboardSupport.dismiss() }
-                    .font(.system(size: 16, weight: .medium))
+                    .font(AtlasTypography.subtitle())
             }
         }
     }

@@ -41,14 +41,14 @@ struct VerifyEmailLinkView: View {
                 }
             case .success:
                 Text("验证成功")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(AtlasTypography.button())
                     .foregroundStyle(AtlasColors.accentActive)
                 Text(message)
                     .font(.system(size: 13))
                     .foregroundStyle(AtlasColors.inkSoft)
             case .error:
                 Text("链接无效或已过期")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(AtlasTypography.button())
                     .foregroundStyle(AtlasColors.coral)
                 Text(message)
                     .font(.system(size: 13))
@@ -200,7 +200,7 @@ private func sheetHeader(title: String, onClose: @escaping () -> Void) -> some V
             .padding(.top, 8)
         HStack {
             Text(title)
-                .font(.system(size: 17, weight: .semibold))
+                .font(AtlasTypography.cardTitle())
                 .foregroundStyle(AtlasColors.ink)
             Spacer()
             Button("关闭", action: onClose)

@@ -214,6 +214,19 @@ func (h *ChatHandler) ForkSession(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"session": session})
 }
 
+// ArchiveSession packages the chat context and extracts a summary.
+func (h *ChatHandler) ArchiveSession(c *gin.Context) {
+	userID := c.GetString("user_id")
+	sessionID := c.Param("id")
+
+	result, err := h.chatSvc.ArchiveSession(sessionID, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"result": result})
+}
+
 func getPagination(c *gin.Context) (limit, offset int) {
 	limit, _ = strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset, _ = strconv.Atoi(c.DefaultQuery("offset", "0"))

@@ -13,7 +13,7 @@ struct ForgotPasswordView: View {
             HStack {
                 Spacer()
                 Button("关闭") { dismiss() }
-                    .font(.system(size: 15))
+                    .font(AtlasTypography.feedBody())
                     .foregroundStyle(AtlasColors.inkFaint)
             }
 
@@ -23,7 +23,7 @@ struct ForgotPasswordView: View {
                     .foregroundStyle(AtlasColors.ink)
 
                 Text("输入注册邮箱，我们会发送重置链接。")
-                    .font(.system(size: 15))
+                    .font(AtlasTypography.feedBody())
                     .foregroundStyle(AtlasColors.inkFaint)
             }
 

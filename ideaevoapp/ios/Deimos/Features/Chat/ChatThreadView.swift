@@ -13,14 +13,12 @@ struct ChatThreadView: View {
     @State private var errorMessage: String?
     @State private var pendingFeedbackIDs: Set<String> = []
     @State private var ideaRoute: IdeaRoute?
-    @State private var showActionMenu = false
-    @State private var showRenameSheet = false
-    @State private var renameDraft = ""
-    @State private var showDeleteDialog = false
-    @State private var isWorking = false
+    @State private var isArchiving = false
+    @State private var archiveSummary: String?
+    @State private var showArchiveResult = false
 
     private var isSheetZoomActive: Bool {
-        showActionMenu || showRenameSheet
+        showArchiveResult
     }
 
     init(sessionID: String, title: String) {
@@ -32,11 +30,42 @@ struct ChatThreadView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AtlasPushNavBar(title: title, onBack: { dismiss() }) {
-                AtlasToolbarFloatIconButton(icon: .more) {
-                    showActionMenu = true
+            // S07 Chat Header: back + avatar + title (left) | archive button (right)
+            HStack(spacing: 12) {
+                AtlasNavBackButton(action: { dismiss() })
+
+                Circle()
+                    .fill(AtlasColors.lemonStrong)
+                    .frame(width: 42, height: 42)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundStyle(AtlasColors.ink)
+                        .lineLimit(1)
+                    Text("在线 · SSE 流式回复")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                        .lineLimit(1)
                 }
+
+                Spacer()
+
+                // Archive button — 36×36 r18 bg-muted
+                Button {
+                    Task { await archiveSession() }
+                } label: {
+                    Image(systemName: "archivebox.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(AtlasColors.ink)
+                        .frame(width: 36, height: 36)
+                        .background(AtlasColors.surfaceSecondary)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(AtlasPressableStyle())
             }
+            .padding(.horizontal, 20)
+            .frame(height: 58)
 
             if let errorMessage, messages.isEmpty, !isLoading {
                 AtlasOfflineBanner(message: errorMessage) {
@@ -48,7 +77,7 @@ struct ChatThreadView: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 10) {
+                    LazyVStack(spacing: AtlasMetrics.chatGap) {
                         if isLoading && messages.isEmpty {
                             ChatThreadLoadingSkeleton()
                         }
@@ -65,8 +94,12 @@ struct ChatThreadView: View {
                             .id(message.id)
                         }
                     }
-                    .padding(.horizontal, AtlasMetrics.pageX)
-                    .padding(.vertical, 16)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                }
+                // Tap to dismiss keyboard — tap anywhere on the message scroll area
+                .onTapGesture {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .onChange(of: messages.count) { _, _ in
@@ -78,7 +111,7 @@ struct ChatThreadView: View {
 
             BottomInputBar(
                 text: $draft,
-                placeholder: "和 Agent 聊聊…",
+                placeholder: "问万叶一个问题",
                 isSending: isSending,
                 onSend: { Task { await send() } }
             )
@@ -87,35 +120,8 @@ struct ChatThreadView: View {
         .atlasSheetZoomBackground(isPresented: isSheetZoomActive)
         .navigationBarHidden(true)
         .suppressTabBar()
-        .sheet(isPresented: $showActionMenu) {
-            AtlasActionMenuSheet(actions: [
-                AtlasMenuAction(title: "重命名对话") {
-                    renameDraft = title
-                    showRenameSheet = true
-                },
-                AtlasMenuAction(title: "删除对话", destructive: true) {
-                    showDeleteDialog = true
-                },
-            ]) {
-                showActionMenu = false
-            }
-            .presentationDetents([.height(180)])
-        }
-        .sheet(isPresented: $showRenameSheet) {
-            renameSheet
-        }
-        .overlay {
-            if showDeleteDialog {
-                AtlasCenterDialog(
-                    title: "删除对话？",
-                    message: "删除后无法恢复，消息记录将被清除。",
-                    destructiveTitle: "删除",
-                    cancelTitle: "取消",
-                    isLoading: isWorking,
-                    onConfirm: { Task { await deleteSession() } },
-                    onCancel: { showDeleteDialog = false }
-                )
-            }
+        .sheet(isPresented: $showArchiveResult) {
+            archiveResultSheet
         }
         .task { await loadMessages() }
         .navigationDestination(item: $ideaRoute) { route in
@@ -125,7 +131,7 @@ struct ChatThreadView: View {
 
     private func toolActivityBar(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 12, weight: .medium))
+            .font(AtlasTypography.caption())
             .foregroundStyle(AtlasColors.accentActive)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
@@ -134,57 +140,56 @@ struct ChatThreadView: View {
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
-    private var renameSheet: some View {
+    /// Archive result sheet — shows summary after archiving.
+    private var archiveResultSheet: some View {
         VStack(spacing: 16) {
             AtlasSheetGrabber()
 
-            AtlasSheetTitleRow(
-                title: "重命名对话",
-                showsCheck: true,
-                onClose: { showRenameSheet = false },
-                onCheck: { Task { await submitRename() } }
-            )
+            Text("对话已封存")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
 
-            AtlasTextField(placeholder: "会话标题", text: $renameDraft, height: AtlasMetrics.inputHeight)
-                .padding(.horizontal, 4)
-                .background(AtlasColors.fill)
-                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+            if let summary = archiveSummary {
+                Text(summary)
+                    .font(.system(size: 14))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(Color(hex: 0xF8FAFC))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(AtlasColors.border, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
 
-            AtlasPrimaryButton(title: "保存", isLoading: isWorking) {
-                Task { await submitRename() }
+            Text("聊天上下文已打包封存，可在「我的 Agent」中查看归档。")
+                .font(.system(size: 13))
+                .foregroundStyle(AtlasColors.inkFaint)
+
+            AtlasPrimaryButton(title: "完成") {
+                showArchiveResult = false
+                dismiss()
             }
         }
         .padding(20)
         .background(AtlasColors.surface)
-        .presentationDetents([.height(260)])
+        .presentationDetents([.height(380)])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(AtlasMetrics.radiusSheet)
     }
 
-    private func submitRename() async {
-        let newTitle = renameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !newTitle.isEmpty else { return }
-        isWorking = true
-        defer { isWorking = false }
+    /// Archive the session — calls backend to package + extract summary.
+    private func archiveSession() async {
+        isArchiving = true
+        defer { isArchiving = false }
         do {
-            try await APIClient.shared.renameSession(id: sessionID, title: newTitle)
-            title = newTitle
-            showRenameSheet = false
-            ToastCenter.shared.showSuccess("已重命名")
+            let result = try await APIClient.shared.archiveSession(id: sessionID)
+            archiveSummary = result.summary
+            showArchiveResult = true
+            ToastCenter.shared.showSuccess("已封存对话")
         } catch {
-            ToastCenter.shared.showError("重命名失败", message: error.localizedDescription)
-        }
-    }
-
-    private func deleteSession() async {
-        isWorking = true
-        defer { isWorking = false }
-        do {
-            try await APIClient.shared.deleteSession(id: sessionID)
-            showDeleteDialog = false
-            dismiss()
-        } catch {
-            ToastCenter.shared.showError("删除失败", message: error.localizedDescription)
+            ToastCenter.shared.showError("封存失败", message: error.localizedDescription)
         }
     }
 
@@ -292,22 +297,34 @@ struct ChatMessageBubble: View {
     var body: some View {
         VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
             if showsTextBubble {
-                HStack {
-                    if message.isUser { Spacer(minLength: 48) }
+                HStack(alignment: .top, spacing: 10) {
+                    // AI avatar next to AI messages
+                    if !message.isUser {
+                        aiAvatar
+                    }
+                    if message.isUser { Spacer(minLength: 0) }
+                    // Bubble content — hug text width, cap at 260pt max
                     Group {
                         if message.isAssistant, message.contentType == "markdown" {
                             MarkdownBody(markdown: message.content)
+                                .frame(maxWidth: 232)
                         } else {
                             Text(message.content.plainSummary)
-                                .font(.system(size: 14))
-                                .foregroundStyle(message.isUser ? Color.white : AtlasColors.ink)
+                                .font(message.isUser
+                                      ? .system(size: 13, weight: .semibold)
+                                      : .system(size: 13, weight: .medium))
+                                .foregroundStyle(message.isUser ? AtlasColors.lemonInk : Color(hex: 0x253044))
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    .padding(12)
                     .frame(maxWidth: 260, alignment: message.isUser ? .trailing : .leading)
-                    .background(message.isUser ? AtlasColors.primary : Color(hex: 0xF1F5F9))
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    if !message.isUser { Spacer(minLength: 48) }
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 14)
+                    .padding(.top, 12)
+                    .padding(.bottom, 10)
+                    .background(message.isUser ? AtlasColors.lemonStrong : Color(hex: 0xF1F5FF))
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    if !message.isUser { Spacer(minLength: 0) }
                 }
             }
 
@@ -363,6 +380,18 @@ struct ChatMessageBubble: View {
         }
         .buttonStyle(.plain)
         .disabled(!feedbackEnabled)
+    }
+
+    /// v7 AI avatar — 40px lemon circle with sparkles icon.
+    private var aiAvatar: some View {
+        ZStack {
+            Circle()
+                .fill(AtlasColors.lemon)
+                .frame(width: 40, height: 40)
+            Image(systemName: "sparkles")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(AtlasColors.lemonInk)
+        }
     }
 
     private func toggleFeedback(rating: String) async {

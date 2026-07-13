@@ -946,6 +946,16 @@ final class APIClient {
         return response.session
     }
 
+    /// Archive a chat session — backend packages context + extracts summary.
+    func archiveSession(id: String) async throws -> ArchiveResult {
+        let response: ArchiveResultResponse = try await request(
+            path: "/sessions/\(id)/archive",
+            method: "POST",
+            auth: .user
+        )
+        return response.result
+    }
+
     // MARK: - Transport
 
     enum AuthMode {

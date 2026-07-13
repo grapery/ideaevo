@@ -158,12 +158,12 @@ struct AtlasDesignedErrorState: View {
     var secondaryAction: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(iconTint)
+                Circle()
+                    .fill(AtlasColors.lemonSoft)
                     .frame(width: 64, height: 64)
-                DeimosIconView(icon: icon, size: 28, color: AtlasColors.inkSoft)
+                DeimosIconView(icon: icon, size: 28, color: AtlasColors.olive)
             }
 
             VStack(spacing: 6) {
@@ -183,7 +183,7 @@ struct AtlasDesignedErrorState: View {
             if let secondaryTitle, let secondaryAction {
                 Button(action: secondaryAction) {
                     Text(secondaryTitle)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(AtlasTypography.pill())
                         .foregroundStyle(AtlasColors.ink)
                 }
                 .buttonStyle(.plain)
@@ -203,12 +203,12 @@ struct AtlasDesignedEmptyState: View {
     var ctaAction: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(iconTint)
+                Circle()
+                    .fill(AtlasColors.lemonSoft)
                     .frame(width: 64, height: 64)
-                DeimosIconView(icon: icon, size: 28, color: AtlasColors.inkSoft)
+                DeimosIconView(icon: icon, size: 28, color: AtlasColors.olive)
             }
 
             VStack(spacing: 6) {
@@ -232,45 +232,37 @@ struct AtlasDesignedEmptyState: View {
     }
 }
 
+/// Loading Skeleton Card — per ardot component 195:129.
+/// Card: white + border r24, padding=16, itemSpacing=10.
+/// Contains: 132h r24 grey block + two text lines (r8).
 struct HomeFeedLoadingSkeleton: View {
     var body: some View {
         VStack(spacing: 16) {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(AtlasColors.fill)
-                .frame(height: 44)
-
-            HStack(spacing: 8) {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(AtlasColors.fill)
-                    .frame(width: 72, height: 36)
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(AtlasColors.fill.opacity(0.6))
-                    .frame(width: 72, height: 36)
-                Spacer()
-            }
-
-            ForEach(0..<3, id: \.self) { _ in
+            ForEach(0..<2, id: \.self) { _ in
                 VStack(alignment: .leading, spacing: 10) {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(AtlasColors.fill)
+                    // Skeleton block — 132h r24
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(Color(hex: 0xF0F2F5))
+                        .frame(height: 132)
+
+                    // Skeleton line 1 — 200×16 r8
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color(hex: 0xF0F2F5))
+                        .frame(width: 200, height: 16)
+
+                    // Skeleton line 2 — full width 14h r8
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color(hex: 0xF0F2F5))
                         .frame(height: 14)
-                        .frame(maxWidth: 220)
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(AtlasColors.fill.opacity(0.7))
-                        .frame(height: 12)
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(AtlasColors.fill.opacity(0.5))
-                        .frame(height: 12)
-                        .frame(maxWidth: 180)
                 }
-                .padding(AtlasMetrics.cardPadding)
+                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(AtlasColors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                        .stroke(AtlasColors.rule, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(AtlasColors.border, lineWidth: 1)
                 )
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
         }
     }
@@ -281,23 +273,23 @@ struct ChatThreadLoadingSkeleton: View {
         VStack(spacing: 12) {
             HStack {
                 Spacer(minLength: 80)
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
                     .fill(AtlasColors.ink.opacity(0.85))
                     .frame(width: 200, height: 44)
             }
             HStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
                     .fill(AtlasColors.surface)
                     .frame(width: 240, height: 68)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
                             .stroke(AtlasColors.rule, lineWidth: 1)
                     )
                 Spacer(minLength: 48)
             }
             HStack {
                 Spacer(minLength: 80)
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
                     .fill(AtlasColors.ink.opacity(0.85))
                     .frame(width: 160, height: 44)
             }

@@ -70,6 +70,7 @@
 		11DA9C4F609934AC5394CBB2 /* RelationshipTriangle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A8AF2BB99C59D778B798F6F /* RelationshipTriangle.swift */; };
 		96BA5A1FC576EF25E6185716 /* ChatIdeaSuggestion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D4D838C1C0F0B2D49E70C7A /* ChatIdeaSuggestion.swift */; };
 		B12386F9E184134F25F86FEF /* ComplianceScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC62CE625CFA7411FF0C95B /* ComplianceScreens.swift */; };
+		B5D1E2F3A4B5478990AC0001 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B5D1E2F3A4B5478990AC0002 /* LaunchScreen.storyboard */; };
 		2EE37DA19639A01EABFCBBF3 /* FlowersGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9600C28A27A8BE102C9B408 /* FlowersGridView.swift */; };
 		97D02FDBBEA4071B146830FA /* PublishIdeaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B41AA512D5A2A5343EEFE79B /* PublishIdeaView.swift */; };
 		E4664B64A6441BE2B9EA2691 /* MyAgentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F5294959A1D6794DBEF6989 /* MyAgentsView.swift */; };
@@ -153,6 +154,7 @@
 		6AC62CE625CFA7411FF0C95B /* ComplianceScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Deimos/Features/Compliance/ComplianceScreens.swift"; sourceTree = SOURCE_ROOT; };
 		A9600C28A27A8BE102C9B408 /* FlowersGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Deimos/Features/IdeaDetail/FlowersGridView.swift"; sourceTree = SOURCE_ROOT; };
 		B41AA512D5A2A5343EEFE79B /* PublishIdeaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Deimos/Features/IdeaDetail/PublishIdeaView.swift"; sourceTree = SOURCE_ROOT; };
+		B5D1E2F3A4B5478990AC0002 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		1F5294959A1D6794DBEF6989 /* MyAgentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Deimos/Features/Profile/MyAgentsView.swift"; sourceTree = SOURCE_ROOT; };
 		2D92AAF288737FD6C84FB87A /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Deimos/Features/Search/SearchView.swift"; sourceTree = SOURCE_ROOT; };
 		8994EA78969BEE89FD268949 /* AvatarDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Deimos/Models/AvatarDefaults.swift"; sourceTree = SOURCE_ROOT; };
@@ -214,6 +216,7 @@
 			); path = Services; sourceTree = "<group>"; };
 		2DF2468792A345EEB689FE8C /* Resources */ = { isa = PBXGroup; children = (
 				941F2EB111B84DBEB37A61A7 /* Assets.xcassets */,
+				B5D1E2F3A4B5478990AC0002 /* LaunchScreen.storyboard */,
 			); path = Resources; sourceTree = "<group>"; };
 		15EDA160CE50436798E3DC75 /* Features */ = { isa = PBXGroup; children = (
 				2E149597947D484591B7DB79 /* MainTabView.swift */,
@@ -282,6 +285,7 @@
 /* Begin PBXResourcesBuildPhase section */
 		2AAE8F4B6FF44FB8B4604126 /* Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
 				C59C79D5E1EB435F8CE96366 /* Assets.xcassets in Resources */,
+				B5D1E2F3A4B5478990AC0001 /* LaunchScreen.storyboard in Resources */,
 			); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 

@@ -206,7 +206,7 @@ struct FlowersGridView: View {
     private var donorListSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("送花者")
-                .font(.system(size: 15, weight: .semibold))
+                .font(AtlasTypography.mobileSubheadline())
                 .foregroundStyle(AtlasColors.ink)
 
             ForEach(Array(viewModel.donors.enumerated()), id: \.element.id) { index, donor in

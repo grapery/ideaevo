@@ -26,7 +26,7 @@ struct AtlasActionMenuSheet: View {
                         action.handler()
                     } label: {
                         Text(action.title)
-                            .font(.system(size: 15))
+                            .font(AtlasTypography.feedBody())
                             .foregroundStyle(action.destructive ? AtlasColors.destructive : AtlasColors.ink)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 16)
@@ -36,7 +36,7 @@ struct AtlasActionMenuSheet: View {
                 }
 
                 Button("取消", action: onDismiss)
-                    .font(.system(size: 15))
+                    .font(AtlasTypography.feedBody())
                     .foregroundStyle(AtlasColors.inkSoft)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
@@ -123,10 +123,10 @@ struct LegalDocumentView: View {
                 ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(section.heading)
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(AtlasTypography.mobileSubheadline())
                             .foregroundStyle(AtlasColors.ink)
                         Text(section.body)
-                            .font(.system(size: 14))
+                            .font(AtlasTypography.bodyMedium())
                             .foregroundStyle(AtlasColors.inkSoft)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -182,7 +182,7 @@ struct BlocklistView: View {
                 settingsBackHeader(title: "黑名单", dismiss: dismiss)
 
                 Text("拉黑的用户不会出现在你的动态、广场、搜索与通知中。可在用户主页 ⋯ 菜单中拉黑。")
-                    .font(.system(size: 13))
+                    .font(AtlasTypography.meta())
                     .foregroundStyle(AtlasColors.inkSoft)
 
                 if blocked.isEmpty {
@@ -196,7 +196,7 @@ struct BlocklistView: View {
                                 EntityAvatar.user(id: user.id, url: nil, name: user.name, size: 40)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(user.name)
-                                        .font(.system(size: 15, weight: .medium))
+                                        .font(AtlasTypography.mobileSubheadline())
                                         .foregroundStyle(AtlasColors.ink)
                                     Text("已屏蔽内容")
                                         .font(.system(size: 12))
@@ -209,7 +209,7 @@ struct BlocklistView: View {
                                         blocked = BlocklistStore.shared.entries
                                     }
                                 }
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(AtlasTypography.badge())
                                 .foregroundStyle(AtlasColors.destructive)
                             }
                             .padding(.horizontal, AtlasMetrics.cardPadding)

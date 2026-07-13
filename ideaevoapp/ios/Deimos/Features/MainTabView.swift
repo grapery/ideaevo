@@ -49,7 +49,7 @@ enum MainTab: CaseIterable {
 
     var title: String {
         switch self {
-        case .home: return "首页"
+        case .home: return "探索"
         case .chat: return "对话"
         case .activity: return "动态"
         case .profile: return "我的"
@@ -62,6 +62,25 @@ enum MainTab: CaseIterable {
         case .chat: return .chat
         case .activity: return .activity
         case .profile: return .profile
+        }
+    }
+
+    /// v6 SF Symbol names for native iOS Tab Bar (Ardot `149:182`).
+    var sfSymbol: String {
+        switch self {
+        case .home: return "house"
+        case .chat: return "sparkles"
+        case .activity: return "bell"
+        case .profile: return "person"
+        }
+    }
+
+    var sfSymbolActive: String {
+        switch self {
+        case .home: return "house.fill"
+        case .chat: return "sparkles"
+        case .activity: return "bell.fill"
+        case .profile: return "person.fill"
         }
     }
 }
@@ -96,9 +115,7 @@ struct MainTabView: View {
             .background(AtlasColors.canvas)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if tabBarVisibility.isVisible {
-                    PillTabBar(selection: $selection)
-                        .padding(.top, 6)
-                        .padding(.bottom, 8)
+                    NativeTabBar(selection: $selection)
                 }
             }
             .environment(\.loginCancelAction) {

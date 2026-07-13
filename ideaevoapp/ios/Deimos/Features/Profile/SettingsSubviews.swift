@@ -18,54 +18,122 @@ struct EditProfileView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                settingsBackHeader(title: "编辑资料", dismiss: dismiss)
+            VStack(alignment: .leading, spacing: 14) {
+                // S20 Back button row (36×36 r18 #F4F5F8)
+                HStack(spacing: 8) {
+                    AtlasNavBackButton { dismiss() }
+                    Spacer()
+                }
+                .padding(.horizontal, 8)
+                .frame(height: AtlasToolbarMetrics.barHeight)
 
-                Text("更新头像、背景与简介")
-                    .font(.system(size: 15))
-                    .foregroundStyle(AtlasColors.inkFaint)
+                // S20 Screen Title — 28pt Bold ink (Ardot 189:13)
+                Text("编辑个人资料")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(AtlasColors.ink)
+
+                // S20 Avatar Background Upload card — bg #F7F8FA r16 (Ardot 189:14)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("头像、背景图")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color(hex: 0x3E4652))
+                    Text("昵称、bio、邮箱、手机绑定与密码")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color(hex: 0x3E4652))
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(hex: 0xF7F8FA))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
                 profileBanner
-
-                labeledField("昵称", text: $name)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("简介")
-                        .font(AtlasTypography.overline())
-                        .foregroundStyle(AtlasColors.inkFaint)
-                    AtlasTextEditor(text: $bio, minHeight: 96)
-                        .padding(12)
-                        .background(AtlasColors.fill)
-                        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
-                }
-
-                if let message {
-                    Text(message)
-                        .font(AtlasTypography.meta())
-                        .foregroundStyle(message.contains("成功") ? AtlasColors.accentActive : AtlasColors.coral)
-                }
-
-                AtlasPrimaryButton(title: "保存", isLoading: isSaving) {
-                    Task { await save() }
-                }
 
                 HStack(spacing: 12) {
                     PhotosPicker(selection: $avatarItem, matching: .images) {
                         Text(isUploadingAvatar ? "头像上传中…" : "更换头像")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(AtlasTypography.caption())
                             .foregroundStyle(AtlasColors.ink)
                     }
                     .disabled(isUploadingAvatar || isUploadingBackground)
 
                     PhotosPicker(selection: $backgroundItem, matching: .images) {
                         Text(isUploadingBackground ? "背景上传中…" : "更换背景")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(AtlasTypography.caption())
                             .foregroundStyle(AtlasColors.ink)
                     }
                     .disabled(isUploadingAvatar || isUploadingBackground)
                 }
+
+                // S20 Editable Profile Fields card — white + 1px border r16 (Ardot 189:139)
+                VStack(alignment: .leading, spacing: 8) {
+                    labeledField("昵称", text: $name)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("简介")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(AtlasColors.inkSoft)
+                        AtlasTextEditor(text: $bio, minHeight: 96)
+                            .padding(12)
+                            .background(AtlasColors.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous)
+                                    .stroke(AtlasColors.border, lineWidth: 1)
+                            )
+                    }
+                }
+                .padding(16)
+                .background(Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color(hex: 0xE7EAF0), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                if let message {
+                    Text(message)
+                        .font(AtlasTypography.meta())
+                        .foregroundStyle(message.contains("成功") ? AtlasColors.olive : AtlasColors.coral)
+                }
+
+                // S20 Save Profile Button — lemonInk bg, white text, 48h r12 (Ardot 189:16)
+                Button {
+                    Task { await save() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if isSaving {
+                            ProgressView().tint(.white)
+                        }
+                        Text("保存资料")
+                            .font(.system(size: 15, weight: .bold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .foregroundStyle(Color.white)
+                    .background(AtlasColors.lemonInk)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(isSaving)
+
+                // S20 Account Security Rows — bg #F2FFC5 r16, lemonInk text (Ardot 189:141)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("密码 · 可修改")
+                        .font(.system(size: 15))
+                        .foregroundStyle(AtlasColors.lemonInk)
+                    Text("第三方登录 · Apple / Google / 微信")
+                        .font(.system(size: 15))
+                        .foregroundStyle(AtlasColors.lemonInk)
+                    Text("注销账号入口在设置中")
+                        .font(.system(size: 15))
+                        .foregroundStyle(AtlasColors.lemonInk)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(hex: 0xF2FFC5))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .padding(.horizontal, AtlasMetrics.pageX)
+            .padding(.horizontal, 20)
             .padding(.bottom, 40)
         }
         .background(AtlasColors.canvas)
@@ -197,14 +265,18 @@ struct EditProfileView: View {
     }
 
     private func labeledField(_ label: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(label)
-                .font(AtlasTypography.overline())
-                .foregroundStyle(AtlasColors.inkFaint)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AtlasColors.inkSoft)
             AtlasTextField(placeholder: label, text: text, height: AtlasMetrics.inputHeight)
                 .padding(.horizontal, 4)
-                .background(AtlasColors.fill)
+                .background(AtlasColors.surface)
                 .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous)
+                        .stroke(AtlasColors.border, lineWidth: 1)
+                )
         }
     }
 }
@@ -312,7 +384,7 @@ struct AccountSecurityView: View {
                         .font(.system(size: 14))
                         .foregroundStyle(AtlasColors.inkSoft)
                     Button("更换手机号") { showPhoneBind = true }
-                        .font(.system(size: 14, weight: .medium))
+                        .font(AtlasTypography.caption())
                         .foregroundStyle(AtlasColors.ink)
                 } else {
                     Text("绑定手机号可提升账户安全，微信用户注销时需要验证。")
@@ -414,11 +486,12 @@ struct AccountSecurityView: View {
         Button("永久注销账户") {
             showDeleteDialog = true
         }
-        .font(.system(size: 15, weight: .semibold))
+        .font(AtlasTypography.mobileSubheadline())
         .foregroundStyle(AtlasColors.coral)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .overlay(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous).stroke(AtlasColors.coral))
+        .padding(.vertical, 14)
+        .background(Color(hex: 0xF1E8E8))
+        .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
         .disabled(isDeleting)
     }
 
@@ -695,19 +768,24 @@ func settingsGroupedCard<Content: View>(@ViewBuilder content: () -> Content) -> 
 
 @ViewBuilder
 func settingsBackHeader(title: String, dismiss: DismissAction) -> some View {
-    HStack(alignment: .center, spacing: 8) {
-        AtlasNavBackButton { dismiss() }
-        Spacer(minLength: 0)
+    VStack(alignment: .leading, spacing: 0) {
+        // Back button row
+        HStack(spacing: 8) {
+            AtlasNavBackButton { dismiss() }
+            Spacer()
+        }
+        .padding(.horizontal, 8)
+        .frame(height: AtlasToolbarMetrics.barHeight)
+
+        // Page title — 32pt Bold, left-aligned per S14-S19 design
         if !title.isEmpty {
             Text(title)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 32, weight: .bold))
                 .foregroundStyle(AtlasColors.ink)
-            Spacer(minLength: 0)
-            Color.clear.frame(width: AtlasToolbarMetrics.controlHeight, height: AtlasToolbarMetrics.controlHeight)
+                .padding(.horizontal, AtlasMetrics.detailX)
+                .padding(.bottom, 4)
         }
     }
-    .padding(.horizontal, 8)
-    .frame(height: AtlasToolbarMetrics.barHeight)
     .background(AtlasColors.canvas)
 }
 
@@ -721,6 +799,12 @@ struct LegalPrivacyView: View {
             VStack(alignment: .leading, spacing: 16) {
                 settingsBackHeader(title: "法律与隐私", dismiss: dismiss)
 
+                legalSection("隐私与数据", subtitle: "数据用途、隐私选项与删除请求") {
+                    docRoute = .privacyCenter
+                }
+                legalSection("AI 数据处理", subtitle: "AI 生成建议的数据同意管理") {
+                    docRoute = .aiDataConsent
+                }
                 legalSection("隐私政策", subtitle: "说明邮箱、头像、使用数据等收集范围") {
                     docRoute = .privacyPolicy
                 }
@@ -736,7 +820,7 @@ struct LegalPrivacyView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("账户注销")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(AtlasTypography.mobileSubheadline())
                         .foregroundStyle(AtlasColors.ink)
                     Text("可在「设置 > 账户与安全」中永久注销账户。注销后登录凭证与个人资料将被删除。")
                         .font(.system(size: 13))
@@ -749,7 +833,7 @@ struct LegalPrivacyView: View {
                 .atlasElevatedCard()
 
                 legalSection("联系支持", subtitle: "隐私疑问、删除失败、申诉渠道") {
-                    docRoute = .contactSupport
+                    docRoute = .supportContact
                 }
 
                 Button {
@@ -778,6 +862,12 @@ struct LegalPrivacyView: View {
                 LegalDocumentView(title: "联系支持", sections: LegalDocuments.support)
             case .blocklist:
                 BlocklistView()
+            case .privacyCenter:
+                PrivacyCenterView()
+            case .aiDataConsent:
+                AIDataConsentView()
+            case .supportContact:
+                SupportContactView()
             default:
                 EmptyView()
             }
@@ -789,7 +879,7 @@ struct LegalPrivacyView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.system(size: 15, weight: .medium))
+                        .font(AtlasTypography.mobileSubheadline())
                         .foregroundStyle(AtlasColors.ink)
                     Text(subtitle)
                         .font(.system(size: 12))

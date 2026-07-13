@@ -48,6 +48,7 @@ type ChatSession struct {
 	MessageCount          int           `gorm:"default:0" json:"message_count"`
 	ForkedFromID          *string       `gorm:"size:36;index" json:"forked_from_id,omitempty"`
 	ForkedBeforeMessageID *string       `gorm:"size:36" json:"forked_before_message_id,omitempty"`
+	ArchivedAt            *time.Time    `gorm:"index" json:"archived_at,omitempty"`
 	CreatedAt             time.Time     `gorm:"index" json:"created_at"`
 	UpdatedAt    time.Time     `json:"updated_at"`
 	Messages     []ChatMessage `gorm:"foreignKey:SessionID" json:"messages,omitempty"`

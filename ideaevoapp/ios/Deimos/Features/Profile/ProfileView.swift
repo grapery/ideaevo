@@ -59,16 +59,32 @@ struct ProfileView: View {
 
     private func loggedInProfile(_ user: User) -> some View {
         VStack(spacing: 0) {
-            AtlasTabScreenHeader(title: "我的") {
+            // v6 large title header
+            HStack(alignment: .center) {
+                Text("我的工作台")
+                    .font(AtlasTypography.largeTitle())
+                    .foregroundStyle(AtlasColors.ink)
+
+                Spacer()
+
                 Button { showSettings = true } label: {
-                    AtlasToolbarFloatTextLabel(title: "设置")
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(AtlasColors.ink)
+                        .frame(width: 40, height: 40)
+                        .background(AtlasColors.surfaceSecondary)
+                        .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
             }
+            .padding(.horizontal, AtlasMetrics.pageX)
+            .padding(.top, 8)
+            .padding(.bottom, 16)
 
             ScrollView {
-            VStack(spacing: 20) {
-                MyProfileFloatHero(
+            VStack(spacing: 16) {
+                // v6 Owner Dashboard Card (Ardot 149:391)
+                OwnerDashboardCard(
                     user: user,
                     profile: profile,
                     onPublish: { showPublishIdea = true },
@@ -81,6 +97,7 @@ struct ProfileView: View {
                     },
                     onMyIdeas: { showMyIdeas = true }
                 )
+                .padding(.horizontal, AtlasMetrics.pageX)
 
                 notificationsRow
 
@@ -89,7 +106,7 @@ struct ProfileView: View {
                         .padding(.horizontal, AtlasMetrics.pageX)
                 }
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, AtlasMetrics.bottomClear)
             }
         }
     }
@@ -129,26 +146,149 @@ struct ProfileView: View {
     private var ideasSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("我的想法")
-                    .font(.system(size: 20, weight: .bold))
+                Text("待处理事项")
+                    .font(AtlasTypography.sectionHeader())
                     .foregroundStyle(AtlasColors.ink)
                 Spacer()
-                Button("查看全部") { showMyIdeas = true }
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(AtlasColors.ink)
+                Button("全部") { showMyIdeas = true }
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AtlasColors.primary)
             }
 
             ForEach(ideas.prefix(3)) { idea in
-                VStack(spacing: 0) {
-                    Button {
-                        selectedRoute = IdeaRoute(id: idea.id)
-                    } label: {
-                        IdeaFlatRow(idea: idea)
-                    }
-                    .buttonStyle(.plain)
-                    FeedRowDivider()
+                Button {
+                    selectedRoute = IdeaRoute(id: idea.id)
+                } label: {
+                    CompactListCard(
+                        leading: {
+                            EntityAvatar.idea(id: idea.id, url: idea.iconLink, name: idea.displaySlug, size: 40)
+                        },
+                        title: idea.displayTitle,
+                        subtitle: idea.feedSummaryText,
+                        timestamp: idea.createdAt.relativeShort,
+                        showsBorder: true,
+                        layoutStyle: .card
+                    )
                 }
+                .buttonStyle(.plain)
             }
         }
+    }
+}
+
+// MARK: - v6 Owner Dashboard Card (Ardot 149:391)
+
+/// v6 Owner Dashboard Card — flat profile card replacing the v5 MyProfileFloatHero.
+/// Spec: 345×~250, r24, #EDEFF3 border, shadow rgba(15,27,45,0.05).
+/// Contains: avatar-row (72px avatar + name + handle) → bio → divider → SPACE_EVENLY stats.
+struct OwnerDashboardCard: View {
+    let user: User
+    let profile: UserProfileData?
+    let onPublish: () -> Void
+    let onMyAgents: () -> Void
+    let onFollowers: () -> Void
+    let onFollowing: () -> Void
+    let onMyIdeas: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Avatar row
+            HStack(spacing: 14) {
+                EntityAvatar.user(
+                    id: user.id,
+                    url: user.avatarLink,
+                    name: user.name,
+                    size: 72
+                )
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(user.name)
+                        .font(AtlasTypography.titleMedium())
+                        .foregroundStyle(AtlasColors.ink)
+                        .lineLimit(2)
+
+                    if let bio = user.bio, !bio.isEmpty {
+                        Text(bio)
+                            .font(.system(size: 14))
+                            .foregroundStyle(AtlasColors.inkSoft)
+                            .lineLimit(2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Bio line (v6 spec: dashboard description)
+            Text("管理你的想法、Agent 和收到的互动；继续推进还没完成的创作。")
+                .font(AtlasTypography.feedBody())
+                .foregroundStyle(AtlasColors.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Divider
+            Rectangle()
+                .fill(Color(hex: 0xF0F2F5))
+                .frame(height: 1)
+
+            // Stats — SPACE_EVENLY (v6 spec: equal gutters including outer edges)
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                statButton(value: "\(profile?.ideaCount ?? 0)", label: "想法", action: onMyIdeas)
+                Spacer(minLength: 0)
+                statButton(value: "\(user.followerCount)", label: "粉丝", action: onFollowers)
+                Spacer(minLength: 0)
+                statButton(value: "\(user.followingCount)", label: "关注", action: onFollowing)
+                Spacer(minLength: 0)
+            }
+
+            // Quick actions (v6 spec: quick-actions row)
+            HStack(spacing: 10) {
+                quickActionButton("发布想法", icon: "plus", isPrimary: true, action: onPublish)
+                quickActionButton("我的 Agent", icon: "sparkles", isPrimary: false, action: onMyAgents)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AtlasColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCover, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCover, style: .continuous)
+                .stroke(AtlasColors.borderProfile, lineWidth: 1)
+        )
+        .atlasProfileCard()
+    }
+
+    private func statButton(value: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Text(value)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .monospacedDigit()
+                Text(label)
+                    .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.inkSoft)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func quickActionButton(_ title: String, icon: String, isPrimary: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                Text(title)
+                    .font(AtlasTypography.mobileSubheadline())
+            }
+            .foregroundStyle(isPrimary ? Color.white : AtlasColors.ink)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .background(isPrimary ? AtlasColors.primaryAction : AtlasColors.surface)
+            .overlay(
+                Capsule()
+                    .stroke(AtlasColors.border, lineWidth: isPrimary ? 0 : 1)
+            )
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }

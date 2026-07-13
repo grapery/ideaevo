@@ -67,7 +67,16 @@ struct CommentsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AtlasPushNavBar(title: navTitle, onBack: { dismiss() })
+            // S05 Toolbar — back button + "评论与反应" 22pt Bold (Ardot 179:224)
+            HStack(spacing: 12) {
+                AtlasNavBackButton(action: { dismiss() })
+                Text("评论与反应")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(AtlasColors.ink)
+                Spacer()
+            }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .frame(height: 44)
 
             content
 
@@ -87,10 +96,6 @@ struct CommentsView: View {
         .task { await viewModel.load(ideaID: ideaID) }
     }
 
-    private var navTitle: String {
-        commentCount > 0 ? "评论 · \(commentCount)" : "评论"
-    }
-
     private var loginPrompt: some View {
         Button("登录后评论") { showAuthSheet = true }
             .font(AtlasTypography.button())
@@ -101,29 +106,56 @@ struct CommentsView: View {
             .overlay(alignment: .top) { Rectangle().fill(AtlasColors.rule).frame(height: 0.5) }
     }
 
+    /// S05 Comment input bar — #F4F5F8 bg r28, 56h, send button 40h r20 lemonStrong (Ardot 179:272).
     private var composer: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 0) {
             if let replyingTo {
                 HStack {
                     Text("回复 \(replyingTo.comment.displayName)")
-                        .font(.system(size: 13))
-                        .foregroundStyle(AtlasColors.accentActive)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(AtlasColors.olive)
                     Spacer()
                     Button("取消") { self.replyingTo = nil }
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                         .foregroundStyle(AtlasColors.inkFaint)
                 }
-                .padding(.horizontal, AtlasMetrics.pageX)
+                .padding(.horizontal, AtlasMetrics.detailX)
+                .padding(.bottom, 6)
             }
-            BottomInputBar(
-                text: $draft,
-                placeholder: replyingTo == nil ? "写下你的想法…" : "写下回复…",
-                isSending: viewModel.isSending,
-                canSend: canSend,
-                onSend: { Task { await submitComment() } }
+            HStack(spacing: 8) {
+                AtlasMultilineTextField(
+                    placeholder: replyingTo == nil ? "写下评论或给 Agent 一个建议" : "写下回复…",
+                    text: $draft,
+                    minHeight: 40,
+                    maxHeight: 100,
+                    onSubmit: { Task { await submitComment() } }
+                )
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+
+                Button {
+                    Task { await submitComment() }
+                } label: {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(canSend ? AtlasColors.lemonInk : AtlasColors.inkFaint)
+                        .frame(width: 40, height: 40)
+                        .background(canSend ? AtlasColors.lemonStrong : AtlasColors.inkDisabled)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSend)
+            }
+            .padding(8)
+            .background(AtlasColors.surfaceSecondary)
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(AtlasColors.border, lineWidth: 1)
             )
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.bottom, 8)
         }
-        .padding(.bottom, 0)
     }
 
     private var canSend: Bool {
@@ -136,102 +168,111 @@ struct CommentsView: View {
             Spacer()
             ProgressView()
             Spacer()
-        } else if viewModel.comments.isEmpty {
-            VStack(spacing: 16) {
-                IdeaContextBar(
-                    slug: contextSlug,
-                    subtitle: contextSubtitle,
-                    iconURL: AvatarDefaults.url(kind: .idea, id: ideaID, raw: iconURL),
-                    ideaID: ideaID
-                )
-                .padding(.horizontal, AtlasMetrics.pageX)
-                .padding(.top, AtlasMetrics.sectionGap)
-
-                AtlasDesignedEmptyStates.commentsEmpty()
-                if session.isAuthenticated {
-                    Text("在下方输入框写下第一条评论")
-                        .font(AtlasTypography.mobileSubheadline())
-                        .foregroundStyle(AtlasColors.inkFaint)
-                }
-            }
-            .frame(maxHeight: .infinity)
         } else {
             ScrollView {
-                LazyVStack(spacing: 0) {
-                    IdeaContextBar(
-                        slug: contextSlug,
-                        subtitle: contextSubtitle,
-                        iconURL: AvatarDefaults.url(kind: .idea, id: ideaID, raw: iconURL),
-                        ideaID: ideaID
-                    )
-                    .padding(.horizontal, AtlasMetrics.pageX)
-                    .padding(.vertical, 12)
-                    FeedRowDivider()
+                LazyVStack(spacing: 14) {
+                    // S05 Idea context card — lemon-soft bg r20 (Ardot 179:255)
+                    ideaContextCard
+                        .padding(.top, 4)
 
-                    ForEach(Array(viewModel.comments.enumerated()), id: \.element.comment.id) { index, item in
-                        VStack(spacing: 0) {
-                            commentCell(item)
-                            FeedRowDivider()
+                    // Comment cards — bg-card #F8FAFC r20 + border
+                    if viewModel.comments.isEmpty {
+                        AtlasDesignedEmptyStates.commentsEmpty()
+                            .padding(.top, 24)
+                    } else {
+                        ForEach(viewModel.comments) { item in
+                            commentCard(item)
                         }
                     }
                 }
-                .padding(.vertical, 0)
+                .padding(.horizontal, AtlasMetrics.detailX)
+                .padding(.top, 8)
+                .padding(.bottom, 16)
             }
             .scrollDismissesKeyboard(.interactively)
         }
     }
 
-    private func commentCell(_ item: FlatComment) -> some View {
+    // MARK: - S05 Idea context card (lemon-soft, r20)
+
+    private var ideaContextCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(ideaTitle)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+                .lineLimit(1)
+            Text("\(commentCount) 条评论")
+                .font(.system(size: 12))
+                .foregroundStyle(AtlasColors.inkTertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(AtlasColors.lemonSoft)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AtlasColors.border, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    // MARK: - S05 Comment card (bg-card, r20 + border)
+
+    /// Comment in a card: header 12pt Medium + body 14pt Regular + action row 12pt Medium olive.
+    private func commentCard(_ item: FlatComment) -> some View {
         let isAgent = item.comment.authorType == "agent"
-        return HStack(alignment: .top, spacing: 10) {
-            commentAvatar(item.comment)
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    Text(item.comment.displayName)
-                        .font(AtlasTypography.feedName())
-                        .foregroundStyle(AtlasColors.ink)
-                    if isAgent {
-                        Text("Agent")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(AtlasColors.aiStart)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(AtlasColors.purpleSoft)
-                            .clipShape(Capsule())
-                    }
-                    Text(item.comment.createdAt.relativeShort)
-                        .font(AtlasTypography.feedBody())
-                        .foregroundStyle(AtlasColors.inkSoft)
-                    if let label = item.comment.sentimentLabel {
-                        Text(label)
-                            .font(.system(size: 10))
-                            .foregroundStyle(AtlasColors.primary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(AtlasColors.chipSelectedBg)
-                            .clipShape(Capsule())
-                    }
+        return VStack(alignment: .leading, spacing: 8) {
+            // Header — name · time (12pt Medium)
+            HStack(spacing: 6) {
+                if isAgent {
+                    Text("Agent")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(AtlasColors.lemonInk)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(AtlasColors.lemonSoft)
+                        .clipShape(Capsule())
                 }
-                if let replyTo = item.replyTo {
-                    Text("回复 \(replyTo.displayName)")
-                        .font(.system(size: 11))
-                        .foregroundStyle(AtlasColors.inkFaint)
-                }
-                Text(item.comment.content)
-                    .font(AtlasTypography.feedBody())
-                    .foregroundStyle(AtlasColors.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                if item.depth == 0 {
-                    Button("回复") { replyingTo = item }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(AtlasColors.primary)
+                Text("\(item.comment.displayName) · \(item.comment.createdAt.relativeShort)")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AtlasColors.inkTertiary)
+            }
+
+            if let replyTo = item.replyTo {
+                Text("回复 \(replyTo.displayName)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AtlasColors.inkFaint)
+            }
+
+            // Body — 14pt Regular ink
+            Text(item.comment.content)
+                .font(.system(size: 14))
+                .foregroundStyle(AtlasColors.ink)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Action row — 回复 · 送花 · 举报 (12pt Medium olive)
+            HStack(spacing: 12) {
+                Button("回复") { replyingTo = item }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AtlasColors.olive)
+                if let label = item.comment.sentimentLabel {
+                    Text(label)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AtlasColors.olive)
                 }
             }
         }
-        .padding(.horizontal, AtlasMetrics.pageX)
-        .padding(.leading, item.depth > 0 ? CGFloat(item.depth * 24) : 0)
-        .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color(hex: 0xF8FAFC))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AtlasColors.border, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(.leading, item.depth > 0 ? CGFloat(item.depth * 20) : 0)
     }
 
     @ViewBuilder

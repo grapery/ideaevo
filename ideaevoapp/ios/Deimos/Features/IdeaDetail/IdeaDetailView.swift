@@ -148,51 +148,33 @@ struct IdeaDetailView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            AtlasPushNavBar(onBack: { dismiss() }) {
-                if let idea = viewModel.idea {
-                    AtlasToolbarFloatTextButton(title: "分享") {
-                        sharePayload = "\(idea.title)\n\(ideaShareURL(idea.id))"
-                        showShareSheet = true
-                    }
-                }
-                AtlasToolbarFloatIconButton(icon: .more) {
-                    showActionMenu = true
-                }
-            }
-
-            Group {
+        Group {
             if viewModel.isLoading {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let errorMessage = viewModel.errorMessage {
-                AtlasDesignedEmptyStates.loadFailed(message: errorMessage) {
-                    Task { await viewModel.load(id: ideaID, isAuthenticated: session.isAuthenticated) }
+                VStack(spacing: 0) {
+                    coverNavOverlay(title: nil, showButtons: false)
+                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(AtlasColors.canvas)
+                .navigationBarHidden(true)
+                .suppressTabBar()
+            } else if let errorMessage = viewModel.errorMessage {
+                VStack(spacing: 0) {
+                    coverNavOverlay(title: nil, showButtons: false)
+                    AtlasDesignedEmptyStates.loadFailed(message: errorMessage) {
+                        Task { await viewModel.load(id: ideaID, isAuthenticated: session.isAuthenticated) }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .background(AtlasColors.canvas)
+                .navigationBarHidden(true)
+                .suppressTabBar()
             } else if let idea = viewModel.idea {
-                detailContent(idea)
+                detailScreen(idea)
             }
         }
-        }
-        .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: isSheetZoomActive)
         .navigationBarHidden(true)
         .suppressTabBar()
-        .safeAreaInset(edge: .bottom) {
-            if let idea = viewModel.idea {
-                EngagementBar(
-                    likeCount: idea.likeCount,
-                    flowerCount: idea.flowerCount,
-                    forkCount: idea.forkCount,
-                    commentCount: idea.commentCount,
-                    isLiked: viewModel.isLiked,
-                    onLike: { Task { await handleLike() } },
-                    onFlower: { openFlowersGrid(idea) },
-                    onFork: { openForkSheet() },
-                    onComment: { openComments(idea) }
-                )
-            }
-        }
         .sheet(isPresented: $showForkSheet) {
             ForkSheet(
                 sourceTitle: viewModel.idea?.title ?? "",
@@ -328,12 +310,414 @@ struct IdeaDetailView: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, AtlasMetrics.pageX)
+        .padding(.horizontal, AtlasMetrics.detailX)
         .padding(.bottom, 24)
         .background(AtlasColors.surface)
         .presentationDetents([.height(300)])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(AtlasMetrics.radiusSheet)
+    }
+
+    // MARK: - v6 Cover Page with Transparent Float Navigation (Ardot 138:334)
+
+    /// Full detail screen: ZStack cover (280h) with floating nav buttons + scroll body.
+    @ViewBuilder
+    /// S04 Idea Detail — per node tree (179:21).
+    /// Content Wrapper: VERTICAL itemSpacing=16, padding=[20,20,0,16], bg=white.
+    /// Back → Detail Cover (lemonSoft 188h r24) → Idea Title (30pt Black) → Author Line →
+    /// Action Pills (送花/评论/Fork) → Why Follow Card → Fork Lineage Card.
+    private func detailScreen(_ idea: Idea) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // Back Button (S04 179:74): 36×36 r18 bg=#F4F5F8
+                AtlasNavBackButton(action: { dismiss() })
+
+                // Detail Cover (S04 179:76): 350×188 FILL, r24, bg=lemonSoft, absolute layout
+                detailCover(idea)
+
+                // Idea Title (S04 179:80): 30pt Black ink
+                Text(idea.displayTitle)
+                    .font(.system(size: 30, weight: .black))
+                    .foregroundStyle(AtlasColors.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                // Author Line (S04 179:81): 14pt SemiBold #667085
+                Text(idea.authorLine)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0x667085))
+
+                // Action Pills (S04 179:82): HORIZONTAL itemSpacing=8
+                actionPills(idea)
+
+                // Why Follow Card (S04 179:89): white + border r20
+                whyFollowCard(idea)
+
+                // Fork Lineage Card (S04 179:92): #F7F8FA + border r20
+                forkLineageCard(idea)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 0)
+            .padding(.bottom, 16 + AtlasMetrics.bottomClear)
+        }
+    }
+
+    // MARK: - Detail Cover (S04 179:76: lemonSoft 188h r24)
+
+    private func detailCover(_ idea: Idea) -> some View {
+        ZStack(alignment: .topLeading) {
+            // Background — lemonSoft #F2FFC5
+            Rectangle()
+                .fill(AtlasColors.lemonSoft)
+
+            // Status Badge (S04 179:77): 64×26 r14 bg=olive, "进行中" 11pt Bold white
+            if idea.showsFeedStatus {
+                Text(idea.statusLabel)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .frame(height: 26)
+                    .background(AtlasColors.olive)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .padding(.leading, 16)
+                    .padding(.top, 16)
+            }
+
+            // Cover Title (S04 179:79): 24pt Black lemonInk — positioned bottom-left
+            Text(idea.displayTitle)
+                .font(.system(size: 24, weight: .black))
+                .foregroundStyle(AtlasColors.lemonInk)
+                .lineLimit(1)
+                .padding(.leading, 16)
+                .padding(.bottom, 16)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(height: 188)
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    // MARK: - Action Pills (S04 179:82: HORIZONTAL itemSpacing=8, 42h, r22)
+
+    private func actionPills(_ idea: Idea) -> some View {
+        HStack(spacing: 8) {
+            // Send Flower (S04 179:83): bg=#FFF6CB, "送花 N" 13pt Bold olive
+            actionPill("送花 \(idea.flowerCount)", bg: Color(hex: 0xFFF6CB), fg: AtlasColors.olive) {
+                openFlowersGrid(idea)
+            }
+            // Comments (S04 179:85): bg=#F4F5F8, "评论 N" 13pt Bold #3F4654
+            actionPill("评论 \(idea.commentCount)", bg: Color(hex: 0xF4F5F8), fg: Color(hex: 0x3F4654)) {
+                openComments(idea)
+            }
+            // Fork (S04 179:87): bg=lemonSoft, "Fork N" 13pt Bold olive
+            actionPill("Fork \(idea.forkCount)", bg: AtlasColors.lemonSoft, fg: AtlasColors.olive) {
+                openForkSheet()
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func actionPill(_ label: String, bg: Color, fg: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(fg)
+                .padding(.horizontal, 12)
+                .frame(height: 42)
+                .background(bg)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Why Follow Card (S04 179:89: white + border r20)
+
+    private func whyFollowCard(_ idea: Idea) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("为什么值得关注")
+                .font(.system(size: 18, weight: .heavy))
+                .foregroundStyle(AtlasColors.ink)
+            Text(idea.feedSummaryText ?? idea.description.plainSummary)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Color(hex: 0x5F6673))
+                .lineLimit(4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.top, 0)
+        .padding(.bottom, 14)
+        .background(AtlasColors.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AtlasColors.border, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    // MARK: - Fork Lineage Card (S04 179:92: #F7F8FA + border r20)
+
+    private func forkLineageCard(_ idea: Idea) -> some View {
+        Button {
+            forkLineageRoute = IdeaRoute(id: idea.id)
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Fork 脉络")
+                    .font(.system(size: 17, weight: .heavy))
+                    .foregroundStyle(AtlasColors.ink)
+                Text(forkLineageText(idea))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0x667085))
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.top, 0)
+            .padding(.bottom, 12)
+            .background(Color(hex: 0xF7F8FA))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(AtlasColors.border, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func forkLineageText(_ idea: Idea) -> String {
+        if let parent = idea.forkedFromID {
+            return "源想法 → \(idea.displayTitle)"
+        }
+        return "\(idea.displayTitle) · \(idea.forkCount) 个 Fork"
+    }
+
+    /// Cover section: 280h image + scrim + floating 44×44 white circle buttons + title overlay.
+    private func coverSection(_ idea: Idea) -> some View {
+        ZStack(alignment: .bottomLeading) {
+            // Cover image — 280h, full width
+            coverImage(for: idea)
+                .frame(height: 280)
+                .frame(maxWidth: .infinity)
+                .clipped()
+
+            // Scrim — bottom 140px gradient transparent→rgba(0,0,0,0.72)
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [.clear, .black.opacity(0.72)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(height: 140)
+                .frame(maxWidth: .infinity, alignment: .bottom)
+
+            // Status badge + title overlay
+            VStack(alignment: .leading, spacing: 2) {
+                if idea.showsFeedStatus {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(AtlasColors.success)
+                            .frame(width: 6, height: 6)
+                        Text(idea.statusLabel)
+                            .font(AtlasTypography.badge())
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(height: 28)
+                    .background(Color.black.opacity(0.45))
+                    .clipShape(Capsule())
+                    .padding(.bottom, 8)
+                }
+
+                Text(idea.displayTitle)
+                    .font(.system(size: 28, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+            }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.bottom, 16)
+
+            // Floating nav buttons — top row
+            floatingNavButtons(idea)
+                .padding(.horizontal, 16)
+                .padding(.top, 74) // status bar (62) + 12 gap
+        }
+        .frame(height: 280)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Floating 44×44 white circle buttons: back (left) + fork + share (right).
+    private func floatingNavButtons(_ idea: Idea) -> some View {
+        HStack(alignment: .top) {
+            // Back button
+            coverFloatButton(icon: "chevron.left") {
+                dismiss()
+            }
+
+            Spacer()
+
+            // Fork button
+            coverFloatButton(icon: "tuningfork") {
+                openForkSheet()
+            }
+
+            // Share button
+            coverFloatButton(icon: "square.and.arrow.up") {
+                sharePayload = "\(idea.title)\n\(ideaShareURL(idea.id))"
+                showShareSheet = true
+            }
+
+            // More button
+            coverFloatButton(icon: "ellipsis") {
+                showActionMenu = true
+            }
+        }
+    }
+
+    /// A single 44×44 white circle floating button with SF Symbol icon.
+    private func coverFloatButton(icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+                .frame(width: AtlasMetrics.coverButtonSize, height: AtlasMetrics.coverButtonSize)
+                .background(Color.white)
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Cover image with fallback.
+    @ViewBuilder
+    private func coverImage(for idea: Idea) -> some View {
+        let image = Group {
+            if let iconURL = idea.iconLink {
+                AsyncImage(url: iconURL) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable().scaledToFill()
+                    default:
+                        coverFallback
+                    }
+                }
+            } else {
+                coverFallback
+            }
+        }
+
+        if let iconNamespace {
+            image.matchedGeometryEffect(id: "idea-icon-\(idea.id)", in: iconNamespace)
+        } else {
+            image
+        }
+    }
+
+    private var coverFallback: some View {
+        Rectangle().fill(AtlasColors.lemonSoft)
+    }
+
+    /// Nav overlay for loading/error states — minimal cover with back button only.
+    private func coverNavOverlay(title: String?, showButtons: Bool) -> some View {
+        ZStack(alignment: .topLeading) {
+            Rectangle()
+                .fill(AtlasColors.lemonSoft.opacity(0.6))
+                .frame(height: 280)
+                .frame(maxWidth: .infinity)
+                .ignoresSafeArea(edges: .top)
+
+            if showButtons {
+                coverFloatButton(icon: "chevron.left") {
+                    dismiss()
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 74)
+            }
+        }
+        .frame(height: 280)
+    }
+
+    // MARK: - Body Section
+
+    /// Body content below the cover: creator row + stats + reactions + README tabs.
+    @ViewBuilder
+    private func bodySection(_ idea: Idea) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Creator row — avatar 40px + name + agent handle + follow button
+            creatorRow(idea)
+                .padding(.top, 20)
+
+            // Stats row — fork/heart/comment
+            statsRow(idea)
+
+            // Repo tabs
+            RepoTabs(
+                selection: $selectedRepoTab,
+                forkCount: idea.forkCount,
+                commentCount: idea.commentCount
+            )
+
+            // Tab content
+            repoTabContent(idea)
+                .padding(.top, 16)
+        }
+        .padding(.horizontal, AtlasMetrics.detailX)
+    }
+
+    /// Creator row: 40px avatar + name/meta + follow button pill.
+    private func creatorRow(_ idea: Idea) -> some View {
+        HStack(spacing: 10) {
+            if let owner = idea.agent?.owner {
+                EntityAvatar.user(
+                    id: owner.id,
+                    url: owner.avatarLink,
+                    name: owner.name,
+                    size: 40
+                )
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(idea.agent?.name ?? "Agent")
+                    .font(AtlasTypography.cardTitle())
+                    .foregroundStyle(AtlasColors.ink)
+                Text("@\(idea.displaySlug) · \(idea.statusLabel)")
+                    .font(AtlasTypography.bodyMedium())
+                    .foregroundStyle(AtlasColors.inkSoft)
+            }
+
+            Spacer()
+
+            // Follow button — pill (navigates to agent profile)
+            Button {
+                agentRoute = AgentRoute(id: idea.agentID)
+            } label: {
+                Text("关注 Agent")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .frame(height: 36)
+                    .background(AtlasColors.primaryAction)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// Stats row: fork count + heart count + comment count.
+    private func statsRow(_ idea: Idea) -> some View {
+        HStack(spacing: 20) {
+            statItem(icon: .fork, value: "\(idea.forkCount) 复用")
+            statItem(icon: .heart, value: "\(idea.likeCount)")
+            statItem(icon: .comment, value: "\(idea.commentCount) 评论")
+        }
+    }
+
+    private func statItem(icon: DeimosIcon, value: String) -> some View {
+        HStack(spacing: 6) {
+            DeimosIconView(icon: icon, size: 18, color: AtlasColors.ink)
+            Text(value)
+                .font(AtlasTypography.mobileSubheadline())
+                .foregroundStyle(AtlasColors.ink)
+        }
     }
 
     @ViewBuilder
@@ -342,7 +726,7 @@ struct IdeaDetailView: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Identity hero — full-width gradient, no horizontal padding
                 IdeaIdentityHero(idea: idea, iconNamespace: iconNamespace)
-                    .padding(.horizontal, AtlasMetrics.pageX)
+                    .padding(.horizontal, AtlasMetrics.detailX)
                     .padding(.top, 8)
 
                 // Repo tabs with underline — Twitter-style
@@ -353,7 +737,7 @@ struct IdeaDetailView: View {
                 )
 
                 repoTabContent(idea)
-                    .padding(.horizontal, AtlasMetrics.pageX)
+                    .padding(.horizontal, AtlasMetrics.detailX)
                     .padding(.top, 16)
                     .padding(.bottom, 16)
             }
@@ -399,7 +783,7 @@ struct IdeaDetailView: View {
         AtlasStatusPill(text: idea.statusLabel)
 
         Text(idea.title)
-            .font(AtlasTypography.screenTitle())
+            .font(.system(size: 30, weight: .black))
             .foregroundStyle(AtlasColors.ink)
 
         implProgressCard(idea)
@@ -431,6 +815,10 @@ struct IdeaDetailView: View {
 
         if viewModel.versions.count > 1 {
             versionsSection
+        }
+
+        if let idea = viewModel.idea {
+            ideaStatsSection(idea)
         }
     }
 
@@ -465,7 +853,7 @@ struct IdeaDetailView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 12)
                         .background(AtlasColors.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -577,7 +965,7 @@ struct IdeaDetailView: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 12)
                     .background(AtlasColors.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -585,7 +973,7 @@ struct IdeaDetailView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AtlasColors.entityIdea)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
     }
 
     private func ideaMenuActions(idea: Idea) -> [AtlasMenuAction] {
@@ -667,38 +1055,133 @@ struct IdeaDetailView: View {
         }
     }
 
+    /// S29 Version History — current version summary (lemon-strong card) + timeline (white card + border).
     private var versionsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("版本历史")
-                .font(AtlasTypography.cardTitle())
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AtlasColors.ink)
-            ForEach(viewModel.versions) { version in
-                Button {
-                    let current = viewModel.versions.first(where: \.isCurrent)
-                    if let current, current.id != version.id {
-                        versionRoute = VersionCompareRoute(ideaID: ideaID, versionID: version.id, compareVersionID: current.id)
-                    } else {
-                        versionRoute = VersionCompareRoute(ideaID: ideaID, versionID: version.id, compareVersionID: nil)
-                    }
-                } label: {
-                    HStack {
-                        Text("v\(version.version)")
-                            .font(AtlasTypography.mobileSubheadline())
-                            .foregroundStyle(version.isCurrent ? AtlasColors.accentActive : AtlasColors.ink)
-                        Text(version.changelog)
-                            .font(AtlasTypography.mobileSubheadline())
-                            .foregroundStyle(AtlasColors.inkSoft)
-                            .lineLimit(1)
-                        Spacer()
-                        Text(version.createdAt.relativeShort)
-                            .font(AtlasTypography.meta())
-                            .foregroundStyle(AtlasColors.inkFaint)
-                    }
-                    .padding(.vertical, 6)
-                    .overlay(alignment: .bottom) { Rectangle().fill(AtlasColors.rule).frame(height: 1) }
+
+            // S29 Current version summary — lemon-strong r16 itemSpacing=6 (Ardot 189:86)
+            if let current = viewModel.versions.first(where: \.isCurrent), let idea = viewModel.idea {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("v\(current.version) 当前版本")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(AtlasColors.lemonInk)
+                    Text("\(idea.forkCount) Fork · \(idea.commentCount) 评论 · \(idea.likeCount) 喜欢")
+                        .font(.system(size: 15))
+                        .foregroundStyle(AtlasColors.lemonInk)
                 }
-                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(AtlasColors.lemonStrong)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
+
+            // S29 Version timeline — white bg r16 itemSpacing=1 (Ardot 189:88)
+            VStack(alignment: .leading, spacing: 1) {
+                ForEach(viewModel.versions) { version in
+                    Button {
+                        let current = viewModel.versions.first(where: \.isCurrent)
+                        if let current, current.id != version.id {
+                            versionRoute = VersionCompareRoute(ideaID: ideaID, versionID: version.id, compareVersionID: current.id)
+                        } else {
+                            versionRoute = VersionCompareRoute(ideaID: ideaID, versionID: version.id, compareVersionID: nil)
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text("v\(version.version)")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(version.isCurrent ? AtlasColors.olive : AtlasColors.ink)
+                            Text(version.changelog.isEmpty ? "—" : version.changelog)
+                                .font(.system(size: 15))
+                                .foregroundStyle(AtlasColors.inkSoft)
+                                .lineLimit(1)
+                            Text("·")
+                                .font(.system(size: 15))
+                                .foregroundStyle(AtlasColors.inkFaint)
+                            Text("\(version.createdAt.relativeShort)")
+                                .font(.system(size: 13))
+                                .foregroundStyle(AtlasColors.inkFaint)
+                            Spacer()
+                        }
+                        .padding(.vertical, 10)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .background(AtlasColors.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(AtlasColors.border, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
+    /// S32 Idea Stats — aggregate metrics (lemonStrong r16) + version breakdown (#F8FAFC r16) + source notes (white + border r16).
+    /// Per Ardot S32 (189:106). itemSpacing=8 on metric/version cards, 14pt on source notes.
+    private func ideaStatsSection(_ idea: Idea) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Idea 统计")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+
+            // S32 Aggregate Metrics — lemonStrong r16 itemSpacing=8 (Ardot 189:110)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("\(idea.likeCount) 喜欢 · \(idea.forkCount) Fork · \(idea.commentCount) 评论")
+                    .font(.system(size: 16))
+                    .foregroundStyle(AtlasColors.lemonInk)
+                Text("\(idea.flowerCount) 送花 · \(max(viewModel.reactionCounts.values.reduce(0, +), 0)) 类 reaction")
+                    .font(.system(size: 16))
+                    .foregroundStyle(AtlasColors.lemonInk)
+                Text("\(viewModel.versions.count) 版本")
+                    .font(.system(size: 16))
+                    .foregroundStyle(AtlasColors.lemonInk)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(AtlasColors.lemonStrong)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            // S32 Version Stats Breakdown — #F8FAFC r16 itemSpacing=8 (Ardot 189:112)
+            if !viewModel.versions.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(viewModel.versions.prefix(5)) { version in
+                        Text("v\(version.version) \(version.changelog.isEmpty ? "" : "· \(version.changelog)")")
+                            .font(.system(size: 15))
+                            .foregroundStyle(AtlasColors.inkTertiary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(Color(hex: 0xF8FAFC))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+
+            // S32 Stats Source Notes — white + border r16 (Ardot 189:165)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("统计来自 likes / flowers / forks / comments / reactions")
+                    .font(.system(size: 14))
+                    .foregroundStyle(AtlasColors.inkTertiary)
+                Text("版本行按 source_version_id 聚合")
+                    .font(.system(size: 14))
+                    .foregroundStyle(AtlasColors.inkTertiary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(AtlasColors.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(AtlasColors.border, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 
@@ -708,7 +1191,7 @@ struct IdeaDetailView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(implStatusLabel(status))
-                        .font(.system(size: 12, weight: .medium))
+                        .font(AtlasTypography.caption())
                         .foregroundStyle(AtlasColors.accentActive)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
@@ -716,7 +1199,7 @@ struct IdeaDetailView: View {
                         .clipShape(Capsule())
                     Spacer()
                     Text("\(Int(implProgressFraction(status) * 100))%")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(AtlasTypography.caption())
                         .foregroundStyle(AtlasColors.inkFaint)
                 }
                 GeometryReader { proxy in

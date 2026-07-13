@@ -67,7 +67,7 @@ struct EngagementBar: View {
         .frame(height: AtlasMetrics.engagementBarHeight)
         .background(.ultraThinMaterial)
         .overlay(AtlasColors.glassOverlay)
-        .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: -2)
+        .shadow(color: AtlasMetrics.shadowProfileColor, radius: 16, x: 0, y: -2)
     }
 
     private func column(
@@ -105,7 +105,7 @@ struct ChatBubble: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(isUser ? AtlasColors.primary : Color(hex: 0xF1F5F9))
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
             if !isUser { Spacer(minLength: 48) }
         }
     }

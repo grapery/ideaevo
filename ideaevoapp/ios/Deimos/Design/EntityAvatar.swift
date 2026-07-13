@@ -45,10 +45,10 @@ struct EntityAvatar: View {
     private var placeholder: some View {
         ZStack {
             if kind == .agent {
-                // AI agents use purple→indigo gradient (zdesign signature)
+                // v7: AI agents use lemon gradient with lemonInk sparkles
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(AtlasColors.aiGradient)
-                DeimosIconView(icon: .sparkles, size: size * 0.5, color: .white)
+                DeimosIconView(icon: .sparkles, size: size * 0.5, color: AtlasColors.lemonInk)
             } else {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(entityColor)
@@ -61,9 +61,9 @@ struct EntityAvatar: View {
 
     private var entityColor: Color {
         switch kind {
-        case .user: return AtlasColors.primary
+        case .user: return AtlasColors.profileAvatarBg
         case .agent: return AtlasColors.aiStart
-        case .idea: return AtlasColors.aiStart.opacity(0.15)
+        case .idea: return AtlasColors.lemonSoft
         }
     }
 }

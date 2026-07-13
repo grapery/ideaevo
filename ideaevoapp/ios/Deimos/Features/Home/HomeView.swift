@@ -4,28 +4,26 @@ import Observation
 @MainActor
 @Observable
 final class HomeViewModel {
-    var segment = 0
     var ideas: [Idea] = []
-    var followingActivities: [ActivityView] = []
     var isLoading = false
-    var isLoadingFollowing = false
     var isLoadingMore = false
     var hasMoreIdeas = true
     var errorMessage: String?
-    var followingError: String?
+    var currentSort: String = "popular"
 
-    private let suggestions = ["#AI工具", "本地模型", "语义搜索"]
     private let pageSize = 20
     private var ideasOffset = 0
 
-    var suggestionChips: [String] { suggestions }
+    /// Map UI sort chip index → API sort parameter.
+    static let sortOptions: [(label: String, value: String)] = [
+        ("热门", "popular"),
+        ("最新", "newest"),
+        ("最多复用", "most_forked"),
+        ("最多送花", "most_flowered"),
+    ]
 
     var visibleIdeas: [Idea] {
         ideas.filter(BlocklistFiltering.idea)
-    }
-
-    var visibleFollowingActivities: [ActivityView] {
-        followingActivities.filter(BlocklistFiltering.activity)
     }
 
     func loadPlaza() async {
@@ -38,7 +36,7 @@ final class HomeViewModel {
         defer { isLoading = false }
 
         do {
-            let fresh = try await APIClient.shared.queryIdeas()
+            let fresh = try await APIClient.shared.queryIdeas(sort: currentSort)
             ideas = fresh.ideas.filter(BlocklistFiltering.idea)
             ideasOffset = fresh.ideas.count
             hasMoreIdeas = Pagination.hasMore(offset: ideasOffset, loaded: fresh.ideas.count, total: fresh.total)
@@ -60,7 +58,7 @@ final class HomeViewModel {
         defer { isLoadingMore = false }
 
         do {
-            let next = try await APIClient.shared.queryIdeas(offset: ideasOffset)
+            let next = try await APIClient.shared.queryIdeas(offset: ideasOffset, sort: currentSort)
             let filtered = next.ideas.filter(BlocklistFiltering.idea)
             ideas.append(contentsOf: filtered)
             ideasOffset = ideas.count
@@ -69,22 +67,11 @@ final class HomeViewModel {
             errorMessage = error.localizedDescription
         }
     }
-
-    func loadFollowing() async {
-        isLoadingFollowing = followingActivities.isEmpty
-        followingError = nil
-        defer { isLoadingFollowing = false }
-
-        do {
-            followingActivities = try await APIClient.shared.followingFeed()
-                .filter(BlocklistFiltering.activity)
-        } catch {
-            followingError = error.localizedDescription
-            followingActivities = []
-        }
-    }
 }
 
+/// v7 Home — per S02 node tree (Ardot 179:1).
+/// Content Wrapper: VERTICAL itemSpacing=18, padding=[20,20,0,18], bg=white.
+/// Elements: eyebrow → title → AI hero → sort chips → section title → idea cover cards.
 struct HomeView: View {
     let unreadCount: Int
     let onNotifications: () -> Void
@@ -92,35 +79,27 @@ struct HomeView: View {
     @Environment(AuthSession.self) private var session
     @State private var viewModel = HomeViewModel()
     @State private var selectedRoute: IdeaRoute?
-    @State private var showAgentExplore = false
     @State private var showPublishIdea = false
-    @State private var agentExploreQuery = ""
     @State private var showAuthSheet = false
-    @State private var searchRoute: SearchRoute?
+    @State private var sortIndex = 0
+    @State private var startChat = false
     @Namespace private var ideaIconNamespace
 
     var body: some View {
-        VStack(spacing: 0) {
-            homeHeader
-            homeStickyChrome
-
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    if let offlineMessage = viewModel.errorMessage,
-                       viewModel.segment == 0,
-                       !viewModel.visibleIdeas.isEmpty {
-                        AtlasOfflineBanner(message: offlineMessage) {
-                            Task { await viewModel.loadPlaza() }
-                        }
-                        .padding(.horizontal, AtlasMetrics.pageX)
-                        .padding(.bottom, 8)
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                if let offlineMessage = viewModel.errorMessage,
+                   !viewModel.visibleIdeas.isEmpty {
+                    AtlasOfflineBanner(message: offlineMessage) {
+                        Task { await viewModel.loadPlaza() }
                     }
-
-                    content
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
                 }
-                .padding(.top, 4)
-                .padding(.bottom, 16)
+
+                content
             }
+            .padding(.bottom, AtlasMetrics.bottomClear)
         }
         .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: showAuthSheet)
@@ -128,14 +107,11 @@ struct HomeView: View {
         .navigationDestination(item: $selectedRoute) { route in
             IdeaDetailView(ideaID: route.id, iconNamespace: ideaIconNamespace)
         }
-        .navigationDestination(isPresented: $showAgentExplore) {
-            AgentExploreView(initialQuery: agentExploreQuery)
-        }
         .navigationDestination(isPresented: $showPublishIdea) {
             PublishIdeaView()
         }
-        .navigationDestination(item: $searchRoute) { route in
-            SearchView(initialQuery: route.initialQuery)
+        .navigationDestination(isPresented: $startChat) {
+            ChatListView()
         }
         .sheet(isPresented: $showAuthSheet) {
             AuthRequiredSheet()
@@ -144,73 +120,65 @@ struct HomeView: View {
             await viewModel.loadPlaza()
         }
         .refreshable {
-            if viewModel.segment == 0 {
-                await viewModel.loadPlaza()
-            } else if session.isAuthenticated {
-                await viewModel.loadFollowing()
-            }
-        }
-        .onChange(of: viewModel.segment) { _, newValue in
-            if newValue == 1 && !session.isAuthenticated {
-                viewModel.segment = 0
-                showAuthSheet = true
-                return
-            }
-            if newValue == 1 {
-                Task { await viewModel.loadFollowing() }
-            }
-        }
-        .onChange(of: session.isAuthenticated) { _, isAuthenticated in
-            if isAuthenticated, viewModel.segment == 1 {
-                Task { await viewModel.loadFollowing() }
-            }
+            await viewModel.loadPlaza()
         }
     }
 
-    private var homeHeader: some View {
-        AtlasTabScreenHeader(title: "探索") {
-            AtlasToolbarCenterActionButton(icon: .plus, iconSize: 16) {
-                if session.isAuthenticated {
-                    showPublishIdea = true
-                } else {
-                    showAuthSheet = true
-                }
+    // MARK: - Content (S02 Content Wrapper: VERTICAL itemSpacing=18, padding=[20,20,0,18])
+
+    @ViewBuilder
+    private var content: some View {
+        // Per S02 node tree: VStack itemSpacing=18, no bell, no "查看全部"
+        VStack(alignment: .leading, spacing: 18) {
+            // Title (S02: 179:26)
+            Text("探索")
+                .font(.system(size: 36, weight: .heavy))
+                .foregroundStyle(AtlasColors.ink)
+
+            // AI Hero Card (S02: 179:27)
+            AIHeroCard(
+                title: "和万叶一起延展下一个想法",
+                subtitle: "搜索、注册、复用，都在对话里完成",
+                ctaTitle: "找万叶聊"
+            ) {
+                startChat = true
             }
-            AtlasToolbarBellButton(unreadCount: unreadCount, action: onNotifications)
+
+            // Sort Chips (S02: 179:32)
+            sortChips
+
+            // Section title (S02: 179:39)
+            Text("热门想法")
+                .font(.system(size: 24, weight: .heavy))
+                .foregroundStyle(AtlasColors.ink)
+
+            // Idea feed
+            feedContent
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 0)
+        .padding(.bottom, 18)
     }
 
-    private var homeStickyChrome: some View {
-        VStack(spacing: 16) {
-            Button {
-                searchRoute = SearchRoute(initialQuery: "")
-            } label: {
-                AtlasSearchBarTrigger(placeholder: "搜索 Idea 仓库、Agent、标签")
-            }
-            .buttonStyle(.plain)
+    // MARK: - Sort Chips (S02: 179:32 — HORIZONTAL itemSpacing=8, 36h, r20, NO border on inactive)
 
-            suggestionChips
-            plazaFollowingSegment
-        }
-        .padding(.horizontal, AtlasMetrics.pageX)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
-    }
-
-    private var suggestionChips: some View {
+    private var sortChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(viewModel.suggestionChips, id: \.self) { chip in
+                ForEach(HomeViewModel.sortOptions.indices, id: \.self) { index in
+                    let isSelected = sortIndex == index
                     Button {
-                        searchRoute = SearchRoute(initialQuery: chip.replacingOccurrences(of: "#", with: ""))
+                        selectSort(index)
                     } label: {
-                        Text(chip)
-                            .font(.system(size: 14))
-                            .foregroundStyle(AtlasColors.inkSoft)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(AtlasColors.fill)
-                            .clipShape(Capsule())
+                        Text(HomeViewModel.sortOptions[index].label)
+                            // Active: 14pt Bold lemonInk | Inactive: 14pt SemiBold #737A87
+                            .font(.system(size: 14, weight: isSelected ? .bold : .semibold))
+                            .foregroundStyle(isSelected ? AtlasColors.lemonInk : Color(hex: 0x737A87))
+                            .padding(.horizontal, 16)
+                            .frame(height: 36)
+                            // Active: lemonStrong #CBEA16 | Inactive: #F7F8FA — NO border
+                            .background(isSelected ? AtlasColors.lemonStrong : Color(hex: 0xF7F8FA))
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -218,21 +186,20 @@ struct HomeView: View {
         }
     }
 
-    private var plazaFollowingSegment: some View {
-        AtlasSegmentedPill(items: ["趋势", "关注"], selection: $viewModel.segment)
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        if viewModel.segment == 0 {
-            plazaContent
-        } else {
-            followingContent
+    private func selectSort(_ index: Int) {
+        let needsReload = sortIndex != index
+        sortIndex = index
+        viewModel.currentSort = HomeViewModel.sortOptions[index].value
+        if needsReload {
+            viewModel.ideas = []
+            Task { await viewModel.loadPlaza() }
         }
     }
 
+    // MARK: - Feed content
+
     @ViewBuilder
-    private var plazaContent: some View {
+    private var feedContent: some View {
         if viewModel.isLoading && viewModel.visibleIdeas.isEmpty {
             HomeFeedLoadingSkeleton()
         } else if let errorMessage = viewModel.errorMessage, viewModel.visibleIdeas.isEmpty {
@@ -249,63 +216,24 @@ struct HomeView: View {
                 }
             }
         } else {
-            ForEach(Array(viewModel.visibleIdeas.enumerated()), id: \.element.id) { index, idea in
-                VStack(spacing: 0) {
-                    ideaButton(idea)
-                    FeedRowDivider()
-                }
-                .onAppear {
-                    if index == viewModel.visibleIdeas.count - 1 {
-                        Task { await viewModel.loadMorePlaza() }
+            LazyVStack(spacing: 18) {
+                ForEach(Array(viewModel.visibleIdeas.enumerated()), id: \.element.id) { index, idea in
+                    IdeaCoverCard(
+                        idea: idea,
+                        coverImageURL: idea.iconLink,
+                        iconNamespace: ideaIconNamespace,
+                        onTap: { selectedRoute = IdeaRoute(id: idea.id) }
+                    )
+                    .onAppear {
+                        if index == viewModel.visibleIdeas.count - 1 {
+                            Task { await viewModel.loadMorePlaza() }
+                        }
                     }
                 }
-            }
-            if viewModel.isLoadingMore {
-                ProgressView().padding(.vertical, 12)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var followingContent: some View {
-        if viewModel.isLoadingFollowing && viewModel.visibleFollowingActivities.isEmpty {
-            HomeFeedLoadingSkeleton()
-        } else if let error = viewModel.followingError, viewModel.visibleFollowingActivities.isEmpty {
-            AtlasDesignedEmptyStates.loadFailed(message: error) {
-                Task { await viewModel.loadFollowing() }
-            }
-            .frame(minHeight: 200)
-        } else if viewModel.visibleFollowingActivities.isEmpty {
-            AtlasDesignedEmptyStates.followingEmpty {
-                openAgentExplore()
-            }
-        } else {
-            ForEach(viewModel.visibleFollowingActivities) { activity in
-                if let ideaID = activity.ideaID {
-                    Button {
-                        selectedRoute = IdeaRoute(id: ideaID)
-                    } label: {
-                        FollowingIdeaCell(activity: activity)
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    FollowingIdeaCell(activity: activity)
+                if viewModel.isLoadingMore {
+                    ProgressView().padding(.vertical, 12)
                 }
             }
         }
-    }
-
-    private func ideaButton(_ idea: Idea) -> some View {
-        Button {
-            selectedRoute = IdeaRoute(id: idea.id)
-        } label: {
-            IdeaFlatRow(idea: idea, iconNamespace: ideaIconNamespace)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func openAgentExplore(query: String = "") {
-        agentExploreQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        showAgentExplore = true
     }
 }

@@ -269,6 +269,7 @@ func main() {
 			userRoutes.POST("/sessions/:id/messages/:message_id/feedback", chatHandler.SetMessageFeedback)
 			userRoutes.DELETE("/sessions/:id/messages/:message_id/feedback", chatHandler.ClearMessageFeedback)
 			userRoutes.POST("/sessions/:id/fork", chatHandler.ForkSession)
+			userRoutes.POST("/sessions/:id/archive", chatHandler.ArchiveSession)
 
 			chatMsgRoutes := userRoutes.Group("")
 			chatMsgRoutes.Use(chatRL.Middleware())

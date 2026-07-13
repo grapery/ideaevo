@@ -1,59 +1,85 @@
 import SwiftUI
 
-// MARK: - Toast
+// MARK: - Toast (Ardot components 195:138 / 195:142 / 195:146)
 
+/// Toast banner matching ardot design:
+/// HORIZONTAL itemSpacing=10, padding=[12,16,12,16], r16.
+/// Success: lemonSoft bg + lemonStrong icon circle + lemonInk text.
+/// Error: #F8EDEF bg + destructive icon circle + destructive text.
+/// Info: bg-muted + olive icon circle + ink text.
 struct AtlasToastBanner: View {
     let item: AtlasToastItem
     var onRetry: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 10) {
-            Circle()
-                .fill(dotColor)
-                .frame(width: 8, height: 8)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(foregroundColor)
-                    .lineLimit(1)
-                if let message = item.message, !message.isEmpty {
-                    Text(message)
-                        .font(.system(size: 12))
-                        .foregroundStyle(secondaryForeground)
-                        .lineLimit(2)
-                }
+            // Icon circle — 20×20 r10
+            ZStack {
+                Circle()
+                    .fill(iconCircleColor)
+                    .frame(width: 20, height: 20)
+                Text(iconGlyph)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(iconGlyphColor)
             }
+
+            // Message — 14pt SemiBold
+            Text(item.title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(messageColor)
+                .lineLimit(1)
 
             Spacer(minLength: 8)
 
             if item.kind == .error, onRetry != nil {
                 Button("重试", action: { onRetry?() })
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.95))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AtlasColors.destructive)
             }
         }
         .padding(.horizontal, 16)
-        .frame(minHeight: 48)
+        .padding(.vertical, 12)
+        .frame(minHeight: 44)
         .background(backgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.16), radius: 12, y: 8)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: AtlasMetrics.shadowFloatColor, radius: 12, y: 8)
     }
+
+    // MARK: - Per-kind styling
 
     private var backgroundColor: Color {
-        item.kind == .success ? AtlasColors.ink : AtlasColors.coral
+        switch item.kind {
+        case .success: return AtlasColors.lemonSoft
+        case .error: return Color(hex: 0xF8EDEF)
+        }
     }
 
-    private var foregroundColor: Color {
-        .white
+    private var iconCircleColor: Color {
+        switch item.kind {
+        case .success: return AtlasColors.lemonStrong
+        case .error: return AtlasColors.destructive
+        }
     }
 
-    private var secondaryForeground: Color {
-        .white.opacity(0.82)
+    private var iconGlyph: String {
+        switch item.kind {
+        case .success: return "✓"
+        case .error: return "✕"
+        }
     }
 
-    private var dotColor: Color {
-        item.kind == .success ? AtlasColors.entityAgent : .white.opacity(0.9)
+    private var iconGlyphColor: Color {
+        switch item.kind {
+        case .success: return AtlasColors.lemonInk
+        case .error: return .white
+        }
+    }
+
+    private var messageColor: Color {
+        switch item.kind {
+        case .success: return AtlasColors.lemonInk
+        case .error: return AtlasColors.destructive
+        }
     }
 }
 
@@ -85,9 +111,9 @@ extension View {
 
 struct AtlasSheetGrabber: View {
     var body: some View {
-        Capsule()
-            .fill(AtlasColors.rule)
-            .frame(width: AtlasMetrics.sheetGrabberWidth, height: AtlasMetrics.sheetGrabberHeight)
+        RoundedRectangle(cornerRadius: 2, style: .continuous)
+            .fill(Color(hex: 0xC7D1DE))
+            .frame(width: 40, height: 4)
             .frame(maxWidth: .infinity)
     }
 }
@@ -103,14 +129,14 @@ struct AtlasSheetTitleRow: View {
         HStack(spacing: 0) {
             Button(action: onClose) {
                 Text("✕")
-                    .font(.system(size: 17))
+                    .font(AtlasTypography.bodyLarge())
                     .foregroundStyle(AtlasColors.ink)
                     .frame(width: AtlasMetrics.touchTarget, height: AtlasMetrics.touchTarget)
             }
             .buttonStyle(.plain)
 
             Text(title)
-                .font(.system(size: 17, weight: .bold))
+                .font(AtlasTypography.button())
                 .foregroundStyle(AtlasColors.ink)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
@@ -118,7 +144,7 @@ struct AtlasSheetTitleRow: View {
             if showsCheck, let onCheck {
                 Button(action: onCheck) {
                     Text("✓")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(AtlasTypography.cardTitle())
                         .foregroundStyle(AtlasColors.ink)
                         .frame(width: AtlasMetrics.touchTarget, height: AtlasMetrics.touchTarget)
                 }
@@ -212,7 +238,7 @@ private struct AtlasBottomSheetPrimaryButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 17, weight: .semibold))
+                .font(AtlasTypography.cardTitle())
                 .frame(maxWidth: .infinity)
                 .frame(height: AtlasMetrics.primaryButtonHeight)
                 .foregroundStyle(.white)
@@ -229,7 +255,7 @@ private struct AtlasBottomSheetSecondaryButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 17, weight: .semibold))
+                .font(AtlasTypography.cardTitle())
                 .frame(maxWidth: .infinity)
                 .frame(height: AtlasMetrics.primaryButtonHeight)
                 .foregroundStyle(AtlasColors.ink)
@@ -315,7 +341,7 @@ struct AtlasCenterDialog: View {
 
             VStack(alignment: .leading, spacing: 16) {
                 Text(title)
-                    .font(.system(size: 17, weight: .bold))
+                    .font(AtlasTypography.button())
                     .foregroundStyle(AtlasColors.ink)
 
                 Text(message)
@@ -340,7 +366,7 @@ struct AtlasCenterDialog: View {
                 .disabled(isLoading)
 
                 Button(cancelTitle, action: onCancel)
-                    .font(.system(size: 15))
+                    .font(AtlasTypography.feedBody())
                     .foregroundStyle(AtlasColors.inkSoft)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
@@ -366,13 +392,13 @@ struct AtlasDestructiveButton: View {
                     ProgressView().tint(.white)
                 }
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(AtlasTypography.pill())
             }
             .frame(maxWidth: .infinity)
             .frame(height: 40)
             .foregroundStyle(.white)
             .background(AtlasColors.coral)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard))
         }
         .disabled(isLoading)
     }

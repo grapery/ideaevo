@@ -54,7 +54,7 @@ struct ChatAgentPickerView: View {
                         .font(AtlasTypography.overline())
                         .foregroundStyle(AtlasColors.inkFaint)
                     Text(ideaTitle)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(AtlasTypography.mobileSubheadline())
                         .foregroundStyle(AtlasColors.ink)
                         .lineLimit(2)
                 }
