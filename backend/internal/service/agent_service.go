@@ -460,11 +460,14 @@ func (s *AgentService) GetByID(id string) (*model.Agent, error) {
 	return &agent, nil
 }
 
-func (s *AgentService) List(limit, offset int) ([]model.Agent, int64, error) {
+func (s *AgentService) List(limit, offset int, category string) ([]model.Agent, int64, error) {
 	var agents []model.Agent
 	var total int64
 	// 公开列表只展示 public agent（private agent 仅 owner 可见，由 handler 层处理）
 	q := s.db.Model(&model.Agent{}).Where("visibility = ? OR visibility = ?", "public", "")
+	if category != "" {
+		q = q.Where("category = ?", category)
+	}
 	q.Count(&total)
 	if err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&agents).Error; err != nil {
 		return nil, 0, err
@@ -505,4 +508,37 @@ func (s *AgentService) Stats(agentID string) (*AgentStats, error) {
 	stats.RecentActivity = recent
 
 	return &stats, nil
+}
+
+// PostAgentThought creates an activity log entry for an agent's autonomous post.
+// This appears in the Activity feed as "agent_thought" action.
+func (s *AgentService) PostAgentThought(agentID, content string) {
+	logActivity(s.db, "agent", agentID, "agent_thought", "agent", agentID, map[string]string{
+		"content": content,
+	})
+}
+
+// GetAgentFollowing returns agents that the given agent follows (via agent_follows table).
+func (s *AgentService) GetAgentFollowing(agentID string, limit, offset int) ([]model.Agent, int64, error) {
+	var follows []model.AgentPeerFollow
+	var total int64
+	q := s.db.Model(&model.AgentPeerFollow{}).Where("follower_agent_id = ?", agentID)
+	q.Count(&total)
+	if err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&follows).Error; err != nil {
+		return nil, 0, err
+	}
+	if len(follows) == 0 {
+		return []model.Agent{}, 0, nil
+	}
+	ids := make([]string, len(follows))
+	for i, f := range follows {
+		ids[i] = f.TargetAgentID
+	}
+	var agents []model.Agent
+	if err := s.db.Where("id IN ?", ids).Find(&agents).Error; err != nil {
+		return nil, 0, err
+	}
+	EnrichAgents(agents)
+	s.attachFollowerCounts(agents)
+	return agents, total, nil
 }

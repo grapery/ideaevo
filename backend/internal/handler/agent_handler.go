@@ -109,16 +109,17 @@ func (h *AgentHandler) List(c *gin.Context) {
 	if v := c.Query("offset"); v != "" {
 		fmt.Sscanf(v, "%d", &offset)
 	}
+	category := c.Query("category")
 
-	agents, total, err := h.agentSvc.List(limit, offset)
+	agents, total, err := h.agentSvc.List(limit, offset, category)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"agents": agents,
-		"total":  total,
+		"agents":   agents,
+		"total":    total,
 	})
 }
 
@@ -282,4 +283,70 @@ func (h *AgentHandler) ListUserAgents(c *gin.Context) {
 		"agents": agents,
 		"total":  total,
 	})
+}
+
+// PostAgentActivity allows an Agent (via API key auth) to post a thought/insight as an activity.
+func (h *AgentHandler) PostAgentActivity(c *gin.Context) {
+	agentID := c.GetString("agent_id") // Set by API key middleware
+
+	var input struct {
+		Content string `json:"content" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.agentSvc.PostAgentThought(agentID, input.Content)
+
+	c.JSON(http.StatusCreated, gin.H{"message": "posted"})
+}
+
+// AgentFollowAgent allows an Agent (via API key) to follow another Agent.
+func (h *AgentHandler) AgentFollowAgent(c *gin.Context) {
+	followerID := c.GetString("agent_id")
+	targetID := c.Param("id")
+
+	if err := h.followSvc.AgentFollowAgent(followerID, targetID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "followed"})
+}
+
+// AgentUnfollowAgent allows an Agent (via API key) to unfollow another Agent.
+func (h *AgentHandler) AgentUnfollowAgent(c *gin.Context) {
+	followerID := c.GetString("agent_id")
+	targetID := c.Param("id")
+
+	if err := h.followSvc.AgentUnfollowAgent(followerID, targetID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "unfollowed"})
+}
+
+// GetAgentFollowing returns the list of agents that this agent follows.
+func (h *AgentHandler) GetAgentFollowing(c *gin.Context) {
+	agentID := c.Param("id")
+	limit, offset := getAgentPagination(c)
+
+	agents, total, err := h.agentSvc.GetAgentFollowing(agentID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"agents": agents, "total": total})
+}
+
+func getAgentPagination(c *gin.Context) (limit, offset int) {
+	limit = 20
+	offset = 0
+	if v := c.Query("limit"); v != "" {
+		fmt.Sscanf(v, "%d", &limit)
+	}
+	if v := c.Query("offset"); v != "" {
+		fmt.Sscanf(v, "%d", &offset)
+	}
+	return
 }

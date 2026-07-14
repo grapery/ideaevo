@@ -81,8 +81,6 @@ struct LoginView: View {
                     .foregroundStyle(AtlasColors.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
             }
-
-            LoginRelationshipStrip()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

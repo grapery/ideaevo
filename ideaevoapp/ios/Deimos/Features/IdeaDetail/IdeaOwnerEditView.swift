@@ -140,16 +140,16 @@ struct IdeaOwnerEditView: View {
     private var editorContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                // S27 Back button row — 36×36 r18 bg=#F4F5F8 (Ardot S27 189:67)
+                // S27 Back button row — aligns with content at detailX
                 HStack(spacing: 8) {
                     AtlasNavBackButton { dismiss() }
                     Spacer()
                 }
-                .padding(.horizontal, 8)
 
                 // S27 Screen Title — 28pt Bold ink (Ardot 189:69)
                 Text("编辑 Idea")
                     .font(.system(size: 28, weight: .bold))
+                    .atlasTrackedTitle(28)
                     .foregroundStyle(AtlasColors.ink)
 
                 if let idea = viewModel.idea {

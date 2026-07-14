@@ -115,7 +115,8 @@ struct MyAgentsView: View {
 
                 // S13 Page title — 32pt Bold ink (Ardot 179:296)
                 Text("我的 Agent")
-                    .font(.system(size: 36, weight: .heavy))
+                    .font(.system(size: 32, weight: .bold))
+                    .atlasTrackedTitle(32)
                     .foregroundStyle(AtlasColors.ink)
 
                 // S13 Agent Owner Summary — bg #EEF4FF r20 + 1px border (Ardot 179:297)

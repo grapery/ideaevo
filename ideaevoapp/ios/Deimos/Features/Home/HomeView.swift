@@ -133,6 +133,7 @@ struct HomeView: View {
             // Title (S02: 179:26)
             Text("探索")
                 .font(.system(size: 36, weight: .heavy))
+                .atlasTrackedTitle(36)
                 .foregroundStyle(AtlasColors.ink)
 
             // AI Hero Card (S02: 179:27)
@@ -168,6 +169,7 @@ struct HomeView: View {
                 ForEach(HomeViewModel.sortOptions.indices, id: \.self) { index in
                     let isSelected = sortIndex == index
                     Button {
+                        Haptics.selection()
                         selectSort(index)
                     } label: {
                         Text(HomeViewModel.sortOptions[index].label)
@@ -180,7 +182,7 @@ struct HomeView: View {
                             .background(isSelected ? AtlasColors.lemonStrong : Color(hex: 0xF7F8FA))
                             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AtlasPressableStyle())
                 }
             }
         }

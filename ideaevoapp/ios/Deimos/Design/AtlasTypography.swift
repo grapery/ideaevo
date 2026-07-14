@@ -106,3 +106,16 @@ enum AtlasTypography {
     static func display() -> Font { largeTitle() }
     static func eyebrow() -> Font { overline() }
 }
+
+// MARK: - Apple Design Typography Tracking
+
+/// Per Apple WWDC 2020 "The Details of UI Typography":
+/// Large display text needs negative tracking (-0.02em ≈ -2% of font size).
+/// Apply via `.atlasTrackedTitle()` on display-sized titles.
+extension View {
+    /// Apply negative tracking for display titles (≥24pt).
+    /// Tracking value: -0.02 × fontSize (Apple's standard for large text).
+    func atlasTrackedTitle(_ fontSize: CGFloat) -> some View {
+        self.tracking(fontSize >= 24 ? -fontSize * 0.02 : 0)
+    }
+}

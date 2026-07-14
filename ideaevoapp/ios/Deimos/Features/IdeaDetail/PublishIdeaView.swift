@@ -94,7 +94,6 @@ struct PublishIdeaView: View {
                         text: $viewModel.title,
                         height: 24
                     )
-                    .padding(.horizontal, 4)
                 }
 
                 // Description field card
@@ -104,7 +103,6 @@ struct PublishIdeaView: View {
                         minHeight: 88,
                         fontSize: 14
                     )
-                    .padding(.horizontal, 4)
                 }
 
                 // Meta chips — category + status
@@ -387,6 +385,7 @@ struct PublishIdeaView: View {
     private func publish() async {
         do {
             let idea = try await viewModel.submit()
+            Haptics.success()
             ToastCenter.shared.showSuccess("想法已发布")
             publishedRoute = IdeaRoute(id: idea.id)
         } catch let error as APIError {

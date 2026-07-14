@@ -95,16 +95,7 @@ struct UserProfileView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            AtlasPushNavBar(onBack: { dismiss() }) {
-                if !isSelf, viewModel.envelope != nil {
-                    AtlasToolbarFloatIconButton(icon: .more) {
-                        showUserActionMenu = true
-                    }
-                }
-            }
-
-            Group {
+        Group {
             if viewModel.isLoading {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error = viewModel.errorMessage {
@@ -115,7 +106,6 @@ struct UserProfileView: View {
             } else if let envelope = viewModel.envelope {
                 profileContent(envelope)
             }
-        }
         }
         .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: isSheetZoomActive)
@@ -202,123 +192,169 @@ struct UserProfileView: View {
 
     @ViewBuilder
     private func profileContent(_ envelope: UserProfileEnvelope) -> some View {
-        // S09 Content Wrapper (189:4): VERTICAL itemSpacing=14, horizontal padding 20
+        // S09 Content Wrapper (189:4): VERTICAL itemSpacing=16, padding=[20,20,0,20]
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                // 189:5 Screen Title — 28pt Bold ink
-                Text("\(envelope.profile.user.name) 的主页")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
-                    .padding(.horizontal, 20)
+            VStack(alignment: .leading, spacing: 16) {
+                // Back button
+                AtlasNavBackButton(action: { dismiss() })
 
-                // 189:6 User Identity Panel — FILL r18, bg=lemonSoft, VERTICAL spacing 8
-                userIdentityPanel(envelope)
+                // User Identity Card — lemon cover banner + avatar + info
+                userIdentityCard(envelope)
 
-                // 189:8 Profile Actions — FILL r12, bg=lemonStrong, centered "关注用户" 15pt Bold
-                profileActionsButton(envelope)
+                // Profile Actions — follow button
+                if !isSelf {
+                    profileActionsButton(envelope)
+                }
 
-                // 189:133 User Stats Row — FILL r14, white + border, HORIZONTAL SPACE_BETWEEN, 16pt Bold ink
-                userStatsRow(envelope)
+                // Stats Grid — 3 tiles
+                statsGrid(envelope)
 
-                // 189:135 Profile Segment — FILL r12, bg=#F7F8FA, HORIZONTAL spacing 4, padding 4
+                // Profile Segment
                 profileSegment
 
-                // Tab content (recent activity / ideas / agents)
+                // Tab content
                 tabContent
-                    .padding(.horizontal, 20)
             }
-            .padding(.top, 4)
-            .padding(.bottom, 40)
+            .padding(.horizontal, 20)
+            .padding(.top, 0)
+            .padding(.bottom, 20 + AtlasMetrics.bottomClear)
         }
     }
 
-    /// 189:6 User Identity Panel — bio + relationship summary.
-    private func userIdentityPanel(_ envelope: UserProfileEnvelope) -> some View {
+    /// User identity card — lemon cover banner (80h r24) + avatar (72×72 overlapping) + name/bio/relationship.
+    private func userIdentityCard(_ envelope: UserProfileEnvelope) -> some View {
         let user = envelope.profile.user
         let profile = envelope.profile
-        let bioLine = user.bio?.isEmpty == false ? user.bio! : "头像 / 背景 / bio / 关注关系"
-        let summary = "\(profile.followerCount) 粉丝 · \(profile.followingCount) 关注 · \(profile.agentCount) 个公开 Agent"
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(bioLine)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundStyle(AtlasColors.lemonInk)
-                .lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
-            Text(summary)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundStyle(AtlasColors.lemonInk)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            // Cover banner — lemon bg r24 top, 80h
+            Rectangle()
+                .fill(AtlasColors.lemon)
+                .frame(height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+
+            // Avatar overlapping cover
+            HStack(alignment: .bottom, spacing: 12) {
+                EntityAvatar.user(
+                    id: user.id,
+                    url: user.avatarLink,
+                    name: user.name,
+                    size: 72
+                )
+                .overlay(Circle().stroke(.white, lineWidth: 3))
+                .offset(y: -36)
+                .padding(.leading, 18)
+
+                Spacer()
+            }
+
+            // User info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(user.name)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(AtlasColors.ink)
+
+                Text(user.bio?.isEmpty == false ? user.bio! : "AI 想法探索者")
+                    .font(.system(size: 14))
+                    .foregroundStyle(AtlasColors.inkSoft)
+
+                // Meta row — icon labels with structured layout
+                HStack(spacing: 16) {
+                    metaLabel(icon: "square.grid.2x2", text: "\(profile.ideaCount) 想法", iconBg: AtlasColors.lemonSoft)
+                    metaLabel(icon: "person.2", text: "\(profile.followerCount) 粉丝", iconBg: Color(hex: 0xF0F2F5))
+                    metaLabel(icon: "person.crop.circle.badge.plus", text: "\(profile.followingCount) 关注", iconBg: Color(hex: 0xF0F2F5))
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 4)
+            .padding(.bottom, 18)
         }
-        .padding(.horizontal, 18)
-        .padding(.top, 16)
-        .padding(.bottom, 16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AtlasColors.lemonSoft)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .padding(.horizontal, 20)
+        .background(AtlasColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.06), radius: 16, y: 4)
     }
 
-    /// 189:8 Profile Actions — lemonStrong follow button.
+    /// Profile Actions — lemonStrong follow button, 44h r12.
     @ViewBuilder
     private func profileActionsButton(_ envelope: UserProfileEnvelope) -> some View {
-        if !isSelf {
-            Button {
-                Task { await toggleFollow() }
-            } label: {
-                Text(envelope.isFollowing ? "已关注" : "关注用户")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(AtlasColors.lemonInk)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(AtlasColors.lemonStrong)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 20)
+        Button {
+            Task { await toggleFollow() }
+        } label: {
+            Text(envelope.isFollowing ? "已关注" : "关注用户")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(AtlasColors.lemonInk)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(AtlasColors.lemonStrong)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(AtlasPressableStyle())
+    }
+
+    /// Stats Grid — 3 tiles (想法/Agent/粉丝), first tile lemonSoft, others grey.
+    /// Meta label — small icon chip + value text (for identity card).
+    private func metaLabel(icon: String, text: String, iconBg: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10))
+                .foregroundStyle(AtlasColors.ink)
+                .frame(width: 16, height: 16)
+                .background(iconBg)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            Text(text)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
         }
     }
 
-    /// 189:133 User Stats Row — three stats space-between in a bordered white card.
-    @ViewBuilder
-    private func userStatsRow(_ envelope: UserProfileEnvelope) -> some View {
+    private func statsGrid(_ envelope: UserProfileEnvelope) -> some View {
         let profile = envelope.profile
-        HStack {
-            statsEntry("\(profile.agentCount)", "Agent", action: { viewModel.selectedTab = .agents })
-            statsEntry("\(profile.ideaCount)", "Idea", action: { viewModel.selectedTab = .ideas })
-            statsEntry("\(profile.followerCount)", "粉丝", action: {
+        return HStack(spacing: 12) {
+            statTile(value: "\(profile.ideaCount)", unit: " 想法", bg: AtlasColors.lemonSoft, fg: AtlasColors.lemonInk, icon: "square.grid.2x2") {
+                viewModel.selectedTab = .ideas
+            }
+            statTile(value: "\(profile.agentCount)", unit: " Agent", bg: Color(hex: 0xF7F8FA), fg: AtlasColors.ink, icon: "cpu") {
+                viewModel.selectedTab = .agents
+            }
+            statTile(value: "\(profile.followerCount)", unit: " 粉丝", bg: Color(hex: 0xF7F8FA), fg: AtlasColors.ink, icon: "person.2") {
                 followListRoute = FollowListRoute(userID: userID, kind: .followers)
-            })
+            }
         }
-        .padding(.horizontal, 16)
-        .frame(maxWidth: .infinity)
-        .frame(height: 74)
-        .background(AtlasColors.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .padding(.horizontal, 20)
     }
 
-    private func statsEntry(_ value: String, _ label: String, action: @escaping () -> Void) -> some View {
+    /// Stat tile — icon chip + number + label, 72h r16.
+    private func statTile(value: String, unit: String, bg: Color, fg: Color, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 2) {
-                Text(value)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
-                Text(label)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AtlasColors.inkSoft)
+            VStack(spacing: 6) {
+                // Icon chip — 24×24 r6 lemonStrong
+                Image(systemName: icon)
+                    .font(.system(size: 11))
+                    .foregroundStyle(AtlasColors.lemonInk)
+                    .frame(width: 24, height: 24)
+                    .background(AtlasColors.lemonStrong)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+
+                // Number + unit label
+                HStack(spacing: 2) {
+                    Text(value)
+                        .font(.system(size: 18, weight: .heavy))
+                    Text(unit)
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .foregroundStyle(fg)
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: 72)
+            .background(bg)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
     }
 
-    /// 189:135 Profile Segment — grey pill container with lemon active styling.
+    /// Profile Segment — grey container r16, lemonStrong active.
     private var profileSegment: some View {
         HStack(spacing: 4) {
-            ForEach(Array(UserProfileTab.allCases.enumerated()), id: \.element.id) { index, tab in
+            ForEach(UserProfileTab.allCases) { tab in
                 let isActive = viewModel.selectedTab == tab
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -327,20 +363,18 @@ struct UserProfileView: View {
                 } label: {
                     Text(tab.title)
                         .font(.system(size: 14, weight: isActive ? .semibold : .semibold))
-                        .foregroundStyle(isActive ? AtlasColors.olive : Color(hex: 0x687083))
+                        .foregroundStyle(isActive ? AtlasColors.lemonInk : Color(hex: 0x687083))
                         .frame(maxWidth: .infinity)
-                        .frame(height: 34)
+                        .frame(height: 32)
                         .background(isActive ? AtlasColors.lemonStrong : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(4)
-        .frame(height: 42)
-        .background(Color(hex: 0xF7F8FA))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .padding(.horizontal, 20)
+        .background(Color(hex: 0xF4F5F8))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     @ViewBuilder
@@ -377,22 +411,36 @@ struct UserProfileView: View {
                     subtitle: "该用户尚未创建公开 Agent"
                 )
             } else {
-                ForEach(viewModel.agents) { agent in
-                    Button {
-                        agentRoute = AgentRoute(id: agent.id)
-                    } label: {
-                        CompactListCard(
-                            leading: {
-                                EntityAvatar.agent(id: agent.id, url: agent.avatarLink, name: agent.name, size: 40)
-                            },
-                            title: agent.name,
-                            subtitle: agent.description?.plainSummary,
-                            trailing: {
-                                DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                // Horizontal scroll agent cards
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(viewModel.agents) { agent in
+                            Button {
+                                agentRoute = AgentRoute(id: agent.id)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    EntityAvatar.agent(id: agent.id, url: agent.avatarLink, name: agent.name, size: 36)
+                                    Text(agent.name)
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(AtlasColors.ink)
+                                        .lineLimit(1)
+                                    Text(agent.capabilities?.first ?? "Agent")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(AtlasColors.inkSoft)
+                                        .lineLimit(1)
+                                }
+                                .padding(14)
+                                .frame(width: 140, alignment: .leading)
+                                .background(AtlasColors.surface)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(AtlasColors.border, lineWidth: 1)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             }
-                        )
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }

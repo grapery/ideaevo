@@ -424,8 +424,8 @@ struct IdeaMiniStatsRow: View {
     let flowerCount: Int
     let likeCount: Int
     let commentCount: Int
-    var iconSize: CGFloat = 14
-    var fontSize: CGFloat = 12
+    var iconSize: CGFloat = 10
+    var fontSize: CGFloat = 11
     var iconColor: Color? = nil
     var textColor: Color = AtlasColors.inkFaint
 
@@ -434,19 +434,19 @@ struct IdeaMiniStatsRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
-            miniStat(.fork, forkCount, iconColor ?? AtlasColors.aiStart)
-            miniStat(.flower, flowerCount, iconColor ?? AtlasColors.accentWarning)
-            miniStat(.heart, likeCount, iconColor ?? AtlasColors.primary)
+        HStack(spacing: 8) {
+            miniStat(.fork, forkCount, iconColor ?? AtlasColors.olive)
+            miniStat(.flower, flowerCount, iconColor ?? AtlasColors.star)
+            miniStat(.heart, likeCount, iconColor ?? AtlasColors.lemonStrong)
             miniStat(.comment, commentCount, iconColor ?? textColor)
         }
     }
 
     private func miniStat(_ icon: DeimosIcon, _ count: Int, _ color: Color) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             DeimosIconView(icon: icon, size: iconSize, color: color)
             Text("\(count)")
-                .font(.system(size: fontSize, weight: .medium))
+                .font(.system(size: fontSize, weight: .semibold))
                 .foregroundStyle(textColor)
                 .monospacedDigit()
         }
@@ -823,9 +823,10 @@ struct BottomInputBar: View {
                     .clipShape(Circle())
             }
             .disabled(!sendEnabled)
+            .buttonStyle(AtlasPressableStyle())
             .padding(.trailing, 4)
         }
-        .frame(minHeight: 48)
+        .frame(minHeight: 56)
         .background(Color(hex: 0xF4F5F8))
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -1138,11 +1139,11 @@ struct IdeaCell: View {
                     .frame(height: 1)
                     .padding(.top, 2)
 
-                HStack(spacing: 20) {
-                    statItem(.heart, idea.likeCount, AtlasColors.primary)
-                    statItem(.flower, idea.flowerCount, AtlasColors.accentWarning)
+                HStack(spacing: 8) {
+                    statItem(.heart, idea.likeCount, AtlasColors.lemonStrong)
+                    statItem(.flower, idea.flowerCount, AtlasColors.star)
                     statItem(.comment, idea.commentCount, AtlasColors.inkFaint)
-                    statItem(.fork, idea.forkCount, AtlasColors.aiStart)
+                    statItem(.fork, idea.forkCount, AtlasColors.olive)
                 }
                 .padding(.top, 4)
             }
@@ -1155,11 +1156,13 @@ struct IdeaCell: View {
     }
 
     private func statItem(_ icon: DeimosIcon, _ count: Int, _ color: Color = AtlasColors.inkFaint) -> some View {
-        HStack(spacing: 4) {
-            DeimosIconView(icon: icon, size: 16, color: color)
+        HStack(spacing: 3) {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
             Text("\(count)")
-                .font(AtlasTypography.meta())
-                .foregroundStyle(AtlasColors.inkFaint)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AtlasColors.inkSoft)
                 .monospacedDigit()
         }
     }
@@ -1236,11 +1239,13 @@ struct IdeaFlatRow: View {
     }
 
     private func flatStat(_ icon: DeimosIcon, _ count: Int, _ color: Color) -> some View {
-        HStack(spacing: 4) {
-            DeimosIconView(icon: icon, size: 16, color: color)
+        HStack(spacing: 3) {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
             Text("\(count)")
-                .font(AtlasTypography.meta())
-                .foregroundStyle(AtlasColors.inkFaint)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AtlasColors.inkSoft)
                 .monospacedDigit()
         }
     }
@@ -1366,21 +1371,17 @@ struct NativeTabBar: View {
                 tabItem(tab)
             }
         }
-        // Bar is 49pt — safeAreaInset already handles bottom safe area padding
+        // Bar is 49pt — translucent material, no hard border (Apple Design: scroll-edge effect)
         .frame(height: AtlasMetrics.tabBarBarHeight)
         .frame(maxWidth: .infinity)
-        .background(Color.white)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(AtlasColors.border)
-                .frame(height: 1)
-        }
+        .background(.regularMaterial)
     }
 
     private func tabItem(_ tab: MainTab) -> some View {
         let isSelected = selection == tab
         return Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
+            Haptics.light()
+            withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {
                 selection = tab
             }
         } label: {
@@ -1632,7 +1633,7 @@ struct AIHeroCard: View {
                 .background(Color.white)
                 .clipShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(AtlasPressableStyle())
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 22)
@@ -1711,6 +1712,8 @@ struct IdeaCoverCard: View {
     }
 
     // Footer — single-line meta text (Ardot 179:45)
+    /// Footer — single-line meta text (Ardot S02 179:45).
+    /// "作者 · 时间 · 送花 N · 喜欢 N · 评论 N · Fork N" 13pt Medium #6B7280.
     private var metaSection: some View {
         Text(idea.coverMetaLine)
             .font(.system(size: 13, weight: .medium))
@@ -1989,4 +1992,16 @@ extension Date {
         formatter.dateFormat = "yyyy/M/d HH:mm"
         return formatter.string(from: self)
     }
+}
+
+// MARK: - Haptics (Apple Design: Multimodal feedback)
+
+/// Centralized haptic feedback — per Apple Design "Multimodal feedback" principle.
+enum Haptics {
+    static func light() { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+    static func medium() { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
+    static func rigid() { UIImpactFeedbackGenerator(style: .rigid).impactOccurred() }
+    static func selection() { UISelectionFeedbackGenerator().selectionChanged() }
+    static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+    static func error() { UINotificationFeedbackGenerator().notificationOccurred(.error) }
 }

@@ -42,6 +42,7 @@ func Connect(cfg *config.Config) *gorm.DB {
 		&model.MessageFeedback{},
 		&model.Follow{},
 		&model.AgentFollow{},
+		&model.AgentPeerFollow{},
 		&model.Notification{},
 		&model.NotificationPreferences{},
 		&model.UserDevice{},

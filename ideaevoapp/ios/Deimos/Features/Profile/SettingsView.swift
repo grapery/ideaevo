@@ -40,6 +40,7 @@ struct SettingsView: View {
                     AtlasNavBackButton(action: { dismiss() })
                 Text("设置")
                     .font(.system(size: 36, weight: .heavy))
+                    .atlasTrackedTitle(36)
                     .foregroundStyle(AtlasColors.ink)
                 }
 

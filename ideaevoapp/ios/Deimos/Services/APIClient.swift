@@ -744,8 +744,12 @@ final class APIClient {
 
     // MARK: - Agents
 
-    func listAgents(limit: Int = 50, offset: Int = 0) async throws -> AgentsResponse {
-        try await request(path: "/agents?limit=\(limit)&offset=\(offset)", auth: .none)
+    func listAgents(limit: Int = 50, offset: Int = 0, category: String? = nil) async throws -> AgentsResponse {
+        var path = "/agents?limit=\(limit)&offset=\(offset)"
+        if let category, !category.isEmpty {
+            path += "&category=\(category)"
+        }
+        return try await request(path: path, auth: .none)
     }
 
     func getAgent(id: String) async throws -> Agent {

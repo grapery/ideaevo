@@ -43,6 +43,7 @@ final class AgentExploreViewModel {
     var hasMore = true
     var errorMessage: String?
     var filter: AgentExploreFilter = .tool
+    var selectedCategory: String = "" // "" = all
 
     private let pageSize = 50
     private var offset = 0
@@ -76,7 +77,7 @@ final class AgentExploreViewModel {
         errorMessage = nil
         defer { isLoading = false }
         do {
-            let resp = try await APIClient.shared.listAgents(offset: 0)
+            let resp = try await APIClient.shared.listAgents(offset: 0, category: selectedCategory.isEmpty ? nil : selectedCategory)
             agents = resp.agents
             offset = resp.agents.count
             hasMore = Pagination.hasMore(offset: offset, loaded: resp.agents.count, total: resp.total)
@@ -155,6 +156,9 @@ struct AgentExploreView: View {
             )
             .padding(.horizontal, AtlasMetrics.pageX)
             .padding(.top, 8)
+
+            categoryRow
+                .padding(.top, 8)
 
             filterRow
 
@@ -240,8 +244,32 @@ struct AgentExploreView: View {
             }
             .padding(.horizontal, AtlasMetrics.pageX)
         }
-        .padding(.top, 12)
-        .padding(.bottom, 4)
+        .padding(.top, 8)
+    }
+
+    /// Category filter chips — horizontal scroll, lemonStrong active / grey inactive.
+    private var categoryRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Agent.categories, id: \.id) { cat in
+                    let isSelected = viewModel.selectedCategory == cat.id
+                    Button {
+                        viewModel.selectedCategory = cat.id
+                        Task { await viewModel.load(isAuthenticated: session.isAuthenticated) }
+                    } label: {
+                        Text(cat.label)
+                            .font(.system(size: 13, weight: isSelected ? .bold : .semibold))
+                            .foregroundStyle(isSelected ? AtlasColors.lemonInk : Color(hex: 0x737A87))
+                            .padding(.horizontal, 16)
+                            .frame(height: 34)
+                            .background(isSelected ? AtlasColors.lemonStrong : Color(hex: 0xF7F8FA))
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, AtlasMetrics.pageX)
+        }
     }
 
     private func featuredCard(_ agent: Agent) -> some View {

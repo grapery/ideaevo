@@ -66,6 +66,7 @@ struct ChatThreadView: View {
             }
             .padding(.horizontal, 20)
             .frame(height: 58)
+            .background(.bar)
 
             if let errorMessage, messages.isEmpty, !isLoading {
                 AtlasOfflineBanner(message: errorMessage) {
@@ -210,6 +211,7 @@ struct ChatThreadView: View {
         guard !content.isEmpty else { return }
         guard let token = APIClient.shared.authToken else { return }
 
+        Haptics.light()
         isSending = true
         draft = ""
         let tempUser = ChatMessage(
@@ -297,11 +299,7 @@ struct ChatMessageBubble: View {
     var body: some View {
         VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
             if showsTextBubble {
-                HStack(alignment: .top, spacing: 10) {
-                    // AI avatar next to AI messages
-                    if !message.isUser {
-                        aiAvatar
-                    }
+                HStack(alignment: .top, spacing: 0) {
                     if message.isUser { Spacer(minLength: 0) }
                     // Bubble content — hug text width, cap at 260pt max
                     Group {

@@ -142,6 +142,7 @@ struct ActivityScreen: View {
                 // Activity Title (S08 179:184): "动态" 36pt ExtraBold ink
                 Text("动态")
                     .font(.system(size: 36, weight: .heavy))
+                    .atlasTrackedTitle(36)
                     .foregroundStyle(AtlasColors.ink)
 
                 // Activity Segments (S08 179:185): HORIZONTAL itemSpacing=4, padding=[4,4,0,4], r20, bg=#F4F5F8
@@ -365,29 +366,28 @@ struct ActivityScreen: View {
     /// padding=[16,0,14,16], headline 15pt SemiBold + body 12pt Regular + meta 11pt Medium olive.
     private func activityCard(_ activity: ActivityView) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Headline (S08 179:193): 15pt SemiBold ink
+            // Headline — 15pt SemiBold ink
             Text(activity.feedHeadline)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AtlasColors.ink)
                 .lineLimit(2)
 
-            // Body (S08 179:194): 12pt Regular #687083
+            // Body — 12pt Regular plain text, no chip
             if let desc = activity.targetDesc, !desc.isEmpty {
                 Text(desc.plainSummary)
                     .font(.system(size: 12))
                     .foregroundStyle(Color(hex: 0x687083))
-                    .lineLimit(3)
+                    .lineLimit(2)
             }
 
-            // Meta (S08 179:195): 11pt Medium olive
+            // Meta — 11pt Medium olive
             Text("\(activity.createdAt.relativeShort) · \(activity.actionLabel)")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(AtlasColors.olive)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
-        .padding(.top, 14)
-        .padding(.bottom, 14)
+        .padding(.vertical, 14)
         .background(Color(hex: 0xF8FAFC))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)

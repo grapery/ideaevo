@@ -176,6 +176,7 @@ struct SearchView: View {
                 // Search Title (S03 179:51): "搜索" 36pt ExtraBold ink
                 Text("搜索")
                     .font(.system(size: 36, weight: .heavy))
+                    .atlasTrackedTitle(36)
                     .foregroundStyle(AtlasColors.ink)
 
                 // Search Input (S03 179:52): 350×48 FILL, r16, bg=#F4F5F8

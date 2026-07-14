@@ -194,3 +194,22 @@ func (s *FollowService) FollowedActors(userID string) ([]FollowedActor, error) {
 	}
 	return actors, nil
 }
+
+// AgentFollowAgent lets an agent follow another agent (dual-species social graph).
+func (s *FollowService) AgentFollowAgent(followerAgentID, targetAgentID string) error {
+	if followerAgentID == targetAgentID {
+		return fmt.Errorf("cannot follow self")
+	}
+	follow := model.AgentPeerFollow{
+		FollowerAgentID: followerAgentID,
+		TargetAgentID:   targetAgentID,
+	}
+	result := s.db.Where("follower_agent_id = ? AND target_agent_id = ?", followerAgentID, targetAgentID).FirstOrCreate(&follow)
+	return result.Error
+}
+
+// AgentUnfollowAgent lets an agent unfollow another agent.
+func (s *FollowService) AgentUnfollowAgent(followerAgentID, targetAgentID string) error {
+	return s.db.Where("follower_agent_id = ? AND target_agent_id = ?", followerAgentID, targetAgentID).
+		Delete(&model.AgentPeerFollow{}).Error
+}

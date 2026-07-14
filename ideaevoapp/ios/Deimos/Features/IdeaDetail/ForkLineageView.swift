@@ -77,6 +77,7 @@ struct ForkLineageView: View {
                         // S34 Screen Title — 28pt Bold ink (Ardot 189:126)
                         Text("Fork 脉络")
                             .font(.system(size: 28, weight: .bold))
+                            .atlasTrackedTitle(28)
                             .foregroundStyle(AtlasColors.ink)
 
                         // S34 Source idea node — #F8FAFC r16 itemSpacing=6 (Ardot 189:127)
@@ -117,7 +118,7 @@ struct ForkLineageView: View {
 
     // MARK: - Source node (#F8FAFC card)
 
-    /// 源想法 · vX / title · N Fork (Ardot 189:127 — grey bg #F8FAFC r16 itemSpacing=6).
+    /// 源想法 · vX / title · N Fork (Ardot 189:127 — grey bg #F7F8FA r16 itemSpacing=6).
     private func sourceNode(_ idea: Idea) -> some View {
         Button {
             ideaRoute = IdeaRoute(id: idea.id)
@@ -126,15 +127,20 @@ struct ForkLineageView: View {
                 Text("源想法")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AtlasColors.inkTertiary)
-                Text("\(idea.displayTitle) · \(idea.forkCount) Fork")
-                    .font(.system(size: 15))
-                    .foregroundStyle(AtlasColors.inkTertiary)
+                Text(idea.displayTitle)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0x3E4652))
                     .lineLimit(2)
+                HStack(spacing: 8) {
+                    Text("\(idea.forkCount) Fork")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color(hex: 0xF8FAFC))
+            .background(Color(hex: 0xF7F8FA))
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -160,47 +166,55 @@ struct ForkLineageView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    // MARK: - Child forks (Ardot 189:131 — white r16 itemSpacing=1)
+    // MARK: - Child forks — horizontal scroll cards (Ardot S34 189:131)
 
     private var childForksNode: some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("子分支")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(AtlasColors.inkTertiary)
-                .padding(.bottom, 8)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
 
             if viewModel.children.isEmpty {
                 Text("暂无公开 Fork 子树")
-                    .font(.system(size: 15))
+                    .font(.system(size: 14))
                     .foregroundStyle(AtlasColors.inkFaint)
             } else {
-                ForEach(viewModel.children) { child in
-                    Button {
-                        ideaRoute = IdeaRoute(id: child.id)
-                    } label: {
-                        HStack {
-                            Text("\(child.displayTitle) · \(child.forkCount) Fork")
-                                .font(.system(size: 15))
-                                .foregroundStyle(AtlasColors.ink)
-                                .lineLimit(1)
-                            Spacer()
-                            DeimosIconView(icon: .chevronRight, size: 12, color: AtlasColors.inkFaint)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(viewModel.children) { child in
+                            Button {
+                                ideaRoute = IdeaRoute(id: child.id)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(child.displayTitle)
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(AtlasColors.ink)
+                                        .lineLimit(2)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    HStack(spacing: 4) {
+                                        Circle()
+                                            .fill(AtlasColors.lemonStrong)
+                                            .frame(width: 6, height: 6)
+                                        Text("\(child.forkCount) Fork")
+                                            .font(.system(size: 11, weight: .medium))
+                                            .foregroundStyle(AtlasColors.inkSoft)
+                                    }
+                                }
+                                .padding(14)
+                                .frame(width: 160, alignment: .leading)
+                                .background(AtlasColors.surface)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(AtlasColors.border, lineWidth: 1)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .padding(.vertical, 8)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(AtlasColors.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     // MARK: - View source button (Ardot 189:169)

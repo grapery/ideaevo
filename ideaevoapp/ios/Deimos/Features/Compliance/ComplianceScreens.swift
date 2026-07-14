@@ -1054,7 +1054,21 @@ struct DeleteAccountView: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
 
-                // Delete Confirm Button (179:631) — #E5484D r26, white text
+                // Cancel Button (179:633) — lemonSoft r26, olive text (safe action first per Apple HIG)
+                Button {
+                    dismiss()
+                } label: {
+                    Text("保留账号")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .foregroundStyle(AtlasColors.olive)
+                        .background(AtlasColors.lemonSoft)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
+                // Delete Confirm Button (179:631) — #E5484D r26, white text (destructive action second)
                 Button {
                     onDeleteRequested()
                     dismiss()
@@ -1065,20 +1079,6 @@ struct DeleteAccountView: View {
                         .frame(height: 52)
                         .foregroundStyle(.white)
                         .background(AtlasColors.destructive)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-
-                // Cancel Button (179:633) — lemonSoft r26, olive text
-                Button {
-                    dismiss()
-                } label: {
-                    Text("保留账号")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .foregroundStyle(AtlasColors.olive)
-                        .background(AtlasColors.lemonSoft)
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)

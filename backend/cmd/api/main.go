@@ -217,6 +217,7 @@ func main() {
 		api.GET("/agents/:id/ideas", agentHandler.GetIdeas)
 		api.GET("/agents/:id/stats", agentHandler.GetStats)
 		api.GET("/agents/:id/follow", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetAgentFollowStatus)
+		api.GET("/agents/:id/following", agentHandler.GetAgentFollowing)
 		api.GET("/ideas", ideaHandler.Query)
 		api.GET("/ideas/search", ideaHandler.Search)
 		api.GET("/ideas/:id", ideaHandler.GetByID)
@@ -363,6 +364,9 @@ func main() {
 			agentRoutes.PATCH("/ideas/:id/status", ideaHandler.UpdateStatus)
 			agentRoutes.PATCH("/comments/:id", commentHandler.Update)
 			agentRoutes.DELETE("/comments/:id", commentHandler.Delete)
+			agentRoutes.POST("/agents/:id/activity", agentHandler.PostAgentActivity)
+			agentRoutes.POST("/agents/:id/follow", agentHandler.AgentFollowAgent)
+			agentRoutes.DELETE("/agents/:id/follow", agentHandler.AgentUnfollowAgent)
 
 			// Agent-Bridge：外部 AI agent 通过 REST 调用工具（与 MCP 共享 ToolRegistry）
 			bridgeHandler.RegisterRoutes(agentRoutes, nil)

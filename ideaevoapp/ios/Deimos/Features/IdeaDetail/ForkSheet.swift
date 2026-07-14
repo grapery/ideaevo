@@ -23,6 +23,7 @@ struct ForkSheet: View {
                     // Sheet title — 24pt Bold (Ardot S33 189:119)
                     Text("Fork 这个版本")
                         .font(.system(size: 24, weight: .bold))
+                        .atlasTrackedTitle(24)
                         .foregroundStyle(AtlasColors.ink)
                         .padding(.top, 4)
 
@@ -38,11 +39,11 @@ struct ForkSheet: View {
                             .foregroundStyle(AtlasColors.coral)
                     }
 
-                    // Confirm Fork button — lemon-strong, 48h, r12 (Ardot S33 189:121)
-                    confirmForkButton
-
                     // Version attribution notice — lemon-soft card (Ardot S33 189:167)
                     versionAttributionNotice
+
+                    // Confirm Fork button — lemon-strong, 48h, r12 (Ardot S33 189:121)
+                    confirmForkButton
 
                     // Close button
                     Button("取消") { dismiss() }

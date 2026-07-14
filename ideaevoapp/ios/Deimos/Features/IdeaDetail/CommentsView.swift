@@ -296,7 +296,9 @@ struct CommentsView: View {
 
     private func submitComment() async {
         let parentID = replyingTo?.comment.id
+        Haptics.light()
         if await viewModel.send(ideaID: ideaID, content: draft, parentID: parentID) {
+            Haptics.success()
             draft = ""
             replyingTo = nil
         }

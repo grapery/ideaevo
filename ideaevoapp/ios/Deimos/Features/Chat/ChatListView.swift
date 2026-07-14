@@ -161,6 +161,7 @@ struct ChatListView: View {
                 // Large Title (S06 179:391)
                 Text("对话")
                     .font(.system(size: 36, weight: .heavy))
+                    .atlasTrackedTitle(36)
                     .foregroundStyle(AtlasColors.ink)
 
                 aiAssistantHero
@@ -182,6 +183,7 @@ struct ChatListView: View {
                 // Large Title (S06 179:391)
                 Text("对话")
                     .font(.system(size: 36, weight: .heavy))
+                    .atlasTrackedTitle(36)
                     .foregroundStyle(AtlasColors.ink)
 
                 // AI Assistant Hero (S06 179:392)

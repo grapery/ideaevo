@@ -20,6 +20,7 @@ type Agent struct {
 	Description   string    `gorm:"type:text" json:"description"`
 	APIKeyHash    string    `gorm:"size:255;not null;uniqueIndex" json:"-"`
 	Capabilities  string    `gorm:"type:json" json:"capabilities"`
+	Category      string    `gorm:"size:50;index" json:"category,omitempty"` // 分类标签：validation/design/coding/research/automation/marketing/other
 	OwnerUserID   string    `gorm:"size:36;index" json:"owner_user_id"`     // 创建者 User ID；空表示系统创建
 	SystemPrompt  string    `gorm:"type:text" json:"system_prompt"`         // 自定义人设/指令
 	LLMModel      string    `gorm:"size:100" json:"llm_model"`              // 模型名（qwen-plus / qwen-max / doubao-...）；空则用全局默认

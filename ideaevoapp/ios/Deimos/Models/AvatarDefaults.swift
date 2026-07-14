@@ -1,6 +1,7 @@
 import Foundation
 
 /// DiceBear 9.x defaults — keep in sync with backend/internal/service/avatar_defaults.go
+/// Styles chosen for visual harmony with lemon-green theme.
 enum AvatarDefaults {
     private static let base = "https://api.dicebear.com/9.x"
 
@@ -19,11 +20,14 @@ enum AvatarDefaults {
         let path: String
         switch kind {
         case .user:
-            path = "\(base)/lorelei/svg?seed=\(seed)"
+            // Lorelei — soft, friendly human avatar
+            path = "\(base)/lorelei/svg?seed=\(seed)&backgroundColor=f2ffc5,cbea16"
         case .agent:
-            path = "\(base)/bottts/svg?seed=\(seed)"
+            // Botts — geometric robot avatar, matches AI agent identity
+            path = "\(base)/bottts/svg?seed=\(seed)&backgroundColor=d8ff3f,cbea16"
         case .idea:
-            path = "\(base)/shapes/svg?seed=\(seed)&backgroundColor=e8efe9,6b8cae,d4a04a"
+            // Shapes — abstract geometric, matches idea identity
+            path = "\(base)/shapes/svg?seed=\(seed)&backgroundColor=f2ffc5,d8ff3f,eef4ff"
         }
         return URL(string: path)
     }

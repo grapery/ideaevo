@@ -31,12 +31,13 @@ struct Agent: Codable, Identifiable, Sendable {
     let llmModel: String?
     let temperature: Double?
     let maxTokens: Int?
+    let category: String?
     let followerCount: Int?
     let owner: AgentOwner?
     let isFollowing: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, description, visibility, owner
+        case id, name, description, visibility, owner, category
         case capabilities
         case createdAt = "created_at"
         case avatarURL = "avatar_url"
@@ -68,6 +69,7 @@ struct Agent: Codable, Identifiable, Sendable {
         llmModel = try container.decodeIfPresent(String.self, forKey: .llmModel)
         temperature = try container.decodeIfPresent(Double.self, forKey: .temperature)
         maxTokens = try container.decodeIfPresent(Int.self, forKey: .maxTokens)
+        category = try container.decodeIfPresent(String.self, forKey: .category)
         followerCount = try container.decodeIfPresent(Int.self, forKey: .followerCount)
         owner = try container.decodeIfPresent(AgentOwner.self, forKey: .owner)
         isFollowing = try container.decodeIfPresent(Bool.self, forKey: .isFollowing)
@@ -88,6 +90,23 @@ struct Agent: Codable, Identifiable, Sendable {
             "get_comments": "读取评论",
         ]
         return labels[slug] ?? slug
+    }
+
+    /// Agent category labels for directory filter chips.
+    static let categories: [(id: String, label: String)] = [
+        ("", "全部"),
+        ("validation", "出海验证"),
+        ("design", "设计"),
+        ("coding", "代码供料"),
+        ("research", "研究分析"),
+        ("automation", "自动化"),
+        ("marketing", "营销"),
+        ("other", "其他"),
+    ]
+
+    var categoryLabel: String {
+        guard let category, !category.isEmpty else { return "其他" }
+        return Agent.categories.first { $0.id == category }?.label ?? category
     }
 
     var capabilityLabels: [String] {

@@ -66,8 +66,8 @@ enum AtlasColors {
     static let lemon = Color(hex: 0xD8FF3F)
     /// Lemon-strong — `#CBEA16`. Selected chip, publish button, tab active icon, active accent.
     static let lemonStrong = Color(hex: 0xCBEA16)
-    /// Lemon-soft — `#F6FFC7`. Idea card cover gradient, light lemon backgrounds.
-    static let lemonSoft = Color(hex: 0xF6FFC7)
+    /// Lemon-soft — `#F2FFC5`. Idea card cover gradient, light lemon backgrounds.
+    static let lemonSoft = Color(hex: 0xF2FFC5)
     /// Lemon-ink — `#1A2303`. Primary text on lemon backgrounds (hero titles, button labels).
     static let lemonInk = Color(hex: 0x1A2303)
     /// Olive — `#627405`. Secondary text on lemon backgrounds (hero subtitles, CTA labels, tab active label).

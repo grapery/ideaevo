@@ -338,6 +338,7 @@ struct IdeaDetailView: View {
                 // Idea Title (S04 179:80): 30pt Black ink
                 Text(idea.displayTitle)
                     .font(.system(size: 30, weight: .black))
+                    .atlasTrackedTitle(30)
                     .foregroundStyle(AtlasColors.ink)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -1292,11 +1293,14 @@ struct IdeaDetailView: View {
             showAuthSheet = true
             return
         }
+        Haptics.rigid()
         _ = await viewModel.sendFlower(isAuthenticated: true)
         if let msg = viewModel.actionMessage {
             if msg.contains("已送出") {
+                Haptics.success()
                 ToastCenter.shared.showSuccess(msg)
             } else {
+                Haptics.error()
                 ToastCenter.shared.showError(msg)
             }
             viewModel.actionMessage = nil
@@ -1308,8 +1312,10 @@ struct IdeaDetailView: View {
             showAuthSheet = true
             return
         }
+        Haptics.medium()
         _ = await viewModel.toggleLike(isAuthenticated: true)
         if let msg = viewModel.actionMessage {
+            Haptics.error()
             ToastCenter.shared.showError(msg)
             viewModel.actionMessage = nil
         }
@@ -1356,6 +1362,7 @@ struct IdeaDetailView: View {
             showAuthSheet = true
             return
         }
+        Haptics.medium()
         forkError = nil
         showForkSheet = true
     }
@@ -1366,10 +1373,12 @@ struct IdeaDetailView: View {
         defer { isForking = false }
         do {
             let forked = try await viewModel.fork(title: title, description: description, reason: reason)
+            Haptics.success()
             showForkSheet = false
             ToastCenter.shared.showSuccess("Fork 已创建")
             forkRoute = IdeaRoute(id: forked.id)
         } catch {
+            Haptics.error()
             forkError = error.localizedDescription
         }
     }
