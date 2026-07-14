@@ -386,6 +386,7 @@ struct IdeaDetailView: View {
             // Cover Title (S04 179:79): 24pt Black lemonInk — positioned bottom-left
             Text(idea.displayTitle)
                 .font(.system(size: 24, weight: .black))
+                .atlasTrackedTitle(24)
                 .foregroundStyle(AtlasColors.lemonInk)
                 .lineLimit(1)
                 .padding(.leading, 16)

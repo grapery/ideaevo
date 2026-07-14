@@ -98,15 +98,7 @@ struct AgentProfileView: View {
     @State private var userRoute: UserRoute?
 
     var body: some View {
-        VStack(spacing: 0) {
-            AtlasPushNavBar(onBack: { dismiss() }) {
-                ShareLink(item: viewModel.agent?.name ?? "Agent") {
-                    AtlasToolbarFloatTextLabel(title: "分享")
-                }
-                .buttonStyle(.plain)
-            }
-
-            Group {
+        Group {
             if viewModel.isLoading {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error = viewModel.errorMessage {
@@ -117,7 +109,6 @@ struct AgentProfileView: View {
             } else if let agent = viewModel.agent {
                 profileContent(agent)
             }
-        }
         }
         .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: showAuthSheet)
@@ -142,23 +133,35 @@ struct AgentProfileView: View {
 
     @ViewBuilder
     private func profileContent(_ agent: Agent) -> some View {
-        // S10 Content Wrapper (179:22): VERTICAL itemSpacing=16, horizontal padding 20
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // Back button + share
+                HStack {
+                    AtlasNavBackButton(action: { dismiss() })
+                    Spacer()
+                    ShareLink(item: agent.name) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(AtlasColors.ink)
+                            .frame(width: 36, height: 36)
+                            .background(AtlasColors.surfaceSecondary)
+                            .clipShape(Circle())
+                    }
+                }
+
                 // 179:95 Agent Cover — lemon bg r24 with avatar circle
                 agentCover(agent)
 
-                // 179:97 Agent Title — 30pt Black ink
+                // 179:97 Agent Title — 30pt Black ink + tracking
                 Text(agent.name)
                     .font(.system(size: 30, weight: .black))
+                    .atlasTrackedTitle(30)
                     .foregroundStyle(AtlasColors.ink)
-                    .padding(.horizontal, 20)
 
                 // 179:98 Agent Handle — 14pt SemiBold #667085
                 Text(agentHandleLine(agent))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color(hex: 0x667085))
-                    .padding(.horizontal, 20)
 
                 // 179:99 Agent Stats — 3 stat tiles, HORIZONTAL spacing 8
                 agentStatsRow
@@ -172,21 +175,11 @@ struct AgentProfileView: View {
                 // 179:114 Recent Idea Card — grey r20
                 recentIdeaCard
 
-                // S26 Metrics Grid card — bg #F7F8FA r16 itemSpacing 8 (Ardot 189:62)
-                agentMetricsGrid
-
-                // S26 Recent Activity card — bg #F2FFC5 r16 itemSpacing 8 (Ardot 189:64)
-                agentRecentActivity
-
-                // S26 Stats Breakdown card — white + 1px border r16 (Ardot 189:153)
-                agentStatsBreakdown
-
                 // Tabbed content (ideas / forks / activity)
                 tabContent
-                    .padding(.horizontal, 20)
             }
-            .padding(.top, 4)
-            .padding(.bottom, 40)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20 + AtlasMetrics.bottomClear)
         }
     }
 

@@ -198,6 +198,12 @@ struct UserProfileView: View {
                 // Back button
                 AtlasNavBackButton(action: { dismiss() })
 
+                // Screen Title — 36pt ExtraBold tracked
+                Text("\(envelope.profile.user.name) 的主页")
+                    .font(.system(size: 36, weight: .heavy))
+                    .atlasTrackedTitle(36)
+                    .foregroundStyle(AtlasColors.ink)
+
                 // User Identity Card — lemon cover banner + avatar + info
                 userIdentityCard(envelope)
 
@@ -206,13 +212,19 @@ struct UserProfileView: View {
                     profileActionsButton(envelope)
                 }
 
+                // Profile Segment — 动态 / Agent / 想法
+                profileSegment
+
+                // Recent Activity card (under segment, before tab content)
+                recentActivityCard(envelope)
+
                 // Stats Grid — 3 tiles
                 statsGrid(envelope)
 
-                // Profile Segment
-                profileSegment
+                // Agent List — horizontal scroll
+                agentListSection(envelope)
 
-                // Tab content
+                // Tab content (ideas/agents lists)
                 tabContent
             }
             .padding(.horizontal, 20)
@@ -375,6 +387,94 @@ struct UserProfileView: View {
         .padding(4)
         .background(Color(hex: 0xF4F5F8))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    // MARK: - Recent Activity card (Ardot 189:137)
+
+    /// White + border r20, 3 activity rows with colored dots + dividers.
+    private func recentActivityCard(_ envelope: UserProfileEnvelope) -> some View {
+        VStack(spacing: 0) {
+            activityRow(dotColor: AtlasColors.lemonStrong, text: "评论了 智能家居能源管理系统")
+            dividerLine
+            activityRow(dotColor: AtlasColors.star, text: "给 IoT 实时环境监测平台送花")
+            dividerLine
+            activityRow(dotColor: Color(hex: 0x3A6EDA), text: "关注了 节能管家 Agent")
+        }
+        .background(AtlasColors.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AtlasColors.border, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func activityRow(dotColor: Color, text: String) -> some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(dotColor)
+                .frame(width: 8, height: 8)
+            Text(text)
+                .font(.system(size: 14))
+                .foregroundStyle(AtlasColors.ink)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    private var dividerLine: some View {
+        Rectangle()
+            .fill(Color(hex: 0xF0F2F5))
+            .frame(height: 1)
+            .padding(.leading, 16)
+    }
+
+    // MARK: - Agent List horizontal section (Ardot 210:74)
+
+    private func agentListSection(_ envelope: UserProfileEnvelope) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Agent")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(AtlasColors.ink)
+                Spacer()
+                Text("\(envelope.profile.agentCount) 个")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AtlasColors.inkSoft)
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(viewModel.agents) { agent in
+                        Button {
+                            agentRoute = AgentRoute(id: agent.id)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 8) {
+                                EntityAvatar.agent(id: agent.id, url: agent.avatarLink, name: agent.name, size: 36)
+                                Text(agent.name)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(AtlasColors.ink)
+                                    .lineLimit(1)
+                                Text(agent.capabilities?.first ?? "Agent")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(AtlasColors.inkSoft)
+                                    .lineLimit(1)
+                            }
+                            .padding(14)
+                            .frame(width: 140, alignment: .leading)
+                            .background(AtlasColors.surface)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(AtlasColors.border, lineWidth: 1)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
     }
 
     @ViewBuilder
