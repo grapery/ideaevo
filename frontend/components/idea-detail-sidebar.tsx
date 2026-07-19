@@ -6,6 +6,7 @@ import { Idea, FlowerDonor, IdeaLineage, IdeaStats } from "@/lib/types";
 import { SendFlowerButton } from "./idea-action-bar";
 import { ForkFlowGraph } from "./fork-flow-graph";
 import { WireframeAvatar } from "./wireframe-avatar";
+import { Modal } from "./ui/modal";
 import { getApiBase } from "@/lib/api-base";
 import { IconGitFork, IconMessage } from "./icons";
 
@@ -83,6 +84,7 @@ export function FlowersPanel({
 }) {
   const [donors, setDonors] = useState<FlowerDonor[]>(initialDonors);
   const [loaded, setLoaded] = useState(initialDonors.length > 0 || flowerCount === 0);
+  const [listOpen, setListOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +106,7 @@ export function FlowersPanel({
 
   const displayDonors = donors.slice(0, 12);
   const hiddenDonorCount = Math.max(0, donors.length - displayDonors.length);
+  const canExpand = donors.length > 0;
 
   return (
     <div className={sidebarCardClass}>
@@ -116,7 +119,13 @@ export function FlowersPanel({
       {!loaded ? (
         <p className="mb-2.5 text-sm text-[var(--text-muted)]">加载中…</p>
       ) : displayDonors.length > 0 ? (
-        <div className="mb-2.5 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setListOpen(true)}
+          className="mb-2.5 flex flex-wrap items-center gap-2 rounded-md p-1 -m-1 text-left transition-colors hover:bg-[var(--bg-subtle)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ink-faint)] cursor-pointer"
+          aria-label={`查看全部 ${donors.length} 位送花者`}
+          title="点击查看全部送花者"
+        >
           {displayDonors.map((donor) => (
             <WireframeAvatar
               key={donor.user_id || donor.agent_id || donor.name}
@@ -124,15 +133,16 @@ export function FlowersPanel({
               avatarUrl={donor.avatar_url}
               entityId={donor.user_id || donor.agent_id}
               kind={donor.user_id ? "user" : "agent"}
-              href={donorProfileHref(donor)}
               size={36}
               title={donor.name}
             />
           ))}
           {hiddenDonorCount > 0 && (
-            <span className="text-xs tabular-nums text-[var(--text-muted)]">+{hiddenDonorCount}</span>
+            <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 text-xs tabular-nums text-[var(--text-muted)]">
+              +{hiddenDonorCount}
+            </span>
           )}
-        </div>
+        </button>
       ) : flowerCount > 0 ? (
         <p className="mb-2.5 text-sm text-[var(--text-muted)]">送花者信息加载失败</p>
       ) : (
@@ -140,8 +150,69 @@ export function FlowersPanel({
       )}
       <p className="mb-3 text-xs tabular-nums text-[var(--text-muted)]">
         累计 {flowerCount} 朵鲜花
+        {canExpand && (
+          <button
+            type="button"
+            onClick={() => setListOpen(true)}
+            className="ml-2 text-[var(--accent-link)] hover:underline"
+          >
+            查看全部 →
+          </button>
+        )}
       </p>
       <SendFlowerButton ideaId={ideaId} />
+
+      {canExpand && (
+        <Modal
+          open={listOpen}
+          onClose={() => setListOpen(false)}
+          title={`送花者（${donors.length}）`}
+          description="为这个想法献过花的用户与 Agent"
+        >
+          <ul className="-mx-1 max-h-[60vh] space-y-1 overflow-y-auto">
+            {donors.map((donor) => {
+              const href = donorProfileHref(donor);
+              const inner = (
+                <>
+                  <WireframeAvatar
+                    name={donor.name}
+                    avatarUrl={donor.avatar_url}
+                    entityId={donor.user_id || donor.agent_id}
+                    kind={donor.user_id ? "user" : "agent"}
+                    size={32}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-[var(--title)]">
+                      {donor.name}
+                    </div>
+                    <div className="text-xs text-[var(--text-muted)]">
+                      {donor.user_id ? "用户" : "Agent"}
+                      {donor.created_at && (
+                        <> · {new Date(donor.created_at).toLocaleDateString("zh-CN")}</>
+                      )}
+                    </div>
+                  </div>
+                </>
+              );
+              return (
+                <li key={donor.user_id || donor.agent_id || donor.name}>
+                  {href ? (
+                    <Link
+                      href={href}
+                      onClick={() => setListOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-[var(--bg-subtle)]"
+                    >
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-3 rounded-lg px-3 py-2">{inner}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Modal>
+      )}
     </div>
   );
 }

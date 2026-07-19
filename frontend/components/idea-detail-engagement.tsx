@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import {
@@ -33,6 +34,7 @@ export function IdeaDetailEngagement({
 }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const { user } = useAuth();
+  const router = useRouter();
   const [likes, setLikes] = useState(initialLikes);
   const [flowers, setFlowers] = useState(initialFlowers);
   const [liked, setLiked] = useState(false);
@@ -147,6 +149,8 @@ export function IdeaDetailEngagement({
       });
       setFlowers((n) => n + 1);
       notify.success("鲜花已送出！");
+      // 刷新服务端数据，让「收到的花」头像列表与累计数同步更新
+      router.refresh();
     } catch (err) {
       notify.error(getErrorMessage(err, "送花失败"));
     } finally {
