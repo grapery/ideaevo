@@ -63,6 +63,20 @@ struct MyAgentsView: View {
             }
         }
         .background(AtlasColors.canvas)
+        // ardot C/Push Toolbar (`237:94`): float-liquid overlay — back button + title capsule +
+        // trailing create button. Title carries the page name; the old inline large-title + overline
+        // row has been removed per the design (toolbar is the canonical header).
+        .safeAreaInset(edge: .top, spacing: 0) {
+            AtlasOverlayPushNavBar(title: "我的 Agents", onBack: { dismiss() }) {
+                Button { showCreateAgent = true } label: {
+                    Text("+ 创建")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                        .frame(height: AtlasToolbarMetrics.hitTarget)
+                }
+                .buttonStyle(.plain)
+            }
+        }
         .atlasSheetZoomBackground(isPresented: showKeySheet)
         .navigationBarHidden(true)
         .suppressTabBar()
@@ -106,28 +120,6 @@ struct MyAgentsView: View {
     private var agentList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("你的 Agent 资产")
-                            .font(AtlasTypography.overline())
-                            .foregroundStyle(AtlasColors.inkSoft)
-                        Text("我的 Agents")
-                            .font(AtlasTypography.largeTitle())
-                            .foregroundStyle(AtlasColors.ink)
-                            .atlasTrackedTitle(30)
-                    }
-                    Spacer()
-                    // ardot S19 (246:3): plain text button, 15pt Semibold, ink — no fill, no capsule.
-                    Button { showCreateAgent = true } label: {
-                        Text("+ 创建")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(AtlasColors.ink)
-                            .frame(height: 40)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.top, 4)
-
                 ownerSummaryCard
 
                 if viewModel.agents.isEmpty {
