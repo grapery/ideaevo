@@ -1477,14 +1477,11 @@ struct HomeSearchAgentCell: View {
     }
 }
 
-/// v6 NativeTabBar — native iOS Tab Bar (replaces floating glass PillTabBar).
+/// `C/Glass Tab Bar · Floating Pill Material` (ardot `237:80`).
 ///
-/// Per Ardot v6 spec (`149:182` / `149:272`):
-/// - 393×83px (49pt bar + 34pt safe area), edge-to-edge
-/// - White 95% opacity bg, 1px top border `#E7EAF0`
-/// - 4 tabs SPACE_EVENLY, icon 26×26 + label 10pt Medium
-/// - Active: lime-tinted SVG line icon
-/// - Inactive: `#8A94A6` gray
+/// Floating glass pill (348×62, white/72% fill, #E8EAEC border, r36, ink shadow), containing
+/// 4 tabs. Active tab = lemon capsule (lemonStrong @ 0.82, lemonInk text/icon). Inactive tabs
+/// are plain (#8A94A6 text/icon, no fill). Label is ABOVE icon per ardot spec.
 struct NativeTabBar: View {
     @Binding var selection: MainTab
 
@@ -1495,9 +1492,11 @@ struct NativeTabBar: View {
             }
         }
         .padding(4)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(AtlasColors.border.opacity(0.82), lineWidth: 1))
-        .padding(.horizontal, AtlasMetrics.detailX)
+        // ardot 237:81: Glass Pill — white/72% solid fill + #E8EAEC border + r36 + ink shadow.
+        .background(Capsule().fill(Color.white.opacity(0.72)))
+        .overlay(Capsule().stroke(AtlasColors.border, lineWidth: 1))
+        .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.14), radius: 18, x: 0, y: 8)
+        .padding(.horizontal, 21)
         .padding(.bottom, AtlasMetrics.tabBarSafeBottom)
         .frame(maxWidth: .infinity)
     }
@@ -1509,10 +1508,11 @@ struct NativeTabBar: View {
                 selection = tab
             }
         } label: {
-            VStack(spacing: 3) {
-                DeimosIconView(icon: tab.icon, size: 18, color: isSelected ? AtlasColors.lemonInk : AtlasColors.inkSoft)
+            // ardot 237:82/85/88/91: label ABOVE icon (VStack spacing 4), not icon above label.
+            VStack(spacing: 4) {
                 Text(tab.title)
                     .font(isSelected ? AtlasTypography.tabBarLabel() : AtlasTypography.tabBarLabelInactive())
+                DeimosIconView(icon: tab.icon, size: 18, color: isSelected ? AtlasColors.lemonInk : AtlasColors.inkSoft)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 54)
