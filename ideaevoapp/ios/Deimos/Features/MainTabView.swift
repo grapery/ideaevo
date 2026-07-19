@@ -76,33 +76,51 @@ struct MainTabView: View {
 
     private static let launchCountKey = "deimos.launch.count"
 
+    /// Device bottom safe-area inset (home indicator zone). Used to position the floating tab
+    /// bar pill at the true screen edge — `overlay(alignment: .bottom)` otherwise anchors to the
+    /// safe-area inner edge and leaves a gap below the pill.
+    private var safeBottomInset: CGFloat {
+        (UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }?
+            .safeAreaInsets.bottom) ?? 34
+    }
+
     var body: some View {
-        NavigationStack {
-            Group {
-                switch selection {
-                case .home:
-                    HomeView()
-                case .chat:
-                    ChatListView()
-                case .activity:
-                    ActivityScreen()
-                case .profile:
-                    ProfileView()
+        // ardot 237:80: floating glass pill ~9pt above the true screen bottom edge. The tab
+        // bar lives OUTSIDE the NavigationStack (in this ZStack) so it is not constrained by
+        // the NavigationStack's safe-area management — `.ignoresSafeArea(edges: .bottom)` on
+        // the pill then reliably moves its bottom anchor to the real screen edge, and
+        // `.padding(.bottom, 9)` lifts it just above the home indicator zone. Inside the
+        // NavigationStack, ignoresSafeArea was being overridden and the pill sat ~64pt above
+        // the edge (safe-area inner edge + padding), leaving the large gap users reported.
+        ZStack(alignment: .bottom) {
+            NavigationStack {
+                Group {
+                    switch selection {
+                    case .home:
+                        HomeView()
+                    case .chat:
+                        ChatListView()
+                    case .activity:
+                        ActivityScreen()
+                    case .profile:
+                        ProfileView()
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(AtlasColors.canvas)
+                .environment(\.loginCancelAction) {
+                    selection = .home
+                }
+                .navigationDestination(item: $deepLinkIdeaRoute) { route in
+                    IdeaDetailView(ideaID: route.id)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(AtlasColors.canvas)
-            .overlay(alignment: .bottom) {
-                if tabBarVisibility.isVisible {
-                    NativeTabBar(selection: $selection)
-                        .ignoresSafeArea(edges: .bottom)
-                }
-            }
-            .environment(\.loginCancelAction) {
-                selection = .home
-            }
-            .navigationDestination(item: $deepLinkIdeaRoute) { route in
-                IdeaDetailView(ideaID: route.id)
+
+            if tabBarVisibility.isVisible {
+                NativeTabBar(selection: $selection)
             }
         }
         .environment(\.tabBarVisibility, tabBarVisibility)

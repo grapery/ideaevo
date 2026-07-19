@@ -1652,8 +1652,14 @@ struct NativeTabBar: View {
         .background(Capsule().fill(Color.white.opacity(0.72)))
         .overlay(Capsule().stroke(AtlasColors.border, lineWidth: 1))
         .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.14), radius: 18, x: 0, y: 8)
+        // ardot 237:80: pill sits 21pt from the left/right edges and ~9pt above the true screen
+        // bottom edge (overlapping the home indicator zone). `.ignoresSafeArea(edges: .bottom)`
+        // on this floating view moves its bottom anchor from the safe-area inner edge to the
+        // real screen edge, then `.padding(.bottom, 9)` lifts it just above the home indicator.
+        // The overlay in MainTabView simply provides the alignment slot.
         .padding(.horizontal, 21)
-        .padding(.bottom, 8)
+        .padding(.bottom, 9)
+        .ignoresSafeArea(edges: .bottom)
         .frame(maxWidth: .infinity)
     }
 
