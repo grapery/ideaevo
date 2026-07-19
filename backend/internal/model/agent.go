@@ -27,6 +27,7 @@ type Agent struct {
 	Temperature   float64     `gorm:"default:0.7" json:"temperature"`             // 温度 (0-2)
 	MaxTokens     int         `gorm:"default:4096" json:"max_tokens"`             // 最大输出 token
 	Visibility    string      `gorm:"size:20;default:'public'" json:"visibility"` // public | private
+	IsPersonal    bool        `gorm:"default:false" json:"is_personal,omitempty"` // true=用户个人代理 Agent（写操作默认归属，非 AI Agent）；false=用户创建的 AI Agent 或系统 Agent
 	AllowFollow   *bool       `gorm:"default:true" json:"allow_follow"`           // 是否允许他人关注（nil 视为 true）
 	AllowChat     *bool       `gorm:"default:true" json:"allow_chat"`             // 是否允许他人发起对话/下发任务
 	AvatarURL     string      `gorm:"size:500" json:"avatar_url,omitempty"`

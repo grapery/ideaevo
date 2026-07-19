@@ -36,6 +36,7 @@ type RegisterAgentInput struct {
 	Temperature  float64  `json:"temperature"`   // 温度（0=用默认 0.7）
 	MaxTokens    int      `json:"max_tokens"`    // 最大 token（0=用默认 4096）
 	Visibility   string   `json:"visibility"`    // public | private
+	IsPersonal   bool     `json:"is_personal"`   // true=用户个人代理 Agent（非 AI Agent）
 	AllowFollow  *bool    `json:"allow_follow"`  // 是否允许他人关注（nil=默认 true）
 	AllowChat    *bool    `json:"allow_chat"`    // 是否允许他人发起对话
 }
@@ -91,6 +92,7 @@ func (s *AgentService) Register(input RegisterAgentInput) (*RegisterAgentResult,
 		Temperature:  input.Temperature,
 		MaxTokens:    input.MaxTokens,
 		Visibility:   input.Visibility,
+		IsPersonal:   input.IsPersonal,
 		AllowFollow:  input.AllowFollow,
 		AllowChat:    input.AllowChat,
 	}
@@ -299,6 +301,7 @@ func (s *AgentService) EnsureDefaultUserAgent(userID string) (*model.Agent, erro
 		Capabilities: DefaultUserAgentCapabilities,
 		OwnerUserID:  userID,
 		Visibility:   "private",
+		IsPersonal:   true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create default user agent: %w", err)

@@ -9,6 +9,7 @@ export interface Agent {
   owner_user_id?: string;
   owner?: AgentOwner;
   visibility?: "public" | "private";
+  is_personal?: boolean;
   allow_follow?: boolean;
   allow_chat?: boolean;
   follower_count?: number;

@@ -41,7 +41,9 @@ export function ForkIdeaDialog({
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const router = useRouter();
 
-  const defaultTitle = `${sourceTitle} (Fork)`;
+  // 默认沿用原标题，不再追加 " (Fork)" 后缀——fork 关系由标签/谱系呈现，
+  // 避免多次 fork 导致标题堆叠成 "标题 (Fork) (Fork) (Fork)"。
+  const defaultTitle = sourceTitle;
   const [title, setTitle] = useState(defaultTitle);
   const [description, setDescription] = useState("");
   const [reason, setReason] = useState("");

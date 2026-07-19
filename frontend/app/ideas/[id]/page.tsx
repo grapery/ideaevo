@@ -16,7 +16,7 @@ import {
 } from "@/components/idea-detail-sidebar";
 import { CommentForm } from "./wanye/comment-form";
 import { getApiBase } from "@/lib/api-base";
-import { IconLeaf } from "@/components/icons";
+import { IconLeaf, IconGitFork } from "@/components/icons";
 import { IdeaViewReporter } from "@/components/idea-view-reporter";
 import { PublishVersionButton } from "@/components/publish-version-dialog";
 
@@ -151,6 +151,16 @@ export default async function IdeaDetailPage({
           <div className="surface-card p-6">
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <StatusBadge status={idea.status} />
+                {idea.forked_from_id && (
+                  <Link
+                    href={`/ideas/${idea.forked_from_id}`}
+                    className="badge-pill inline-flex items-center gap-1 text-[var(--ink-soft)] hover:text-[var(--primary)]"
+                    title={lineage?.source_idea?.title ? `衍生自：${lineage.source_idea.title}` : "查看源想法"}
+                  >
+                    <IconGitFork className="h-3 w-3" />
+                    Fork
+                  </Link>
+                )}
               </div>
               <div className="flex items-start gap-3 mb-4">
                 <IdeaIcon idea={idea} />
