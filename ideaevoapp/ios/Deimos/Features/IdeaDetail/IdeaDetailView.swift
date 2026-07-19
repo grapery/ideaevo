@@ -440,8 +440,9 @@ struct IdeaDetailView: View {
 
     // MARK: - v6 Cover Page with Transparent Float Navigation (Ardot 138:334)
 
-    /// Product Reality (Ardot 246:2): glass toolbar + card stack (identity → agent →
-    /// version summary → links → lineage → attachments).
+    /// Product Reality (Ardot 246:2 + v2 redesign): glass toolbar + card stack.
+    /// v2 reorder: identity (now holds author info) → flowers row → description →
+    /// links → evolution+version timeline (merged) → attachments → impl/media → chat.
     @ViewBuilder
     private func detailScreen(_ idea: Idea) -> some View {
         ScrollView {
@@ -456,7 +457,15 @@ struct IdeaDetailView: View {
                 .frame(height: 0)
 
                 ideaIdentityCard(idea)
-                agentOwnershipCard(idea)
+
+                // v2: flowers row sits directly under the identity card so it's discoverable.
+                FlowersPreviewCard(
+                    flowerCount: idea.flowerCount,
+                    donors: viewModel.donors,
+                    onOpen: { Task { await handleFlower() } },
+                    onSendFlower: { Task { await handleFlower() } }
+                )
+
                 overviewCard(idea)
                 quickLinksSection(idea)
                 forkLineagePreview(idea)
@@ -465,13 +474,6 @@ struct IdeaDetailView: View {
                 // Secondary artifact material remains below the Product Reality first fold.
                 implProgressCard(idea)
                 mediaGallerySection(idea)
-
-                FlowersPreviewCard(
-                    flowerCount: idea.flowerCount,
-                    donors: viewModel.donors,
-                    onOpen: { Task { await handleFlower() } },
-                    onSendFlower: { Task { await handleFlower() } }
-                )
 
                 if !idea.tags.isEmpty {
                     HStack(spacing: 6) {
@@ -483,10 +485,6 @@ struct IdeaDetailView: View {
 
                 if let agent = idea.agent {
                     ideaChatCTA(idea: idea, agent: agent)
-                }
-
-                if viewModel.versions.count > 1 {
-                    versionsSection
                 }
             }
             .padding(.horizontal, AtlasMetrics.detailX)
@@ -514,37 +512,90 @@ struct IdeaDetailView: View {
         }
     }
 
-    /// Ardot 246:18 Idea Identity — lemonSoft card, kicker + title + impl pill.
+    /// Ardot 246:18 + v2 update (S04 `179:3` redesign) — lemonSoft card with the idea identity
+    /// on the LEFT and the author info (avatar + name + agent meta) stacked on the RIGHT.
+    /// This collapses the old `agentOwnershipCard` into the identity card so the author is
+    /// visible alongside the title instead of in a separate muted row below.
     private func ideaIdentityCard(_ idea: Idea) -> some View {
         let version = viewModel.currentVersionNumber
         let category = idea.category.trimmingCharacters(in: .whitespacesAndNewlines)
         let kicker = category.isEmpty
             ? "IDEA · v\(version)"
             : "IDEA · \(category.uppercased()) · v\(version)"
+        let primaryName = idea.authorDisplayName
+        let agentName = idea.agent?.name ?? "Agent"
+        let showAgentName = idea.isAuthoredByDistinctAgent
 
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(kicker)
-                .font(AtlasTypography.overline())
-                .foregroundStyle(AtlasColors.lemonInk)
-
-            Text(idea.displayTitle)
-                .font(AtlasTypography.titleLarge())
-                .foregroundStyle(AtlasColors.ink)
-                .atlasTrackedTitle(25)
-                .lineLimit(3)
-
-            HStack(spacing: 8) {
-                Text(implStatusLabel(idea.implStatus ?? "concept"))
+        return HStack(alignment: .top, spacing: 12) {
+            // Left — kicker + title + status row.
+            VStack(alignment: .leading, spacing: 8) {
+                Text(kicker)
                     .font(AtlasTypography.overline())
                     .foregroundStyle(AtlasColors.lemonInk)
-                    .padding(.horizontal, 10)
-                    .frame(height: 24)
-                    .background(AtlasColors.lemon)
-                    .clipShape(Capsule())
-                Text(idea.isBuried ? "已埋没" : "公开 · 可 Fork")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AtlasColors.inkTertiary)
+
+                Text(idea.displayTitle)
+                    .font(AtlasTypography.titleLarge())
+                    .foregroundStyle(AtlasColors.ink)
+                    .atlasTrackedTitle(25)
+                    .lineLimit(3)
+
+                HStack(spacing: 8) {
+                    Text(implStatusLabel(idea.implStatus ?? "concept"))
+                        .font(AtlasTypography.overline())
+                        .foregroundStyle(AtlasColors.lemonInk)
+                        .padding(.horizontal, 10)
+                        .frame(height: 24)
+                        .background(AtlasColors.lemon)
+                        .clipShape(Capsule())
+                    Text(idea.isBuried ? "已埋没" : "公开 · 可 Fork")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(AtlasColors.inkTertiary)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Right — author avatar + name + badges + agent meta, vertically stacked.
+            Button {
+                agentRoute = AgentRoute(id: idea.agentID)
+            } label: {
+                VStack(alignment: .trailing, spacing: 4) {
+                    EntityAvatar.user(
+                        id: idea.agent?.owner?.id ?? idea.agent?.ownerUserID ?? "",
+                        url: idea.authorAvatarLink,
+                        name: primaryName,
+                        size: 40
+                    )
+                    HStack(spacing: 4) {
+                        Text(primaryName)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
+                            .lineLimit(1)
+                        if idea.showsAIAgentBadge {
+                            Text("AI")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(AtlasColors.lemonInk)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule(style: .continuous).fill(AtlasColors.lemon))
+                        }
+                        if idea.isFork {
+                            Text("Fork")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(AtlasColors.inkSoft)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule(style: .continuous).fill(AtlasColors.fill))
+                        }
+                    }
+                    Text(showAgentName
+                         ? "\(agentName) · \(idea.updatedAt.relativeShort)更新"
+                         : "\(idea.updatedAt.relativeShort)更新")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                        .lineLimit(1)
+                }
+            }
+            .buttonStyle(.plain)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -611,69 +662,12 @@ struct IdeaDetailView: View {
         .frame(height: 280)
     }
 
-    /// Ardot 246:25 Agent Ownership — muted row with avatar + author line. The real human
-    /// (agent owner) is shown as the primary author; a distinct (non-personal) agent gets an
-    /// "AI Agent" badge. Forks additionally show a "Fork" badge instead of encoding it in title.
-    private func agentOwnershipCard(_ idea: Idea) -> some View {
-        let primaryName = idea.authorDisplayName
-        let agentName = idea.agent?.name ?? "Agent"
-        let showAgentName = idea.isAuthoredByDistinctAgent
-        return Button {
-            agentRoute = AgentRoute(id: idea.agentID)
-        } label: {
-            HStack(spacing: 12) {
-                EntityAvatar.agent(
-                    id: idea.agentID,
-                    url: idea.authorAvatarLink,
-                    name: primaryName,
-                    size: 32
-                )
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 6) {
-                        Text(primaryName)
-                            .font(AtlasTypography.pill())
-                            .foregroundStyle(AtlasColors.ink)
-                            .lineLimit(1)
-                        if idea.showsAIAgentBadge {
-                            Text("AI Agent")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(AtlasColors.lemonInk)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule(style: .continuous).fill(AtlasColors.lemonSoft))
-                        }
-                        if idea.isFork {
-                            Text("Fork")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(AtlasColors.inkSoft)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule(style: .continuous).fill(AtlasColors.fill))
-                        }
-                    }
-                    if showAgentName {
-                        Text("\(agentName) · \(idea.updatedAt.relativeShort)更新")
-                            .font(.system(size: 12))
-                            .foregroundStyle(AtlasColors.inkSoft)
-                            .lineLimit(1)
-                    } else {
-                        Text("\(idea.updatedAt.relativeShort)更新")
-                            .font(.system(size: 12))
-                            .foregroundStyle(AtlasColors.inkSoft)
-                            .lineLimit(1)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AtlasColors.surfaceSecondary)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// Ardot 246:38 Evolution Summary — lineage facts from GET /ideas/:id/lineage.
+    /// Ardot 246:38 + v2 merge: `演化脉络` + `版本历史` collapsed into one lemonSoft card.
+    /// Header (title + chevron) and the lineage summary row both navigate to the fork lineage;
+    /// each version row navigates to that version's compare view. The hairline + version list
+    /// below the summary used to live in a separate `versionsSection` card — merging removes
+    /// the visual overlap the user called out.
+    @ViewBuilder
     private func forkLineagePreview(_ idea: Idea) -> some View {
         let current = viewModel.currentVersionNumber
         let source = viewModel.lineage?.sourceVersion?.version
@@ -685,25 +679,90 @@ struct IdeaDetailView: View {
             }
             return "当前 v\(current) · \(branches) 个分支 · \(contributors) 位贡献者 · \(idea.forkCount) 个 Fork"
         }()
+        let versions = viewModel.versions.prefix(4)
 
-        return Button {
-            forkLineageRoute = IdeaRoute(id: idea.id)
-        } label: {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("演化脉络")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(AtlasColors.ink)
-                Text("\(summary)\n查看版本变化与 Fork 谱系  ›")
+        VStack(alignment: .leading, spacing: 10) {
+            // Header — title + chevron; tapping the header navigates to the fork lineage.
+            Button {
+                forkLineageRoute = IdeaRoute(id: idea.id)
+            } label: {
+                HStack {
+                    Text("演化脉络")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Spacer(minLength: 0)
+                    DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                }
+            }
+            .buttonStyle(.plain)
+
+            // Lineage summary — also navigates to the fork lineage.
+            Button {
+                forkLineageRoute = IdeaRoute(id: idea.id)
+            } label: {
+                Text(summary)
                     .font(AtlasTypography.meta())
                     .foregroundStyle(AtlasColors.inkTertiary)
-                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AtlasColors.lemonSoft)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+            .buttonStyle(.plain)
+
+            if !versions.isEmpty {
+                Rectangle()
+                    .fill(AtlasColors.rule)
+                    .frame(height: 1)
+
+                // Compact version timeline (max 4 rows). Each row navigates to the version compare.
+                ForEach(Array(versions), id: \.id) { version in
+                    Button {
+                        let currentVersion = viewModel.versions.first(where: \.isCurrent)
+                        if let currentVersion, currentVersion.id != version.id {
+                            versionRoute = VersionCompareRoute(
+                                ideaID: ideaID,
+                                versionID: version.id,
+                                compareVersionID: currentVersion.id
+                            )
+                        } else {
+                            versionRoute = VersionCompareRoute(
+                                ideaID: ideaID,
+                                versionID: version.id,
+                                compareVersionID: nil
+                            )
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text("v\(version.version)")
+                                .font(.system(size: 13, weight: version.isCurrent ? .bold : .semibold))
+                                .foregroundStyle(version.isCurrent ? AtlasColors.lemonInk : AtlasColors.ink)
+                                .frame(width: 28, alignment: .leading)
+                            if version.isCurrent {
+                                Text("当前")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(AtlasColors.lemonInk)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule(style: .continuous).fill(AtlasColors.lemon))
+                            }
+                            Text(version.changelog.isEmpty ? "—" : version.changelog)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(AtlasColors.inkTertiary)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            Text(version.createdAt.relativeShort)
+                                .font(AtlasTypography.meta())
+                                .foregroundStyle(AtlasColors.inkFaint)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AtlasColors.lemonSoft)
+        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
     }
 
     /// Ardot 246:158 Media & Attachments — summary row from stats / image URLs.

@@ -949,60 +949,41 @@ struct RepoTabs: View {
 }
 
 /// Detail README tab · compact flowers preview linking to grid.
+/// v2 (ardot S04 `179:3` redesign): single-row flower card. Donor avatars stack on the
+/// left, count sits in the middle, and a circular lemonStrong send-flower button anchors the
+/// right edge. Replaces the old vertical card with a "收到的花" header, avatar grid, and a
+/// full-width `AtlasOutlineButton("送一朵花")` — the user asked for the text button to go
+/// away in favour of a compact circular action.
 struct FlowersPreviewCard: View {
     let flowerCount: Int
     let donors: [FlowerDonor]
     let onOpen: () -> Void
     let onSendFlower: () -> Void
 
+    private let avatarSize: CGFloat = 36
+    private let avatarOverlap: CGFloat = -10
+    private let buttonSize: CGFloat = 44
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        HStack(spacing: 10) {
+            // Tapping the avatar stack opens the full donor list.
             Button(action: onOpen) {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(AtlasColors.accentFork)
-                        .frame(width: 8, height: 8)
-                    Text("收到的花")
-                        .font(AtlasTypography.cardTitle())
-                        .foregroundStyle(AtlasColors.ink)
-                    Spacer()
-                    Text("\(flowerCount) 朵")
-                        .font(AtlasTypography.badge())
-                        .foregroundStyle(AtlasColors.accentFork)
-                    DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
-                }
+                donorStack
             }
             .buttonStyle(.plain)
+            .disabled(donors.isEmpty)
 
-            if donors.isEmpty {
-                Text("还没有人送花")
-                    .font(AtlasTypography.meta())
-                    .foregroundStyle(AtlasColors.inkFaint)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: -8) {
-                        ForEach(donors.prefix(8)) { donor in
-                            flowerDonorAvatar(donor, size: 36)
-                                .overlay(Circle().stroke(AtlasColors.surface, lineWidth: 2))
-                        }
-                        if donors.count > 8 {
-                            ZStack {
-                                Circle()
-                                    .fill(AtlasColors.fill)
-                                    .frame(width: 36, height: 36)
-                                Text("+\(donors.count - 8)")
-                                    .font(AtlasTypography.overline())
-                                    .foregroundStyle(AtlasColors.inkSoft)
-                            }
-                            .overlay(Circle().stroke(AtlasColors.surface, lineWidth: 2))
-                        }
-                    }
-                }
-            }
+            Text("\(flowerCount) 朵")
+                .font(AtlasTypography.badge())
+                .foregroundStyle(AtlasColors.accentFork)
+                .lineLimit(1)
 
-            AtlasOutlineButton(title: "送一朵花", action: onSendFlower)
+            Spacer(minLength: 0)
+
+            sendFlowerButton
         }
-        .padding(AtlasMetrics.cardPadding)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AtlasColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
@@ -1011,6 +992,48 @@ struct FlowersPreviewCard: View {
                 .stroke(AtlasColors.rule, lineWidth: 1)
         )
         .atlasElevatedCard()
+    }
+
+    private var donorStack: some View {
+        Group {
+            if donors.isEmpty {
+                Text("还没有人送花")
+                    .font(AtlasTypography.meta())
+                    .foregroundStyle(AtlasColors.inkFaint)
+            } else {
+                HStack(spacing: avatarOverlap) {
+                    ForEach(donors.prefix(5)) { donor in
+                        flowerDonorAvatar(donor, size: avatarSize)
+                            .overlay(Circle().stroke(AtlasColors.surface, lineWidth: 2))
+                    }
+                    if donors.count > 5 {
+                        ZStack {
+                            Circle()
+                                .fill(AtlasColors.fill)
+                                .frame(width: avatarSize, height: avatarSize)
+                            Text("+\(donors.count - 5)")
+                                .font(AtlasTypography.overline())
+                                .foregroundStyle(AtlasColors.inkSoft)
+                        }
+                        .overlay(Circle().stroke(AtlasColors.surface, lineWidth: 2))
+                    }
+                }
+            }
+        }
+    }
+
+    private var sendFlowerButton: some View {
+        Button(action: onSendFlower) {
+            ZStack {
+                Circle()
+                    .fill(AtlasColors.lemonStrong)
+                    .frame(width: buttonSize, height: buttonSize)
+                DeimosIconView(icon: .flower, size: 20, color: AtlasColors.lemonInk)
+            }
+            .shadow(color: AtlasColors.lemonInk.opacity(0.18), radius: 10, x: 0, y: 6)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("送花")
     }
 
     @ViewBuilder

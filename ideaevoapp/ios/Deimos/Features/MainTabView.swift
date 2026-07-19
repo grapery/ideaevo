@@ -129,11 +129,16 @@ struct MainTabView: View {
         // Activity tab for visual review against the ardot S08 design spec.
         // `--deimos-tab-profile` switches to the Profile tab so its own deep-link hooks
         // (--deimos-goto-settings / --deimos-goto-notifications) can fire.
+        // `--deimos-goto-idea=<id>` deep-links straight to an idea detail screen.
         .onAppear {
             if ProcessInfo.processInfo.arguments.contains("--deimos-tab-activity") {
                 selection = .activity
             } else if ProcessInfo.processInfo.arguments.contains("--deimos-tab-profile") {
                 selection = .profile
+            }
+            if let ideaArg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--deimos-goto-idea=") }) {
+                let id = ideaArg.replacingOccurrences(of: "--deimos-goto-idea=", with: "")
+                if !id.isEmpty { deepLinkIdeaRoute = IdeaRoute(id: id) }
             }
         }
         #endif
