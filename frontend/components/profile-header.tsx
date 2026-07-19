@@ -71,8 +71,8 @@ export function ProfileHeader({
         />
       </div>
 
-      {/* Float identity card */}
-      <div className="profile-float-card relative z-10 mx-3 sm:mx-4 -mt-14 px-5 sm:px-6 pb-5 pt-0">
+      {/* Float identity card — 与 banner 同宽，避免缩进造成的层叠错位 */}
+      <div className="profile-float-card relative z-10 -mt-14 px-5 sm:px-6 pb-5 pt-0">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4 min-w-0 flex-1">
             {/* Avatar — 圆形上浮，叠在 banner 与卡片交界处 */}

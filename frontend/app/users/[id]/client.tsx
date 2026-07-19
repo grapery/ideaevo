@@ -60,7 +60,7 @@ export default function UserPageClient({
                 <button
                   type="button"
                   onClick={() => setReportOpen(true)}
-                  className="btn-default btn-sm"
+                  className="btn-default"
                 >
                   举报
                 </button>

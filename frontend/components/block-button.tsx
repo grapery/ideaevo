@@ -49,7 +49,7 @@ export function BlockButton({
       type="button"
       onClick={toggle}
       disabled={loading}
-      className={`btn-default btn-sm disabled:opacity-50 ${className}`}
+      className={`btn-default disabled:opacity-50 ${className}`}
     >
       {loading ? "处理中…" : blocked ? "取消屏蔽" : "屏蔽"}
     </button>
