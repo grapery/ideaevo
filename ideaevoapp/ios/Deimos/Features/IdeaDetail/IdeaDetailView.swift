@@ -444,64 +444,62 @@ struct IdeaDetailView: View {
     /// version summary → links → lineage → attachments).
     @ViewBuilder
     private func detailScreen(_ idea: Idea) -> some View {
-        ZStack(alignment: .top) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Scroll-offset tracker: fires when the idea identity card passes under the toolbar.
-                    GeometryReader { geo in
-                        Color.clear.preference(
-                            key: ScrollOffsetKey.self,
-                            value: geo.frame(in: .named("detailScroll")).minY
-                        )
-                    }
-                    .frame(height: 0)
-
-                    ideaIdentityCard(idea)
-                    agentOwnershipCard(idea)
-                    overviewCard(idea)
-                    quickLinksSection(idea)
-                    forkLineagePreview(idea)
-                    attachmentsCard(idea)
-
-                    // Secondary artifact material remains below the Product Reality first fold.
-                    implProgressCard(idea)
-                    mediaGallerySection(idea)
-
-                    FlowersPreviewCard(
-                        flowerCount: idea.flowerCount,
-                        donors: viewModel.donors,
-                        onOpen: { Task { await handleFlower() } },
-                        onSendFlower: { Task { await handleFlower() } }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // Scroll-offset tracker: fires when the idea identity card passes under the toolbar.
+                GeometryReader { geo in
+                    Color.clear.preference(
+                        key: ScrollOffsetKey.self,
+                        value: geo.frame(in: .named("detailScroll")).minY
                     )
+                }
+                .frame(height: 0)
 
-                    if !idea.tags.isEmpty {
-                        HStack(spacing: 6) {
-                            ForEach(idea.tags.prefix(4), id: \.self) { tag in
-                                TagPill(text: "#\(tag)")
-                            }
+                ideaIdentityCard(idea)
+                agentOwnershipCard(idea)
+                overviewCard(idea)
+                quickLinksSection(idea)
+                forkLineagePreview(idea)
+                attachmentsCard(idea)
+
+                // Secondary artifact material remains below the Product Reality first fold.
+                implProgressCard(idea)
+                mediaGallerySection(idea)
+
+                FlowersPreviewCard(
+                    flowerCount: idea.flowerCount,
+                    donors: viewModel.donors,
+                    onOpen: { Task { await handleFlower() } },
+                    onSendFlower: { Task { await handleFlower() } }
+                )
+
+                if !idea.tags.isEmpty {
+                    HStack(spacing: 6) {
+                        ForEach(idea.tags.prefix(4), id: \.self) { tag in
+                            TagPill(text: "#\(tag)")
                         }
                     }
-
-                    if let agent = idea.agent {
-                        ideaChatCTA(idea: idea, agent: agent)
-                    }
-
-                    if viewModel.versions.count > 1 {
-                        versionsSection
-                    }
                 }
-                .padding(.horizontal, AtlasMetrics.detailX)
-                .padding(.top, 62)
-                .padding(.bottom, AtlasMetrics.bottomClear)
-            }
-            .coordinateSpace(name: "detailScroll")
-            .onPreferenceChange(ScrollOffsetKey.self) { offset in
-                // Cover scrolls away when offset goes below ~-60 (identity card entering toolbar zone).
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    hasScrolledPastCover = offset < -60
+
+                if let agent = idea.agent {
+                    ideaChatCTA(idea: idea, agent: agent)
+                }
+
+                if viewModel.versions.count > 1 {
+                    versionsSection
                 }
             }
-
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
+            .padding(.bottom, AtlasMetrics.bottomClear)
+        }
+        .coordinateSpace(name: "detailScroll")
+        .onPreferenceChange(ScrollOffsetKey.self) { offset in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                hasScrolledPastCover = offset < -60
+            }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
             AtlasDetailGlassToolbar(
                 onBack: { dismiss() },
                 onSave: { Task { await handleBookmark() } },
@@ -513,9 +511,7 @@ struct IdeaDetailView: View {
                 navTitle: "想法详情",
                 showTitle: hasScrolledPastCover
             )
-            .zIndex(1)
         }
-        .ignoresSafeArea(edges: .top)
     }
 
     /// Ardot 246:18 Idea Identity — lemonSoft card, kicker + title + impl pill.

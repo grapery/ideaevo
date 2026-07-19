@@ -453,8 +453,7 @@ struct AtlasDetailGlassToolbar: View {
             }
         }
         .padding(.horizontal, AtlasMetrics.detailX)
-        .padding(.top, 4)
-        .frame(height: 44)
+        .frame(height: 48)
     }
 }
 
