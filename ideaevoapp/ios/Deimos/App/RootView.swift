@@ -34,7 +34,8 @@ struct RootView: View {
             } else if showLaunch || session.isBootstrapping {
                 bootstrapLoading
             } else if bootstrapFailed {
-                OfflineView {
+                // Unified bootstrap view in error state — reuses the same launch layout.
+                BootstrapView(state: .failed) {
                     bootstrapFailed = false
                     session.bootstrapError = nil
                     Task {
@@ -119,11 +120,22 @@ struct RootView: View {
     }
 
     private var bootstrapLoading: some View {
-        DeimosLaunchView()
+        BootstrapView(state: .loading)
     }
 }
 
-private struct DeimosLaunchView: View {
+/// Unified bootstrap screen — handles both the initial loading animation and the error/retry state.
+/// Replaces the former separate `DeimosLaunchView` + `OfflineView` with a single view that
+/// transitions between states while keeping the same brand identity and layout.
+struct BootstrapView: View {
+    enum State {
+        case loading
+        case failed
+    }
+
+    let state: State
+    var onRetry: (() -> Void)? = nil
+
     @State private var appeared = false
     @State private var animating = false
 
@@ -134,7 +146,7 @@ private struct DeimosLaunchView: View {
             VStack(spacing: compactHeight ? 28 : 36) {
                 Spacer(minLength: compactHeight ? 72 : 110)
 
-                DeimosLaunchIcon(animating: animating)
+                brandIcon
                     .scaleEffect(appeared ? 1 : 0.92)
                     .opacity(appeared ? 1 : 0)
 
@@ -144,7 +156,7 @@ private struct DeimosLaunchView: View {
                         .foregroundStyle(AtlasColors.ink)
                         .minimumScaleFactor(0.82)
 
-                    Text("让想法与 Agent 一起生长")
+                    Text(state == .loading ? "让想法与 Agent 一起生长" : "无法连接网络")
                         .font(AtlasTypography.subtitle())
                         .foregroundStyle(AtlasColors.inkTertiary)
                         .multilineTextAlignment(.center)
@@ -154,40 +166,63 @@ private struct DeimosLaunchView: View {
                 .opacity(appeared ? 1 : 0)
                 .offset(y: appeared ? 0 : 8)
 
-                DeimosLaunchMotion(animating: animating)
-                    .padding(.horizontal, AtlasMetrics.pageX)
-                    .opacity(appeared ? 1 : 0)
+                if state == .loading {
+                    LaunchMotion(animating: animating)
+                        .padding(.horizontal, AtlasMetrics.pageX)
+                        .opacity(appeared ? 1 : 0)
+                } else {
+                    Text("请检查你的网络连接后重试。")
+                        .font(.system(size: 15))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 48)
+                        .opacity(appeared ? 1 : 0)
+
+                    if let onRetry {
+                        Button {
+                            onRetry()
+                        } label: {
+                            HStack(spacing: 8) {
+                                DeimosIconView(icon: .refresh, size: 16, color: .white)
+                                Text("重试")
+                                    .font(.system(size: 17, weight: .semibold))
+                            }
+                            .foregroundStyle(.white)
+                            .frame(width: 200, height: 52)
+                            .background(AtlasColors.ink)
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .opacity(appeared ? 1 : 0)
+                    }
+                }
 
                 Spacer(minLength: compactHeight ? 60 : 92)
 
-                Text("正在连接你的想法网络")
+                Text(state == .loading ? "正在连接你的想法网络" : "")
                     .font(AtlasTypography.meta())
                     .foregroundStyle(AtlasColors.inkFaint)
                     .padding(.bottom, 28)
                     .opacity(appeared ? 1 : 0)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(launchBackground)
+            .background(AtlasColors.canvas.ignoresSafeArea())
         }
         .onAppear {
             withAnimation(.spring(response: 0.7, dampingFraction: 0.86)) {
                 appeared = true
             }
-            withAnimation(.linear(duration: 1.9).repeatForever(autoreverses: false)) {
-                animating = true
+            if state == .loading {
+                withAnimation(.linear(duration: 1.9).repeatForever(autoreverses: false)) {
+                    animating = true
+                }
             }
         }
     }
 
-    private var launchBackground: some View {
-        AtlasColors.canvas.ignoresSafeArea()
-    }
-}
+    // MARK: - Brand icon (shared across both states)
 
-private struct DeimosLaunchIcon: View {
-    let animating: Bool
-
-    var body: some View {
+    private var brandIcon: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 30, style: .continuous)
                 .fill(AtlasColors.ink)
@@ -198,9 +233,13 @@ private struct DeimosLaunchIcon: View {
                 .stroke(.white.opacity(0.48), lineWidth: 1)
                 .frame(width: 88, height: 88)
 
-            DeimosIconView(icon: .fork, size: 38, color: AtlasColors.lemon)
-                .rotationEffect(.degrees(animating ? 360 : 0))
-                .animation(.linear(duration: 7.2).repeatForever(autoreverses: false), value: animating)
+            if state == .loading {
+                DeimosIconView(icon: .fork, size: 38, color: AtlasColors.lemon)
+                    .rotationEffect(.degrees(animating ? 360 : 0))
+                    .animation(.linear(duration: 7.2).repeatForever(autoreverses: false), value: animating)
+            } else {
+                DeimosIconView(icon: .wifiOff, size: 38, color: AtlasColors.lemon)
+            }
 
             DeimosIconView(icon: .sparkles, size: 18, color: .white)
                 .offset(x: 28, y: -30)
@@ -212,7 +251,9 @@ private struct DeimosLaunchIcon: View {
     }
 }
 
-private struct DeimosLaunchMotion: View {
+// MARK: - Launch motion graphic (User → Agent → Idea flow)
+
+private struct LaunchMotion: View {
     let animating: Bool
 
     var body: some View {
