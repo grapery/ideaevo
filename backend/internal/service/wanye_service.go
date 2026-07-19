@@ -38,8 +38,8 @@ func (s *WanyeService) notifyIdeaOwner(ideaID, actorID, action, summary string) 
 }
 
 type CreateCommentInput struct {
-	IdeaID    string `json:"idea_id" binding:"required"`
-	UserID    string `json:"user_id" binding:"required"`
+	IdeaID    string `json:"idea_id"` // 由 handler 从 URL 路径填充
+	UserID    string `json:"user_id"` // 由 handler 从鉴权身份填充
 	ParentID  string `json:"parent_id"`
 	Content   string `json:"content" binding:"required"`
 	Sentiment string `json:"sentiment"`
