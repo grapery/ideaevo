@@ -97,8 +97,6 @@ struct NotificationsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AtlasPushNavBar(title: "通知", onBack: { dismiss() })
-
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(NotificationCategory.allCases) { item in
@@ -181,6 +179,9 @@ struct NotificationsView: View {
             }
         }
         .background(AtlasColors.canvas)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            AtlasOverlayPushNavBar(title: "通知", onBack: { dismiss() })
+        }
         .navigationBarHidden(true)
         .suppressTabBar()
         .navigationDestination(item: $ideaRoute) { route in

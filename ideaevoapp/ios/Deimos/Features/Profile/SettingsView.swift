@@ -27,11 +27,8 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            AtlasPushNavBar(title: "设置", onBack: { dismiss() })
-
-            ScrollView {
-            VStack(spacing: 24) {
+        ScrollView {
+        VStack(spacing: 24) {
                 AtlasSettingsSection(title: "账户") {
                     settingsLink(
                         icon: .lock, color: AtlasColors.ink,
@@ -94,8 +91,11 @@ struct SettingsView: View {
             .padding(.top, 8)
             .padding(.bottom, 40)
         }
-        }
         .background(AtlasColors.canvas)
+        // S11 (ardot 296:249): "Toolbar · 设置 · floating glass overlay" — content scrolls under.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            AtlasOverlayPushNavBar(title: "设置", onBack: { dismiss() })
+        }
         .navigationBarHidden(true)
         .suppressTabBar()
         .navigationDestination(item: $route) { destination in
