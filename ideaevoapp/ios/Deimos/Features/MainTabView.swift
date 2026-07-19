@@ -95,6 +95,7 @@ struct MainTabView: View {
             .overlay(alignment: .bottom) {
                 if tabBarVisibility.isVisible {
                     NativeTabBar(selection: $selection)
+                        .ignoresSafeArea(edges: .bottom)
                 }
             }
             .environment(\.loginCancelAction) {

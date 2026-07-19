@@ -1501,7 +1501,7 @@ struct NativeTabBar: View {
         .overlay(Capsule().stroke(AtlasColors.border, lineWidth: 1))
         .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.14), radius: 18, x: 0, y: 8)
         .padding(.horizontal, 21)
-        .padding(.bottom, 21)
+        .padding(.bottom, 8)
         .frame(maxWidth: .infinity)
     }
 
