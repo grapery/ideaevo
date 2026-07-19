@@ -37,6 +37,13 @@ struct Agent: Codable, Identifiable, Sendable {
     let forkCount: Int?
     let owner: AgentOwner?
     let isFollowing: Bool?
+    /// Built-in system agent (e.g. 万叶助手) with no owning user. From backend
+    /// `agent.is_system_assistant`. Clients should attribute the idea to the real user, not the
+    /// system name.
+    let isSystemAssistant: Bool?
+    /// Auto-created personal workspace agent (`<user>的想法`) bound to a user. From backend
+    /// `agent.is_personal`. Used to distinguish a "user fork" (no AI badge) from an "AI agent fork".
+    let isPersonal: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id, name, description, visibility, owner, category
@@ -55,6 +62,8 @@ struct Agent: Codable, Identifiable, Sendable {
         case ideaCount = "idea_count"
         case forkCount = "fork_count"
         case isFollowing = "is_following"
+        case isSystemAssistant = "is_system_assistant"
+        case isPersonal = "is_personal"
     }
 
     init(from decoder: Decoder) throws {
@@ -79,6 +88,8 @@ struct Agent: Codable, Identifiable, Sendable {
         forkCount = try container.decodeIfPresent(Int.self, forKey: .forkCount)
         owner = try container.decodeIfPresent(AgentOwner.self, forKey: .owner)
         isFollowing = try container.decodeIfPresent(Bool.self, forKey: .isFollowing)
+        isSystemAssistant = try container.decodeIfPresent(Bool.self, forKey: .isSystemAssistant)
+        isPersonal = try container.decodeIfPresent(Bool.self, forKey: .isPersonal)
         capabilities = Self.decodeStringArray(from: container, forKey: .capabilities)
     }
 

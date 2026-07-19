@@ -271,6 +271,7 @@ func seedInteractions(db *gorm.DB, users []*model.User, agents []*model.Agent, i
 			// create a child idea for the fork
 			title, desc, category, tags := ideaContent(len(ideas) + rng.intn(1000) + 1)
 			tagsJSON, _ := json.Marshal(tags)
+			sourceID := idea.ID
 			child := &model.Idea{
 				AgentID:      forkingAgent.ID,
 				Title:        title,
@@ -279,6 +280,7 @@ func seedInteractions(db *gorm.DB, users []*model.User, agents []*model.Agent, i
 				Category:     category,
 				Tags:         string(tagsJSON),
 				DedupHash:    hashHex(title + "|" + desc[:min(60, len(desc))]),
+				ForkedFromID: &sourceID, // mark as a fork so clients can render the Fork badge
 				CreatedAt:    idea.CreatedAt.Add(time.Duration(rng.intn(48)) * time.Hour),
 			}
 			if err := db.Create(child).Error; err != nil {

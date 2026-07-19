@@ -70,6 +70,16 @@ func EnrichAgent(a *model.Agent) {
 		return
 	}
 	a.AvatarURL = ResolveAgentAvatar(a.ID, a.AvatarURL)
+	// System assistant: built-in agent with no owning user (e.g. 万叶助手).
+	if a.OwnerUserID == "" {
+		a.IsSystemAssistant = true
+	}
+	// Personal agent: auto-created as a user's default workspace agent (EnsureDefaultUserAgent),
+	// recognized by the "<用户名>的想法" naming convention. Used by clients to attribute an idea
+	// to the real user rather than showing an AI badge.
+	if a.OwnerUserID != "" && strings.HasSuffix(a.Name, "的想法") {
+		a.IsPersonal = true
+	}
 }
 
 func EnrichAgents(agents []model.Agent) {

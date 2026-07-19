@@ -1444,9 +1444,9 @@ struct IdeaFlatRow: View {
             ideaAvatar
 
             VStack(alignment: .leading, spacing: 4) {
-                // Name · handle · time (Twitter-style inline header)
+                // Name · handle · time (Twitter-style inline header) + Fork / AI Agent badges.
                 HStack(spacing: 4) {
-                    Text(idea.agent?.owner?.name ?? "用户")
+                    Text(idea.authorDisplayName)
                         .font(AtlasTypography.feedName())
                         .foregroundStyle(AtlasColors.ink)
                         .lineLimit(1)
@@ -1458,6 +1458,22 @@ struct IdeaFlatRow: View {
                         .font(AtlasTypography.feedBody())
                         .foregroundStyle(AtlasColors.inkSoft)
                         .lineLimit(1)
+                    if idea.showsAIAgentBadge {
+                        Text("AI Agent")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(AtlasColors.lemonInk)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule(style: .continuous).fill(AtlasColors.lemonSoft))
+                    }
+                    if idea.isFork {
+                        Text("Fork")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(AtlasColors.inkSoft)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule(style: .continuous).fill(AtlasColors.fill))
+                    }
                 }
 
                 // Title (GitHub-style idea title)

@@ -611,29 +611,57 @@ struct IdeaDetailView: View {
         .frame(height: 280)
     }
 
-    /// Ardot 246:25 Agent Ownership — muted row with avatar + agent + owner line.
+    /// Ardot 246:25 Agent Ownership — muted row with avatar + author line. The real human
+    /// (agent owner) is shown as the primary author; a distinct (non-personal) agent gets an
+    /// "AI Agent" badge. Forks additionally show a "Fork" badge instead of encoding it in title.
     private func agentOwnershipCard(_ idea: Idea) -> some View {
+        let primaryName = idea.authorDisplayName
         let agentName = idea.agent?.name ?? "Agent"
-        let ownerName = idea.agent?.owner?.name ?? "万叶社区"
+        let showAgentName = idea.isAuthoredByDistinctAgent
         return Button {
             agentRoute = AgentRoute(id: idea.agentID)
         } label: {
             HStack(spacing: 12) {
                 EntityAvatar.agent(
                     id: idea.agentID,
-                    url: idea.agent?.avatarLink,
-                    name: agentName,
+                    url: idea.authorAvatarLink,
+                    name: primaryName,
                     size: 32
                 )
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(agentName)
-                        .font(AtlasTypography.pill())
-                        .foregroundStyle(AtlasColors.ink)
-                        .lineLimit(1)
-                    Text("由 \(ownerName) 负责 · \(idea.updatedAt.relativeShort)更新")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(primaryName)
+                            .font(AtlasTypography.pill())
+                            .foregroundStyle(AtlasColors.ink)
+                            .lineLimit(1)
+                        if idea.showsAIAgentBadge {
+                            Text("AI Agent")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(AtlasColors.lemonInk)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule(style: .continuous).fill(AtlasColors.lemonSoft))
+                        }
+                        if idea.isFork {
+                            Text("Fork")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(AtlasColors.inkSoft)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule(style: .continuous).fill(AtlasColors.fill))
+                        }
+                    }
+                    if showAgentName {
+                        Text("\(agentName) · \(idea.updatedAt.relativeShort)更新")
+                            .font(.system(size: 12))
+                            .foregroundStyle(AtlasColors.inkSoft)
+                            .lineLimit(1)
+                    } else {
+                        Text("\(idea.updatedAt.relativeShort)更新")
+                            .font(.system(size: 12))
+                            .foregroundStyle(AtlasColors.inkSoft)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer(minLength: 0)
             }

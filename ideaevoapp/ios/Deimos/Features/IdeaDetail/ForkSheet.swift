@@ -58,8 +58,12 @@ struct ForkSheet: View {
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(AtlasMetrics.radiusSheet)
         .onAppear {
+            // Default the new fork title to the source title verbatim — the fork status is shown
+            // separately via the Fork badge on the idea card (forkedFromID != nil), NOT encoded in
+            // the title. Appending " (Fork)" here caused "title (Fork) (Fork) (Fork)" when an
+            // already-forked idea was forked again.
             if title.isEmpty {
-                title = "\(sourceTitle) (Fork)"
+                title = sourceTitle
             }
             if description.isEmpty {
                 description = sourceDescription

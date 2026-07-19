@@ -84,6 +84,50 @@ struct Idea: Codable, Identifiable, Sendable {
 
     var isBuried: Bool { status == "buried" }
 
+    /// True when this idea was forked from another. Fork status is conveyed by this flag (and the
+    /// Fork badge on cards), NOT encoded into the title.
+    var isFork: Bool { forkedFromID != nil }
+
+    /// Display name of the real human behind this idea: the agent's owner when available.
+    /// Falls back to the agent name (e.g. seed agents with no owner), then to a neutral default.
+    var authorDisplayName: String {
+        if let ownerName = agent?.owner?.name, !ownerName.isEmpty { return ownerName }
+        if let agentName = agent?.name, !agentName.isEmpty {
+            // System assistant with no owner — don't surface the system name as the author.
+            if agent?.isSystemAssistant == true { return "万叶社区" }
+            return agentName
+        }
+        return "万叶社区"
+    }
+
+    /// Avatar URL of the real human (agent owner) when available; otherwise the agent's avatar.
+    var authorAvatarLink: URL? {
+        if let owner = agent?.owner { return owner.avatarLink }
+        return agent?.avatarLink
+    }
+
+    /// True when the idea's authoring agent is NOT the user's auto-created personal workspace
+    /// agent — i.e. it was authored by a distinct AI agent (or the system assistant). Clients use
+    /// this to show an "AI Agent" badge on fork cards. Personal-agent forks belong to the real
+    /// user and get no AI badge.
+    var isAuthoredByDistinctAgent: Bool {
+        guard let agent else { return false }
+        if agent.isPersonal == true { return false }
+        if agent.isSystemAssistant == true { return true }
+        // Heuristic fallback for older data without flags: an agent with an owner but whose name
+        // doesn't follow the "<user>的想法" personal pattern is a distinct agent.
+        if (agent.ownerUserID?.isEmpty ?? true) == false,
+           !agent.name.hasSuffix("的想法") {
+            return true
+        }
+        return false
+    }
+
+    /// Whether to show the "AI Agent" attribution badge on this idea. Only meaningful for forks:
+    /// a fork by the user's personal agent is just the user; a fork by a distinct/system agent is
+    /// an AI-agent fork and merits the badge.
+    var showsAIAgentBadge: Bool { isFork && isAuthoredByDistinctAgent }
+
     private static func decodeTags(from container: KeyedDecodingContainer<CodingKeys>) -> [String] {
         if let array = try? container.decode([String].self, forKey: .tags) {
             return array
@@ -183,15 +227,18 @@ struct Idea: Codable, Identifiable, Sendable {
     }
 
     var creatorLine: String {
-        let owner = agent?.owner?.name ?? "用户"
-        let agentName = agent?.name ?? "Agent"
-        return "\(owner) 创建 · \(agentName)"
+        // Primary author = the real user (agent owner). The agent name is shown only when it is a
+        // distinct authored agent (not the user's auto-created personal workspace agent).
+        let author = authorDisplayName
+        if isAuthoredByDistinctAgent, let agentName = agent?.name, !agentName.isEmpty {
+            return "\(author) 创建 · \(agentName)"
+        }
+        return "\(author) 创建"
     }
 
     /// v6 cover card creator info — "姓名 · 相对时间" format (Ardot 149:219).
     var coverCreatorLine: String {
-        let owner = agent?.owner?.name ?? "用户"
-        return "\(owner) · \(createdAt.relativeShort)"
+        "\(authorDisplayName) · \(createdAt.relativeShort)"
     }
 
     var createdUpdatedLine: String {
