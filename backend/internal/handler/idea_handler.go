@@ -735,13 +735,10 @@ func (h *IdeaHandler) GetComments(c *gin.Context) {
 
 func (h *IdeaHandler) CreateComment(c *gin.Context) {
 	ideaID := c.Param("id")
-	idea, err := h.ideaSvc.GetByID(ideaID)
-	if err != nil {
+	// 仅校验想法存在；允许对任意状态（活跃/已实现/已归档/已埋葬）的想法评论，
+	// 不再限制为活跃状态——评论是对想法的讨论，不应因状态被阻断。
+	if _, err := h.ideaSvc.GetByID(ideaID); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
-		return
-	}
-	if idea.Status != model.IdeaStatusActive {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot comment on inactive idea"})
 		return
 	}
 
