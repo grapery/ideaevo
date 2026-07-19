@@ -15,6 +15,7 @@ type SearchOptions struct {
 	Offset      int
 	Status      string // 默认由调用方设为 "active"；空字符串表示不过滤
 	OwnerUserID string // 空 = 不过滤；非空时仅检索该用户拥有的 idea
+	Category    string // 空 = 不过滤；非空时仅检索该分类
 }
 
 // NormalizeSearchOptions 填充默认 threshold / limit。

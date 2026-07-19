@@ -21,9 +21,19 @@ const statusFilters = [
   { value: "buried", label: "已埋葬" },
 ];
 
-const categories = ["全部", "生产力", "开发工具", "知识管理", "协作", "自动化"];
+// 分类与 ideas/new 创建页保持一致（value = 后端 category 实际值）。
+const categories = [
+  { value: "", label: "全部" },
+  { value: "tool", label: "工具" },
+  { value: "service", label: "服务" },
+  { value: "integration", label: "集成" },
+  { value: "automation", label: "自动化" },
+  { value: "creative", label: "创意" },
+  { value: "data", label: "数据" },
+  { value: "other", label: "其他" },
+];
 
-function buildSearchParams(query: string, pageNum: number, status: string) {
+function buildSearchParams(query: string, pageNum: number, status: string, category: string) {
   const params = new URLSearchParams({
     q: query,
     page: String(pageNum),
@@ -31,6 +41,9 @@ function buildSearchParams(query: string, pageNum: number, status: string) {
   });
   if (status) {
     params.set("status", status);
+  }
+  if (category) {
+    params.set("category", category);
   }
   return params.toString();
 }
@@ -44,14 +57,14 @@ export default function SearchPage() {
   const [searched, setSearched] = useState(false);
   const [elapsed, setElapsed] = useState<number | null>(null);
   const [activeStatus, setActiveStatus] = useState("");
-  const [activeCategory, setActiveCategory] = useState("全部");
+  const [activeCategory, setActiveCategory] = useState("");
   const [page, setPage] = useState(1);
   const abortRef = useRef<AbortController | null>(null);
 
   const apiBase = getApiBase();
 
-  const handleSearch = useCallback(async (q?: string, pageNum = 1, status = activeStatus) => {
-    const searchQuery = (q ?? query).trim();
+  const handleSearch = useCallback(async (q: string, pageNum: number, status: string, category: string) => {
+    const searchQuery = q.trim();
     if (!searchQuery) return;
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -62,7 +75,7 @@ export default function SearchPage() {
 
     try {
       const res = await fetch(
-        `${apiBase}/ideas/search?${buildSearchParams(searchQuery, pageNum, status)}`,
+        `${apiBase}/ideas/search?${buildSearchParams(searchQuery, pageNum, status, category)}`,
         { signal: controller.signal }
       );
       if (res.ok) {
@@ -81,7 +94,7 @@ export default function SearchPage() {
         setLoading(false);
       }
     }
-  }, [apiBase, query, activeStatus]);
+  }, [apiBase]);
 
   useEffect(() => {
     if (!initialQuery) return;
@@ -93,7 +106,7 @@ export default function SearchPage() {
       const start = performance.now();
       try {
         const res = await fetch(
-          `${apiBase}/ideas/search?${buildSearchParams(initialQuery, 1, "")}`,
+          `${apiBase}/ideas/search?${buildSearchParams(initialQuery, 1, "", "")}`,
           { signal: controller.signal }
         );
         if (res.ok) {
@@ -114,15 +127,14 @@ export default function SearchPage() {
     return () => controller.abort();
   }, [initialQuery, apiBase]);
 
+  // 状态或分类变化时重新搜索（由后端过滤）
   useEffect(() => {
     if (!searched || !query.trim()) return;
-    handleSearch(query, 1, activeStatus);
-  }, [activeStatus]); // eslint-disable-line react-hooks/exhaustive-deps -- re-search when status filter changes
+    handleSearch(query, 1, activeStatus, activeCategory);
+  }, [activeStatus, activeCategory]); // eslint-disable-line react-hooks/exhaustive-deps -- re-search when filter changes
 
-  const filtered = results.filter((r) => {
-    if (activeCategory !== "全部" && r.idea.category !== activeCategory) return false;
-    return true;
-  });
+  // 分类过滤已由后端完成（buildSearchParams 传 category），无需客户端再过滤。
+  const filtered = results;
 
   const suggestions = results.slice(1, 4);
   const relatedTags = Array.from(
@@ -130,7 +142,7 @@ export default function SearchPage() {
   ).slice(0, 6);
 
   function handleSubmit() {
-    handleSearch(query, 1);
+    handleSearch(query, 1, activeStatus, activeCategory);
   }
 
   return (
@@ -187,16 +199,16 @@ export default function SearchPage() {
               <div className="space-y-1">
                 {categories.map((cat) => (
                   <button
-                    key={cat}
+                    key={cat.value || "all"}
                     type="button"
-                    onClick={() => setActiveCategory(cat)}
+                    onClick={() => setActiveCategory(cat.value)}
                     className={`block w-full text-left text-sm py-1 ${
-                      activeCategory === cat
+                      activeCategory === cat.value
                         ? "text-[var(--primary)] font-medium"
                         : "text-[var(--text-secondary)] hover:text-[var(--primary)]"
                     }`}
                   >
-                    {cat}
+                    {cat.label}
                   </button>
                 ))}
               </div>
@@ -224,7 +236,7 @@ export default function SearchPage() {
                 {results.length >= 10 && (
                   <button
                     type="button"
-                    onClick={() => handleSearch(query, page + 1)}
+                    onClick={() => handleSearch(query, page + 1, activeStatus, activeCategory)}
                     disabled={loading}
                     className="w-full surface-card py-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition-colors text-left px-4"
                   >
@@ -265,7 +277,7 @@ export default function SearchPage() {
                     <button
                       key={tag}
                       type="button"
-                      onClick={() => { setQuery(tag); handleSearch(tag, 1); }}
+                      onClick={() => { setQuery(tag); handleSearch(tag, 1, activeStatus, activeCategory); }}
                       className="tag-pill hover:bg-[var(--primary)] hover:text-white"
                     >
                       #{tag}

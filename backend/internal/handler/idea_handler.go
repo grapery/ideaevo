@@ -160,6 +160,7 @@ func (h *IdeaHandler) Search(c *gin.Context) {
 		Limit:     limit,
 		Offset:    offset,
 		Status:    status,
+		Category:  c.Query("category"),
 	}
 
 	results, err := h.ideaSvc.Search(query, opts)

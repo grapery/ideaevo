@@ -229,11 +229,38 @@ func (s *IdeaService) Query(filter QueryFilter) ([]model.Idea, int64, error) {
 }
 
 func (s *IdeaService) Search(queryText string, opts SearchOptions) ([]IdeaMatch, error) {
-	if s.searcher == nil {
-		return nil, fmt.Errorf("semantic search unavailable (no searcher configured)")
-	}
 	opts = NormalizeSearchOptions(opts)
+	// 向量检索不可用时，降级到 MySQL LIKE（title/description/tags 模糊匹配），
+	// 避免向量库未配置就整体 500。
+	if s.searcher == nil {
+		return s.searchLIKE(queryText, opts)
+	}
 	return s.searcher.Search(queryText, opts)
+}
+
+// searchLIKE 在向量检索不可用时，用 MySQL LIKE 兜底匹配。
+func (s *IdeaService) searchLIKE(queryText string, opts SearchOptions) ([]IdeaMatch, error) {
+	q := s.db.Model(&model.Idea{})
+	if opts.Status != "" {
+		q = q.Where("status = ?", opts.Status)
+	}
+	if opts.Category != "" {
+		q = q.Where("category = ?", opts.Category)
+	}
+	if strings.TrimSpace(queryText) != "" {
+		like := "%" + queryText + "%"
+		q = q.Where("title LIKE ? OR description LIKE ? OR tags LIKE ?", like, like, like)
+	}
+	var ideas []model.Idea
+	if err := q.Order("created_at DESC").Limit(opts.Limit).Offset(opts.Offset).Find(&ideas).Error; err != nil {
+		return nil, err
+	}
+	matches := make([]IdeaMatch, 0, len(ideas))
+	for i := range ideas {
+		EnrichIdea(&ideas[i])
+		matches = append(matches, IdeaMatch{Idea: ideas[i], Similarity: 0})
+	}
+	return matches, nil
 }
 
 func (s *IdeaService) Bury(ideaID, agentID, reason string) (*model.Idea, error) {

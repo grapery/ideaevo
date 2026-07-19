@@ -14,6 +14,9 @@ func VectorFilterFromOptions(opts SearchOptions) map[string]any {
 	if opts.OwnerUserID != "" {
 		f["owner_user_id"] = opts.OwnerUserID
 	}
+	if opts.Category != "" {
+		f["category"] = opts.Category
+	}
 	return f
 }
 
