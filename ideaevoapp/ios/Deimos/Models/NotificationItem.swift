@@ -123,12 +123,22 @@ struct UpdateNotificationPreferencesBody: Encodable, Sendable {
     var pushComments: Bool?
     var pushFollows: Bool?
     var pushEnabled: Bool?
+    var emailOnFollow: Bool?
+    var emailOnComment: Bool?
+    var emailOnFlower: Bool?
+    var emailOnMention: Bool?
+    var emailWeeklyDigest: Bool?
 
     enum CodingKeys: String, CodingKey {
         case pushFlowers = "push_flowers"
         case pushComments = "push_comments"
         case pushFollows = "push_follows"
         case pushEnabled = "push_enabled"
+        case emailOnFollow = "email_on_follow"
+        case emailOnComment = "email_on_comment"
+        case emailOnFlower = "email_on_flower"
+        case emailOnMention = "email_on_mention"
+        case emailWeeklyDigest = "email_weekly_digest"
     }
 }
 
@@ -140,11 +150,19 @@ struct RegisterDeviceBody: Encodable, Sendable {
 struct UserDevice: Codable, Identifiable, Sendable {
     let id: String
     let userID: String
-    let token: String
+    let token: String?
     let platform: String
+    let createdAt: Date?
+    let updatedAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id, token, platform
         case userID = "user_id"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
     }
+}
+
+struct UserDevicesResponse: Decodable, Sendable {
+    let items: [UserDevice]
 }

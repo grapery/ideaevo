@@ -96,19 +96,136 @@ struct UserProfileResponse: Decodable, Sendable {
 struct IdeaVersionSummary: Decodable, Identifiable, Sendable {
     let id: String
     let version: Int
+    let title: String
+    let description: String?
     let changelog: String
+    let stats: VersionStats
     let createdAt: Date
     let isCurrent: Bool
 
     enum CodingKeys: String, CodingKey {
-        case id, version, changelog
+        case id, version, title, description, changelog, stats
         case createdAt = "created_at"
         case isCurrent = "is_current"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        version = try container.decode(Int.self, forKey: .version)
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? "v\(version)"
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        changelog = try container.decodeIfPresent(String.self, forKey: .changelog) ?? ""
+        stats = try container.decodeIfPresent(VersionStats.self, forKey: .stats) ?? VersionStats()
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        isCurrent = try container.decodeIfPresent(Bool.self, forKey: .isCurrent) ?? false
     }
 }
 
 struct IdeaVersionsResponse: Decodable, Sendable {
     let versions: [IdeaVersionSummary]
+}
+
+struct VersionStats: Decodable, Sendable, Hashable {
+    let forkCount: Int
+    let commentCount: Int
+    let flowerCount: Int
+    let reactionCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case forkCount = "fork_count"
+        case commentCount = "comment_count"
+        case flowerCount = "flower_count"
+        case reactionCount = "reaction_count"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        forkCount = try container.decodeIfPresent(Int.self, forKey: .forkCount) ?? 0
+        commentCount = try container.decodeIfPresent(Int.self, forKey: .commentCount) ?? 0
+        flowerCount = try container.decodeIfPresent(Int.self, forKey: .flowerCount) ?? 0
+        reactionCount = try container.decodeIfPresent(Int.self, forKey: .reactionCount) ?? 0
+    }
+
+    init(forkCount: Int = 0, commentCount: Int = 0, flowerCount: Int = 0, reactionCount: Int = 0) {
+        self.forkCount = forkCount
+        self.commentCount = commentCount
+        self.flowerCount = flowerCount
+        self.reactionCount = reactionCount
+    }
+}
+
+struct VersionStatsRow: Decodable, Sendable, Hashable {
+    let versionID: String
+    let version: Int
+    let stats: VersionStats
+
+    enum CodingKeys: String, CodingKey {
+        case versionID = "version_id"
+        case version, stats
+    }
+}
+
+struct IdeaStats: Decodable, Sendable {
+    let likeCount: Int
+    let flowerCount: Int
+    let forkCount: Int
+    let commentCount: Int
+    let viewCount: Int
+    let referenceCount: Int
+    let reactionCount: Int
+    let versionCount: Int
+    let imageCount: Int
+    let linkCount: Int
+    let versionStats: [VersionStatsRow]
+
+    enum CodingKeys: String, CodingKey {
+        case likeCount = "like_count"
+        case flowerCount = "flower_count"
+        case forkCount = "fork_count"
+        case commentCount = "comment_count"
+        case viewCount = "view_count"
+        case referenceCount = "reference_count"
+        case reactionCount = "reaction_count"
+        case versionCount = "version_count"
+        case imageCount = "image_count"
+        case linkCount = "link_count"
+        case versionStats = "version_stats"
+    }
+}
+
+struct IdeaLineageStats: Decodable, Sendable {
+    let totalForks: Int
+    let activeBranches: Int
+    let contributors: Int
+
+    enum CodingKeys: String, CodingKey {
+        case totalForks = "total_forks"
+        case activeBranches = "active_branches"
+        case contributors
+    }
+}
+
+struct IdeaLineage: Decodable, Sendable {
+    let idea: Idea
+    let currentVersion: IdeaVersionDetail
+    let origin: ForkRecord?
+    let sourceIdea: Idea?
+    let sourceVersion: IdeaVersionDetail?
+    let children: [Idea]
+    let stats: IdeaLineageStats
+
+    enum CodingKeys: String, CodingKey {
+        case idea, origin, children, stats
+        case currentVersion = "current_version"
+        case sourceIdea = "source_idea"
+        case sourceVersion = "source_version"
+    }
+}
+
+struct UserActivityResponse: Decodable, Sendable {
+    let activities: [ActivityView]
+    let total: Int
 }
 
 struct UsersListResponse: Decodable, Sendable {
@@ -152,6 +269,8 @@ struct AgentStats: Decodable, Sendable {
     let totalLikes: Int
     let totalFlowers: Int
     let totalForks: Int
+    let followerCount: Int
+    let callCount: Int
     let recentActivity: [ActivityView]?
 
     enum CodingKeys: String, CodingKey {
@@ -159,7 +278,20 @@ struct AgentStats: Decodable, Sendable {
         case totalLikes = "total_likes"
         case totalFlowers = "total_flowers"
         case totalForks = "total_forks"
+        case followerCount = "follower_count"
+        case callCount = "call_count"
         case recentActivity = "recent_activity"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        ideaCount = try container.decodeIfPresent(Int.self, forKey: .ideaCount) ?? 0
+        totalLikes = try container.decodeIfPresent(Int.self, forKey: .totalLikes) ?? 0
+        totalFlowers = try container.decodeIfPresent(Int.self, forKey: .totalFlowers) ?? 0
+        totalForks = try container.decodeIfPresent(Int.self, forKey: .totalForks) ?? 0
+        followerCount = try container.decodeIfPresent(Int.self, forKey: .followerCount) ?? 0
+        callCount = try container.decodeIfPresent(Int.self, forKey: .callCount) ?? 0
+        recentActivity = try container.decodeIfPresent([ActivityView].self, forKey: .recentActivity)
     }
 }
 

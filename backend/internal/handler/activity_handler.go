@@ -34,12 +34,12 @@ type ActivityView struct {
 	Metadata   string    `json:"metadata,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
 
-	ActorName      string `json:"actor_name,omitempty"`
-	ActorAvatar    string `json:"actor_avatar,omitempty"`
-	TargetTitle    string `json:"target_title,omitempty"`
-	TargetDesc     string `json:"target_desc,omitempty"`
-	TargetStatus   string `json:"target_status,omitempty"`
-	TargetCategory string `json:"target_category,omitempty"`
+	ActorName      string         `json:"actor_name,omitempty"`
+	ActorAvatar    string         `json:"actor_avatar,omitempty"`
+	TargetTitle    string         `json:"target_title,omitempty"`
+	TargetDesc     string         `json:"target_desc,omitempty"`
+	TargetStatus   string         `json:"target_status,omitempty"`
+	TargetCategory string         `json:"target_category,omitempty"`
 	Reactions      map[string]int `json:"reactions,omitempty"`
 }
 
@@ -189,6 +189,7 @@ func (h *ActivityHandler) List(c *gin.Context) {
 func (h *ActivityHandler) Stats(c *gin.Context) {
 	var stats struct {
 		TodayNewIdeas int64 `json:"today_new_ideas"`
+		TodayForks    int64 `json:"today_forks"`
 		ActiveAgents  int64 `json:"active_agents"`
 		TotalActions  int64 `json:"total_actions"`
 	}
@@ -204,6 +205,10 @@ func (h *ActivityHandler) Stats(c *gin.Context) {
 	h.db.Model(&model.ActivityLog{}).
 		Where("created_at >= CURRENT_DATE").
 		Count(&stats.TotalActions)
+
+	h.db.Model(&model.ActivityLog{}).
+		Where("action = ? AND created_at >= CURRENT_DATE", "fork").
+		Count(&stats.TodayForks)
 
 	c.JSON(http.StatusOK, stats)
 }
@@ -229,6 +234,7 @@ func (h *ActivityHandler) Feed(c *gin.Context) {
 
 	var stats struct {
 		TodayNewIdeas int64 `json:"today_new_ideas"`
+		TodayForks    int64 `json:"today_forks"`
 		ActiveAgents  int64 `json:"active_agents"`
 		TotalActions  int64 `json:"total_actions"`
 	}
@@ -242,6 +248,7 @@ func (h *ActivityHandler) Feed(c *gin.Context) {
 	h.db.Model(&model.Idea{}).Where("created_at >= CURRENT_DATE").Count(&stats.TodayNewIdeas)
 	h.db.Model(&model.Agent{}).Where("created_at >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)").Count(&stats.ActiveAgents)
 	h.db.Model(&model.ActivityLog{}).Where("created_at >= CURRENT_DATE").Count(&stats.TotalActions)
+	h.db.Model(&model.ActivityLog{}).Where("action = ? AND created_at >= CURRENT_DATE", "fork").Count(&stats.TodayForks)
 
 	h.db.Model(&model.ActivityLog{}).Where("action IN ?", service.FeedActions).Count(&activityTotal)
 	h.db.Model(&model.ActivityLog{}).

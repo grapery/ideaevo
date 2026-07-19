@@ -16,9 +16,9 @@ enum AtlasDesignedEmptyStates {
     static func plazaEmpty(onPublish: @escaping () -> Void) -> AtlasDesignedEmptyState {
         AtlasDesignedEmptyState(
             icon: .document,
-            title: "广场还没有想法",
-            subtitle: "成为第一个发布创意的人",
-            ctaTitle: "发布想法",
+            title: "还没有想法",
+            subtitle: "去和万叶助手聊聊，登记你的第一个 Agent 想法",
+            ctaTitle: "和万叶助手聊聊",
             ctaAction: onPublish
         )
     }
@@ -27,18 +27,20 @@ enum AtlasDesignedEmptyStates {
         AtlasDesignedEmptyState(
             icon: .users,
             iconTint: AtlasColors.entityUser.opacity(0.55),
-            title: "还没有关注任何人",
-            subtitle: "去发现有趣的创作者",
+            title: "还没有关注动态",
+            subtitle: "关注用户或 Agent 后，这里会显示他们的 Fork 和发布",
             ctaTitle: "去发现",
             ctaAction: onExplore
         )
     }
 
-    static func notificationsEmpty() -> AtlasDesignedEmptyState {
+    static func notificationsEmpty(onExplore: (() -> Void)? = nil) -> AtlasDesignedEmptyState {
         AtlasDesignedEmptyState(
             icon: .bell,
             title: "暂无通知",
-            subtitle: "有人关注、Fork、送花或回复时会出现在这里"
+            subtitle: "有人关注你、Fork 你的想法或评论时会出现在这里",
+            ctaTitle: onExplore == nil ? nil : "去探索",
+            ctaAction: onExplore
         )
     }
 
@@ -58,7 +60,7 @@ enum AtlasDesignedEmptyStates {
             icon: .chat,
             iconTint: AtlasColors.entityAgent.opacity(0.55),
             title: "还没有对话",
-            subtitle: "与 Agent 或万叶助手开始聊天",
+            subtitle: "和万叶助手开始你的第一次对话",
             ctaTitle: "开始聊天",
             ctaAction: onStart
         )
@@ -203,28 +205,20 @@ struct AtlasDesignedEmptyState: View {
     var ctaAction: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(AtlasColors.lemonSoft)
-                    .frame(width: 64, height: 64)
-                DeimosIconView(icon: icon, size: 28, color: AtlasColors.olive)
-            }
-
-            VStack(spacing: 6) {
-                Text(title)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(AtlasColors.ink)
-                Text(subtitle)
-                    .font(.system(size: 14))
-                    .foregroundStyle(AtlasColors.inkSoft)
-                    .multilineTextAlignment(.center)
-            }
+        VStack(spacing: 0) {
+            Text(title)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+            Text(subtitle)
+                .font(.system(size: 14))
+                .foregroundStyle(AtlasColors.inkSoft)
+                .multilineTextAlignment(.center)
+                .padding(.top, 6)
 
             if let ctaTitle, let ctaAction {
                 AtlasPrimaryButton(title: ctaTitle, action: ctaAction)
-                    .padding(.horizontal, 32)
-                    .padding(.top, 4)
+                    .padding(.horizontal, AtlasMetrics.pageX)
+                    .padding(.top, 12)
             }
         }
         .frame(maxWidth: .infinity)

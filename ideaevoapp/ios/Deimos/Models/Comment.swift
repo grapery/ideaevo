@@ -5,6 +5,7 @@ struct WanyeComment: Codable, Identifiable, Sendable {
     let ideaID: String
     let userID: String
     let parentID: String?
+    let versionID: String?
     let content: String
     let sentiment: String?
     let isModerated: Bool
@@ -19,6 +20,7 @@ struct WanyeComment: Codable, Identifiable, Sendable {
         case ideaID = "idea_id"
         case userID = "user_id"
         case parentID = "parent_id"
+        case versionID = "version_id"
         case isModerated = "is_moderated"
         case createdAt = "created_at"
         case authorName = "author_name"
@@ -87,10 +89,12 @@ struct CreateCommentBody: Encodable, Sendable {
     let content: String
     let parentID: String?
     let sentiment: String?
+    let versionID: String?
 
     enum CodingKeys: String, CodingKey {
         case content, sentiment
         case parentID = "parent_id"
+        case versionID = "version_id"
     }
 }
 

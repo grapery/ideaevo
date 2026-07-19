@@ -67,16 +67,7 @@ struct CommentsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // S05 Toolbar — back button + "评论与反应" 22pt Bold (Ardot 179:224)
-            HStack(spacing: 12) {
-                AtlasNavBackButton(action: { dismiss() })
-                Text("评论与反应")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
-                Spacer()
-            }
-            .padding(.horizontal, AtlasMetrics.detailX)
-            .frame(height: 44)
+            AtlasPushNavBar(title: commentCount > 0 ? "评论 · \(commentCount)" : "评论", onBack: { dismiss() })
 
             content
 
@@ -136,9 +127,7 @@ struct CommentsView: View {
                 Button {
                     Task { await submitComment() }
                 } label: {
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(canSend ? AtlasColors.lemonInk : AtlasColors.inkFaint)
+                    DeimosIconView(icon: .send, size: 18, color: canSend ? AtlasColors.lemonInk : AtlasColors.inkFaint)
                         .frame(width: 40, height: 40)
                         .background(canSend ? AtlasColors.lemonStrong : AtlasColors.inkDisabled)
                         .clipShape(Circle())
@@ -170,12 +159,11 @@ struct CommentsView: View {
             Spacer()
         } else {
             ScrollView {
-                LazyVStack(spacing: 14) {
+                LazyVStack(spacing: 0) {
                     // S05 Idea context card — lemon-soft bg r20 (Ardot 179:255)
                     ideaContextCard
                         .padding(.top, 4)
 
-                    // Comment cards — bg-card #F8FAFC r20 + border
                     if viewModel.comments.isEmpty {
                         AtlasDesignedEmptyStates.commentsEmpty()
                             .padding(.top, 24)
@@ -216,62 +204,59 @@ struct CommentsView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    // MARK: - S05 Comment card (bg-card, r20 + border)
+    // MARK: - S05 Comment stream
 
-    /// Comment in a card: header 12pt Medium + body 14pt Regular + action row 12pt Medium olive.
+    /// The discussion view is a continuous reading flow. Cards would make short comments feel too heavy.
     private func commentCard(_ item: FlatComment) -> some View {
         let isAgent = item.comment.authorType == "agent"
-        return VStack(alignment: .leading, spacing: 8) {
-            // Header — name · time (12pt Medium)
-            HStack(spacing: 6) {
-                if isAgent {
-                    Text("Agent")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(AtlasColors.lemonInk)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(AtlasColors.lemonSoft)
-                        .clipShape(Capsule())
+        return HStack(alignment: .top, spacing: 12) {
+            commentAvatar(item.comment)
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 5) {
+                    Text(item.comment.displayName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    if isAgent {
+                        Text("Agent")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(AtlasColors.lemonInk)
+                    }
+                    Text("· \(item.comment.createdAt.relativeShort)")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.inkTertiary)
                 }
-                Text("\(item.comment.displayName) · \(item.comment.createdAt.relativeShort)")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AtlasColors.inkTertiary)
-            }
 
-            if let replyTo = item.replyTo {
-                Text("回复 \(replyTo.displayName)")
-                    .font(.system(size: 11))
-                    .foregroundStyle(AtlasColors.inkFaint)
-            }
+                if let replyTo = item.replyTo {
+                    Text("回复 \(replyTo.displayName)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                }
 
-            // Body — 14pt Regular ink
-            Text(item.comment.content)
-                .font(.system(size: 14))
-                .foregroundStyle(AtlasColors.ink)
-                .lineSpacing(4)
-                .fixedSize(horizontal: false, vertical: true)
+                Text(item.comment.content)
+                    .font(.system(size: 14))
+                    .foregroundStyle(AtlasColors.ink)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            // Action row — 回复 · 送花 · 举报 (12pt Medium olive)
-            HStack(spacing: 12) {
-                Button("回复") { replyingTo = item }
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AtlasColors.olive)
-                if let label = item.comment.sentimentLabel {
-                    Text(label)
-                        .font(.system(size: 11, weight: .medium))
+                HStack(spacing: 12) {
+                    Button("回复") { replyingTo = item }
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(AtlasColors.olive)
+                    if let label = item.comment.sentimentLabel {
+                        Text(label)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(AtlasColors.olive)
+                    }
                 }
             }
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(Color(hex: 0xF8FAFC))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(.vertical, 16)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(AtlasColors.rule).frame(height: 0.5)
+        }
         .padding(.leading, item.depth > 0 ? CGFloat(item.depth * 20) : 0)
     }
 

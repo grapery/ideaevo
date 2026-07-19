@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wanye/ideaevo/internal/service"
@@ -17,6 +18,19 @@ type AgentHandler struct {
 
 func NewAgentHandler(agentSvc *service.AgentService, ideaSvc *service.IdeaService, assets *service.ObjectStore, followSvc *service.FollowService) *AgentHandler {
 	return &AgentHandler{agentSvc: agentSvc, ideaSvc: ideaSvc, assets: assets, followSvc: followSvc}
+}
+
+func (h *AgentHandler) requireVisibleAgent(c *gin.Context, agentID string) bool {
+	agent, err := h.agentSvc.GetByID(agentID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
+		return false
+	}
+	if agent.Visibility == "private" && agent.OwnerUserID != c.GetString("user_id") {
+		c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
+		return false
+	}
+	return true
 }
 
 func (h *AgentHandler) GetByID(c *gin.Context) {
@@ -58,6 +72,28 @@ func (h *AgentHandler) ResetAvatar(c *gin.Context) {
 			status = http.StatusNotFound
 		}
 		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, agent)
+}
+
+// ResetBackground restores the agent background to the default blank state (owner only).
+func (h *AgentHandler) ResetBackground(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "login required"})
+		return
+	}
+	agent, err := h.agentSvc.ResetBackground(userID, c.Param("id"))
+	if err != nil {
+		status := http.StatusInternalServerError
+		msg := err.Error()
+		if msg == "forbidden: not the agent owner" {
+			status = http.StatusForbidden
+		} else if strings.HasPrefix(msg, "agent") {
+			status = http.StatusNotFound
+		}
+		c.JSON(status, gin.H{"error": msg})
 		return
 	}
 	c.JSON(http.StatusOK, agent)
@@ -118,12 +154,15 @@ func (h *AgentHandler) List(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"agents":   agents,
-		"total":    total,
+		"agents": agents,
+		"total":  total,
 	})
 }
 
 func (h *AgentHandler) GetIdeas(c *gin.Context) {
+	if !h.requireVisibleAgent(c, c.Param("id")) {
+		return
+	}
 	limit := 20
 	offset := 0
 	if v := c.Query("limit"); v != "" {
@@ -148,6 +187,9 @@ func (h *AgentHandler) GetIdeas(c *gin.Context) {
 }
 
 func (h *AgentHandler) GetStats(c *gin.Context) {
+	if !h.requireVisibleAgent(c, c.Param("id")) {
+		return
+	}
 	stats, err := h.agentSvc.Stats(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -173,12 +215,13 @@ func (h *AgentHandler) UpdateAgent(c *gin.Context) {
 	agent, err := h.agentSvc.UpdateAgent(userID, c.Param("id"), input)
 	if err != nil {
 		status := http.StatusInternalServerError
-		if fmt.Sprint(err) == "forbidden: not the agent owner" {
+		msg := err.Error()
+		if msg == "forbidden: not the agent owner" {
 			status = http.StatusForbidden
-		} else if fmt.Sprint(err)[:5] == "agent" {
+		} else if strings.HasPrefix(msg, "agent") {
 			status = http.StatusNotFound
 		}
-		c.JSON(status, gin.H{"error": err.Error()})
+		c.JSON(status, gin.H{"error": msg})
 		return
 	}
 
@@ -219,12 +262,15 @@ func (h *AgentHandler) DeleteAgent(c *gin.Context) {
 
 	if err := h.agentSvc.DeleteAgent(userID, c.Param("id")); err != nil {
 		status := http.StatusInternalServerError
-		if fmt.Sprint(err) == "forbidden: not the agent owner" {
+		msg := err.Error()
+		if msg == "forbidden: not the agent owner" {
 			status = http.StatusForbidden
-		} else if fmt.Sprint(err)[:5] == "agent" {
+		} else if strings.HasPrefix(msg, "agent") {
 			status = http.StatusNotFound
+		} else if strings.Contains(msg, "has ideas") {
+			status = http.StatusBadRequest
 		}
-		c.JSON(status, gin.H{"error": err.Error()})
+		c.JSON(status, gin.H{"error": msg})
 		return
 	}
 
@@ -329,6 +375,9 @@ func (h *AgentHandler) AgentUnfollowAgent(c *gin.Context) {
 // GetAgentFollowing returns the list of agents that this agent follows.
 func (h *AgentHandler) GetAgentFollowing(c *gin.Context) {
 	agentID := c.Param("id")
+	if !h.requireVisibleAgent(c, agentID) {
+		return
+	}
 	limit, offset := getAgentPagination(c)
 
 	agents, total, err := h.agentSvc.GetAgentFollowing(agentID, limit, offset)

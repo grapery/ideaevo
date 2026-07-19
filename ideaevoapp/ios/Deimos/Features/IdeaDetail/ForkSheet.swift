@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ForkSheet: View {
     let sourceTitle: String
+    var sourceDescription: String = ""
     var sourceIdeaID: String? = nil
     var sourceIconURL: URL? = nil
     var isSubmitting = false
@@ -20,18 +21,15 @@ struct ForkSheet: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    // Sheet title — 24pt Bold (Ardot S33 189:119)
-                    Text("Fork 这个版本")
-                        .font(.system(size: 24, weight: .bold))
-                        .atlasTrackedTitle(24)
+                    Text("Fork 这个想法")
+                        .font(AtlasTypography.pageTitle())
                         .foregroundStyle(AtlasColors.ink)
-                        .padding(.top, 4)
+                        .padding(.top, 12)
 
                     sourceIdeaCard
 
-                    field("新想法标题（可选）", text: $title)
-                    multilineField("描述", text: $description, minHeight: 100)
-                    multilineField("Fork 原因", text: $reason, minHeight: 72)
+                    field("新标题", placeholder: "为这个版本重新命名", text: $title)
+                    multilineField("Fork 理由", placeholder: "你将如何推进或改变它？", text: $reason, minHeight: 96)
 
                     if let errorMessage {
                         Text(errorMessage)
@@ -39,76 +37,34 @@ struct ForkSheet: View {
                             .foregroundStyle(AtlasColors.coral)
                     }
 
-                    // Version attribution notice — lemon-soft card (Ardot S33 189:167)
-                    versionAttributionNotice
-
-                    // Confirm Fork button — lemon-strong, 48h, r12 (Ardot S33 189:121)
-                    confirmForkButton
-
-                    // Close button
-                    Button("取消") { dismiss() }
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 4)
+                    AtlasPrimaryButton(title: "确认 Fork", isLoading: isSubmitting) {
+                        onSubmit(
+                            title.trimmingCharacters(in: .whitespacesAndNewlines),
+                            description.trimmingCharacters(in: .whitespacesAndNewlines),
+                            reason.trimmingCharacters(in: .whitespacesAndNewlines)
+                        )
+                    }
+                    .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                .padding(.horizontal, AtlasMetrics.detailX)
+                .padding(.horizontal, AtlasMetrics.pageX)
                 .padding(.bottom, 24)
             }
         }
         .background(AtlasColors.surface)
         .atlasScrollDismissesKeyboard()
-        .presentationDetents([.large])
+        // Ardot S06 opens as a focused bottom sheet; the keyboard can still
+        // scroll its fields without turning the initial decision into a page.
+        .presentationDetents([.height(520)])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(AtlasMetrics.radiusSheet)
         .onAppear {
             if title.isEmpty {
                 title = "\(sourceTitle) (Fork)"
             }
-        }
-    }
-
-    /// Lemon-soft notice card explaining version attribution (Ardot 189:167).
-    private var versionAttributionNotice: some View {
-        Text("Fork 会记录 source_version_id，后续统计归入当前版本。")
-            .font(.system(size: 14))
-            .foregroundStyle(AtlasColors.lemonInk)
-            .lineSpacing(6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(AtlasColors.lemonSoft)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-    }
-
-    /// Confirm Fork button — lemon-strong bg, lemonInk text 15pt Bold, 48h r12 (Ardot 189:121).
-    private var confirmForkButton: some View {
-        Button {
-            onSubmit(
-                title.trimmingCharacters(in: .whitespacesAndNewlines),
-                description.trimmingCharacters(in: .whitespacesAndNewlines),
-                reason.trimmingCharacters(in: .whitespacesAndNewlines)
-            )
-        } label: {
-            HStack(spacing: 8) {
-                if isSubmitting {
-                    ProgressView().tint(AtlasColors.lemonInk)
-                }
-                Text("创建 Fork")
-                    .font(.system(size: 15, weight: .bold))
+            if description.isEmpty {
+                description = sourceDescription
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .foregroundStyle(AtlasColors.lemonInk)
-            .background(AtlasColors.lemonStrong)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .buttonStyle(.plain)
-        .disabled(
-            isSubmitting
-            || description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        )
     }
 
     private var sourceIdeaCard: some View {
@@ -117,24 +73,24 @@ struct ForkSheet: View {
                 EntityAvatar.idea(id: sourceIdeaID, url: sourceIconURL, name: sourceTitle, size: 40)
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text("原想法")
-                    .font(AtlasTypography.overline())
-                    .foregroundStyle(AtlasColors.inkFaint)
                 Text(sourceTitle)
                     .font(AtlasTypography.cardTitle())
                     .foregroundStyle(AtlasColors.ink)
                     .lineLimit(2)
+                Text("保留谱系与版本历史")
+                    .font(AtlasTypography.meta())
+                    .foregroundStyle(AtlasColors.inkFaint)
             }
             Spacer(minLength: 0)
         }
         .padding(AtlasMetrics.cardPadding)
-        .background(AtlasColors.entityIdea.opacity(0.55))
+        .background(AtlasColors.lemonSoft)
         .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
     }
 
-    private func field(_ placeholder: String, text: Binding<String>) -> some View {
+    private func field(_ label: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(placeholder)
+            Text(label)
                 .font(AtlasTypography.overline())
                 .foregroundStyle(AtlasColors.inkFaint)
             AtlasTextField(placeholder: placeholder, text: text, height: AtlasMetrics.inputHeight)
@@ -144,9 +100,9 @@ struct ForkSheet: View {
         }
     }
 
-    private func multilineField(_ placeholder: String, text: Binding<String>, minHeight: CGFloat) -> some View {
+    private func multilineField(_ label: String, placeholder: String, text: Binding<String>, minHeight: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(placeholder)
+            Text(label)
                 .font(AtlasTypography.overline())
                 .foregroundStyle(AtlasColors.inkFaint)
             ZStack(alignment: .topLeading) {

@@ -214,19 +214,26 @@ func main() {
 		api.POST("/auth/register", middleware.UserAuth(cfg.JWTSecret), authHandler.RegisterAgent)
 		api.GET("/agents", agentHandler.List)
 		api.GET("/agents/:id", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetByID)
-		api.GET("/agents/:id/ideas", agentHandler.GetIdeas)
-		api.GET("/agents/:id/stats", agentHandler.GetStats)
+		api.GET("/agents/:id/ideas", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetIdeas)
+		api.GET("/agents/:id/stats", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetStats)
 		api.GET("/agents/:id/follow", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetAgentFollowStatus)
-		api.GET("/agents/:id/following", agentHandler.GetAgentFollowing)
+		api.GET("/agents/:id/following", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetAgentFollowing)
 		api.GET("/ideas", ideaHandler.Query)
 		api.GET("/ideas/search", ideaHandler.Search)
 		api.GET("/ideas/:id", ideaHandler.GetByID)
+		api.GET("/ideas/:id/stats", ideaHandler.GetStats)
+		api.GET("/ideas/:id/lineage", ideaHandler.GetLineage)
 		api.GET("/ideas/:id/versions", ideaHandler.GetVersions)
 		api.GET("/ideas/:id/versions/:versionId", ideaHandler.GetVersion)
 		api.GET("/ideas/:id/comments", ideaHandler.GetComments)
 		api.GET("/ideas/:id/forks", ideaHandler.GetForks)
 		api.GET("/ideas/:id/fork-children", ideaHandler.GetForkChildren)
 		api.GET("/ideas/:id/flowers", ideaHandler.GetFlowers)
+		// Counts are public; OptionalUserAuth enriches the response with the
+		// signed-in user's own emoji without blocking anonymous detail views.
+		api.GET("/ideas/:id/reactions", middleware.OptionalUserAuth(cfg.JWTSecret), ideaHandler.GetReactions)
+		api.POST("/ideas/:id/view", ideaHandler.RecordView)
+		api.POST("/ideas/:id/reference", ideaHandler.RecordReference)
 		api.GET("/activity", activityHandler.List)
 		api.GET("/activity/stats", activityHandler.Stats)
 		api.GET("/activity/feed", activityHandler.Feed)
@@ -318,6 +325,7 @@ func main() {
 			userRoutes.DELETE("/agents/:id", agentHandler.DeleteAgent)
 			userRoutes.POST("/agents/:id/upload/presign", agentHandler.PresignUpload)
 			userRoutes.POST("/agents/:id/avatar/reset", agentHandler.ResetAvatar)
+			userRoutes.POST("/agents/:id/background/reset", agentHandler.ResetBackground)
 			userRoutes.POST("/agents/:id/rotate-api-key", agentHandler.RotateAPIKey)
 
 			// UGC moderation
@@ -340,6 +348,9 @@ func main() {
 		{
 			ideaActionRoutes.POST("/ideas", ideaHandler.Create)
 			ideaActionRoutes.GET("/ideas/:id/like", ideaHandler.GetLikeStatus)
+			ideaActionRoutes.GET("/ideas/:id/bookmark", ideaHandler.GetBookmarkStatus)
+			ideaActionRoutes.POST("/ideas/:id/bookmark", ideaHandler.Bookmark)
+			ideaActionRoutes.DELETE("/ideas/:id/bookmark", ideaHandler.Unbookmark)
 			ideaActionRoutes.POST("/ideas/:id/like", ideaHandler.Like)
 			ideaActionRoutes.DELETE("/ideas/:id/like", ideaHandler.Unlike)
 			ideaActionRoutes.POST("/ideas/:id/flowers", ideaHandler.SendFlowers)
@@ -348,8 +359,8 @@ func main() {
 			ideaActionRoutes.POST("/ideas/:id/share", ideaHandler.Share)
 			ideaActionRoutes.POST("/ideas/:id/reactions", ideaHandler.React)
 			ideaActionRoutes.DELETE("/ideas/:id/reactions", ideaHandler.Unreact)
-			ideaActionRoutes.GET("/ideas/:id/reactions", ideaHandler.GetReactions)
 			ideaActionRoutes.POST("/ideas/:id/comments", ideaHandler.CreateComment)
+			ideaActionRoutes.POST("/ideas/:id/versions", ideaHandler.PublishVersion)
 			ideaActionRoutes.PATCH("/ideas/:id/meta", ideaHandler.UpdateMeta)
 			ideaActionRoutes.PATCH("/ideas/:id/description", ideaHandler.UpdateDescription)
 			ideaActionRoutes.POST("/ideas/:id/upload/presign", ideaHandler.PresignUpload)
@@ -365,8 +376,11 @@ func main() {
 			agentRoutes.PATCH("/comments/:id", commentHandler.Update)
 			agentRoutes.DELETE("/comments/:id", commentHandler.Delete)
 			agentRoutes.POST("/agents/:id/activity", agentHandler.PostAgentActivity)
-			agentRoutes.POST("/agents/:id/follow", agentHandler.AgentFollowAgent)
-			agentRoutes.DELETE("/agents/:id/follow", agentHandler.AgentUnfollowAgent)
+			// Keep /agents/:id/follow for JWT-authenticated users. Agent API keys
+			// use an explicit endpoint because Gin cannot register the same method/path
+			// twice with a different authentication middleware.
+			agentRoutes.POST("/agents/:id/agent-follow", agentHandler.AgentFollowAgent)
+			agentRoutes.DELETE("/agents/:id/agent-follow", agentHandler.AgentUnfollowAgent)
 
 			// Agent-Bridge：外部 AI agent 通过 REST 调用工具（与 MCP 共享 ToolRegistry）
 			bridgeHandler.RegisterRoutes(agentRoutes, nil)

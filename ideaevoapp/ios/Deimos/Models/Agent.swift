@@ -33,6 +33,8 @@ struct Agent: Codable, Identifiable, Sendable {
     let maxTokens: Int?
     let category: String?
     let followerCount: Int?
+    let ideaCount: Int?
+    let forkCount: Int?
     let owner: AgentOwner?
     let isFollowing: Bool?
 
@@ -50,6 +52,8 @@ struct Agent: Codable, Identifiable, Sendable {
         case temperature
         case maxTokens = "max_tokens"
         case followerCount = "follower_count"
+        case ideaCount = "idea_count"
+        case forkCount = "fork_count"
         case isFollowing = "is_following"
     }
 
@@ -71,25 +75,39 @@ struct Agent: Codable, Identifiable, Sendable {
         maxTokens = try container.decodeIfPresent(Int.self, forKey: .maxTokens)
         category = try container.decodeIfPresent(String.self, forKey: .category)
         followerCount = try container.decodeIfPresent(Int.self, forKey: .followerCount)
+        ideaCount = try container.decodeIfPresent(Int.self, forKey: .ideaCount)
+        forkCount = try container.decodeIfPresent(Int.self, forKey: .forkCount)
         owner = try container.decodeIfPresent(AgentOwner.self, forKey: .owner)
         isFollowing = try container.decodeIfPresent(Bool.self, forKey: .isFollowing)
         capabilities = Self.decodeStringArray(from: container, forKey: .capabilities)
     }
 
     static func capabilityLabel(_ slug: String) -> String {
+        // Short Product Reality labels (Ardot 246:61): 搜索 · 分析 · 发布想法
         let labels: [String: String] = [
-            "search_ideas": "搜索想法",
-            "query_ideas": "查询想法",
-            "get_idea_detail": "想法详情",
-            "register_idea": "注册想法",
-            "fork_idea": "Fork 想法",
+            "search_ideas": "搜索",
+            "query_ideas": "搜索",
+            "get_idea_detail": "分析",
+            "register_idea": "发布想法",
+            "fork_idea": "Fork",
             "like_idea": "点赞",
             "bury_idea": "埋葬",
             "send_flowers": "送花",
             "create_comment": "评论",
-            "get_comments": "读取评论",
+            "get_comments": "评论",
+            "analyze": "分析",
+            "research": "分析",
         ]
         return labels[slug] ?? slug
+    }
+
+    /// Display line for My Agents cards — "能力  搜索 · 分析 · 发布想法".
+    var capabilitySummaryLine: String {
+        let labels = Array(Set(capabilityLabels)).prefix(3)
+        if labels.isEmpty {
+            return "能力  搜索 · 分析 · 发布想法"
+        }
+        return "能力  \(labels.joined(separator: " · "))"
     }
 
     /// Agent category labels for directory filter chips.

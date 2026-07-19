@@ -6,6 +6,7 @@ import Observation
 final class VersionCompareViewModel {
     var primary: IdeaVersionDetail?
     var compare: IdeaVersionDetail?
+    var summaries: [IdeaVersionSummary] = []
     var isLoading = true
     var errorMessage: String?
     var showingPrimary = true
@@ -15,10 +16,12 @@ final class VersionCompareViewModel {
         errorMessage = nil
         defer { isLoading = false }
         do {
+            async let summariesTask = APIClient.shared.getIdeaVersions(ideaID: ideaID)
             primary = try await APIClient.shared.getIdeaVersion(ideaID: ideaID, versionID: versionID)
             if let compareVersionID {
                 compare = try await APIClient.shared.getIdeaVersion(ideaID: ideaID, versionID: compareVersionID)
             }
+            summaries = (try? await summariesTask) ?? []
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -36,6 +39,10 @@ final class VersionCompareViewModel {
     var activeVersion: IdeaVersionDetail? {
         guard compare != nil else { return primary }
         return showingPrimary ? primary : compare
+    }
+
+    func forkCount(for versionID: String) -> Int {
+        summaries.first(where: { $0.id == versionID })?.stats.forkCount ?? 0
     }
 }
 
@@ -109,13 +116,13 @@ struct VersionCompareView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(AtlasColors.olive)
             HStack(spacing: 8) {
-                versionToggleChip("v\(compare.version)", isSelected: !viewModel.showingPrimary) {
+                versionToggleChip("v\(compare.version) · \(viewModel.forkCount(for: compare.id)) Fork", isSelected: !viewModel.showingPrimary) {
                     viewModel.showingPrimary = false
                 }
                 Text("→")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(AtlasColors.olive)
-                versionToggleChip("v\(primary.version) 当前", isSelected: viewModel.showingPrimary) {
+                versionToggleChip("v\(primary.version) · \(viewModel.forkCount(for: primary.id)) Fork", isSelected: viewModel.showingPrimary) {
                     viewModel.showingPrimary = true
                 }
             }
@@ -188,6 +195,7 @@ struct VersionCompareView: View {
             HStack(spacing: 16) {
                 statDeltaItem("字数", charDelta)
                 statDeltaItem("版本", primary.version - compare.version)
+                statDeltaItem("Fork", viewModel.forkCount(for: primary.id) - viewModel.forkCount(for: compare.id))
             }
 
             Text("变更说明：\(changelogDelta)")

@@ -387,11 +387,49 @@ func (s *IdeaService) ResetIcon(ideaID string) (*model.Idea, error) {
 }
 
 type IdeaVersionSummary struct {
-	ID        string    `json:"id"`
-	Version   int       `json:"version"`
-	Changelog string    `json:"changelog"`
-	CreatedAt time.Time `json:"created_at"`
-	IsCurrent bool      `json:"is_current"`
+	ID          string           `json:"id"`
+	Version     int              `json:"version"`
+	Title       string           `json:"title"`
+	Description string           `json:"description"`
+	Category    string           `json:"category"`
+	Tags        string           `json:"tags"`
+	RepoURL     string           `json:"repo_url,omitempty"`
+	DemoURL     string           `json:"demo_url,omitempty"`
+	ImplStatus  model.ImplStatus `json:"impl_status,omitempty"`
+	Changelog   string           `json:"changelog"`
+	Stats       VersionStats     `json:"stats"`
+	CreatedAt   time.Time        `json:"created_at"`
+	IsCurrent   bool             `json:"is_current"`
+}
+
+// VersionStats is deliberately scoped to interaction records attributable to a
+// version. Existing forks predate version attribution, so only the current
+// version can expose the idea's live aggregate counters.
+type VersionStats struct {
+	ForkCount     int `json:"fork_count"`
+	CommentCount  int `json:"comment_count"`
+	FlowerCount   int `json:"flower_count"`
+	ReactionCount int `json:"reaction_count"`
+}
+
+type IdeaStats struct {
+	LikeCount      int               `json:"like_count"`
+	FlowerCount    int               `json:"flower_count"`
+	ForkCount      int               `json:"fork_count"`
+	CommentCount   int               `json:"comment_count"`
+	ViewCount      int               `json:"view_count"`
+	ReferenceCount int               `json:"reference_count"`
+	ReactionCount  int               `json:"reaction_count"`
+	VersionCount   int               `json:"version_count"`
+	ImageCount     int               `json:"image_count"`
+	LinkCount      int               `json:"link_count"`
+	VersionStats   []VersionStatsRow `json:"version_stats"`
+}
+
+type VersionStatsRow struct {
+	VersionID string       `json:"version_id"`
+	Version   int          `json:"version"`
+	Stats     VersionStats `json:"stats"`
 }
 
 // AppendIdeaVersion 为 idea 追加一条描述版本记录。
@@ -413,6 +451,11 @@ func AppendIdeaVersion(db *gorm.DB, idea *model.Idea, changelog string) error {
 		Version:     maxVer + 1,
 		Title:       idea.Title,
 		Description: idea.Description,
+		Category:    idea.Category,
+		Tags:        idea.Tags,
+		RepoURL:     idea.RepoURL,
+		DemoURL:     idea.DemoURL,
+		ImplStatus:  idea.ImplStatus,
 		Changelog:   changelog,
 	}
 	return db.Create(v).Error
@@ -449,15 +492,117 @@ func (s *IdeaService) ListVersions(ideaID string) ([]IdeaVersionSummary, error) 
 	}
 	out := make([]IdeaVersionSummary, len(versions))
 	for i, v := range versions {
+		stats := VersionStats{}
+		var forks int64
+		forkQuery := s.db.Model(&model.Fork{}).Where("source_idea_id = ?", ideaID)
+		if v.ID == currentID {
+			forkQuery.Where("source_version_id = ? OR source_version_id IS NULL", v.ID).Count(&forks)
+		} else {
+			forkQuery.Where("source_version_id = ?", v.ID).Count(&forks)
+		}
+		if v.ID == currentID {
+			var idea model.Idea
+			if err := s.db.First(&idea, "id = ?", ideaID).Error; err != nil {
+				return nil, err
+			}
+			var reactions int64
+			s.db.Model(&model.Reaction{}).Where("idea_id = ?", ideaID).Count(&reactions)
+			stats = VersionStats{ForkCount: int(forks), CommentCount: idea.CommentCount, FlowerCount: idea.FlowerCount, ReactionCount: int(reactions)}
+		} else {
+			stats = VersionStats{ForkCount: int(forks)}
+		}
 		out[i] = IdeaVersionSummary{
-			ID:        v.ID,
-			Version:   v.Version,
-			Changelog: v.Changelog,
-			CreatedAt: v.CreatedAt,
-			IsCurrent: v.ID == currentID,
+			ID:          v.ID,
+			Version:     v.Version,
+			Title:       v.Title,
+			Description: v.Description,
+			Category:    v.Category,
+			Tags:        v.Tags,
+			RepoURL:     v.RepoURL,
+			DemoURL:     v.DemoURL,
+			ImplStatus:  v.ImplStatus,
+			Changelog:   v.Changelog,
+			Stats:       stats,
+			CreatedAt:   v.CreatedAt,
+			IsCurrent:   v.ID == currentID,
 		}
 	}
 	return out, nil
+}
+
+// Stats exposes every counter the mobile detail screen renders in one stable
+// response, including anonymous view and outbound-reference events.
+func (s *IdeaService) Stats(ideaID string) (*IdeaStats, error) {
+	var idea model.Idea
+	if err := s.db.First(&idea, "id = ?", ideaID).Error; err != nil {
+		return nil, err
+	}
+	versions, err := s.ListVersions(ideaID)
+	if err != nil {
+		return nil, err
+	}
+	var reactions int64
+	s.db.Model(&model.Reaction{}).Where("idea_id = ?", ideaID).Count(&reactions)
+	var views int64
+	s.db.Model(&model.IdeaMetricEvent{}).Where("idea_id = ? AND kind = ?", ideaID, "view").Count(&views)
+	var references int64
+	s.db.Model(&model.IdeaMetricEvent{}).Where("idea_id = ? AND kind = ?", ideaID, "reference").Count(&references)
+	versionStats := make([]VersionStatsRow, len(versions))
+	for i, version := range versions {
+		versionStats[i] = VersionStatsRow{VersionID: version.ID, Version: version.Version, Stats: version.Stats}
+	}
+	return &IdeaStats{
+		LikeCount: idea.LikeCount, FlowerCount: idea.FlowerCount, ForkCount: idea.ForkCount,
+		CommentCount: idea.CommentCount, ViewCount: int(views), ReferenceCount: int(references), ReactionCount: int(reactions), VersionCount: len(versions),
+		ImageCount: len(markdownImageRE.FindAllStringSubmatch(idea.Description, -1)),
+		LinkCount:  nonEmptyURLCount(idea.RepoURL, idea.DemoURL), VersionStats: versionStats,
+	}, nil
+}
+
+func (s *IdeaService) RecordMetric(ideaID, kind string) error {
+	if kind != "view" && kind != "reference" {
+		return fmt.Errorf("unsupported idea metric %q", kind)
+	}
+	var count int64
+	if err := s.db.Model(&model.Idea{}).Where("id = ?", ideaID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return s.db.Create(&model.IdeaMetricEvent{IdeaID: ideaID, Kind: kind}).Error
+}
+
+func (s *IdeaService) IsBookmarked(ideaID, userID string) (bool, error) {
+	var count int64
+	err := s.db.Model(&model.IdeaBookmark{}).Where("idea_id = ? AND user_id = ?", ideaID, userID).Count(&count).Error
+	return count > 0, err
+}
+
+func (s *IdeaService) Bookmark(ideaID, userID string) error {
+	var ideaCount int64
+	if err := s.db.Model(&model.Idea{}).Where("id = ?", ideaID).Count(&ideaCount).Error; err != nil {
+		return err
+	}
+	if ideaCount == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	bookmark := model.IdeaBookmark{IdeaID: ideaID, UserID: userID}
+	return s.db.Where("idea_id = ? AND user_id = ?", ideaID, userID).FirstOrCreate(&bookmark).Error
+}
+
+func (s *IdeaService) Unbookmark(ideaID, userID string) error {
+	return s.db.Where("idea_id = ? AND user_id = ?", ideaID, userID).Delete(&model.IdeaBookmark{}).Error
+}
+
+func nonEmptyURLCount(urls ...string) int {
+	count := 0
+	for _, value := range urls {
+		if strings.TrimSpace(value) != "" {
+			count++
+		}
+	}
+	return count
 }
 
 // GetVersion 按版本 ID 获取完整快照。
@@ -475,6 +620,20 @@ func (s *IdeaService) GetVersion(ideaID, versionID string) (*model.IdeaVersion, 
 type UpdateDescriptionInput struct {
 	Description string `json:"description" binding:"required"`
 	Changelog   string `json:"changelog"`
+}
+
+// PublishIdeaVersionInput is the complete, immutable content snapshot of an Idea.
+// Lifecycle state and visual identity remain on Idea itself; editable content and
+// implementation references advance together as one revision.
+type PublishIdeaVersionInput struct {
+	Title       string   `json:"title" binding:"required"`
+	Description string   `json:"description" binding:"required"`
+	Category    string   `json:"category" binding:"required"`
+	Tags        []string `json:"tags"`
+	ImplStatus  string   `json:"impl_status"`
+	RepoURL     string   `json:"repo_url"`
+	DemoURL     string   `json:"demo_url"`
+	Changelog   string   `json:"changelog" binding:"required"`
 }
 
 var markdownImageRE = regexp.MustCompile(`!\[[^\]]*\]\(([^)]+)\)`)
@@ -529,6 +688,67 @@ func validateUploadedObjectWithRetry(assets *ObjectStore, key, scope, id string)
 		}
 	}
 	return last
+}
+
+// PublishVersion atomically updates the current Idea projection and appends the
+// exact same values as an immutable version snapshot.
+func (s *IdeaService) PublishVersion(ideaID string, input PublishIdeaVersionInput, assets *ObjectStore) (*model.Idea, error) {
+	title := strings.TrimSpace(input.Title)
+	description := strings.TrimSpace(input.Description)
+	category := strings.TrimSpace(input.Category)
+	changelog := strings.TrimSpace(input.Changelog)
+	implStatus := strings.TrimSpace(input.ImplStatus)
+	repoURL := strings.TrimSpace(input.RepoURL)
+	demoURL := strings.TrimSpace(input.DemoURL)
+
+	if title == "" || description == "" || category == "" || changelog == "" {
+		return nil, fmt.Errorf("title, description, category and changelog are required")
+	}
+	if !validImplStatuses[implStatus] {
+		return nil, fmt.Errorf("invalid impl_status, must be one of: concept, in_progress, implemented, paused")
+	}
+	if err := validateHTTPURL(repoURL); err != nil {
+		return nil, err
+	}
+	if err := validateHTTPURL(demoURL); err != nil {
+		return nil, err
+	}
+	if err := validateDescriptionImages(assets, ideaID, description); err != nil {
+		return nil, err
+	}
+
+	var idea model.Idea
+	if err := s.db.First(&idea, "id = ?", ideaID).Error; err != nil {
+		return nil, err
+	}
+	tagsJSON, _ := json.Marshal(input.Tags)
+	idea.Title = title
+	idea.Description = description
+	idea.Category = category
+	idea.Tags = string(tagsJSON)
+	idea.ImplStatus = model.ImplStatus(implStatus)
+	idea.RepoURL = repoURL
+	idea.DemoURL = demoURL
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&model.Idea{}).Where("id = ?", ideaID).Updates(map[string]any{
+			"title": title, "description": description, "category": category,
+			"tags": idea.Tags, "impl_status": idea.ImplStatus,
+			"repo_url": repoURL, "demo_url": demoURL,
+		}).Error; err != nil {
+			return err
+		}
+		return AppendIdeaVersion(tx, &idea, changelog)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if s.indexer != nil && idea.Status == model.IdeaStatusActive {
+		s.indexer.IndexIdea(&idea)
+	}
+	EnrichIdea(&idea)
+	return &idea, nil
 }
 
 // UpdateDescription 更新 Markdown 描述并追加新版本（仅创建者调用）。

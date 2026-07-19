@@ -42,7 +42,7 @@ final class PublishIdeaViewModel {
         }
     }
 
-    func submit() async throws -> Idea {
+    func submit(force: Bool = false) async throws -> Idea {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDesc = descriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { throw APIError.server("请填写标题") }
@@ -56,16 +56,13 @@ final class PublishIdeaViewModel {
             title: trimmedTitle,
             description: trimmedDesc,
             category: category,
-            agentID: selectedAgentID
+            agentID: selectedAgentID,
+            force: force
         )
     }
 }
 
-/// S12 Create Idea (Ardot `179:209`) — 登记想法页.
-///
-/// Layout per design: toolbar (back + title) → Wanye Draft Assist card →
-/// Title field card → Description field card → Meta chips row → Agent picker card → Publish button.
-/// All field cards use `bg-card` (#F8FAFC) r20 + border, labels 12pt Medium, values 16/14pt.
+/// Create an Idea through the short publish flow in the current Ardot board.
 struct PublishIdeaView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = PublishIdeaViewModel()
@@ -79,56 +76,45 @@ struct PublishIdeaView: View {
     private let labelGrey = Color(hex: 0x687083)
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Toolbar — back button + "登记想法" title
-                toolbar
+        Group {
+            if viewModel.similarIdeas.isEmpty {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        toolbar
 
-                // Wanye Draft Assist card
-                draftAssistCard
+                        cardField(label: "标题") {
+                            AtlasTextField(
+                                placeholder: "一句话说明这个想法",
+                                text: $viewModel.title,
+                                height: 24
+                            )
+                        }
 
-                // Title field card
-                cardField(label: "标题") {
-                    AtlasTextField(
-                        placeholder: "一句话标题",
-                        text: $viewModel.title,
-                        height: 24
-                    )
+                        cardField(label: "描述  Markdown · (viewModel.descriptionText.count)/5000") {
+                            AtlasTextEditor(
+                                text: $viewModel.descriptionText,
+                                minHeight: 118,
+                                fontSize: 14
+                            )
+                        }
+
+                        agentPickerCard
+
+                        if let error = viewModel.errorMessage {
+                            Text(error)
+                                .font(AtlasTypography.meta())
+                                .foregroundStyle(AtlasColors.coral)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        publishButton
+                    }
+                    .padding(.horizontal, AtlasMetrics.detailX)
+                    .padding(.bottom, 40)
                 }
-
-                // Description field card
-                cardField(label: "描述") {
-                    AtlasTextEditor(
-                        text: $viewModel.descriptionText,
-                        minHeight: 88,
-                        fontSize: 14
-                    )
-                }
-
-                // Meta chips — category + status
-                metaChipsRow
-
-                // Agent picker card
-                agentPickerCard
-
-                // Similar ideas (conditional)
-                if !viewModel.similarIdeas.isEmpty {
-                    similarIdeasSection
-                }
-
-                // Error message
-                if let error = viewModel.errorMessage {
-                    Text(error)
-                        .font(AtlasTypography.meta())
-                        .foregroundStyle(AtlasColors.coral)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                // Publish button — lemon-strong r26, 52h
-                publishButton
+            } else {
+                similarConflictScreen
             }
-            .padding(.horizontal, AtlasMetrics.detailX)
-            .padding(.bottom, 40)
         }
         .background(AtlasColors.canvas)
         .navigationBarHidden(true)
@@ -153,14 +139,8 @@ struct PublishIdeaView: View {
     // MARK: - Toolbar (Ardot 179:213)
 
     private var toolbar: some View {
-        HStack(spacing: 12) {
-            AtlasNavBackButton(action: { dismiss() })
-            Text("登记想法")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(AtlasColors.ink)
-            Spacer()
-        }
-        .frame(height: 44)
+        AtlasPushNavBar(title: "发布想法", onBack: { dismiss() })
+            .padding(.horizontal, -AtlasMetrics.detailX)
     }
 
     // MARK: - Wanye Draft Assist card (Ardot 179:234)
@@ -189,24 +169,22 @@ struct PublishIdeaView: View {
 
     // MARK: - Card field container (Ardot 179:237 / 179:240)
 
-    /// Card-style field: bg #F8FAFC, r20, border, label 12pt Medium + content.
+    /// Keep labels outside the input surface so the form scans like the Ardot layout.
     @ViewBuilder
     private func cardField<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(labelGrey)
+
             content()
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(fieldCardBg)
+                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(fieldCardBg)
-        .overlay(
-            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
     }
 
     // MARK: - Meta chips row (Ardot 179:243)
@@ -218,8 +196,8 @@ struct PublishIdeaView: View {
             Button { showCategoryPicker = true } label: {
                 HStack(spacing: 4) {
                     Text(currentCategoryLabel)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .medium))
+                    DeimosIconView(icon: .chevronRight, size: 10, color: Color(hex: 0x6C5600))
+                        .rotationEffect(.degrees(90))
                 }
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Color(hex: 0x6C5600))
@@ -358,6 +336,71 @@ struct PublishIdeaView: View {
         )
     }
 
+    private var similarConflictScreen: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                toolbar
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("发现高度相似想法 · 409")
+                        .font(AtlasTypography.cardTitle())
+                        .foregroundStyle(AtlasColors.ink)
+                    Text("相似度较高。建议先查看并 Fork，避免内容重复。")
+                        .font(AtlasTypography.meta())
+                        .foregroundStyle(AtlasColors.inkSoft)
+                }
+                .padding(AtlasMetrics.cardPadding)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AtlasColors.accentWarningSoft)
+                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+
+                if let match = viewModel.similarIdeas.first {
+                    Button { similarRoute = IdeaRoute(id: match.idea.id) } label: {
+                        VStack(alignment: .leading, spacing: 9) {
+                            HStack {
+                                Text("IDEA · \(match.idea.statusLabel.uppercased())")
+                                    .font(AtlasTypography.overline())
+                                    .foregroundStyle(AtlasColors.olive)
+                                Spacer()
+                                Text("\(Int(match.similarity * 100))% 相似")
+                                    .font(AtlasTypography.badge())
+                                    .foregroundStyle(AtlasColors.lemonInk)
+                                    .padding(.horizontal, 10)
+                                    .frame(height: 28)
+                                    .background(AtlasColors.lemon)
+                                    .clipShape(Capsule())
+                            }
+                            Text(match.idea.displayTitle)
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(AtlasColors.ink)
+                                .lineLimit(2)
+                            Text("\(match.idea.agent?.name ?? "Agent") · 可 Fork")
+                                .font(AtlasTypography.meta())
+                                .foregroundStyle(AtlasColors.inkSoft)
+                        }
+                        .padding(16)
+                        .frame(maxWidth: .infinity, minHeight: 150, alignment: .leading)
+                        .background(AtlasColors.lemonSoft)
+                        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous).stroke(AtlasColors.border, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+
+                    AtlasPrimaryButton(title: "查看相似想法") {
+                        similarRoute = IdeaRoute(id: match.idea.id)
+                    }
+                }
+
+                AtlasOutlineButton(title: viewModel.isSubmitting ? "正在发布..." : "仍要发布") {
+                    Task { await forcePublish() }
+                }
+                .disabled(viewModel.isSubmitting)
+            }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.bottom, 40)
+        }
+    }
+
     // MARK: - Publish button (Ardot 179:253)
 
     /// 350×52 r26, lemon-strong bg, lemonInk text 14pt SemiBold.
@@ -395,6 +438,17 @@ struct PublishIdeaView: View {
             } else {
                 viewModel.errorMessage = error.localizedDescription
             }
+        } catch {
+            viewModel.errorMessage = error.localizedDescription
+        }
+    }
+
+    private func forcePublish() async {
+        do {
+            let idea = try await viewModel.submit(force: true)
+            Haptics.success()
+            ToastCenter.shared.showSuccess("想法已发布")
+            publishedRoute = IdeaRoute(id: idea.id)
         } catch {
             viewModel.errorMessage = error.localizedDescription
         }

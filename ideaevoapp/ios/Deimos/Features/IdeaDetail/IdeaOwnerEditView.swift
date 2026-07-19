@@ -6,7 +6,10 @@ import Observation
 @Observable
 final class IdeaOwnerEditViewModel {
     var idea: Idea?
+    var titleText = ""
     var descriptionText = ""
+    var categoryText = ""
+    var tagsText = ""
     var changelog = ""
     var implStatus = "concept"
     var repoURL = ""
@@ -31,7 +34,10 @@ final class IdeaOwnerEditViewModel {
         do {
             let loaded = try await APIClient.shared.getIdea(id: id)
             idea = loaded
+            titleText = loaded.title
             descriptionText = loaded.description
+            categoryText = loaded.category
+            tagsText = loaded.tags.joined(separator: "，")
             implStatus = loaded.implStatus ?? "concept"
             repoURL = loaded.repoURL ?? ""
             demoURL = loaded.demoURL ?? ""
@@ -63,6 +69,35 @@ final class IdeaOwnerEditViewModel {
             iconURL: nil
         )
         idea = try await APIClient.shared.updateIdeaMeta(ideaID: ideaID, body: body)
+    }
+
+    func publishVersion(ideaID: String) async throws {
+        let title = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let description = descriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let category = categoryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let change = changelog.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { throw APIError.server("标题不能为空") }
+        guard !description.isEmpty else { throw APIError.server("描述不能为空") }
+        guard !category.isEmpty else { throw APIError.server("分类不能为空") }
+        guard !change.isEmpty else { throw APIError.server("请说明这一版本改变了什么") }
+
+        let tags = tagsText
+            .components(separatedBy: CharacterSet(charactersIn: ",，"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let body = PublishIdeaVersionBody(
+            title: title,
+            description: description,
+            category: category,
+            tags: tags,
+            implStatus: implStatus,
+            repoURL: repoURL.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+            demoURL: demoURL.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+            changelog: change
+        )
+        idea = try await APIClient.shared.publishIdeaVersion(ideaID: ideaID, body: body)
+        changelog = ""
+        versions = try await APIClient.shared.getIdeaVersions(ideaID: ideaID)
     }
 
     func uploadIcon(ideaID: String, data: Data) async throws {
@@ -174,6 +209,20 @@ struct IdeaOwnerEditView: View {
                 }
 
                 settingsGroupedCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("版本身份")
+                            .font(AtlasTypography.cardTitle())
+                            .foregroundStyle(AtlasColors.ink)
+                        metaField("标题", text: $viewModel.titleText)
+                        HStack(alignment: .top, spacing: 10) {
+                            metaField("分类", text: $viewModel.categoryText)
+                            metaField("标签（逗号分隔）", text: $viewModel.tagsText)
+                        }
+                    }
+                    .padding(AtlasMetrics.cardPadding)
+                }
+
+                settingsGroupedCard {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("描述")
                             .font(AtlasTypography.cardTitle())
@@ -184,7 +233,7 @@ struct IdeaOwnerEditView: View {
                             .padding(8)
                             .background(AtlasColors.fill)
                             .padding(.horizontal, AtlasMetrics.cardPadding)
-                        AtlasTextField(placeholder: "版本变更说明（可选）", text: $viewModel.changelog, height: AtlasMetrics.inputHeight)
+                        AtlasTextField(placeholder: "这一版本改变了什么（必填）", text: $viewModel.changelog, height: AtlasMetrics.inputHeight)
                             .padding(.horizontal, 4)
                             .background(AtlasColors.fill)
                             .padding(.horizontal, AtlasMetrics.cardPadding)
@@ -409,9 +458,8 @@ struct IdeaOwnerEditView: View {
         viewModel.message = nil
         defer { viewModel.isSaving = false }
         do {
-            try await viewModel.saveDescription(ideaID: ideaID)
-            try await viewModel.saveMeta(ideaID: ideaID)
-            ToastCenter.shared.showSuccess("想法已更新")
+            try await viewModel.publishVersion(ideaID: ideaID)
+            ToastCenter.shared.showSuccess("新版本已发布")
             dismiss()
         } catch {
             viewModel.message = error.localizedDescription

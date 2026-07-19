@@ -30,14 +30,14 @@ type RegisterAgentInput struct {
 	Name         string   `json:"name" binding:"required"`
 	Description  string   `json:"description"`
 	Capabilities []string `json:"capabilities"`
-	OwnerUserID  string   `json:"owner_user_id"`   // 创建者 User ID（空=系统创建）
-	SystemPrompt string   `json:"system_prompt"`   // 自定义人设/指令
-	LLMModel     string   `json:"llm_model"`       // 模型名（空=全局默认）
-	Temperature  float64  `json:"temperature"`     // 温度（0=用默认 0.7）
-	MaxTokens    int      `json:"max_tokens"`      // 最大 token（0=用默认 4096）
-	Visibility   string   `json:"visibility"`      // public | private
-	AllowFollow  *bool    `json:"allow_follow"`    // 是否允许他人关注（nil=默认 true）
-	AllowChat    *bool    `json:"allow_chat"`      // 是否允许他人发起对话
+	OwnerUserID  string   `json:"owner_user_id"` // 创建者 User ID（空=系统创建）
+	SystemPrompt string   `json:"system_prompt"` // 自定义人设/指令
+	LLMModel     string   `json:"llm_model"`     // 模型名（空=全局默认）
+	Temperature  float64  `json:"temperature"`   // 温度（0=用默认 0.7）
+	MaxTokens    int      `json:"max_tokens"`    // 最大 token（0=用默认 4096）
+	Visibility   string   `json:"visibility"`    // public | private
+	AllowFollow  *bool    `json:"allow_follow"`  // 是否允许他人关注（nil=默认 true）
+	AllowChat    *bool    `json:"allow_chat"`    // 是否允许他人发起对话
 }
 
 type RegisterAgentResult struct {
@@ -62,11 +62,13 @@ type UpdateAgentInput struct {
 }
 
 type AgentStats struct {
-	IdeaCount      int                  `json:"idea_count"`
-	TotalLikes     int64                `json:"total_likes"`
-	TotalFlowers   int64                `json:"total_flowers"`
-	TotalForks     int64                `json:"total_forks"`
-	RecentActivity []model.ActivityLog  `json:"recent_activity,omitempty"`
+	IdeaCount      int                 `json:"idea_count"`
+	TotalLikes     int64               `json:"total_likes"`
+	TotalFlowers   int64               `json:"total_flowers"`
+	TotalForks     int64               `json:"total_forks"`
+	FollowerCount  int                 `json:"follower_count"`
+	CallCount      int                 `json:"call_count"`
+	RecentActivity []model.ActivityLog `json:"recent_activity,omitempty"`
 }
 
 func (s *AgentService) Register(input RegisterAgentInput) (*RegisterAgentResult, error) {
@@ -220,8 +222,23 @@ func (s *AgentService) ResetAvatar(ownerUserID, agentID string) (*model.Agent, e
 	return s.GetByID(agentID)
 }
 
+// ResetBackground clears the custom agent background image (owner only).
+func (s *AgentService) ResetBackground(ownerUserID, agentID string) (*model.Agent, error) {
+	var agent model.Agent
+	if err := s.db.First(&agent, "id = ?", agentID).Error; err != nil {
+		return nil, fmt.Errorf("agent not found: %w", err)
+	}
+	if agent.OwnerUserID != ownerUserID {
+		return nil, fmt.Errorf("forbidden: not the agent owner")
+	}
+	if err := s.db.Model(&agent).Update("background_url", "").Error; err != nil {
+		return nil, err
+	}
+	return s.GetByID(agentID)
+}
+
 // DeleteAgent 删除 Agent。仅 owner 可删除。
-// 不会级联删除 ideas（ideas 保留，agent_id 变为悬空——由前端处理显示）。
+// 已发布过 Idea 的 Agent 是 provenance 的一部分，不能直接删除；应先设为私有。
 func (s *AgentService) DeleteAgent(ownerUserID, agentID string) error {
 	var agent model.Agent
 	if err := s.db.First(&agent, "id = ?", agentID).Error; err != nil {
@@ -230,6 +247,14 @@ func (s *AgentService) DeleteAgent(ownerUserID, agentID string) error {
 
 	if agent.OwnerUserID != ownerUserID {
 		return fmt.Errorf("forbidden: not the agent owner")
+	}
+
+	var ideaCount int64
+	if err := s.db.Model(&model.Idea{}).Where("agent_id = ?", agentID).Count(&ideaCount).Error; err != nil {
+		return err
+	}
+	if ideaCount > 0 {
+		return fmt.Errorf("agent has ideas; set it private instead")
 	}
 
 	return s.db.Delete(&agent).Error
@@ -294,7 +319,43 @@ func (s *AgentService) ListByOwner(ownerUserID string, limit, offset int) ([]mod
 	}
 	EnrichAgents(agents)
 	s.attachFollowerCounts(agents)
+	s.attachIdeaStats(agents)
 	return agents, total, nil
+}
+
+func (s *AgentService) attachIdeaStats(agents []model.Agent) {
+	if len(agents) == 0 {
+		return
+	}
+
+	ids := make([]string, 0, len(agents))
+	for _, agent := range agents {
+		ids = append(ids, agent.ID)
+	}
+
+	type aggregate struct {
+		AgentID   string
+		IdeaCount int
+		ForkCount int
+	}
+	var aggregates []aggregate
+	if err := s.db.Model(&model.Idea{}).
+		Select("agent_id, COUNT(*) AS idea_count, COALESCE(SUM(fork_count), 0) AS fork_count").
+		Where("agent_id IN ?", ids).
+		Group("agent_id").
+		Scan(&aggregates).Error; err != nil {
+		return
+	}
+
+	byID := make(map[string]aggregate, len(aggregates))
+	for _, item := range aggregates {
+		byID[item.AgentID] = item
+	}
+	for index := range agents {
+		item := byID[agents[index].ID]
+		agents[index].IdeaCount = item.IdeaCount
+		agents[index].ForkCount = item.ForkCount
+	}
 }
 
 // ListByOwnerForProfile 用户主页展示其 Agent；非本人仅返回 public。
@@ -492,6 +553,10 @@ func hashAPIKey(key string) string {
 
 func (s *AgentService) Stats(agentID string) (*AgentStats, error) {
 	var stats AgentStats
+	var agent model.Agent
+	if err := s.db.First(&agent, "id = ?", agentID).Error; err != nil {
+		return nil, err
+	}
 
 	var ideaCount int64
 	s.db.Model(&model.Idea{}).Where("agent_id = ?", agentID).Count(&ideaCount)
@@ -500,6 +565,9 @@ func (s *AgentService) Stats(agentID string) (*AgentStats, error) {
 	s.db.Table("ideas").Where("agent_id = ?", agentID).Select("COALESCE(SUM(like_count), 0)").Scan(&stats.TotalLikes)
 	s.db.Table("ideas").Where("agent_id = ?", agentID).Select("COALESCE(SUM(flower_count), 0)").Scan(&stats.TotalFlowers)
 	s.db.Table("ideas").Where("agent_id = ?", agentID).Select("COALESCE(SUM(fork_count), 0)").Scan(&stats.TotalForks)
+	var followers int64
+	s.db.Table("agent_follows").Where("agent_id = ?", agentID).Count(&followers)
+	stats.FollowerCount = int(followers)
 
 	var recent []model.ActivityLog
 	s.db.Where("actor_id = ? AND actor_type = 'agent'", agentID).

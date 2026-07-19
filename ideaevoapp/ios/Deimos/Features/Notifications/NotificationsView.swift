@@ -2,7 +2,7 @@ import SwiftUI
 import Observation
 
 enum NotificationCategory: String, CaseIterable, Identifiable {
-    case all, flower, comment, follow, fork
+    case all, flower, fork
 
     var id: String { rawValue }
 
@@ -10,8 +10,6 @@ enum NotificationCategory: String, CaseIterable, Identifiable {
         switch self {
         case .all: return "全部"
         case .flower: return "送花"
-        case .comment: return "评论"
-        case .follow: return "关注"
         case .fork: return "Fork"
         }
     }
@@ -20,8 +18,6 @@ enum NotificationCategory: String, CaseIterable, Identifiable {
         switch self {
         case .all: return true
         case .flower: return item.action == "flower" || item.action == "flowers"
-        case .comment: return item.action == "comment"
-        case .follow: return item.action == "follow"
         case .fork: return item.action == "fork"
         }
     }
@@ -95,17 +91,13 @@ struct NotificationsView: View {
         }
     }
 
+    private var unreadCount: Int {
+        filteredItems.filter { !$0.isRead }.count
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            AtlasPushNavBar(title: "通知", onBack: { dismiss() }) {
-                AtlasToolbarFloatTextButton(
-                    title: "全部已读",
-                    fontSize: 13,
-                    color: AtlasColors.inkFaint
-                ) {
-                    Task { await viewModel.markAllRead() }
-                }
-            }
+            AtlasPushNavBar(title: "通知", onBack: { dismiss() })
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -141,21 +133,37 @@ struct NotificationsView: View {
                 }
                 .frame(maxHeight: .infinity)
             } else if viewModel.items.isEmpty {
-                AtlasDesignedEmptyStates.notificationsEmpty()
+                AtlasDesignedEmptyStates.notificationsEmpty { dismiss() }
                     .frame(maxHeight: .infinity)
             } else if filteredItems.isEmpty {
                 AtlasDesignedEmptyStates.notificationsCategoryEmpty()
                     .frame(maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
-                            VStack(spacing: 0) {
-                                notificationCell(item)
-                                if index < filteredItems.count - 1 {
-                                    FeedRowDivider()
+                    LazyVStack(spacing: 12) {
+                        if unreadCount > 0 {
+                            Button {
+                                Task { await viewModel.markAllRead() }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Text("\(unreadCount) 条未读 · 评论、关注和 Agent 更新")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(AtlasColors.lemonInk)
+                                        .lineLimit(1)
+                                    Spacer(minLength: 4)
+                                    Text("全部已读")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundStyle(AtlasColors.ink)
                                 }
+                                .padding(.horizontal, 14)
+                                .frame(height: 48)
+                                .background(AtlasColors.lemonSoft)
+                                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
                             }
+                            .buttonStyle(.plain)
+                        }
+                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
+                            notificationCell(item)
                             .onAppear {
                                 if index == filteredItems.count - 1 {
                                     Task { await viewModel.loadMore() }
@@ -166,7 +174,8 @@ struct NotificationsView: View {
                             ProgressView().padding(.vertical, 12)
                         }
                     }
-                    .padding(.vertical, 4)
+                    .padding(.top, 4)
+                    .padding(.bottom, 16)
                     .padding(.horizontal, AtlasMetrics.detailX)
                 }
             }
@@ -224,7 +233,7 @@ struct NotificationsView: View {
                 subtitle: item.listSubtitle,
                 timestamp: item.createdAt.relativeShort,
                 cardBackground: item.isRead ? AtlasColors.surface : AtlasColors.notificationUnread,
-                layoutStyle: .flat
+                layoutStyle: .card
             )
         }
         .buttonStyle(.plain)

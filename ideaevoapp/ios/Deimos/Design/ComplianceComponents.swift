@@ -61,50 +61,123 @@ struct ReportContentSheet: View {
     @State private var detail = ""
 
     private let reasons: [(id: String, title: String)] = [
-        ("spam", "垃圾信息"),
-        ("harassment", "骚扰"),
-        ("illegal", "违法"),
-        ("other", "其他"),
-        ("infringement", "侵权"),
-        ("adult", "色情"),
+        ("harassment", "冒犯、骚扰或仇恨内容"),
+        ("spam", "垃圾内容或误导信息"),
+        ("infringement", "侵犯版权或冒用身份"),
     ]
 
     var body: some View {
-        VStack(spacing: 16) {
-            AtlasSheetGrabber()
+        VStack(spacing: 0) {
+            AtlasPushNavBar(title: "举报内容", onBack: onCancel)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(targetLabel)
+                            .font(AtlasTypography.cardTitle())
+                            .foregroundStyle(AtlasColors.ink)
+                        Text("这项内容涉嫌误导或冒用他人内容。")
+                            .font(AtlasTypography.meta())
+                            .foregroundStyle(AtlasColors.inkFaint)
+                    }
+                    .padding(AtlasMetrics.cardPadding)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AtlasColors.fill)
+                    .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
 
-            AtlasSheetTitleRow(title: "举报内容", onClose: onCancel)
-
-            Text("举报「\(targetLabel)」")
-                .font(AtlasTypography.mobileBody())
-                .foregroundStyle(AtlasColors.inkSoft)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(reasons, id: \.id) { reason in
-                        AtlasFilterChip(
-                            title: reason.title,
-                            isSelected: selectedReason == reason.id
-                        ) {
-                            selectedReason = reason.id
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("选择原因")
+                            .font(AtlasTypography.cardTitle())
+                            .foregroundStyle(AtlasColors.ink)
+                        ForEach(reasons, id: \.id) { reason in
+                            Button { selectedReason = reason.id } label: {
+                                HStack {
+                                    Text(reason.title)
+                                        .font(AtlasTypography.mobileBody())
+                                        .foregroundStyle(AtlasColors.ink)
+                                    Spacer()
+                                    if selectedReason == reason.id {
+                                        DeimosIconView(icon: .check, size: 15, color: AtlasColors.ink)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 4)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
+                    .padding(AtlasMetrics.cardPadding)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AtlasColors.lemonSoft)
+                    .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+
+                    AtlasPrimaryButton(title: "提交举报") {
+                        onSubmit(selectedReason, detail)
+                    }
                 }
-                .padding(.trailing, AtlasMetrics.pageX)
-            }
-
-            AtlasTextField(placeholder: "补充说明（可选）", text: $detail, height: 44)
-                .padding(.horizontal, 4)
-                .background(AtlasColors.fill)
-                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput))
-
-            AtlasPrimaryButton(title: "提交举报") {
-                onSubmit(selectedReason, detail)
+                .padding(.horizontal, AtlasMetrics.detailX)
+                .padding(.vertical, 16)
             }
         }
-        .padding(20)
-        .background(AtlasColors.surface)
+        .background(AtlasColors.canvas)
+        .navigationBarHidden(true)
+    }
+}
+
+struct BlockUserSheet: View {
+    let userID: String
+    let name: String
+    var avatarURL: URL? = nil
+    var onConfirm: () -> Void
+    var onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            AtlasPushNavBar(title: "拉黑用户", onBack: onCancel)
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 12) {
+                    EntityAvatar.user(id: userID, url: avatarURL, name: name, size: 48)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(name).font(AtlasTypography.cardTitle()).foregroundStyle(AtlasColors.ink)
+                        Text("屏蔽后不会再看到对方评论、私信或关注动态。")
+                            .font(AtlasTypography.meta())
+                            .foregroundStyle(AtlasColors.inkFaint)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(AtlasMetrics.cardPadding)
+                .background(AtlasColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous).stroke(AtlasColors.rule, lineWidth: 1))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("隐藏此用户的内容")
+                    Text("同时提交至审核队列")
+                }
+                .font(AtlasTypography.mobileSubheadline())
+                .foregroundStyle(AtlasColors.ink)
+                .padding(AtlasMetrics.cardPadding)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AtlasColors.accentWarningSoft)
+                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+
+                Button(action: onConfirm) {
+                    Text("确认拉黑")
+                        .font(AtlasTypography.button())
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(AtlasColors.destructive)
+                        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 16)
+            Spacer()
+        }
+        .background(AtlasColors.canvas)
+        .navigationBarHidden(true)
     }
 }
 
@@ -118,8 +191,6 @@ struct LegalDocumentView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                settingsBackHeader(title: title, dismiss: dismiss)
-
                 ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(section.heading)
@@ -139,6 +210,9 @@ struct LegalDocumentView: View {
             }
             .padding(.horizontal, AtlasMetrics.pageX)
             .padding(.bottom, 40)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            settingsBackHeader(title: title, dismiss: dismiss)
         }
         .background(AtlasColors.canvas)
         .navigationBarHidden(true)
@@ -179,8 +253,6 @@ struct BlocklistView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                settingsBackHeader(title: "黑名单", dismiss: dismiss)
-
                 Text("拉黑的用户不会出现在你的动态、广场、搜索与通知中。可在用户主页 ⋯ 菜单中拉黑。")
                     .font(AtlasTypography.meta())
                     .foregroundStyle(AtlasColors.inkSoft)
@@ -224,6 +296,9 @@ struct BlocklistView: View {
             }
             .padding(.horizontal, AtlasMetrics.pageX)
             .padding(.bottom, 40)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            settingsBackHeader(title: "黑名单", dismiss: dismiss)
         }
         .background(AtlasColors.canvas)
         .navigationBarHidden(true)

@@ -31,6 +31,8 @@ func Connect(cfg *config.Config) *gorm.DB {
 		&model.User{},
 		&model.Idea{},
 		&model.IdeaVersion{},
+		&model.IdeaMetricEvent{},
+		&model.IdeaBookmark{},
 		&model.Fork{},
 		&model.Like{},
 		&model.Flower{},
@@ -68,12 +70,39 @@ func Connect(cfg *config.Config) *gorm.DB {
 	var readColExists int64
 	db.Raw(`SELECT COUNT(1) FROM information_schema.columns
 		WHERE table_schema = DATABASE() AND table_name = 'notifications' AND column_name = 'read'`).Scan(&readColExists)
-	if readColExists > 0 {
+	var isReadColExists int64
+	db.Raw(`SELECT COUNT(1) FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = 'notifications' AND column_name = 'is_read'`).Scan(&isReadColExists)
+	if readColExists > 0 && isReadColExists == 0 {
 		db.Exec("ALTER TABLE notifications CHANGE COLUMN `read` is_read TINYINT(1) NOT NULL DEFAULT 0")
 	}
 
 	// Unset phone must be NULL so unique index allows multiple users without a phone.
 	db.Exec("UPDATE users SET phone = NULL WHERE phone = ''")
+
+	// Fork uniqueness is version-scoped: an Agent may branch from different
+	// versions of the same Idea, while duplicate branches from one version remain blocked.
+	var legacyForkIndex int64
+	db.Raw(`SELECT COUNT(1) FROM information_schema.statistics
+		WHERE table_schema = DATABASE() AND table_name = 'forks'
+		AND index_name = 'idx_fork_source_agent'`).Scan(&legacyForkIndex)
+	if legacyForkIndex > 0 {
+		db.Exec("ALTER TABLE forks DROP INDEX idx_fork_source_agent")
+	}
+
+	// Legacy versions only stored title/description. The current Idea projection
+	// can safely hydrate the latest snapshot; older snapshots remain untouched
+	// because their historical metadata cannot be reconstructed reliably.
+	db.Exec(`UPDATE idea_versions iv
+		JOIN (SELECT idea_id, MAX(version) AS max_version FROM idea_versions GROUP BY idea_id) latest
+			ON latest.idea_id = iv.idea_id AND latest.max_version = iv.version
+		JOIN ideas i ON i.id = iv.idea_id
+		SET iv.category = i.category,
+			iv.tags = i.tags,
+			iv.repo_url = i.repo_url,
+			iv.demo_url = i.demo_url,
+			iv.impl_status = i.impl_status
+		WHERE iv.category IS NULL OR iv.category = ''`)
 
 	return db
 }

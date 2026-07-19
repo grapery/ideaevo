@@ -216,6 +216,7 @@ func (h *IdeaHandler) Create(c *gin.Context) {
 		RepoURL     string   `json:"repo_url"`
 		DemoURL     string   `json:"demo_url"`
 		AgentID     string   `json:"agent_id"`
+		Force       bool     `json:"force"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
@@ -237,7 +238,7 @@ func (h *IdeaHandler) Create(c *gin.Context) {
 	}
 
 	ownerUserID := extractUserID(c)
-	if ownerUserID != "" {
+	if ownerUserID != "" && !input.Force {
 		similar, simErr := h.ideaSvc.FindSimilarForRegister(ownerUserID, input.Title, input.Description)
 		if simErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(simErr)})
@@ -402,6 +403,98 @@ func (h *IdeaHandler) GetVersions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"versions": versions})
 }
 
+// GetStats returns the counters used by the Idea detail overview and version timeline.
+func (h *IdeaHandler) GetStats(c *gin.Context) {
+	stats, err := h.ideaSvc.Stats(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+	c.JSON(http.StatusOK, stats)
+}
+
+// GetLineage returns version-aware provenance for one Idea in a single contract.
+func (h *IdeaHandler) GetLineage(c *gin.Context) {
+	lineage, err := h.socialSvc.GetIdeaLineage(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+	ideas := []model.Idea{lineage.Idea}
+	if lineage.SourceIdea != nil {
+		ideas = append(ideas, *lineage.SourceIdea)
+	}
+	ideas = append(ideas, lineage.Children...)
+	h.agentSvc.AttachOwnersToIdeas(ideas)
+
+	lineage.Idea = ideas[0]
+	idx := 1
+	if lineage.SourceIdea != nil {
+		lineage.SourceIdea = &ideas[idx]
+		idx++
+	}
+	if len(lineage.Children) > 0 {
+		lineage.Children = ideas[idx:]
+	}
+	c.JSON(http.StatusOK, lineage)
+}
+
+func (h *IdeaHandler) GetBookmarkStatus(c *gin.Context) {
+	userID := extractUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "收藏仅支持用户账户"})
+		return
+	}
+	bookmarked, err := h.ideaSvc.IsBookmarked(c.Param("id"), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"bookmarked": bookmarked})
+}
+
+func (h *IdeaHandler) Bookmark(c *gin.Context) {
+	userID := extractUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "收藏仅支持用户账户"})
+		return
+	}
+	if err := h.ideaSvc.Bookmark(c.Param("id"), userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "bookmarked"})
+}
+
+func (h *IdeaHandler) Unbookmark(c *gin.Context) {
+	userID := extractUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "收藏仅支持用户账户"})
+		return
+	}
+	if err := h.ideaSvc.Unbookmark(c.Param("id"), userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "unbookmarked"})
+}
+
+func (h *IdeaHandler) RecordView(c *gin.Context) {
+	h.recordMetric(c, "view")
+}
+
+func (h *IdeaHandler) RecordReference(c *gin.Context) {
+	h.recordMetric(c, "reference")
+}
+
+func (h *IdeaHandler) recordMetric(c *gin.Context, kind string) {
+	if err := h.ideaSvc.RecordMetric(c.Param("id"), kind); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "ok"})
+}
+
 func (h *IdeaHandler) GetVersion(c *gin.Context) {
 	v, err := h.ideaSvc.GetVersion(c.Param("id"), c.Param("versionId"))
 	if err != nil {
@@ -409,6 +502,32 @@ func (h *IdeaHandler) GetVersion(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, v)
+}
+
+// PublishVersion advances an Idea through one complete, atomic content revision.
+func (h *IdeaHandler) PublishVersion(c *gin.Context) {
+	idea, err := h.ideaSvc.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+	if !h.canManageIdea(c, idea) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法所属 Agent 的所有者才能发布新版本"})
+		return
+	}
+
+	var input service.PublishIdeaVersionInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+
+	idea, err = h.ideaSvc.PublishVersion(idea.ID, input, h.assets)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	c.JSON(http.StatusCreated, idea)
 }
 
 func (h *IdeaHandler) UpdateDescription(c *gin.Context) {
@@ -534,10 +653,11 @@ func (h *IdeaHandler) Fork(c *gin.Context) {
 	}
 
 	var input struct {
-		Title       string `json:"title" binding:"required"`
-		Description string `json:"description" binding:"required"`
-		Reason      string `json:"reason" binding:"required"`
-		Category    string `json:"category"`
+		Title           string `json:"title" binding:"required"`
+		Description     string `json:"description" binding:"required"`
+		Reason          string `json:"reason" binding:"required"`
+		Category        string `json:"category"`
+		SourceVersionID string `json:"source_version_id"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
@@ -551,12 +671,13 @@ func (h *IdeaHandler) Fork(c *gin.Context) {
 	}
 
 	newIdea, err := h.socialSvc.ForkIdea(service.ForkIdeaInput{
-		IdeaID:      ideaID,
-		AgentID:     agentIDStr,
-		Title:       input.Title,
-		Description: input.Description,
-		Reason:      input.Reason,
-		Category:    input.Category,
+		IdeaID:          ideaID,
+		SourceVersionID: input.SourceVersionID,
+		AgentID:         agentIDStr,
+		Title:           input.Title,
+		Description:     input.Description,
+		Reason:          input.Reason,
+		Category:        input.Category,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})

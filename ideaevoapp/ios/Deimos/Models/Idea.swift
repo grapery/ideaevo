@@ -13,11 +13,15 @@ struct Idea: Codable, Identifiable, Sendable {
     let repoURL: String?
     let demoURL: String?
     let iconURL: String?
+    let imageURLs: [String]
+    let links: [IdeaLink]
     let forkedFromID: String?
     let likeCount: Int
     let flowerCount: Int
     let forkCount: Int
     let commentCount: Int
+    let viewCount: Int
+    let referenceCount: Int
     let createdAt: Date
     let updatedAt: Date
 
@@ -28,11 +32,15 @@ struct Idea: Codable, Identifiable, Sendable {
         case repoURL = "repo_url"
         case demoURL = "demo_url"
         case iconURL = "icon_url"
+        case imageURLs = "image_urls"
+        case links
         case forkedFromID = "forked_from_id"
         case likeCount = "like_count"
         case flowerCount = "flower_count"
         case forkCount = "fork_count"
         case commentCount = "comment_count"
+        case viewCount = "view_count"
+        case referenceCount = "reference_count"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -50,11 +58,15 @@ struct Idea: Codable, Identifiable, Sendable {
         repoURL = try container.decodeIfPresent(String.self, forKey: .repoURL)
         demoURL = try container.decodeIfPresent(String.self, forKey: .demoURL)
         iconURL = try container.decodeIfPresent(String.self, forKey: .iconURL)
+        imageURLs = Self.decodeStringArray(from: container, forKey: .imageURLs) ?? []
+        links = Self.decodeLinks(from: container)
         forkedFromID = try container.decodeIfPresent(String.self, forKey: .forkedFromID)
         likeCount = try container.decodeIfPresent(Int.self, forKey: .likeCount) ?? 0
         flowerCount = try container.decodeIfPresent(Int.self, forKey: .flowerCount) ?? 0
         forkCount = try container.decodeIfPresent(Int.self, forKey: .forkCount) ?? 0
         commentCount = try container.decodeIfPresent(Int.self, forKey: .commentCount) ?? 0
+        viewCount = try container.decodeIfPresent(Int.self, forKey: .viewCount) ?? 0
+        referenceCount = try container.decodeIfPresent(Int.self, forKey: .referenceCount) ?? 0
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
         tags = Self.decodeTags(from: container)
@@ -70,6 +82,8 @@ struct Idea: Codable, Identifiable, Sendable {
         }
     }
 
+    var isBuried: Bool { status == "buried" }
+
     private static func decodeTags(from container: KeyedDecodingContainer<CodingKeys>) -> [String] {
         if let array = try? container.decode([String].self, forKey: .tags) {
             return array
@@ -82,8 +96,47 @@ struct Idea: Codable, Identifiable, Sendable {
         return []
     }
 
+    private static func decodeStringArray(from container: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) -> [String]? {
+        if let array = try? container.decodeIfPresent([String].self, forKey: key) {
+            return array
+        }
+        if let raw = try? container.decodeIfPresent(String.self, forKey: key),
+           let data = raw.data(using: .utf8),
+           let array = try? JSONDecoder.api.decode([String].self, from: data) {
+            return array
+        }
+        return nil
+    }
+
+    private static func decodeLinks(from container: KeyedDecodingContainer<CodingKeys>) -> [IdeaLink] {
+        if let array = try? container.decodeIfPresent([IdeaLink].self, forKey: .links) {
+            return array ?? []
+        }
+        if let raw = try? container.decodeIfPresent(String.self, forKey: .links),
+           let data = raw.data(using: .utf8),
+           let array = try? JSONDecoder.api.decode([IdeaLink].self, from: data) {
+            return array
+        }
+        return []
+    }
+
     var iconLink: URL? {
         AvatarDefaults.url(kind: .idea, id: id, raw: iconURL)
+    }
+
+    var primaryImageURL: URL? {
+        imageURLs.compactMap(URL.init(string:)).first
+    }
+
+    var externalLinks: [IdeaLink] {
+        var values = links
+        if let repoURL, !repoURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            values.insert(IdeaLink(kind: "repo", title: "Repo", url: repoURL), at: 0)
+        }
+        if let demoURL, !demoURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            values.append(IdeaLink(kind: "demo", title: "Demo", url: demoURL))
+        }
+        return values
     }
 
     /// Feed 摘要：空或与标题相同时不重复展示。
@@ -141,19 +194,6 @@ struct Idea: Codable, Identifiable, Sendable {
         return "\(owner) · \(createdAt.relativeShort)"
     }
 
-    /// v7 cover card meta — single-line "作者 · 时间 · 送花 N · 喜欢 N · 评论 N · Fork N" (Ardot S02 179:45).
-    var coverMetaLine: String {
-        let owner = agent?.owner?.name ?? "用户"
-        return "\(owner) · \(createdAt.relativeShort) · 送花 \(flowerCount) · 喜欢 \(likeCount) · 评论 \(commentCount) · Fork \(forkCount)"
-    }
-
-    /// v7 detail author line — "@slug · Agent 名 · 状态" (Ardot S04 179:81).
-    var authorLine: String {
-        let slug = displaySlug
-        let agentName = agent?.name ?? "Agent"
-        return "@\(slug) · \(agentName) · \(statusLabel)"
-    }
-
     var createdUpdatedLine: String {
         "创建于 \(createdAt.absoluteShort) · 更新 \(updatedAt.feedTimestamp)"
     }
@@ -164,6 +204,27 @@ struct Idea: Codable, Identifiable, Sendable {
         if trimmed.isEmpty { return creatorLine }
         if trimmed.count <= 48 { return trimmed }
         return String(trimmed.prefix(48)) + "…"
+    }
+}
+
+struct IdeaLink: Codable, Hashable, Sendable {
+    let kind: String
+    let title: String
+    let url: String
+
+    var label: String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+        switch kind {
+        case "repo": return "Repo"
+        case "demo": return "Demo"
+        case "docs": return "Docs"
+        default: return kind.isEmpty ? "Link" : kind
+        }
+    }
+
+    var linkURL: URL? {
+        URL(string: url.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 }
 
@@ -213,33 +274,6 @@ struct ActivityView: Decodable, Identifiable, Sendable {
         targetType == "idea" ? targetID : nil
     }
 
-    /// S08 activity card headline — "actor + action + target" (Ardot 179:193).
-    var feedHeadline: String {
-        let actor = actorName ?? "用户"
-        switch action {
-        case "flower", "flowers": return "\(actor) 给 \(targetTitle ?? "想法") 送花"
-        case "comment": return "\(actor) 评论了 \(targetTitle ?? "想法")"
-        case "fork": return "\(actor) Fork 了一个新方向"
-        case "follow": return "\(actor) 关注了你"
-        case "register", "create": return "\(actor) 发布了新想法"
-        case "share": return "\(actor) 分享了想法"
-        default: return "\(actor) · \(targetTitle ?? "想法")"
-        }
-    }
-
-    /// S08 activity card meta label — action type for meta line.
-    var actionLabel: String {
-        switch action {
-        case "flower", "flowers": return "送花"
-        case "comment": return "评论"
-        case "fork": return "Fork"
-        case "follow": return "关注"
-        case "register", "create": return "新想法"
-        case "share": return "分享"
-        default: return action
-        }
-    }
-
     var feedSummary: String {
         let actor = actorName ?? "用户"
         let title = targetTitle ?? "想法"
@@ -271,11 +305,13 @@ struct FollowingFeedResponse: Decodable, Sendable {
 
 struct ActivityStats: Decodable, Sendable {
     let todayNewIdeas: Int
+    let todayForks: Int
     let activeAgents: Int
     let totalActions: Int
 
     enum CodingKeys: String, CodingKey {
         case todayNewIdeas = "today_new_ideas"
+        case todayForks = "today_forks"
         case activeAgents = "active_agents"
         case totalActions = "total_actions"
     }

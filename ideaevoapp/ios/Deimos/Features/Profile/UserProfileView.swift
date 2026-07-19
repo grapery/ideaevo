@@ -2,12 +2,13 @@ import SwiftUI
 import Observation
 
 enum UserProfileTab: CaseIterable, Identifiable {
-    case ideas, agents
+    case ideas, agents, activity
 
     var id: String {
         switch self {
         case .ideas: return "ideas"
         case .agents: return "agents"
+        case .activity: return "activity"
         }
     }
 
@@ -15,6 +16,7 @@ enum UserProfileTab: CaseIterable, Identifiable {
         switch self {
         case .ideas: return "想法"
         case .agents: return "Agent"
+        case .activity: return "动态"
         }
     }
 }
@@ -25,11 +27,14 @@ final class UserProfileViewModel {
     var envelope: UserProfileEnvelope?
     var ideas: [Idea] = []
     var agents: [Agent] = []
+    var activities: [ActivityView] = []
     var isLoading = true
     var isLoadingAgents = false
+    var isLoadingActivity = false
     var errorMessage: String?
-    var selectedTab: UserProfileTab = .ideas
+    var selectedTab: UserProfileTab = .activity
     private var agentsLoaded = false
+    private var activityLoaded = false
 
     func load(userID: String) async {
         isLoading = true
@@ -40,10 +45,13 @@ final class UserProfileViewModel {
             async let ideasTask = APIClient.shared.getUserIdeas(userID: userID)
             envelope = try await profileTask
             ideas = try await ideasTask
+            activities = (try? await APIClient.shared.getUserActivity(userID: userID).activities) ?? []
+            activityLoaded = true
         } catch {
             errorMessage = error.localizedDescription
             envelope = nil
             ideas = []
+            activities = []
         }
     }
 
@@ -56,6 +64,18 @@ final class UserProfileViewModel {
             agentsLoaded = true
         } catch {
             agents = []
+        }
+    }
+
+    func loadActivityIfNeeded(userID: String) async {
+        guard !activityLoaded else { return }
+        isLoadingActivity = true
+        defer { isLoadingActivity = false }
+        do {
+            activities = try await APIClient.shared.getUserActivity(userID: userID).activities
+            activityLoaded = true
+        } catch {
+            activities = []
         }
     }
 
@@ -79,7 +99,6 @@ struct UserProfileView: View {
     @State private var showAuthSheet = false
     @State private var ideaRoute: IdeaRoute?
     @State private var agentRoute: AgentRoute?
-    @State private var followListRoute: FollowListRoute?
     @State private var showUserActionMenu = false
     @State private var showReportSheet = false
     @State private var showBlockDialog = false
@@ -95,16 +114,37 @@ struct UserProfileView: View {
     }
 
     var body: some View {
-        Group {
-            if viewModel.isLoading {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = viewModel.errorMessage {
-                AtlasDesignedEmptyStates.loadFailed(message: error) {
-                    Task { await viewModel.load(userID: userID) }
+        ZStack(alignment: .top) {
+            Group {
+                if viewModel.isLoading {
+                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = viewModel.errorMessage {
+                    if isUnavailableProfile(error) {
+                        AtlasDesignedEmptyState(
+                            icon: .profile,
+                            title: "无法查看此主页",
+                            subtitle: "该用户设置了隐私限制，或你已被拉黑",
+                            ctaTitle: "返回",
+                            ctaAction: { dismiss() }
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        AtlasDesignedEmptyStates.loadFailed(message: error) {
+                            Task { await viewModel.load(userID: userID) }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                } else if let envelope = viewModel.envelope {
+                    profileContent(envelope)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let envelope = viewModel.envelope {
-                profileContent(envelope)
+            }
+
+            AtlasOverlayPushNavBar(onBack: { dismiss() }) {
+                if !isSelf, viewModel.envelope != nil {
+                    AtlasToolbarFloatIconButton(icon: .more) {
+                        showUserActionMenu = true
+                    }
+                }
             }
         }
         .background(AtlasColors.canvas)
@@ -129,7 +169,7 @@ struct UserProfileView: View {
                 .presentationDetents([.height(220)])
             }
         }
-        .sheet(isPresented: $showReportSheet) {
+        .fullScreenCover(isPresented: $showReportSheet) {
             if let user = viewModel.envelope?.profile.user {
                 ReportContentSheet(
                     targetLabel: user.name,
@@ -146,16 +186,14 @@ struct UserProfileView: View {
                     },
                     onCancel: { showReportSheet = false }
                 )
-                .presentationDetents([.height(360)])
             }
         }
-        .overlay {
+        .fullScreenCover(isPresented: $showBlockDialog) {
             if showBlockDialog, let user = viewModel.envelope?.profile.user {
-                AtlasCenterDialog(
-                    title: "拉黑用户？",
-                    message: "拉黑后将不再看到 \(user.name) 的内容。",
-                    destructiveTitle: "拉黑",
-                    cancelTitle: "取消",
+                BlockUserSheet(
+                    userID: user.id,
+                    name: user.name,
+                    avatarURL: user.avatarLink,
                     onConfirm: {
                         Task {
                             await ModerationActions.blockUser(id: user.id, name: user.name)
@@ -172,9 +210,6 @@ struct UserProfileView: View {
         .navigationDestination(item: $agentRoute) { route in
             AgentProfileView(agentID: route.id)
         }
-        .navigationDestination(item: $followListRoute) { route in
-            FollowersFollowingView(userID: route.userID, initialKind: route.kind)
-        }
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(items: [sharePayload]) {
                 showShareSheet = false
@@ -187,294 +222,77 @@ struct UserProfileView: View {
             if tab == .agents {
                 Task { await viewModel.loadAgentsIfNeeded(userID: userID) }
             }
+            if tab == .activity {
+                Task { await viewModel.loadActivityIfNeeded(userID: userID) }
+            }
         }
+    }
+
+    private func isUnavailableProfile(_ message: String) -> Bool {
+        let normalized = message.lowercased()
+        return normalized.contains("403") || normalized.contains("404") || normalized.contains("forbidden") || normalized.contains("not found") || message.contains("权限") || message.contains("不存在") || message.contains("拉黑")
     }
 
     @ViewBuilder
     private func profileContent(_ envelope: UserProfileEnvelope) -> some View {
-        // S09 Content Wrapper (189:4): VERTICAL itemSpacing=16, padding=[20,20,0,20]
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Back button
-                AtlasNavBackButton(action: { dismiss() })
+            VStack(alignment: .leading, spacing: 0) {
+                publicHero
 
-                // Screen Title — 36pt ExtraBold tracked
-                Text("\(envelope.profile.user.name) 的主页")
-                    .font(.system(size: 36, weight: .heavy))
-                    .atlasTrackedTitle(36)
-                    .foregroundStyle(AtlasColors.ink)
+                VStack(alignment: .leading, spacing: 20) {
+                    PublicUserIdentityContent(user: envelope.profile.user)
 
-                // User Identity Card — lemon cover banner + avatar + info
-                userIdentityCard(envelope)
+                    PublicUserStatsBand(
+                        stats: envelope.profile,
+                        user: envelope.profile.user
+                    )
 
-                // Profile Actions — follow button
-                if !isSelf {
-                    profileActionsButton(envelope)
-                }
-
-                // Profile Segment — 动态 / Agent / 想法
-                profileSegment
-
-                // Recent Activity card (under segment, before tab content)
-                recentActivityCard(envelope)
-
-                // Stats Grid — 3 tiles
-                statsGrid(envelope)
-
-                // Agent List — horizontal scroll
-                agentListSection(envelope)
-
-                // Tab content (ideas/agents lists)
-                tabContent
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 0)
-            .padding(.bottom, 20 + AtlasMetrics.bottomClear)
-        }
-    }
-
-    /// User identity card — lemon cover banner (80h r24) + avatar (72×72 overlapping) + name/bio/relationship.
-    private func userIdentityCard(_ envelope: UserProfileEnvelope) -> some View {
-        let user = envelope.profile.user
-        let profile = envelope.profile
-
-        return VStack(alignment: .leading, spacing: 0) {
-            // Cover banner — lemon bg r24 top, 80h
-            Rectangle()
-                .fill(AtlasColors.lemon)
-                .frame(height: 80)
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-
-            // Avatar overlapping cover
-            HStack(alignment: .bottom, spacing: 12) {
-                EntityAvatar.user(
-                    id: user.id,
-                    url: user.avatarLink,
-                    name: user.name,
-                    size: 72
-                )
-                .overlay(Circle().stroke(.white, lineWidth: 3))
-                .offset(y: -36)
-                .padding(.leading, 18)
-
-                Spacer()
-            }
-
-            // User info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(user.name)
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
-
-                Text(user.bio?.isEmpty == false ? user.bio! : "AI 想法探索者")
-                    .font(.system(size: 14))
-                    .foregroundStyle(AtlasColors.inkSoft)
-
-                // Meta row — icon labels with structured layout
-                HStack(spacing: 16) {
-                    metaLabel(icon: "square.grid.2x2", text: "\(profile.ideaCount) 想法", iconBg: AtlasColors.lemonSoft)
-                    metaLabel(icon: "person.2", text: "\(profile.followerCount) 粉丝", iconBg: Color(hex: 0xF0F2F5))
-                    metaLabel(icon: "person.crop.circle.badge.plus", text: "\(profile.followingCount) 关注", iconBg: Color(hex: 0xF0F2F5))
-                }
-            }
-            .padding(.horizontal, 18)
-            .padding(.top, 4)
-            .padding(.bottom, 18)
-        }
-        .background(AtlasColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.06), radius: 16, y: 4)
-    }
-
-    /// Profile Actions — lemonStrong follow button, 44h r12.
-    @ViewBuilder
-    private func profileActionsButton(_ envelope: UserProfileEnvelope) -> some View {
-        Button {
-            Task { await toggleFollow() }
-        } label: {
-            Text(envelope.isFollowing ? "已关注" : "关注用户")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(AtlasColors.lemonInk)
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background(AtlasColors.lemonStrong)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .buttonStyle(AtlasPressableStyle())
-    }
-
-    /// Stats Grid — 3 tiles (想法/Agent/粉丝), first tile lemonSoft, others grey.
-    /// Meta label — small icon chip + value text (for identity card).
-    private func metaLabel(icon: String, text: String, iconBg: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 10))
-                .foregroundStyle(AtlasColors.ink)
-                .frame(width: 16, height: 16)
-                .background(iconBg)
-                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-            Text(text)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(AtlasColors.ink)
-        }
-    }
-
-    private func statsGrid(_ envelope: UserProfileEnvelope) -> some View {
-        let profile = envelope.profile
-        return HStack(spacing: 12) {
-            statTile(value: "\(profile.ideaCount)", unit: " 想法", bg: AtlasColors.lemonSoft, fg: AtlasColors.lemonInk, icon: "square.grid.2x2") {
-                viewModel.selectedTab = .ideas
-            }
-            statTile(value: "\(profile.agentCount)", unit: " Agent", bg: Color(hex: 0xF7F8FA), fg: AtlasColors.ink, icon: "cpu") {
-                viewModel.selectedTab = .agents
-            }
-            statTile(value: "\(profile.followerCount)", unit: " 粉丝", bg: Color(hex: 0xF7F8FA), fg: AtlasColors.ink, icon: "person.2") {
-                followListRoute = FollowListRoute(userID: userID, kind: .followers)
-            }
-        }
-    }
-
-    /// Stat tile — icon chip + number + label, 72h r16.
-    private func statTile(value: String, unit: String, bg: Color, fg: Color, icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                // Icon chip — 24×24 r6 lemonStrong
-                Image(systemName: icon)
-                    .font(.system(size: 11))
-                    .foregroundStyle(AtlasColors.lemonInk)
-                    .frame(width: 24, height: 24)
-                    .background(AtlasColors.lemonStrong)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-
-                // Number + unit label
-                HStack(spacing: 2) {
-                    Text(value)
-                        .font(.system(size: 18, weight: .heavy))
-                    Text(unit)
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .foregroundStyle(fg)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 72)
-            .background(bg)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// Profile Segment — grey container r16, lemonStrong active.
-    private var profileSegment: some View {
-        HStack(spacing: 4) {
-            ForEach(UserProfileTab.allCases) { tab in
-                let isActive = viewModel.selectedTab == tab
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.selectedTab = tab
-                    }
-                } label: {
-                    Text(tab.title)
-                        .font(.system(size: 14, weight: isActive ? .semibold : .semibold))
-                        .foregroundStyle(isActive ? AtlasColors.lemonInk : Color(hex: 0x687083))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 32)
-                        .background(isActive ? AtlasColors.lemonStrong : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .background(Color(hex: 0xF4F5F8))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    // MARK: - Recent Activity card (Ardot 189:137)
-
-    /// White + border r20, 3 activity rows with colored dots + dividers.
-    private func recentActivityCard(_ envelope: UserProfileEnvelope) -> some View {
-        VStack(spacing: 0) {
-            activityRow(dotColor: AtlasColors.lemonStrong, text: "评论了 智能家居能源管理系统")
-            dividerLine
-            activityRow(dotColor: AtlasColors.star, text: "给 IoT 实时环境监测平台送花")
-            dividerLine
-            activityRow(dotColor: Color(hex: 0x3A6EDA), text: "关注了 节能管家 Agent")
-        }
-        .background(AtlasColors.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-    }
-
-    private func activityRow(dotColor: Color, text: String) -> some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(dotColor)
-                .frame(width: 8, height: 8)
-            Text(text)
-                .font(.system(size: 14))
-                .foregroundStyle(AtlasColors.ink)
-                .lineLimit(1)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-    }
-
-    private var dividerLine: some View {
-        Rectangle()
-            .fill(Color(hex: 0xF0F2F5))
-            .frame(height: 1)
-            .padding(.leading, 16)
-    }
-
-    // MARK: - Agent List horizontal section (Ardot 210:74)
-
-    private func agentListSection(_ envelope: UserProfileEnvelope) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Agent")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
-                Spacer()
-                Text("\(envelope.profile.agentCount) 个")
-                    .font(.system(size: 13))
-                    .foregroundStyle(AtlasColors.inkSoft)
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(viewModel.agents) { agent in
-                        Button {
-                            agentRoute = AgentRoute(id: agent.id)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 8) {
-                                EntityAvatar.agent(id: agent.id, url: agent.avatarLink, name: agent.name, size: 36)
-                                Text(agent.name)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(AtlasColors.ink)
-                                    .lineLimit(1)
-                                Text(agent.capabilities?.first ?? "Agent")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(AtlasColors.inkSoft)
-                                    .lineLimit(1)
-                            }
-                            .padding(14)
-                            .frame(width: 140, alignment: .leading)
-                            .background(AtlasColors.surface)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(AtlasColors.border, lineWidth: 1)
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    if !isSelf {
+                        PublicUserFollowButton(isFollowing: envelope.isFollowing) {
+                            Task { await toggleFollow() }
                         }
-                        .buttonStyle(.plain)
                     }
+
+                    AtlasSegmentedPill(
+                        items: ["动态", "Agent", "想法"],
+                        selection: Binding(
+                            get: {
+                                switch viewModel.selectedTab {
+                                case .activity: return 0
+                                case .agents: return 1
+                                case .ideas: return 2
+                                }
+                            },
+                            set: {
+                                viewModel.selectedTab = switch $0 {
+                                case 0: .activity
+                                case 1: .agents
+                                default: .ideas
+                                }
+                            }
+                        )
+                    )
+
+                    tabContent
                 }
+                .padding(.horizontal, AtlasMetrics.pageX)
+                .padding(.top, 48)
             }
+            .padding(.bottom, 40)
         }
+    }
+
+    private var publicHero: some View {
+        ZStack(alignment: .bottomLeading) {
+            Rectangle()
+                .fill(AtlasColors.lemonSoft)
+                .frame(height: 140)
+            Circle()
+                .fill(AtlasColors.lemon)
+                .frame(width: 80, height: 80)
+                .offset(x: AtlasMetrics.pageX)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -511,38 +329,82 @@ struct UserProfileView: View {
                     subtitle: "该用户尚未创建公开 Agent"
                 )
             } else {
-                // Horizontal scroll agent cards
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(viewModel.agents) { agent in
+                ForEach(viewModel.agents) { agent in
+                    Button {
+                        agentRoute = AgentRoute(id: agent.id)
+                    } label: {
+                        CompactListCard(
+                            leading: {
+                                EntityAvatar.agent(id: agent.id, url: agent.avatarLink, name: agent.name, size: 40)
+                            },
+                            title: agent.name,
+                            subtitle: agent.description?.plainSummary,
+                            trailing: {
+                                DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                            }
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        case .activity:
+            if viewModel.isLoadingActivity {
+                ProgressView().frame(maxWidth: .infinity).padding(.vertical, 24)
+            } else if viewModel.activities.isEmpty {
+                AtlasDesignedEmptyState(
+                    icon: .sparkles,
+                    title: "暂无动态",
+                    subtitle: "该用户和其 Agent 还没有公开活动"
+                )
+            } else {
+                ForEach(Array(viewModel.activities.enumerated()), id: \.element.id) { index, activity in
+                    Group {
+                        if let ideaID = activity.ideaID {
                             Button {
-                                agentRoute = AgentRoute(id: agent.id)
+                                ideaRoute = IdeaRoute(id: ideaID)
                             } label: {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    EntityAvatar.agent(id: agent.id, url: agent.avatarLink, name: agent.name, size: 36)
-                                    Text(agent.name)
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(AtlasColors.ink)
-                                        .lineLimit(1)
-                                    Text(agent.capabilities?.first ?? "Agent")
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundStyle(AtlasColors.inkSoft)
-                                        .lineLimit(1)
-                                }
-                                .padding(14)
-                                .frame(width: 140, alignment: .leading)
-                                .background(AtlasColors.surface)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .stroke(AtlasColors.border, lineWidth: 1)
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                userActivityRow(activity)
                             }
                             .buttonStyle(.plain)
+                        } else {
+                            userActivityRow(activity)
                         }
+                    }
+                    if index < viewModel.activities.count - 1 {
+                        FeedRowDivider()
                     }
                 }
             }
+        }
+    }
+
+    private func userActivityRow(_ activity: ActivityView) -> some View {
+        CompactListCard(
+            leading: {
+                activityIcon(for: activity.action)
+            },
+            title: activity.feedSummary,
+            subtitle: activity.targetDesc?.plainSummary,
+            timestamp: activity.createdAt.relativeShort,
+            layoutStyle: .flat
+        )
+    }
+
+    @ViewBuilder
+    private func activityIcon(for action: String) -> some View {
+        let icon: DeimosIcon = switch action {
+        case "flower", "flowers": .flower
+        case "fork": .fork
+        case "comment": .comment
+        case "like": .heart
+        case "register", "create": .document
+        default: .sparkles
+        }
+        ZStack {
+            Circle()
+                .fill(AtlasColors.fill)
+                .frame(width: 36, height: 36)
+            DeimosIconView(icon: icon, size: 16, color: AtlasColors.inkSoft)
         }
     }
 
@@ -564,9 +426,64 @@ struct UserProfileView: View {
     }
 }
 
-struct FollowListRoute: Identifiable, Hashable {
-    let userID: String
-    let kind: FollowListKind
+private struct PublicUserIdentityContent: View {
+    let user: User
 
-    var id: String { "\(userID)-\(kind.rawValue)" }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(user.name)
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+            Text(user.bio?.isEmpty == false ? (user.bio ?? "") : "AI 想法探索者")
+                .font(AtlasTypography.mobileSubheadline())
+                .foregroundStyle(AtlasColors.inkSoft)
+                .lineLimit(2)
+        }
+    }
+}
+
+private struct PublicUserStatsBand: View {
+    let stats: UserProfileData
+    let user: User
+
+    var body: some View {
+        HStack(spacing: 0) {
+            statItem(value: "\(stats.ideaCount)", label: "想法")
+            statItem(value: compactCount(user.followerCount), label: "粉丝")
+            statItem(value: compactCount(user.followingCount), label: "关注")
+        }
+        .padding(.vertical, 12)
+        .background(AtlasColors.fill)
+        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+    }
+
+    private func statItem(value: String, label: String) -> some View {
+        VStack(spacing: 3) {
+            Text(value).font(.system(size: 16, weight: .bold)).foregroundStyle(AtlasColors.ink)
+            Text(label).font(AtlasTypography.meta()).foregroundStyle(AtlasColors.inkSoft)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func compactCount(_ value: Int) -> String {
+        value >= 1_000 ? String(format: "%.1fk", Double(value) / 1_000) : "\(value)"
+    }
+}
+
+private struct PublicUserFollowButton: View {
+    let isFollowing: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(isFollowing ? "已关注" : "关注用户")
+                .font(AtlasTypography.mobileBody())
+                .foregroundStyle(AtlasColors.lemonInk)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(AtlasColors.primaryAction)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
 }

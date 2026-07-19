@@ -1,5 +1,17 @@
 import Foundation
 
+struct ChatArchiveResult: Decodable, Sendable {
+    let sessionID: String
+    let summary: String
+    let archivedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case sessionID = "session_id"
+        case summary
+        case archivedAt = "archived_at"
+    }
+}
+
 struct ChatSession: Codable, Identifiable, Sendable {
     let id: String
     let agentID: String

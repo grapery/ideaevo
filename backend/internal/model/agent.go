@@ -15,28 +15,30 @@ type AgentOwner struct {
 }
 
 type Agent struct {
-	ID            string    `gorm:"primaryKey;size:36" json:"id"`
-	Name          string    `gorm:"size:255;not null" json:"name"`
-	Description   string    `gorm:"type:text" json:"description"`
-	APIKeyHash    string    `gorm:"size:255;not null;uniqueIndex" json:"-"`
-	Capabilities  string    `gorm:"type:json" json:"capabilities"`
-	Category      string    `gorm:"size:50;index" json:"category,omitempty"` // 分类标签：validation/design/coding/research/automation/marketing/other
-	OwnerUserID   string    `gorm:"size:36;index" json:"owner_user_id"`     // 创建者 User ID；空表示系统创建
-	SystemPrompt  string    `gorm:"type:text" json:"system_prompt"`         // 自定义人设/指令
-	LLMModel      string    `gorm:"size:100" json:"llm_model"`              // 模型名（qwen-plus / qwen-max / doubao-...）；空则用全局默认
-	Temperature   float64   `gorm:"default:0.7" json:"temperature"`         // 温度 (0-2)
-	MaxTokens     int       `gorm:"default:4096" json:"max_tokens"`         // 最大输出 token
-	Visibility    string    `gorm:"size:20;default:'public'" json:"visibility"` // public | private
-	AllowFollow   *bool     `gorm:"default:true" json:"allow_follow"`           // 是否允许他人关注（nil 视为 true）
-	AllowChat     *bool     `gorm:"default:true" json:"allow_chat"`             // 是否允许他人发起对话/下发任务
-	AvatarURL     string    `gorm:"size:500" json:"avatar_url,omitempty"`
-	BackgroundURL string    `gorm:"size:500" json:"background_url,omitempty"`
+	ID            string      `gorm:"primaryKey;size:36" json:"id"`
+	Name          string      `gorm:"size:255;not null" json:"name"`
+	Description   string      `gorm:"type:text" json:"description"`
+	APIKeyHash    string      `gorm:"size:255;not null;uniqueIndex" json:"-"`
+	Capabilities  string      `gorm:"type:json" json:"capabilities"`
+	Category      string      `gorm:"size:50;index" json:"category,omitempty"`    // 分类标签：validation/design/coding/research/automation/marketing/other
+	OwnerUserID   string      `gorm:"size:36;index" json:"owner_user_id"`         // 创建者 User ID；空表示系统创建
+	SystemPrompt  string      `gorm:"type:text" json:"system_prompt"`             // 自定义人设/指令
+	LLMModel      string      `gorm:"size:100" json:"llm_model"`                  // 模型名（qwen-plus / qwen-max / doubao-...）；空则用全局默认
+	Temperature   float64     `gorm:"default:0.7" json:"temperature"`             // 温度 (0-2)
+	MaxTokens     int         `gorm:"default:4096" json:"max_tokens"`             // 最大输出 token
+	Visibility    string      `gorm:"size:20;default:'public'" json:"visibility"` // public | private
+	AllowFollow   *bool       `gorm:"default:true" json:"allow_follow"`           // 是否允许他人关注（nil 视为 true）
+	AllowChat     *bool       `gorm:"default:true" json:"allow_chat"`             // 是否允许他人发起对话/下发任务
+	AvatarURL     string      `gorm:"size:500" json:"avatar_url,omitempty"`
+	BackgroundURL string      `gorm:"size:500" json:"background_url,omitempty"`
 	FollowerCount int         `gorm:"-" json:"follower_count,omitempty"`
+	IdeaCount     int         `gorm:"-" json:"idea_count,omitempty"`
+	ForkCount     int         `gorm:"-" json:"fork_count,omitempty"`
 	Owner         *AgentOwner `gorm:"-" json:"owner,omitempty"`
 	IsFollowing   *bool       `gorm:"-" json:"is_following,omitempty"`
 	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	Ideas         []Idea    `gorm:"foreignKey:AgentID" json:"ideas,omitempty"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+	Ideas         []Idea      `gorm:"foreignKey:AgentID" json:"ideas,omitempty"`
 }
 
 func (a *Agent) BeforeCreate(tx *gorm.DB) error {

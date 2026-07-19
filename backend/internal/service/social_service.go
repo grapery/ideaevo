@@ -134,12 +134,13 @@ func (s *SocialService) SendFlowers(input SendFlowersInput) error {
 }
 
 type ForkIdeaInput struct {
-	IdeaID      string `json:"idea_id"`
-	AgentID     string `json:"agent_id"`
-	Title       string `json:"title" binding:"required"`
-	Description string `json:"description" binding:"required"`
-	Reason      string `json:"reason" binding:"required"`
-	Category    string `json:"category"`
+	IdeaID          string `json:"idea_id"`
+	SourceVersionID string `json:"source_version_id"`
+	AgentID         string `json:"agent_id"`
+	Title           string `json:"title" binding:"required"`
+	Description     string `json:"description" binding:"required"`
+	Reason          string `json:"reason" binding:"required"`
+	Category        string `json:"category"`
 }
 
 func (s *SocialService) ForkIdea(input ForkIdeaInput) (*model.Idea, error) {
@@ -150,17 +151,36 @@ func (s *SocialService) ForkIdea(input ForkIdeaInput) (*model.Idea, error) {
 			return fmt.Errorf("original idea not found: %w", err)
 		}
 
-		// 重复 fork 检测：同一 agent 对同一源想法只允许 fork 一次。
+		var sourceVersion model.IdeaVersion
+		versionQuery := tx.Where("idea_id = ?", input.IdeaID)
+		if input.SourceVersionID != "" {
+			versionQuery = versionQuery.Where("id = ?", input.SourceVersionID)
+		} else {
+			versionQuery = versionQuery.Order("version DESC")
+		}
+		if err := versionQuery.First(&sourceVersion).Error; err != nil {
+			return fmt.Errorf("source version not found: %w", err)
+		}
+
+		// 同一 Agent 可从同一 Idea 的不同版本建立分支，但不能重复
+		// Fork 同一个不可变版本。
 		var existing model.Fork
-		if err := tx.Where("source_idea_id = ? AND agent_id = ?", input.IdeaID, input.AgentID).First(&existing).Error; err == nil {
-			return fmt.Errorf("you have already forked this idea: %s", existing.NewIdeaID)
+		if err := tx.Where("source_idea_id = ? AND source_version_id = ? AND agent_id = ?", input.IdeaID, sourceVersion.ID, input.AgentID).First(&existing).Error; err == nil {
+			return fmt.Errorf("you have already forked this version: %s", existing.NewIdeaID)
 		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 
 		cat := input.Category
 		if cat == "" {
-			cat = original.Category
+			cat = sourceVersion.Category
+			if cat == "" {
+				cat = original.Category
+			}
+		}
+		tags := sourceVersion.Tags
+		if tags == "" {
+			tags = original.Tags
 		}
 
 		idea = &model.Idea{
@@ -169,7 +189,10 @@ func (s *SocialService) ForkIdea(input ForkIdeaInput) (*model.Idea, error) {
 			Description:  input.Description,
 			Status:       model.IdeaStatusActive,
 			Category:     cat,
-			Tags:         original.Tags,
+			Tags:         tags,
+			RepoURL:      sourceVersion.RepoURL,
+			DemoURL:      sourceVersion.DemoURL,
+			ImplStatus:   sourceVersion.ImplStatus,
 			ForkedFromID: &input.IdeaID,
 		}
 		if err := tx.Create(idea).Error; err != nil {
@@ -181,10 +204,11 @@ func (s *SocialService) ForkIdea(input ForkIdeaInput) (*model.Idea, error) {
 		}
 
 		fork := &model.Fork{
-			SourceIdeaID: input.IdeaID,
-			NewIdeaID:    idea.ID,
-			AgentID:      input.AgentID,
-			Reason:       input.Reason,
+			SourceIdeaID:    input.IdeaID,
+			SourceVersionID: &sourceVersion.ID,
+			NewIdeaID:       idea.ID,
+			AgentID:         input.AgentID,
+			Reason:          input.Reason,
 		}
 		if err := tx.Create(fork).Error; err != nil {
 			return err
@@ -213,6 +237,100 @@ func (s *SocialService) GetForks(ideaID string) ([]model.Fork, error) {
 		return nil, err
 	}
 	return forks, nil
+}
+
+type IdeaLineageStats struct {
+	TotalForks     int `json:"total_forks"`
+	ActiveBranches int `json:"active_branches"`
+	Contributors   int `json:"contributors"`
+}
+
+type IdeaLineage struct {
+	Idea           model.Idea         `json:"idea"`
+	CurrentVersion model.IdeaVersion  `json:"current_version"`
+	Origin         *model.Fork        `json:"origin,omitempty"`
+	SourceIdea     *model.Idea        `json:"source_idea,omitempty"`
+	SourceVersion  *model.IdeaVersion `json:"source_version,omitempty"`
+	Children       []model.Idea       `json:"children"`
+	Stats          IdeaLineageStats   `json:"stats"`
+}
+
+// GetIdeaLineage returns authoritative version-aware provenance in one query
+// contract so clients never infer a fork's source from the parent's latest version.
+func (s *SocialService) GetIdeaLineage(ideaID string) (*IdeaLineage, error) {
+	var idea model.Idea
+	if err := s.db.Preload("Agent").First(&idea, "id = ?", ideaID).Error; err != nil {
+		return nil, err
+	}
+	EnrichIdea(&idea)
+	if err := s.ensureVersions(ideaID); err != nil {
+		return nil, err
+	}
+
+	var currentVersion model.IdeaVersion
+	if err := s.db.Where("idea_id = ?", ideaID).Order("version DESC").First(&currentVersion).Error; err != nil {
+		return nil, err
+	}
+
+	children, err := s.GetPublicForkChildren(ideaID)
+	if err != nil {
+		return nil, err
+	}
+	if children == nil {
+		children = []model.Idea{}
+	}
+	contributors := map[string]struct{}{}
+	for _, child := range children {
+		contributors[child.AgentID] = struct{}{}
+	}
+
+	result := &IdeaLineage{
+		Idea:           idea,
+		CurrentVersion: currentVersion,
+		Children:       children,
+		Stats: IdeaLineageStats{
+			TotalForks:     idea.ForkCount,
+			ActiveBranches: len(children),
+			Contributors:   len(contributors),
+		},
+	}
+
+	var origin model.Fork
+	if err := s.db.Where("new_idea_id = ?", ideaID).Order("created_at DESC").First(&origin).Error; err == nil {
+		result.Origin = &origin
+		var source model.Idea
+		if err := s.db.Preload("Agent").First(&source, "id = ?", origin.SourceIdeaID).Error; err != nil {
+			return nil, err
+		}
+		EnrichIdea(&source)
+		result.SourceIdea = &source
+		if origin.SourceVersionID != nil {
+			var sourceVersion model.IdeaVersion
+			if err := s.db.First(&sourceVersion, "id = ? AND idea_id = ?", *origin.SourceVersionID, origin.SourceIdeaID).Error; err != nil {
+				return nil, err
+			}
+			result.SourceVersion = &sourceVersion
+		}
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *SocialService) ensureVersions(ideaID string) error {
+	var count int64
+	if err := s.db.Model(&model.IdeaVersion{}).Where("idea_id = ?", ideaID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+	var idea model.Idea
+	if err := s.db.First(&idea, "id = ?", ideaID).Error; err != nil {
+		return err
+	}
+	return AppendIdeaVersion(s.db, &idea, "初始版本")
 }
 
 // GetPublicForkChildren 返回从该 idea 直接 fork 出来的、公开可见的子 idea。

@@ -24,3 +24,6 @@ ideaevoapp/ios/**/xcuserdata/
 .claude/screenshots/
 screenshots/
 .zcode/
+
+# Local runtime verification artifacts (screenshots, logs, audit dirs)
+.runtime-checks/

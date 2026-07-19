@@ -236,7 +236,8 @@ final class APIClient {
     }
 
     func userProfile(id: String) async throws -> UserProfileData {
-        let response: UserProfileResponse = try await request(path: "/users/\(id)/profile", auth: .none)
+        let auth: AuthMode = token != nil ? .user : .none
+        let response: UserProfileResponse = try await request(path: "/users/\(id)/profile", auth: auth)
         return response.profile
     }
 
@@ -246,9 +247,10 @@ final class APIClient {
     }
 
     func getUserIdeas(userID: String, limit: Int = 20) async throws -> [Idea] {
+        let auth: AuthMode = token != nil ? .user : .none
         let response: IdeasResponse = try await request(
             path: "/users/\(userID)/ideas?limit=\(limit)",
-            auth: .none
+            auth: auth
         )
         return response.ideas
     }
@@ -260,6 +262,14 @@ final class APIClient {
             auth: auth
         )
         return response.agents
+    }
+
+    func getUserActivity(userID: String, limit: Int = 30, offset: Int = 0) async throws -> UserActivityResponse {
+        let auth: AuthMode = token != nil ? .user : .none
+        return try await request(
+            path: "/users/\(userID)/activity?limit=\(limit)&offset=\(offset)",
+            auth: auth
+        )
     }
 
     func followUser(id: String) async throws {
@@ -328,7 +338,7 @@ final class APIClient {
     }
 
     func getIdeaVersions(ideaID: String) async throws -> [IdeaVersionSummary] {
-        let response: IdeaVersionsResponse = try await request(path: "/ideas/\(ideaID)/versions", auth: .none)
+        let response: IdeaVersionsResponse = try await request(path: "/ideas/\(ideaID)/versions", auth: authToken != nil ? .user : .none)
         return response.versions
     }
 
@@ -337,25 +347,58 @@ final class APIClient {
     }
 
     func getIdea(id: String) async throws -> Idea {
-        try await request(path: "/ideas/\(id)", auth: .none)
+        try await request(path: "/ideas/\(id)", auth: authToken != nil ? .user : .none)
+    }
+
+    func getIdeaStats(ideaID: String) async throws -> IdeaStats {
+        try await request(path: "/ideas/\(ideaID)/stats", auth: authToken != nil ? .user : .none)
+    }
+
+    func getIdeaLineage(ideaID: String) async throws -> IdeaLineage {
+        try await request(path: "/ideas/\(ideaID)/lineage", auth: authToken != nil ? .user : .none)
+    }
+
+    func recordIdeaView(ideaID: String) async throws {
+        _ = try await request(
+            path: "/ideas/\(ideaID)/view",
+            method: "POST",
+            auth: authToken != nil ? .user : .none
+        ) as MessageResponse
+    }
+
+    func recordIdeaReference(ideaID: String) async throws {
+        _ = try await request(
+            path: "/ideas/\(ideaID)/reference",
+            method: "POST",
+            auth: authToken != nil ? .user : .none
+        ) as MessageResponse
     }
 
     func getFlowers(ideaID: String) async throws -> [FlowerDonor] {
-        let response: FlowersResponse = try await request(path: "/ideas/\(ideaID)/flowers", auth: .none)
+        let response: FlowersResponse = try await request(path: "/ideas/\(ideaID)/flowers", auth: authToken != nil ? .user : .none)
         return response.donors
     }
 
     func getForkChildren(ideaID: String) async throws -> [Idea] {
-        let response: IdeasResponse = try await request(path: "/ideas/\(ideaID)/fork-children", auth: .none)
+        let response: IdeasResponse = try await request(path: "/ideas/\(ideaID)/fork-children", auth: authToken != nil ? .user : .none)
         return response.ideas
     }
 
     func getForks(ideaID: String) async throws -> [ForkRecord] {
-        try await request(path: "/ideas/\(ideaID)/forks", auth: .none)
+        try await request(path: "/ideas/\(ideaID)/forks", auth: authToken != nil ? .user : .none)
     }
 
     func getIdeaVersion(ideaID: String, versionID: String) async throws -> IdeaVersionDetail {
-        try await request(path: "/ideas/\(ideaID)/versions/\(versionID)", auth: .none)
+        try await request(path: "/ideas/\(ideaID)/versions/\(versionID)", auth: authToken != nil ? .user : .none)
+    }
+
+    func publishIdeaVersion(ideaID: String, body: PublishIdeaVersionBody) async throws -> Idea {
+        try await request(
+            path: "/ideas/\(ideaID)/versions",
+            method: "POST",
+            encodableBody: body,
+            auth: .user
+        )
     }
 
     func updateIdeaDescription(ideaID: String, description: String, changelog: String?) async throws -> Idea {
@@ -371,6 +414,15 @@ final class APIClient {
     func updateIdeaMeta(ideaID: String, body: UpdateIdeaMetaBody) async throws -> Idea {
         try await request(
             path: "/ideas/\(ideaID)/meta",
+            method: "PATCH",
+            encodableBody: body,
+            auth: .user
+        )
+    }
+
+    func updateIdea(ideaID: String, body: UpdateIdeaBody) async throws -> Idea {
+        try await request(
+            path: "/ideas/\(ideaID)",
             method: "PATCH",
             encodableBody: body,
             auth: .user
@@ -447,12 +499,35 @@ final class APIClient {
         }
     }
 
-    func sendFlower(ideaID: String) async throws {
-        _ = try await request(path: "/ideas/\(ideaID)/flowers", method: "POST", jsonBody: [String: String](), auth: .user) as MessageResponse
+    func getBookmarkStatus(id: String) async throws -> Bool {
+        let response: BookmarkStatusResponse = try await request(path: "/ideas/\(id)/bookmark", auth: .user)
+        return response.bookmarked
     }
 
-    func forkIdea(id: String, title: String, description: String, reason: String) async throws -> Idea {
-        let body = ForkIdeaBody(title: title, description: description, reason: reason, category: nil)
+    func toggleBookmark(id: String, currentlyBookmarked: Bool) async throws {
+        _ = try await request(
+            path: "/ideas/\(id)/bookmark",
+            method: currentlyBookmarked ? "DELETE" : "POST",
+            auth: .user
+        ) as MessageResponse
+    }
+
+    func sendFlower(ideaID: String, versionID: String? = nil) async throws {
+        var body: [String: String] = [:]
+        if let versionID, !versionID.isEmpty {
+            body["version_id"] = versionID
+        }
+        _ = try await request(path: "/ideas/\(ideaID)/flowers", method: "POST", jsonBody: body, auth: .user) as MessageResponse
+    }
+
+    func forkIdea(id: String, title: String, description: String, reason: String, sourceVersionID: String? = nil) async throws -> Idea {
+        let body = ForkIdeaBody(
+            title: title,
+            description: description,
+            reason: reason,
+            category: nil,
+            sourceVersionID: sourceVersionID
+        )
         return try await request(
             path: "/ideas/\(id)/fork",
             method: "POST",
@@ -465,16 +540,25 @@ final class APIClient {
         title: String,
         description: String,
         category: String = "other",
-        agentID: String? = nil
+        tags: [String]? = nil,
+        repoURL: String? = nil,
+        demoURL: String? = nil,
+        imageURLs: [String]? = nil,
+        links: [IdeaLink]? = nil,
+        agentID: String? = nil,
+        force: Bool = false
     ) async throws -> Idea {
         let body = CreateIdeaBody(
             title: title,
             description: description,
             category: category,
-            tags: nil,
-            repoURL: nil,
-            demoURL: nil,
-            agentID: agentID
+            tags: tags,
+            repoURL: repoURL,
+            demoURL: demoURL,
+            imageURLs: imageURLs,
+            links: links,
+            agentID: agentID,
+            force: force
         )
         return try await request(
             path: "/ideas",
@@ -497,14 +581,18 @@ final class APIClient {
     // MARK: - Reactions
 
     func getReactions(ideaID: String) async throws -> ReactionsResponse {
-        try await request(path: "/ideas/\(ideaID)/reactions", auth: .none)
+        try await request(path: "/ideas/\(ideaID)/reactions", auth: authToken != nil ? .user : .none)
     }
 
-    func react(ideaID: String, emoji: String) async throws {
+    func react(ideaID: String, emoji: String, versionID: String? = nil) async throws {
+        var body = ["emoji": emoji]
+        if let versionID, !versionID.isEmpty {
+            body["version_id"] = versionID
+        }
         _ = try await request(
             path: "/ideas/\(ideaID)/reactions",
             method: "POST",
-            jsonBody: ["emoji": emoji],
+            jsonBody: body,
             auth: .user
         ) as ReactResponse
     }
@@ -516,11 +604,11 @@ final class APIClient {
     // MARK: - Comments
 
     func getComments(ideaID: String) async throws -> [WanyeComment] {
-        try await request(path: "/ideas/\(ideaID)/comments", auth: .none)
+        try await request(path: "/ideas/\(ideaID)/comments", auth: authToken != nil ? .user : .none)
     }
 
-    func createComment(ideaID: String, content: String, parentID: String? = nil) async throws -> WanyeComment {
-        let body = CreateCommentBody(content: content, parentID: parentID, sentiment: nil)
+    func createComment(ideaID: String, content: String, parentID: String? = nil, versionID: String? = nil) async throws -> WanyeComment {
+        let body = CreateCommentBody(content: content, parentID: parentID, sentiment: nil, versionID: versionID)
         return try await request(
             path: "/ideas/\(ideaID)/comments",
             method: "POST",
@@ -744,24 +832,23 @@ final class APIClient {
 
     // MARK: - Agents
 
-    func listAgents(limit: Int = 50, offset: Int = 0, category: String? = nil) async throws -> AgentsResponse {
-        var path = "/agents?limit=\(limit)&offset=\(offset)"
-        if let category, !category.isEmpty {
-            path += "&category=\(category)"
-        }
-        return try await request(path: path, auth: .none)
+    func listAgents(limit: Int = 50, offset: Int = 0) async throws -> AgentsResponse {
+        try await request(path: "/agents?limit=\(limit)&offset=\(offset)", auth: .none)
     }
 
     func getAgent(id: String) async throws -> Agent {
-        try await request(path: "/agents/\(id)", auth: .none)
+        try await request(path: "/agents/\(id)", auth: authToken != nil ? .user : .none)
     }
 
     func getAgentStats(id: String) async throws -> AgentStats {
-        try await request(path: "/agents/\(id)/stats", auth: .none)
+        try await request(path: "/agents/\(id)/stats", auth: authToken != nil ? .user : .none)
     }
 
     func getAgentIdeas(id: String, limit: Int = 20) async throws -> [Idea] {
-        let response: IdeasResponse = try await request(path: "/agents/\(id)/ideas?limit=\(limit)", auth: .none)
+        let response: IdeasResponse = try await request(
+            path: "/agents/\(id)/ideas?limit=\(limit)",
+            auth: authToken != nil ? .user : .none
+        )
         return response.ideas
     }
 
@@ -852,6 +939,14 @@ final class APIClient {
         )
     }
 
+    func resetAgentBackground(agentID: String) async throws -> Agent {
+        try await request(
+            path: "/agents/\(agentID)/background/reset",
+            method: "POST",
+            auth: .user
+        )
+    }
+
     func resetIdeaIcon(ideaID: String) async throws -> Idea {
         try await request(
             path: "/ideas/\(ideaID)/icon/reset",
@@ -881,6 +976,11 @@ final class APIClient {
             encodableBody: body,
             auth: .user
         )
+    }
+
+    func userDevices() async throws -> [UserDevice] {
+        let response: UserDevicesResponse = try await request(path: "/user/devices", auth: .user)
+        return response.items
     }
 
     func unregisterDevice(id: String) async throws {
@@ -937,6 +1037,10 @@ final class APIClient {
         _ = try await request(path: "/sessions/\(id)", method: "DELETE", auth: .user) as MessageResponse
     }
 
+    func archiveSession(id: String) async throws -> ChatArchiveResult {
+        try await request(path: "/sessions/\(id)/archive", method: "POST", auth: .user)
+    }
+
     func forkSession(id: String, title: String? = nil) async throws -> ChatSession {
         struct ForkBody: Encodable {
             let title: String?
@@ -948,16 +1052,6 @@ final class APIClient {
             auth: .user
         )
         return response.session
-    }
-
-    /// Archive a chat session — backend packages context + extracts summary.
-    func archiveSession(id: String) async throws -> ArchiveResult {
-        let response: ArchiveResultResponse = try await request(
-            path: "/sessions/\(id)/archive",
-            method: "POST",
-            auth: .user
-        )
-        return response.result
     }
 
     // MARK: - Transport

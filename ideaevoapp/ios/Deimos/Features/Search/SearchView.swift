@@ -13,7 +13,6 @@ final class SearchViewModel {
     var hasMoreIdeas = false
     var errorMessage: String?
     var hasSearched = false
-    var activeFilter: SearchFilter = .semantic
 
     private let pageSize = 20
     private var currentPage = 1
@@ -31,20 +30,6 @@ final class SearchViewModel {
 
     var isQueryEmpty: Bool {
         trimmedQuery.isEmpty
-    }
-
-    var resultCountText: String {
-        let count = ideaMatches.count
-        if count == 0 { return "" }
-        let topScore = ideaMatches.first?.similarity ?? 0
-        if topScore > 0 {
-            return "找到 \(count) 个相关想法 · 相似度 \(String(format: "%.2f", topScore))"
-        }
-        return "找到 \(count) 个相关想法"
-    }
-
-    var filteredIdeas: [SearchMatch] {
-        ideaMatches
     }
 
     func search() async {
@@ -142,21 +127,6 @@ final class SearchViewModel {
     }
 }
 
-enum SearchFilter: CaseIterable {
-    case semantic, inProgress
-
-    var label: String {
-        switch self {
-        case .semantic: return "语义匹配"
-        case .inProgress: return "进行中"
-        }
-    }
-}
-
-/// S03 Search (Ardot `179:2`).
-///
-/// Content Wrapper (179:20): VERTICAL itemSpacing=16, padding=[20,20,0,16].
-/// Back → "搜索" 36pt ExtraBold → search input r16 → result count → filter chips r18 → result cards r20.
 struct SearchView: View {
     var initialQuery: String = ""
 
@@ -167,45 +137,39 @@ struct SearchView: View {
     @FocusState private var searchFocused: Bool
 
     var body: some View {
-        ScrollView {
-            // Content Wrapper (S03 179:20): VERTICAL itemSpacing=16, padding=[20,20,0,16]
-            VStack(alignment: .leading, spacing: 16) {
-                // Back Button (S03 179:49): 36×36 r18 bg=#F4F5F8
-                AtlasNavBackButton(action: { dismiss() })
+        VStack(spacing: 0) {
+            AtlasPushNavBar(title: "搜索", onBack: { dismiss() })
 
-                // Search Title (S03 179:51): "搜索" 36pt ExtraBold ink
-                Text("搜索")
-                    .font(.system(size: 36, weight: .heavy))
-                    .atlasTrackedTitle(36)
-                    .foregroundStyle(AtlasColors.ink)
+            AtlasEmbeddedSearchBar(
+                placeholder: "搜索想法、Agent、标签…",
+                text: $viewModel.query,
+                onSubmit: { Task { await viewModel.search() } }
+            )
+            .focused($searchFocused)
+            .submitLabel(.search)
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
 
-                // Search Input (S03 179:52): 350×48 FILL, r16, bg=#F4F5F8
-                searchInput
-
-                if viewModel.isQueryEmpty {
-                    recentSection
-                } else if viewModel.isSearching && viewModel.ideaMatches.isEmpty && viewModel.agentResults.isEmpty {
-                    HStack { Spacer(); ProgressView(); Spacer() }
-                        .padding(.top, 40)
-                } else if let error = viewModel.errorMessage, viewModel.ideaMatches.isEmpty && viewModel.agentResults.isEmpty {
-                    searchErrorState(message: error)
-                } else if viewModel.hasSearched && viewModel.ideaMatches.isEmpty && viewModel.agentResults.isEmpty {
-                    AtlasDesignedEmptyStates.searchNoResults()
-                        .padding(.top, 40)
-                } else {
-                    resultCountLine
-                    filterChipsRow
-                    resultsList
-                }
+            if viewModel.isSearching && viewModel.ideaMatches.isEmpty && viewModel.agentResults.isEmpty {
+                Spacer()
+                ProgressView()
+                Spacer()
+            } else if viewModel.isQueryEmpty {
+                recentSection
+            } else if let error = viewModel.errorMessage, viewModel.ideaMatches.isEmpty && viewModel.agentResults.isEmpty {
+                searchErrorState(message: error)
+            } else if viewModel.hasSearched && viewModel.ideaMatches.isEmpty && viewModel.agentResults.isEmpty {
+                AtlasDesignedEmptyStates.searchNoResults()
+                    .padding(.top, 48)
+                Spacer()
+            } else {
+                resultsScroll
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 0)
-            .padding(.bottom, 16 + AtlasMetrics.bottomClear)
         }
         .background(AtlasColors.canvas)
         .navigationBarHidden(true)
         .suppressTabBar()
-        .scrollDismissesKeyboard(.immediately)
         .navigationDestination(item: $ideaRoute) { route in
             IdeaDetailView(ideaID: route.id)
         }
@@ -221,163 +185,13 @@ struct SearchView: View {
         }
     }
 
-    // MARK: - Search input (S03 179:52: 350×48 FILL, r16, bg=#F4F5F8)
-
-    private var searchInput: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color(hex: 0x7E8796))
-            ChineseFriendlyTextField(
-                placeholder: "搜索想法、Agent、标签…",
-                text: $viewModel.query,
-                keyboardType: .default,
-                returnKeyType: .search,
-                onSubmit: { Task { await viewModel.search() } }
-            )
-            .focused($searchFocused)
-            .submitLabel(.search)
-            if !viewModel.query.isEmpty {
-                Button {
-                    viewModel.query = ""
-                    viewModel.hasSearched = false
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(AtlasColors.inkFaint)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 16)
-        .frame(height: 48)
-        .background(Color(hex: 0xF4F5F8))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    // MARK: - Result count (S03 179:55: 13pt Medium #7E8796)
-
-    private var resultCountLine: some View {
-        Text(viewModel.resultCountText)
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(Color(hex: 0x7E8796))
-    }
-
-    // MARK: - Filter chips (S03 179:56: HORIZONTAL itemSpacing=8, 34h, r18)
-
-    private var filterChipsRow: some View {
-        HStack(spacing: 8) {
-            ForEach(SearchFilter.allCases, id: \.self) { filter in
-                let isSelected = viewModel.activeFilter == filter
-                Button {
-                    viewModel.activeFilter = filter
-                } label: {
-                    Text(filter.label)
-                        // Active: 13pt Bold lemonInk | Inactive: 13pt SemiBold #6D7480
-                        .font(.system(size: 13, weight: isSelected ? .bold : .semibold))
-                        .foregroundStyle(isSelected ? AtlasColors.lemonInk : Color(hex: 0x6D7480))
-                        .padding(.horizontal, 16)
-                        .frame(height: 34)
-                        // Active: lemonStrong | Inactive: #F8FAFC — NO border
-                        .background(isSelected ? AtlasColors.lemonStrong : Color(hex: 0xF8FAFC))
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-            Spacer()
-        }
-    }
-
-    // MARK: - Results list (S03 179:61 — white card + border r20)
-
-    private var resultsList: some View {
-        LazyVStack(spacing: 12) {
-            ForEach(Array(viewModel.ideaMatches.enumerated()), id: \.element.idea.id) { index, match in
-                searchResultCard(
-                    title: match.idea.displayTitle,
-                    summary: match.idea.feedSummaryText ?? "",
-                    score: match.similarity,
-                    action: { ideaRoute = IdeaRoute(id: match.idea.id) }
-                )
-                .onAppear {
-                    if index == viewModel.ideaMatches.count - 1 {
-                        Task { await viewModel.loadMoreIdeas() }
-                    }
-                }
-            }
-
-            if viewModel.isLoadingMore {
-                ProgressView().padding(.vertical, 12)
-            }
-        }
-    }
-
-    /// Result card (S03 179:61): white bg + stroke r20, VERTICAL itemSpacing=8, padding=[16,16,0,14].
-    /// Score badge: 54×26 r14 bg=lemonSoft, score 12pt ExtraBold olive.
-    /// Title: 17pt ExtraBold ink. Summary: 13pt Medium #5F6673.
-    private func searchResultCard(title: String, summary: String, score: Double, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
-                // Score badge (S03 179:62): lemonSoft bg, raw score 12pt ExtraBold olive
-                if score > 0 {
-                    Text(String(format: "%.2f", score))
-                        .font(.system(size: 12, weight: .heavy))
-                        .foregroundStyle(AtlasColors.olive)
-                        .padding(.horizontal, 10)
-                        .frame(height: 26)
-                        .background(AtlasColors.lemonSoft)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-
-                // Title (S03 179:64): 17pt ExtraBold ink
-                Text(title)
-                    .font(.system(size: 17, weight: .heavy))
-                    .foregroundStyle(AtlasColors.ink)
-                    .lineLimit(2)
-
-                // Summary (S03 179:65): 13pt Medium #5F6673
-                Text(summary)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Color(hex: 0x5F6673))
-                    .lineLimit(2)
-            }
+    private func searchSectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(AtlasColors.inkFaint)
+            .tracking(0.6)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
-            .padding(.top, 0)
-            .padding(.bottom, 14)
-            .background(AtlasColors.surface)
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(AtlasColors.border, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Recent queries section
-
-    private var recentSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if viewModel.recentQueries.isEmpty {
-                AtlasDesignedEmptyStates.searchIdle()
-                    .padding(.top, 40)
-            } else {
-                HStack {
-                    Text("最近搜索")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                    Spacer()
-                    Button("清除") { viewModel.clearRecent() }
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkFaint)
-                }
-
-                FlowChips(items: viewModel.recentQueries) { term in
-                    viewModel.applyRecent(term)
-                }
-            }
-        }
+            .padding(.top, 4)
     }
 
     private func searchErrorState(message: String) -> some View {
@@ -395,8 +209,102 @@ struct SearchView: View {
                 }
                 .padding(.horizontal, 48)
             }
+            Spacer()
         }
-        .padding(.top, 40)
+        .frame(maxHeight: .infinity)
+    }
+
+    private var recentSection: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if viewModel.recentQueries.isEmpty {
+                    AtlasDesignedEmptyStates.searchIdle()
+                        .padding(.top, 80)
+                } else {
+                    HStack {
+                        Text("最近搜索")
+                            .font(AtlasTypography.badge())
+                            .foregroundStyle(AtlasColors.inkSoft)
+                        Spacer()
+                        Button("清除") { viewModel.clearRecent() }
+                            .font(.system(size: 12))
+                            .foregroundStyle(AtlasColors.inkFaint)
+                    }
+
+                    FlowChips(items: viewModel.recentQueries) { term in
+                        viewModel.applyRecent(term)
+                    }
+                }
+            }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 12)
+        }
+    }
+
+    private var resultsScroll: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                if !viewModel.ideaMatches.isEmpty {
+                    searchSectionHeader("语义搜索结果 · \(viewModel.ideaMatches.count) 条匹配")
+                        .padding(.horizontal, AtlasMetrics.detailX)
+
+                    ForEach(Array(viewModel.ideaMatches.enumerated()), id: \.element.idea.id) { index, match in
+                        Button { ideaRoute = IdeaRoute(id: match.idea.id) } label: {
+                            searchIdeaCard(match, isTopMatch: index == 0)
+                        }
+                        .buttonStyle(.plain)
+                        .onAppear {
+                            if index == viewModel.ideaMatches.count - 1 {
+                                Task { await viewModel.loadMoreIdeas() }
+                            }
+                        }
+                    }
+
+                    if viewModel.isLoadingMore {
+                        ProgressView().padding(.vertical, 12)
+                    }
+                }
+
+                if !viewModel.agentResults.isEmpty {
+                    searchSectionHeader("AGENT")
+                        .padding(.top, viewModel.ideaMatches.isEmpty ? 0 : 8)
+
+                    ForEach(viewModel.agentResults) { agent in
+                        Button {
+                            agentRoute = AgentRoute(id: agent.id)
+                        } label: {
+                            HomeSearchAgentCell(agent: agent)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 12)
+            .padding(.bottom, 16)
+        }
+    }
+
+    private func searchIdeaCard(_ match: SearchMatch, isTopMatch: Bool) -> some View {
+        let idea = match.idea
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(idea.displayTitle)
+                .font(AtlasTypography.cardTitle())
+                .foregroundStyle(AtlasColors.ink)
+                .lineLimit(2)
+            Text("\(Int(match.similarity * 100))% 匹配 · \(idea.agent?.name ?? "Agent") · \(idea.statusLabel)")
+                .font(AtlasTypography.mobileSubheadline())
+                .foregroundStyle(AtlasColors.inkSoft)
+                .lineLimit(1)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(isTopMatch ? AtlasColors.lemonSoft : AtlasColors.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                .stroke(AtlasColors.borderProfile, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
     }
 }
 
@@ -418,7 +326,7 @@ private struct FlowChips: View {
                                 .foregroundStyle(AtlasColors.ink)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(AtlasColors.surfaceSecondary)
+                                .background(AtlasColors.surface)
                                 .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
