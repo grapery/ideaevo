@@ -154,54 +154,98 @@ final class IdeaDetailViewModel {
     }
 }
 
+/// v2 (ardot S04 `311:81`): float-liquid glass pill tabbar anchored to the bottom safe area.
+/// Replaces the old full-width `.ultraThinMaterial` bar + hairline + wide "从 vX Fork" lemon
+/// capsule. The new bar is a single floating rounded-rectangle (r28) of translucent glass
+/// holding four equal circular icon buttons: comment (with count), share, save/bookmark,
+/// and fork (lemon-filled with count). Matches the iOS 26 Liquid Glass aesthetic and the
+/// top floating-glass toolbar language.
 private struct IdeaEvolutionActionBar: View {
     let commentCount: Int
-    let referenceCount: Int
-    let version: Int
+    let forkCount: Int
+    let isBookmarked: Bool
     let onComment: () -> Void
+    let onShare: () -> Void
+    let onBookmark: () -> Void
     let onFork: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            metricButton(icon: .comment, value: commentCount, action: onComment)
-            metricButton(icon: .externalLink, value: referenceCount, action: {})
-
-            Button(action: onFork) {
-                HStack(spacing: 8) {
-                    DeimosIconView(icon: .fork, size: 18, color: AtlasColors.lemonInk)
-                    Text("从 v\(version) Fork")
-                        .font(AtlasTypography.pill())
-                        .lineLimit(1)
-                }
-                .foregroundStyle(AtlasColors.lemonInk)
-                .frame(maxWidth: .infinity)
-                .frame(height: 48)
-                .background(AtlasColors.primaryAction)
-                .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("从版本 \(version) Fork")
+        HStack(spacing: 0) {
+            circleButton(icon: .comment, count: commentCount, isActive: false, action: onComment)
+                .accessibilityLabel("评论，\(commentCount) 条")
+            circleButton(icon: .share, count: nil, isActive: false, action: onShare)
+                .accessibilityLabel("分享")
+            circleButton(icon: .bookmark, count: nil, isActive: isBookmarked, action: onBookmark)
+                .accessibilityLabel(isBookmarked ? "取消收藏" : "收藏")
+            circleButton(icon: .fork, count: forkCount, isActive: false, isLemon: true, action: onFork)
+                .accessibilityLabel("Fork，\(forkCount) 次")
         }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color.white.opacity(0.36))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.white.opacity(0.78), lineWidth: 1)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1)
+        )
+        .shadow(color: AtlasColors.ink.opacity(0.10), radius: 18, x: 0, y: 8)
         .padding(.horizontal, AtlasMetrics.detailX)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .top) {
-            Rectangle().fill(AtlasColors.rule).frame(height: 1)
-        }
+        .padding(.bottom, 8)
     }
 
-    private func metricButton(icon: DeimosIcon, value: Int, action: @escaping () -> Void) -> some View {
+    /// One circular action. Default state: white/36% glass circle with an ink icon; an
+    /// optional count badge sits below the icon. `isActive` recolours the icon (e.g. saved
+    /// bookmark). `isLemon` swaps the glass fill for the lemonStrong primary-action fill.
+    @ViewBuilder
+    private func circleButton(
+        icon: DeimosIcon,
+        count: Int?,
+        isActive: Bool,
+        isLemon: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
-            HStack(spacing: 7) {
-                DeimosIconView(icon: icon, size: 18, color: AtlasColors.ink)
-                Text("\(value)")
-                    .font(AtlasTypography.meta().weight(.semibold))
-                    .monospacedDigit()
+            VStack(spacing: 2) {
+                ZStack {
+                    Circle()
+                        .fill(isLemon
+                              ? AtlasColors.lemonStrong
+                              : Color.white.opacity(0.36))
+                        .frame(width: 40, height: 40)
+                    DeimosIconView(
+                        icon: icon,
+                        size: 17,
+                        color: isLemon
+                            ? AtlasColors.lemonInk
+                            : (isActive ? AtlasColors.lemonInk : AtlasColors.ink)
+                    )
+                }
+                .overlay(
+                    Circle().stroke(Color.white.opacity(0.78), lineWidth: 1)
+                )
+                .overlay(
+                    Circle().stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1)
+                )
+
+                if let count {
+                    Text("\(count)")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(isLemon ? AtlasColors.lemonInk : AtlasColors.inkSoft)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                } else {
+                    Color.clear.frame(height: 12)
+                }
             }
-            .foregroundStyle(AtlasColors.ink)
-            .frame(width: 88, height: 48)
-            .background(AtlasColors.fill)
-            .clipShape(Capsule())
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
         }
         .buttonStyle(.plain)
     }
@@ -287,9 +331,11 @@ struct IdeaDetailView: View {
             if let idea = viewModel.idea {
                 IdeaEvolutionActionBar(
                     commentCount: idea.commentCount,
-                    referenceCount: viewModel.stats?.referenceCount ?? idea.referenceCount,
-                    version: viewModel.currentVersionNumber,
+                    forkCount: idea.forkCount,
+                    isBookmarked: viewModel.isBookmarked,
                     onComment: { openComments(idea) },
+                    onShare: { Task { await shareIdea() } },
+                    onBookmark: { Task { await handleBookmark() } },
                     onFork: { openForkSheet() }
                 )
             }
