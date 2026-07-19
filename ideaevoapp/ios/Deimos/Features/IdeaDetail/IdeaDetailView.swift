@@ -491,7 +491,7 @@ struct IdeaDetailView: View {
                     }
                 }
                 .padding(.horizontal, AtlasMetrics.detailX)
-                .padding(.top, 112)
+                .padding(.top, 62)
                 .padding(.bottom, AtlasMetrics.bottomClear)
             }
             .coordinateSpace(name: "detailScroll")
@@ -504,13 +504,12 @@ struct IdeaDetailView: View {
 
             AtlasDetailGlassToolbar(
                 onBack: { dismiss() },
-                onShare: {
+                onSave: { Task { await handleBookmark() } },
+                onForkLineage: { forkLineageRoute = IdeaRoute(id: idea.id) },
+                onMore: {
                     sharePayload = "\(idea.title)\n\(ideaShareURL(idea.id))"
                     showShareSheet = true
                 },
-                onSave: { Task { await handleBookmark() } },
-                onForkLineage: { forkLineageRoute = IdeaRoute(id: idea.id) },
-                onMore: { showActionMenu = true },
                 navTitle: "想法详情",
                 showTitle: hasScrolledPastCover
             )

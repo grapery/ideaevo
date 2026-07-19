@@ -411,22 +411,26 @@ struct AtlasToolbarFloatIconButton: View {
 
 /// Detail pages keep their actions above the scroll content. The material surface
 /// deliberately blurs whatever moves beneath it, matching the Ardot scrolled state.
+/// Floating glass overlay controls for Idea Detail (ardot S04 `179:74` + `296:14`).
+/// NOT a bar — these are independent 44×44 floating glass circles overlaid on the scroll content.
+/// Back button on left, action cluster (Save/Fork/More) on right. No background blur, no divider.
 struct AtlasDetailGlassToolbar: View {
     let onBack: () -> Void
-    let onShare: () -> Void
-    let onSave: () -> Void
-    let onForkLineage: () -> Void
-    let onMore: () -> Void
-    /// Scrolled-state title (ardot S04C `246:6` "想法详情" 18pt Bold). When non-nil and `showTitle`
-    /// is true, a centered label appears between the back button and the action cluster — matching
-    /// the design's scroll-state glass nav. Leave nil for cover-visible initial state.
+    var onSave: () -> Void = {}
+    var onForkLineage: () -> Void = {}
+    var onMore: () -> Void = {}
+    /// Scrolled-state title (ardot S04C `246:6` "想法详情" 18pt Bold).
     var navTitle: String? = nil
     var showTitle: Bool = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 0) {
+            // Left: back button (ardot 179:74)
             AtlasToolbarFloatIconButton(icon: .chevronBack, size: 44, iconSize: 18, action: onBack)
-            Spacer(minLength: 12)
+
+            Spacer(minLength: 0)
+
+            // Center: scrolled-state title
             if showTitle, let navTitle {
                 Text(navTitle)
                     .font(.system(size: 18, weight: .bold))
@@ -434,24 +438,23 @@ struct AtlasDetailGlassToolbar: View {
                     .lineLimit(1)
                     .frame(maxWidth: 180)
                     .transition(.opacity)
+                    .frame(height: 44)
+            } else {
+                Color.clear.frame(width: 0, height: 44)
             }
-            Spacer(minLength: 12)
-            AtlasToolbarFloatIconButton(icon: .share, size: 44, iconSize: 18, action: onShare)
-            AtlasToolbarFloatIconButton(icon: .bookmark, size: 44, iconSize: 18, action: onSave)
-            AtlasToolbarFloatIconButton(icon: .fork, size: 44, iconSize: 18, action: onForkLineage)
-            AtlasToolbarFloatIconButton(icon: .more, size: 44, iconSize: 18, action: onMore)
+
+            Spacer(minLength: 0)
+
+            // Right: action cluster (ardot 296:14 — Save Snapshot / Fork Lineage / More)
+            HStack(spacing: 4) {
+                AtlasToolbarFloatIconButton(icon: .bookmark, size: 44, iconSize: 18, action: onSave)
+                AtlasToolbarFloatIconButton(icon: .fork, size: 44, iconSize: 18, action: onForkLineage)
+                AtlasToolbarFloatIconButton(icon: .more, size: 44, iconSize: 18, action: onMore)
+            }
         }
         .padding(.horizontal, AtlasMetrics.detailX)
-        .padding(.top, 58)
-        .padding(.bottom, 6)
-        .frame(height: 112, alignment: .bottom)
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(AtlasColors.border.opacity(0.72))
-                .frame(height: 1)
-        }
-        .accessibilityElement(children: .contain)
+        .padding(.top, 4)
+        .frame(height: 44)
     }
 }
 
