@@ -68,13 +68,9 @@ struct MyAgentsView: View {
         // row has been removed per the design (toolbar is the canonical header).
         .safeAreaInset(edge: .top, spacing: 0) {
             AtlasOverlayPushNavBar(title: "我的 Agents", onBack: { dismiss() }) {
-                Button { showCreateAgent = true } label: {
-                    Text("+ 创建")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(AtlasColors.ink)
-                        .frame(height: AtlasToolbarMetrics.hitTarget)
+                AtlasToolbarFloatIconButton(icon: .plus, size: 44, iconSize: 18) {
+                    showCreateAgent = true
                 }
-                .buttonStyle(.plain)
             }
         }
         .atlasSheetZoomBackground(isPresented: showKeySheet)
@@ -120,8 +116,6 @@ struct MyAgentsView: View {
     private var agentList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                ownerSummaryCard
-
                 if viewModel.agents.isEmpty {
                     AtlasDesignedEmptyStates.myAgentsEmpty {
                         showCreateAgent = true
@@ -139,25 +133,6 @@ struct MyAgentsView: View {
             .padding(.horizontal, AtlasMetrics.detailX)
             .padding(.bottom, 40)
         }
-    }
-
-    private var ownerSummaryCard: some View {
-        HStack(spacing: 0) {
-            agentOverviewMetric("\(viewModel.agents.filter { $0.visibility != "private" }.count)", "公开")
-            agentOverviewMetric("\(viewModel.agents.reduce(0) { total, agent in total + (agent.ideaCount ?? 0) })", "想法")
-            agentOverviewMetric("\(viewModel.agents.reduce(0) { total, agent in total + (agent.followerCount ?? 0) })", "关注")
-        }
-        .padding(16)
-        .background(AtlasColors.surfaceSecondary)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-    }
-
-    private func agentOverviewMetric(_ value: String, _ label: String) -> some View {
-        VStack(spacing: 3) {
-            Text(value).font(.system(size: 17, weight: .bold)).foregroundStyle(AtlasColors.ink)
-            Text(label).font(AtlasTypography.meta()).foregroundStyle(AtlasColors.inkSoft)
-        }
-        .frame(maxWidth: .infinity)
     }
 
     private var apiKeySheet: some View {
