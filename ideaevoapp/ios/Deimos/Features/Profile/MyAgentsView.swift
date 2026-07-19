@@ -106,20 +106,28 @@ struct MyAgentsView: View {
     private var agentList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // S13 — Back button row (36×36 r18 #F4F5F8)
                 HStack(spacing: 12) {
-                    AtlasNavBackButton(action: { dismiss() })
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("你的 Agent 资产")
+                            .font(AtlasTypography.overline())
+                            .foregroundStyle(AtlasColors.inkSoft)
+                        Text("我的 Agents")
+                            .font(AtlasTypography.largeTitle())
+                            .foregroundStyle(AtlasColors.ink)
+                            .atlasTrackedTitle(30)
+                    }
                     Spacer()
+                    // ardot S19 (246:3): plain text button, 15pt Semibold, ink — no fill, no capsule.
+                    Button { showCreateAgent = true } label: {
+                        Text("+ 创建")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
+                            .frame(height: 40)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.top, 4)
 
-                // S13 Page title — 32pt Bold ink (Ardot 179:296)
-                Text("我的 Agent")
-                    .font(.system(size: 32, weight: .bold))
-                    .atlasTrackedTitle(32)
-                    .foregroundStyle(AtlasColors.ink)
-
-                // S13 Agent Owner Summary — bg #EEF4FF r20 + 1px border (Ardot 179:297)
                 ownerSummaryCard
 
                 if viewModel.agents.isEmpty {
@@ -128,7 +136,11 @@ struct MyAgentsView: View {
                     }
                 } else {
                     ForEach(viewModel.agents) { agent in
-                        agentCard(agent)
+                        if agent.visibility == "private" {
+                            draftAgentCard(agent)
+                        } else {
+                            agentCard(agent)
+                        }
                     }
                 }
             }
@@ -137,25 +149,23 @@ struct MyAgentsView: View {
         }
     }
 
-    /// S13 Agent Owner Summary — soft-blue card summarising API key & avatar management.
     private var ownerSummaryCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("\(viewModel.agents.count) 个 Agent 正在生成想法")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(AtlasColors.ink)
-            Text("API Key 以 wanye_ 前缀签发；可轮换、上传头像、调整可见性。")
-                .font(.system(size: 12))
-                .foregroundStyle(Color(hex: 0x687083))
-                .lineSpacing(6)
+        HStack(spacing: 0) {
+            agentOverviewMetric("\(viewModel.agents.filter { $0.visibility != "private" }.count)", "公开")
+            agentOverviewMetric("\(viewModel.agents.reduce(0) { total, agent in total + (agent.ideaCount ?? 0) })", "想法")
+            agentOverviewMetric("\(viewModel.agents.reduce(0) { total, agent in total + (agent.followerCount ?? 0) })", "关注")
         }
         .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(hex: 0xEEF4FF))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color(hex: 0xE7EAF0), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(AtlasColors.surfaceSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+    }
+
+    private func agentOverviewMetric(_ value: String, _ label: String) -> some View {
+        VStack(spacing: 3) {
+            Text(value).font(.system(size: 17, weight: .bold)).foregroundStyle(AtlasColors.ink)
+            Text(label).font(AtlasTypography.meta()).foregroundStyle(AtlasColors.inkSoft)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var apiKeySheet: some View {
@@ -219,11 +229,9 @@ struct MyAgentsView: View {
         .presentationDetents([.height(380)])
     }
 
-    /// S13 Managed Agent Card — bg #F8FAFC r20 + 1px border, itemSpacing 10 (Ardot 179:300).
+    /// Ardot 246:3 Managed Agent Card — white + border r20, itemSpacing 10.
     private func agentCard(_ agent: Agent) -> some View {
-        let expanded = viewModel.expandedAgentID == agent.id
         return VStack(alignment: .leading, spacing: 10) {
-            // 179:301 Agent Header — 44 avatar + name 14pt SemiBold ink
             Button {
                 agentRoute = AgentRoute(id: agent.id)
             } label: {
@@ -236,11 +244,11 @@ struct MyAgentsView: View {
                     )
                     VStack(alignment: .leading, spacing: 0) {
                         Text(agent.name)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(AtlasTypography.feedTitle())
                             .foregroundStyle(AtlasColors.ink)
                         Text(agentHeaderLine(agent))
                             .font(.system(size: 12))
-                            .foregroundStyle(Color(hex: 0x687083))
+                            .foregroundStyle(AtlasColors.inkSoft)
                     }
                     Spacer(minLength: 0)
                     DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
@@ -248,31 +256,25 @@ struct MyAgentsView: View {
             }
             .buttonStyle(.plain)
 
-            // 179:304 Agent Metrics — 3 tiles r14, 12pt SemiBold labels, spacing 8
-            HStack(spacing: 8) {
-                metricTile(
-                    text: "\(agent.followerCount ?? 0) 关注",
-                    bg: Color.white,
-                    textColor: AtlasColors.ink
-                )
-                metricTile(
-                    text: "\(agent.followerCount ?? 0) 关注",
-                    bg: Color(hex: 0xFFF5D8),
-                    textColor: Color(hex: 0x6C5600)
-                )
-                metricTile(
-                    text: "— 次调用",
-                    bg: Color(hex: 0xF2FFC5),
-                    textColor: AtlasColors.olive
-                )
-            }
+            Text(agent.description?.plainSummary ?? "持续发布可被使用与 Fork 的想法。")
+                .font(AtlasTypography.mobileSubheadline())
+                .foregroundStyle(AtlasColors.inkSoft)
+                .lineLimit(2)
 
-            // 179:311 Agent Actions — Edit / Rotate Key / Upload buttons, 36h r18
+            Text(agent.capabilitySummaryLine)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(AtlasColors.lemonInk)
+                .lineLimit(1)
+
+            Text("\(agent.ideaCount ?? 0) 个想法 · \(agent.forkCount ?? 0) 次 Fork · \(compactCount(agent.followerCount ?? 0)) 关注")
+                .font(AtlasTypography.meta())
+                .foregroundStyle(AtlasColors.inkFaint)
+
             HStack(spacing: 8) {
                 Button {
                     editAgentID = agent.id
                 } label: {
-                    Text("编辑")
+                    Text("编辑 Agent")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(AtlasColors.lemonInk)
                         .frame(height: 36)
@@ -286,53 +288,46 @@ struct MyAgentsView: View {
                     pendingRotateID = agent.id
                     showRotateConfirm = true
                 } label: {
-                    Text(viewModel.rotatingAgentID == agent.id ? "生成中…" : "轮换 Key")
+                    Text(viewModel.rotatingAgentID == agent.id ? "生成中…" : "API Key")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(AtlasColors.olive)
+                        .foregroundStyle(AtlasColors.ink)
                         .frame(height: 36)
                         .frame(maxWidth: .infinity)
-                        .background(Color(hex: 0xF2FFC5))
+                        .background(AtlasColors.surfaceSecondary)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(viewModel.rotatingAgentID == agent.id)
-
-                Button {
-                    withAnimation {
-                        viewModel.expandedAgentID = expanded ? nil : agent.id
-                    }
-                } label: {
-                    Text(expanded ? "收起 Key" : "API Key")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color(hex: 0x687083))
-                        .frame(height: 36)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-
-            if expanded, let key = viewModel.revealedKeys[agent.id] {
-                Button {
-                    sheetKey = key
-                    showKeySheet = true
-                } label: {
-                    Text("查看 Key")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(AtlasColors.accentActive)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
             }
         }
         .padding(16)
-        .background(Color(hex: 0xF8FAFC))
+        .background(AtlasColors.surface)
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color(hex: 0xE7EAF0), lineWidth: 1)
+            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                .stroke(AtlasColors.border, lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+    }
+
+    /// Ardot 246:3 muted private draft card.
+    private func draftAgentCard(_ agent: Agent) -> some View {
+        Button {
+            editAgentID = agent.id
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(agent.name) · 私有草稿")
+                    .font(AtlasTypography.feedTitle())
+                    .foregroundStyle(AtlasColors.ink)
+                Text("\(agent.ideaCount ?? 0) 个公开想法 · 完善资料后发布")
+                    .font(AtlasTypography.meta())
+                    .foregroundStyle(AtlasColors.inkSoft)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AtlasColors.surfaceSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private func agentHeaderLine(_ agent: Agent) -> String {
@@ -342,13 +337,7 @@ struct MyAgentsView: View {
         return "\(visibility) · \(follow) · \(chat)"
     }
 
-    private func metricTile(text: String, bg: Color, textColor: Color) -> some View {
-        Text(text)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(textColor)
-            .frame(maxWidth: .infinity)
-            .frame(height: 38)
-            .background(bg)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    private func compactCount(_ value: Int) -> String {
+        value >= 1_000 ? String(format: "%.1fk", Double(value) / 1_000) : "\(value)"
     }
 }

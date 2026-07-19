@@ -5,7 +5,7 @@ import Observation
 @Observable
 final class HomeViewModel {
     var ideas: [Idea] = []
-    var isLoading = false
+    var isLoading = true
     var isLoadingMore = false
     var hasMoreIdeas = true
     var errorMessage: String?
@@ -18,8 +18,7 @@ final class HomeViewModel {
     static let sortOptions: [(label: String, value: String)] = [
         ("热门", "popular"),
         ("最新", "newest"),
-        ("最多复用", "most_forked"),
-        ("最多送花", "most_flowered"),
+        ("实现中", "most_forked"),
     ]
 
     var visibleIdeas: [Idea] {
@@ -69,37 +68,41 @@ final class HomeViewModel {
     }
 }
 
-/// v7 Home — per S02 node tree (Ardot 179:1).
-/// Content Wrapper: VERTICAL itemSpacing=18, padding=[20,20,0,18], bg=white.
-/// Elements: eyebrow → title → AI hero → sort chips → section title → idea cover cards.
+/// v6 Home — large title + AI Hero card + sort chips + IdeaCoverCard feed.
+/// Per Ardot `138:228`.
 struct HomeView: View {
-    let unreadCount: Int
-    let onNotifications: () -> Void
-
-    @Environment(AuthSession.self) private var session
     @State private var viewModel = HomeViewModel()
     @State private var selectedRoute: IdeaRoute?
     @State private var showPublishIdea = false
     @State private var showAuthSheet = false
+    @State private var showSearch = false
     @State private var sortIndex = 0
     @State private var startChat = false
     @Namespace private var ideaIconNamespace
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                if let offlineMessage = viewModel.errorMessage,
-                   !viewModel.visibleIdeas.isEmpty {
-                    AtlasOfflineBanner(message: offlineMessage) {
-                        Task { await viewModel.loadPlaza() }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
-                }
+        Group {
+            if viewModel.isLoading && viewModel.visibleIdeas.isEmpty {
+                loadingHome
+            } else if viewModel.errorMessage == nil && viewModel.visibleIdeas.isEmpty {
+                emptyHome
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        if let offlineMessage = viewModel.errorMessage,
+                           !viewModel.visibleIdeas.isEmpty {
+                            AtlasOfflineBanner(message: offlineMessage) {
+                                Task { await viewModel.loadPlaza() }
+                            }
+                            .padding(.horizontal, AtlasMetrics.pageX)
+                            .padding(.bottom, 8)
+                        }
 
-                content
+                        content
+                    }
+                    .padding(.bottom, AtlasMetrics.bottomClear)
+                }
             }
-            .padding(.bottom, AtlasMetrics.bottomClear)
         }
         .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: showAuthSheet)
@@ -109,6 +112,9 @@ struct HomeView: View {
         }
         .navigationDestination(isPresented: $showPublishIdea) {
             PublishIdeaView()
+        }
+        .navigationDestination(isPresented: $showSearch) {
+            SearchView()
         }
         .navigationDestination(isPresented: $startChat) {
             ChatListView()
@@ -124,44 +130,49 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Content (S02 Content Wrapper: VERTICAL itemSpacing=18, padding=[20,20,0,18])
-
-    @ViewBuilder
-    private var content: some View {
-        // Per S02 node tree: VStack itemSpacing=18, no bell, no "查看全部"
-        VStack(alignment: .leading, spacing: 18) {
-            // Title (S02: 179:26)
-            Text("探索")
-                .font(.system(size: 36, weight: .heavy))
-                .atlasTrackedTitle(36)
-                .foregroundStyle(AtlasColors.ink)
-
-            // AI Hero Card (S02: 179:27)
-            AIHeroCard(
-                title: "和万叶一起延展下一个想法",
-                subtitle: "搜索、注册、复用，都在对话里完成",
-                ctaTitle: "找万叶聊"
-            ) {
-                startChat = true
-            }
-
-            // Sort Chips (S02: 179:32)
-            sortChips
-
-            // Section title (S02: 179:39)
-            Text("热门想法")
-                .font(.system(size: 24, weight: .heavy))
-                .foregroundStyle(AtlasColors.ink)
-
-            // Idea feed
-            feedContent
+    private var emptyHome: some View {
+        VStack(spacing: 0) {
+            largeTitleHeader
+            Spacer(minLength: 54)
+            AtlasDesignedEmptyStates.plazaEmpty { startChat = true }
+            Spacer()
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 0)
-        .padding(.bottom, 18)
+        .padding(.bottom, AtlasMetrics.bottomClear)
     }
 
-    // MARK: - Sort Chips (S02: 179:32 — HORIZONTAL itemSpacing=8, 36h, r20, NO border on inactive)
+    private var loadingHome: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                largeTitleHeader
+                HomeFeedLoadingSkeleton()
+                    .padding(.horizontal, AtlasMetrics.pageX)
+            }
+            .padding(.bottom, AtlasMetrics.bottomClear)
+        }
+    }
+
+    // MARK: - v6 Large Title Header
+
+    private var largeTitleHeader: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("DEIMOS")
+                    .font(AtlasTypography.overline())
+                    .foregroundStyle(AtlasColors.inkSoft)
+                Text("探索")
+                    .font(AtlasTypography.largeTitle())
+                    .foregroundStyle(AtlasColors.ink)
+                    .atlasTrackedTitle(30)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, AtlasMetrics.pageX)
+        .padding(.top, 8)
+        .padding(.bottom, 20)
+    }
+
+    // MARK: - Sort Chips
 
     private var sortChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -169,22 +180,24 @@ struct HomeView: View {
                 ForEach(HomeViewModel.sortOptions.indices, id: \.self) { index in
                     let isSelected = sortIndex == index
                     Button {
-                        Haptics.selection()
                         selectSort(index)
                     } label: {
                         Text(HomeViewModel.sortOptions[index].label)
-                            // Active: 14pt Bold lemonInk | Inactive: 14pt SemiBold #737A87
-                            .font(.system(size: 14, weight: isSelected ? .bold : .semibold))
-                            .foregroundStyle(isSelected ? AtlasColors.lemonInk : Color(hex: 0x737A87))
-                            .padding(.horizontal, 16)
-                            .frame(height: 36)
-                            // Active: lemonStrong #CBEA16 | Inactive: #F7F8FA — NO border
-                            .background(isSelected ? AtlasColors.lemonStrong : Color(hex: 0xF7F8FA))
-                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(isSelected ? AtlasColors.lemonInk : AtlasColors.inkSoft)
+                            .padding(.horizontal, 24)
+                            .frame(height: 40)
+                            .background(isSelected ? AtlasColors.primaryAction : AtlasColors.surface)
+                            .overlay(
+                                Capsule()
+                                    .stroke(AtlasColors.border, lineWidth: isSelected ? 0 : 1)
+                            )
+                            .clipShape(Capsule())
                     }
-                    .buttonStyle(AtlasPressableStyle())
+                    .buttonStyle(.plain)
                 }
             }
+            .padding(.horizontal, AtlasMetrics.pageX)
         }
     }
 
@@ -198,27 +211,70 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Feed content
+    @ViewBuilder
+    private var content: some View {
+        largeTitleHeader
+
+        Button { showSearch = true } label: {
+            HStack(spacing: 0) {
+                Text("搜索想法、Agent…")
+                    .font(AtlasTypography.subtitle())
+                    .foregroundStyle(AtlasColors.inkSoft)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 48)
+            .background(AtlasColors.fill)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, AtlasMetrics.pageX)
+        .padding(.bottom, 20)
+
+        // AI Hero Card — S02 instance (237:146) hides the CTA pill; the whole card is tappable.
+        AIHeroCard(
+            title: "还没有方向？问万叶",
+            subtitle: "从问题、素材或一个想法开始"
+        ) {
+            startChat = true
+        }
+        .padding(.horizontal, AtlasMetrics.pageX)
+        .padding(.bottom, 20)
+
+        sortChips
+            .padding(.bottom, 20)
+
+        plazaContent
+    }
 
     @ViewBuilder
-    private var feedContent: some View {
-        if viewModel.isLoading && viewModel.visibleIdeas.isEmpty {
-            HomeFeedLoadingSkeleton()
-        } else if let errorMessage = viewModel.errorMessage, viewModel.visibleIdeas.isEmpty {
+    private var plazaContent: some View {
+        // Section header — design always shows "热门想法" regardless of selected sort chip
+        HStack {
+            Text("为你挑选 · 公开可 Fork")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+            Spacer()
+            Button {
+                // No dedicated "all ideas" page yet — reload for more
+                Task { await viewModel.loadPlaza() }
+            } label: {
+                Text("筛选 ›")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(AtlasColors.oliveMeta)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, AtlasMetrics.pageX)
+        .padding(.bottom, 20)
+
+        if let errorMessage = viewModel.errorMessage, viewModel.visibleIdeas.isEmpty {
             AtlasDesignedEmptyStates.loadFailed(message: errorMessage) {
                 Task { await viewModel.loadPlaza() }
             }
             .frame(minHeight: 200)
-        } else if viewModel.visibleIdeas.isEmpty {
-            AtlasDesignedEmptyStates.plazaEmpty {
-                if session.isAuthenticated {
-                    showPublishIdea = true
-                } else {
-                    showAuthSheet = true
-                }
-            }
         } else {
-            LazyVStack(spacing: 18) {
+            LazyVStack(spacing: AtlasMetrics.cardGap) {
                 ForEach(Array(viewModel.visibleIdeas.enumerated()), id: \.element.id) { index, idea in
                     IdeaCoverCard(
                         idea: idea,
@@ -236,6 +292,7 @@ struct HomeView: View {
                     ProgressView().padding(.vertical, 12)
                 }
             }
+            .padding(.horizontal, AtlasMetrics.pageX)
         }
     }
 }

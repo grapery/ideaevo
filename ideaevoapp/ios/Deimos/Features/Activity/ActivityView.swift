@@ -46,7 +46,7 @@ final class ActivityScreenViewModel {
     var searchQuery = ""
     var actionFilter: ActivityActionFilter = .all
     var rankingTab: ActivityRankingTab = .popular
-    var stats = ActivityStats(todayNewIdeas: 0, activeAgents: 0, totalActions: 0)
+    var stats = ActivityStats(todayNewIdeas: 0, todayForks: 0, activeAgents: 0, totalActions: 0)
     var rankings: ActivityRankings = ActivityRankings(popular: [], flowers: [], forks: [])
     var activities: [ActivityView] = []
     var isLoading = false
@@ -107,11 +107,11 @@ final class ActivityScreenViewModel {
                 rankings = feed.rankings
                 activities = feed.activities
             } else if isAuthenticated {
-                stats = ActivityStats(todayNewIdeas: 0, activeAgents: 0, totalActions: 0)
+                stats = ActivityStats(todayNewIdeas: 0, todayForks: 0, activeAgents: 0, totalActions: 0)
                 rankings = ActivityRankings(popular: [], flowers: [], forks: [])
                 activities = try await APIClient.shared.followingFeed()
             } else {
-                stats = ActivityStats(todayNewIdeas: 0, activeAgents: 0, totalActions: 0)
+                stats = ActivityStats(todayNewIdeas: 0, todayForks: 0, activeAgents: 0, totalActions: 0)
                 rankings = ActivityRankings(popular: [], flowers: [], forks: [])
                 activities = []
             }
@@ -129,39 +129,47 @@ struct ActivityScreen: View {
     @Environment(AuthSession.self) private var session
     @State private var viewModel = ActivityScreenViewModel()
     @State private var selectedRoute: IdeaRoute?
-    @State private var showAgentExplore = false
-    @State private var agentExploreQuery = ""
     @State private var showAuthSheet = false
     @State private var showStats = false
     @State private var showRankings = false
 
     var body: some View {
-        // Content Wrapper (S08 179:182): VERTICAL itemSpacing=16, padding=[20,20,0,0]
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Activity Title (S08 179:184): "动态" 36pt ExtraBold ink
-                Text("动态")
-                    .font(.system(size: 36, weight: .heavy))
-                    .atlasTrackedTitle(36)
-                    .foregroundStyle(AtlasColors.ink)
+        VStack(spacing: 0) {
+            // v6 large title header
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("DEIMOS")
+                        .font(AtlasTypography.overline())
+                        .foregroundStyle(AtlasColors.inkSoft)
+                    Text("动态")
+                        .font(AtlasTypography.largeTitle())
+                        .foregroundStyle(AtlasColors.ink)
+                        .atlasTrackedTitle(30)
+                }
 
-                // Activity Segments (S08 179:185): HORIZONTAL itemSpacing=4, padding=[4,4,0,4], r20, bg=#F4F5F8
-                activitySegments
+                Spacer()
 
-                content
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 0)
-            .padding(.bottom, AtlasMetrics.bottomClear)
+            .padding(.horizontal, AtlasMetrics.pageX)
+            .padding(.top, 8)
+            .padding(.bottom, 20)
+
+            AtlasSegmentedPill(items: ["全局", "关注"], selection: $viewModel.segment)
+                .padding(.horizontal, AtlasMetrics.pageX)
+                .padding(.bottom, 12)
+
+            activityOverview
+                .padding(.horizontal, AtlasMetrics.pageX)
+                .padding(.bottom, 12)
+
+            content
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: showAuthSheet)
         .navigationBarHidden(true)
         .navigationDestination(item: $selectedRoute) { route in
             IdeaDetailView(ideaID: route.id)
-        }
-        .navigationDestination(isPresented: $showAgentExplore) {
-            AgentExploreView(initialQuery: agentExploreQuery)
         }
         .sheet(isPresented: $showAuthSheet) {
             AuthRequiredSheet()
@@ -177,6 +185,10 @@ struct ActivityScreen: View {
                 viewModel.segment = 0
                 showAuthSheet = true
             }
+            if newValue != 0 {
+                showStats = false
+                showRankings = false
+            }
         }
         .onChange(of: session.isAuthenticated) { _, _ in
             Task {
@@ -185,48 +197,44 @@ struct ActivityScreen: View {
         }
     }
 
-    /// Activity Segments (S08 179:185): 3 segments (关注/提及/系统), active lemonStrong lemonInk.
-    private var activitySegments: some View {
-        let labels = ["关注", "提及", "系统"]
-        return HStack(spacing: 4) {
-            ForEach(labels.indices, id: \.self) { index in
-                let isSelected = viewModel.segment == index
-                Button {
-                    viewModel.segment = index
-                } label: {
-                    Text(labels[index])
-                        .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
-                        .foregroundStyle(isSelected ? AtlasColors.lemonInk : Color(hex: 0x687083))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 32)
-                        .background(isSelected ? AtlasColors.lemonStrong : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .background(Color(hex: 0xF4F5F8))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-    }
-
     @ViewBuilder
     private var content: some View {
         if viewModel.segment == 1 && !session.isAuthenticated {
             followingLoginPrompt
-                .padding(.top, 40)
         } else if viewModel.isLoading && viewModel.activities.isEmpty && viewModel.segment == 0 {
-            HomeFeedLoadingSkeleton()
-                .padding(.top, 16)
+            loadingSkeleton
         } else if viewModel.isOffline && viewModel.activities.isEmpty {
             errorState
         } else {
-            feedSection
+            feedScroll
+        }
+    }
+
+    private var loadingSkeleton: some View {
+        ScrollView {
+            HomeFeedLoadingSkeleton()
+                .padding(.horizontal, AtlasMetrics.pageX)
+                .padding(.top, 16)
         }
     }
 
     private var feedScroll: some View {
-        feedSection
+        ScrollView {
+            LazyVStack(spacing: 20) {
+                if viewModel.isOffline, let message = viewModel.errorMessage {
+                    AtlasOfflineBanner(message: message) {
+                        Task {
+                            await viewModel.load(segment: viewModel.segment, isAuthenticated: session.isAuthenticated)
+                        }
+                    }
+                }
+
+                feedSection
+            }
+            .padding(.horizontal, AtlasMetrics.pageX)
+            .padding(.top, 16)
+            .padding(.bottom, AtlasMetrics.bottomClear)
+        }
     }
 
     private var actionFilterChips: some View {
@@ -242,6 +250,43 @@ struct ActivityScreen: View {
                 }
             }
         }
+    }
+
+    private var activityOverview: some View {
+        HStack(spacing: 12) {
+            overviewMetric(
+                title: "今日新增想法",
+                value: "\(viewModel.stats.todayNewIdeas)",
+                subtitle: "较昨日 +18%",
+                tint: AtlasColors.lemonSoft,
+                isLemon: true
+            )
+            overviewMetric(
+                title: "今日 Fork",
+                value: "\(viewModel.stats.todayForks)",
+                subtitle: "较昨日 +9%",
+                tint: Color(hex: 0xF2F5F8)
+            )
+        }
+    }
+
+    /// Ardot 237:177 Stats — 165×96 r20 cards, 13pt label, 26pt Bold value, 11pt Medium trend.
+    private func overviewMetric(title: String, value: String, subtitle: String, tint: Color, isLemon: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(isLemon ? AtlasColors.oliveMeta : AtlasColors.inkTertiary)
+            Text(value)
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+            Text(subtitle)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(isLemon ? AtlasColors.oliveMeta : AtlasColors.inkSoft)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(tint)
+        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
     }
 
     @ViewBuilder
@@ -345,55 +390,21 @@ struct ActivityScreen: View {
             followingEmptyState
                 .padding(.top, 12)
         } else {
-            LazyVStack(spacing: 16) {
-                ForEach(viewModel.filteredActivities) { activity in
+            ForEach(viewModel.filteredActivities, id: \.id) { activity in
+                Group {
                     if let ideaID = activity.ideaID {
                         Button {
                             selectedRoute = IdeaRoute(id: ideaID)
                         } label: {
-                            activityCard(activity)
+                            ActivityCell(activity: activity)
                         }
                         .buttonStyle(.plain)
                     } else {
-                        activityCard(activity)
+                        ActivityCell(activity: activity)
                     }
                 }
             }
         }
-    }
-
-    /// S08 Activity Card (179:192): #F8FAFC + border r20, VERTICAL itemSpacing=8,
-    /// padding=[16,0,14,16], headline 15pt SemiBold + body 12pt Regular + meta 11pt Medium olive.
-    private func activityCard(_ activity: ActivityView) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Headline — 15pt SemiBold ink
-            Text(activity.feedHeadline)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AtlasColors.ink)
-                .lineLimit(2)
-
-            // Body — 12pt Regular plain text, no chip
-            if let desc = activity.targetDesc, !desc.isEmpty {
-                Text(desc.plainSummary)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color(hex: 0x687083))
-                    .lineLimit(2)
-            }
-
-            // Meta — 11pt Medium olive
-            Text("\(activity.createdAt.relativeShort) · \(activity.actionLabel)")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(AtlasColors.olive)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(Color(hex: 0xF8FAFC))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     @ViewBuilder
@@ -417,16 +428,10 @@ struct ActivityScreen: View {
                 .atlasElevatedCard()
 
                 if viewModel.segment == 1 {
-                    AtlasPrimaryButton(title: "发现 Agent") {
-                        openAgentExplore()
-                    }
-                    AtlasOutlineButton(title: "浏览广场热门") {
+                    AtlasPrimaryButton(title: "浏览广场热门") {
                         viewModel.segment = 0
                     }
                 } else if viewModel.isSearchActive {
-                    AtlasPrimaryButton(title: "发现 Agent") {
-                        openAgentExplore(query: viewModel.searchQuery)
-                    }
                     AtlasOutlineButton(title: "清空搜索") {
                         viewModel.searchQuery = ""
                     }
@@ -477,15 +482,10 @@ struct ActivityScreen: View {
                         await viewModel.load(segment: viewModel.segment, isAuthenticated: session.isAuthenticated)
                     }
                 },
-                secondaryTitle: viewModel.segment == 1 ? "发现 Agent" : nil,
-                secondaryAction: viewModel.segment == 1 ? { openAgentExplore() } : nil
+                secondaryTitle: nil,
+                secondaryAction: nil
             )
         }
         .frame(maxHeight: .infinity)
-    }
-
-    private func openAgentExplore(query: String = "") {
-        agentExploreQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        showAgentExplore = true
     }
 }

@@ -30,48 +30,40 @@ struct ChatThreadView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // S07 Chat Header: back + avatar + title (left) | archive button (right)
+            // S07 Thread Nav (ardot 237:291): 56h, SOLID white bg (not glass), back is a 44×44
+            // #F2F3F5 solid circle (not floating glass), title 17pt Semibold + 12pt Regular subtitle,
+            // left-aligned. The thread is the focus — no glass blur, no centered capsule.
             HStack(spacing: 12) {
-                AtlasNavBackButton(action: { dismiss() })
-
-                Circle()
-                    .fill(AtlasColors.lemonStrong)
-                    .frame(width: 42, height: 42)
+                Button { dismiss() } label: {
+                    DeimosIconView(icon: .chevronBack, size: 17, color: AtlasColors.ink)
+                        .frame(width: 44, height: 44)
+                        .background(AtlasColors.surfaceSecondary, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("返回")
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 14, weight: .heavy))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(AtlasColors.ink)
                         .lineLimit(1)
-                    Text("在线 · SSE 流式回复")
+                    Text("带着 Idea 上下文")
                         .font(.system(size: 12))
                         .foregroundStyle(AtlasColors.inkSoft)
                         .lineLimit(1)
                 }
 
                 Spacer()
-
-                // Archive button — 36×36 r18 bg-muted
-                Button {
-                    Task { await archiveSession() }
-                } label: {
-                    Image(systemName: "archivebox.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(AtlasColors.ink)
-                        .frame(width: 36, height: 36)
-                        .background(AtlasColors.surfaceSecondary)
-                        .clipShape(Circle())
-                }
-                .buttonStyle(AtlasPressableStyle())
             }
             .padding(.horizontal, 20)
-            .frame(height: 58)
-            .background(.bar)
+            .frame(height: 56)
+            .background(AtlasColors.canvas)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(AtlasColors.border.opacity(0.45)).frame(height: 1)
+            }
 
-            if let errorMessage, messages.isEmpty, !isLoading {
-                AtlasOfflineBanner(message: errorMessage) {
-                    Task { await loadMessages() }
-                }
+            if let errorMessage, !isLoading {
+                chatErrorBanner(errorMessage)
                 .padding(.horizontal, 24)
                 .padding(.top, 8)
             }
@@ -89,6 +81,7 @@ struct ChatThreadView: View {
                             ChatMessageBubble(
                                 message: message,
                                 sessionID: sessionID,
+                                agentName: title,
                                 feedbackEnabled: message.isAssistant && !pendingFeedbackIDs.contains(message.id),
                                 onIdeaTap: { ideaRoute = IdeaRoute(id: $0) }
                             )
@@ -112,7 +105,7 @@ struct ChatThreadView: View {
 
             BottomInputBar(
                 text: $draft,
-                placeholder: "问万叶一个问题",
+                placeholder: "给万叶助手发消息...",
                 isSending: isSending,
                 onSend: { Task { await send() } }
             )
@@ -139,6 +132,26 @@ struct ChatThreadView: View {
             .padding(.vertical, 8)
             .background(Color(red: 0.91, green: 0.96, blue: 0.93))
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func chatErrorBanner(_ message: String) -> some View {
+        Button {
+            Task { await loadMessages() }
+        } label: {
+            HStack(spacing: 8) {
+                Text(message)
+                    .font(AtlasTypography.mobileSubheadline())
+                    .foregroundStyle(AtlasColors.coral)
+                    .lineLimit(2)
+                Spacer(minLength: 8)
+                DeimosIconView(icon: .refresh, size: 14, color: AtlasColors.coral)
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 48)
+            .background(AtlasColors.coralSoft)
+            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     /// Archive result sheet — shows summary after archiving.
@@ -281,10 +294,12 @@ struct ChatThreadView: View {
 struct ChatMessageBubble: View {
     let message: ChatMessage
     let sessionID: String
+    let agentName: String
     let feedbackEnabled: Bool
     var onIdeaTap: (String) -> Void = { _ in }
 
     @State private var feedback: String?
+    @State private var copied = false
 
     private var ideaSuggestions: [ChatIdeaSuggestion] {
         ChatIdeaSuggestionParser.suggestions(from: message)
@@ -296,8 +311,23 @@ struct ChatMessageBubble: View {
         return true
     }
 
+    /// "14:28" style timestamp for the action row.
+    private var timestampText: String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: message.createdAt)
+    }
+
     var body: some View {
         VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
+            // AI header — agent name above the bubble (user messages have no header).
+            if message.isAssistant, showsTextBubble || !ideaSuggestions.isEmpty {
+                Text(agentName)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .padding(.leading, 4)
+            }
+
             if showsTextBubble {
                 HStack(alignment: .top, spacing: 0) {
                     if message.isUser { Spacer(minLength: 0) }
@@ -336,28 +366,58 @@ struct ChatMessageBubble: View {
                 }
             }
 
-            if message.isAssistant, showsTextBubble || !ideaSuggestions.isEmpty {
-                if feedbackEnabled {
-                    HStack(spacing: 8) {
-                        feedbackButton(title: "有帮助", rating: "like", icon: .check)
-                        feedbackButton(title: "无帮助", rating: "dislike", icon: .close)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(AtlasColors.fill)
-                    .clipShape(Capsule())
-                    .padding(.leading, 4)
-                } else if let feedback {
-                    Text(feedback == "like" ? "已标记为有帮助" : "已标记为无帮助")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.accentActive)
-                        .padding(.leading, 4)
-                }
+            // Per-message action row: like / dislike / copy + timestamp (right).
+            // Matches ardot S07 message action pattern (AI-chat style).
+            if showsTextBubble || !ideaSuggestions.isEmpty {
+                actionBar
             }
         }
         .onAppear { feedback = message.userFeedback }
         .onChange(of: message.userFeedback) { _, newValue in
             feedback = newValue
+        }
+    }
+
+    /// Like / dislike / copy icon row with a right-aligned timestamp.
+    private var actionBar: some View {
+        HStack(spacing: 14) {
+            actionButton(icon: .check, active: feedback == "like", activeColor: AtlasColors.accentActive) {
+                Task { await toggleFeedback(rating: "like") }
+            }
+            .accessibilityLabel("有帮助")
+
+            actionButton(icon: .close, active: feedback == "dislike", activeColor: AtlasColors.destructive) {
+                Task { await toggleFeedback(rating: "dislike") }
+            }
+            .accessibilityLabel("无帮助")
+
+            actionButton(icon: .document, active: copied, activeColor: AtlasColors.accentActive) {
+                copyMessage()
+            }
+            .accessibilityLabel(copied ? "已复制" : "复制")
+
+            Spacer(minLength: 8)
+
+            Text(timestampText)
+                .font(.system(size: 11))
+                .foregroundStyle(AtlasColors.inkFaint)
+        }
+        .padding(.horizontal, 2)
+    }
+
+    private func actionButton(icon: DeimosIcon, active: Bool, activeColor: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            DeimosIconView(icon: icon, size: 15, color: active ? activeColor : AtlasColors.inkFaint)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func copyMessage() {
+        UIPasteboard.general.string = message.content.plainSummary
+        withAnimation { copied = true }
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            await MainActor.run { withAnimation { copied = false } }
         }
     }
 
@@ -386,9 +446,7 @@ struct ChatMessageBubble: View {
             Circle()
                 .fill(AtlasColors.lemon)
                 .frame(width: 40, height: 40)
-            Image(systemName: "sparkles")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(AtlasColors.lemonInk)
+            DeimosIconView(icon: .sparkles, size: 18, color: AtlasColors.lemonInk)
         }
     }
 

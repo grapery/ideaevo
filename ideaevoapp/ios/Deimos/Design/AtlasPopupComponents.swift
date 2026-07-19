@@ -184,21 +184,11 @@ extension View {
     }
 }
 
-private struct AtlasBottomSheetSurface: View {
-    var body: some View {
-        UnevenRoundedRectangle(
-            topLeadingRadius: AtlasMetrics.radiusSheet,
-            bottomLeadingRadius: 0,
-            bottomTrailingRadius: 0,
-            topTrailingRadius: AtlasMetrics.radiusSheet
-        )
-        .fill(AtlasColors.surface)
-        .ignoresSafeArea(edges: .bottom)
-    }
-}
-
 extension View {
-    /// Atlas page 34: flush bottom sheet, top-only corner radius, no outer stroke.
+    /// S12A Auth Required Sheet (ardot 237:565): 28pt corner radius, white bg, no outer stroke.
+    /// Uses SwiftUI's native `presentationCornerRadius` so the system clips content to the
+    /// rounded sheet shape — this avoids square-edge bleed where content overflowed a custom
+    /// surface that was only rounding its own background fill.
     func atlasBottomSheetStyle() -> some View {
         modifier(AtlasBottomSheetStyleModifier())
     }
@@ -211,10 +201,8 @@ private struct AtlasBottomSheetStyleModifier: ViewModifier {
         content
             .presentationDetents([.height(detentHeight)])
             .presentationDragIndicator(.hidden)
-            .presentationCornerRadius(0)
-            .presentationBackground {
-                AtlasBottomSheetSurface()
-            }
+            .presentationCornerRadius(AtlasMetrics.radiusSheet)
+            .presentationBackground(AtlasColors.surface)
     }
 
     private var detentHeight: CGFloat {
@@ -238,12 +226,12 @@ private struct AtlasBottomSheetPrimaryButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(AtlasTypography.cardTitle())
+                .font(AtlasTypography.button())
                 .frame(maxWidth: .infinity)
                 .frame(height: AtlasMetrics.primaryButtonHeight)
-                .foregroundStyle(.white)
-                .background(AtlasColors.primary)
-                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+                .foregroundStyle(AtlasColors.lemonInk)
+                .background(AtlasColors.primaryAction)
+                .clipShape(Capsule(style: .continuous))
         }
     }
 }
@@ -255,14 +243,15 @@ private struct AtlasBottomSheetSecondaryButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(AtlasTypography.cardTitle())
+                .font(AtlasTypography.button())
                 .frame(maxWidth: .infinity)
                 .frame(height: AtlasMetrics.primaryButtonHeight)
                 .foregroundStyle(AtlasColors.ink)
-                .background(AtlasColors.surface)
+                .background(AtlasColors.surfaceSecondary)
+                .clipShape(Capsule(style: .continuous))
                 .overlay(
-                    Capsule()
-                        .stroke(AtlasColors.rule, lineWidth: 1)
+                    Capsule(style: .continuous)
+                        .stroke(AtlasColors.border, lineWidth: 1)
                 )
         }
     }
@@ -299,13 +288,14 @@ struct AtlasBottomSheetChrome<Content: View>: View {
         VStack(spacing: 16) {
             AtlasSheetGrabber()
 
-            AtlasSheetTitleRow(
-                title: title,
-                onClose: { secondaryAction?() }
-            )
+            // Title (ardot 237:567): 22pt SF Pro Display Bold, ink — not the 17pt button weight.
+            Text(title)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(message)
-                .font(AtlasTypography.mobileBody())
+                .font(.system(size: 14, weight: .regular))
                 .foregroundStyle(AtlasColors.inkSoft)
                 .lineLimit(3)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -318,7 +308,10 @@ struct AtlasBottomSheetChrome<Content: View>: View {
                 AtlasBottomSheetSecondaryButton(title: secondaryTitle, action: secondaryAction)
             }
         }
-        .padding(20)
+        // ardot 237:565 sheet padding: top 12 / bottom 24 / horizontal 20.
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }

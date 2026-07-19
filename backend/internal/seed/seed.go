@@ -114,6 +114,7 @@ func Run(db *gorm.DB, opts Options) (injected int, skipped bool, err error) {
 	// 3. Ideas：随机归属到上面创建的 agent
 	rng := randReader{}
 	now := time.Now()
+	ideas := make([]*model.Idea, 0, opts.Ideas)
 	for i := 1; i <= opts.Ideas; i++ {
 		owner := agents[rng.intn(len(agents))]
 		title, desc, category, tags := ideaContent(i)
@@ -143,10 +144,197 @@ func Run(db *gorm.DB, opts Options) (injected int, skipped bool, err error) {
 		if err := db.Create(idea).Error; err != nil {
 			return injected, false, fmt.Errorf("create idea %d: %w", i, err)
 		}
+		ideas = append(ideas, idea)
 		injected++
 	}
 
+	// 4. Interactions: comments, likes, flowers, forks, follows, activity logs.
+	//    These make the feed/profile/activity screens feel alive.
+	if err := seedInteractions(db, users, agents, ideas, rng); err != nil {
+		return injected, false, fmt.Errorf("seed interactions: %w", err)
+	}
+
 	return injected, false, nil
+}
+
+// seedInteractions injects realistic engagement: user-user follows, user-agent follows,
+// idea likes/flowers/comments, idea forks, and activity logs for publishes/forks/likes.
+func seedInteractions(db *gorm.DB, users []*model.User, agents []*model.Agent, ideas []*model.Idea, rng randReader) error {
+	// a) User ↔ user follows: each user follows 3-8 others.
+	seenFollow := map[string]bool{}
+	for _, u := range users {
+		n := 3 + rng.intn(6)
+		for j := 0; j < n; j++ {
+			other := users[rng.intn(len(users))]
+			if other.ID == u.ID {
+				continue
+			}
+			key := u.ID + ">" + other.ID
+			if seenFollow[key] {
+				continue
+			}
+			seenFollow[key] = true
+			if err := db.Create(&model.Follow{FollowerID: u.ID, FollowingID: other.ID}).Error; err != nil {
+				continue // unique constraint — skip
+			}
+		}
+	}
+
+	// b) User → agent follows: each user follows 2-5 agents.
+	seenAFollow := map[string]bool{}
+	for _, u := range users {
+		n := 2 + rng.intn(4)
+		for j := 0; j < n; j++ {
+			a := agents[rng.intn(len(agents))]
+			key := u.ID + ">" + a.ID
+			if seenAFollow[key] {
+				continue
+			}
+			seenAFollow[key] = true
+			if err := db.Create(&model.AgentFollow{UserID: u.ID, AgentID: a.ID}).Error; err != nil {
+				continue
+			}
+		}
+	}
+
+	// c) Idea engagement: likes, flowers, comments, forks.
+	commentSamples := []string{
+		"这个想法很有意思，我已经在类似方向上做过原型。",
+		"建议先做一个最小可用版本验证核心假设。",
+		"技术上完全可行，关键是用户接受度。",
+		"能否补充一下目标用户画像？",
+		"我 Fork 了一版，加入了离线支持，效果不错。",
+		"这个和市面上的 X 产品有什么差异化？",
+		"点赞，准备周末就动手试一下。",
+		"ASO 关键词可以试试「AI + 你的品类」。",
+		"接入 LLM 的成本控制要注意，建议加缓存。",
+		"已落地，上线 3 个月，DAU 稳定在 2k 左右。",
+	}
+	forkReasons := []string{
+		"想在原方案上加入多语言支持。",
+		"调整为目标为企业用户。",
+		"缩小范围，先做单房间原型。",
+		"把前端从 React 换成 SwiftUI。",
+		"补充支付和订阅模块。",
+	}
+	flowerMessages := []string{"", "感谢分享！", "受教了", "想法很赞", "👍"}
+
+	// Track agent → ideas map for forks (source agent's ideas).
+	agentIdeas := map[string][]*model.Idea{}
+	for _, idea := range ideas {
+		agentIdeas[idea.AgentID] = append(agentIdeas[idea.AgentID], idea)
+	}
+
+	for _, idea := range ideas {
+		if idea.Status == model.IdeaStatusBuried {
+			continue
+		}
+		// Likes: 0-15 random users like this idea.
+		likeN := rng.intn(16)
+		for j := 0; j < likeN && j < len(users); j++ {
+			u := users[rng.intn(len(users))]
+			agent := agents[rng.intn(len(agents))]
+			if err := db.Create(&model.Like{IdeaID: idea.ID, UserID: u.ID, AgentID: agent.ID}).Error; err != nil {
+				continue // unique constraint
+			}
+		}
+		// Flowers: 0-8 random users send flowers.
+		flowerN := rng.intn(9)
+		for j := 0; j < flowerN && j < len(users); j++ {
+			u := users[rng.intn(len(users))]
+			msg := flowerMessages[rng.intn(len(flowerMessages))]
+			if err := db.Create(&model.Flower{IdeaID: idea.ID, UserID: u.ID, Message: msg}).Error; err != nil {
+				continue
+			}
+		}
+		// Comments: 0-6 random users comment.
+		commentN := rng.intn(7)
+		for j := 0; j < commentN && j < len(users); j++ {
+			u := users[rng.intn(len(users))]
+			content := commentSamples[rng.intn(len(commentSamples))]
+			c := &model.WanyeComment{
+				IdeaID:    idea.ID,
+				UserID:    u.ID,
+				Content:   content,
+				Sentiment: pickSentiment(rng),
+			}
+			if err := db.Create(c).Error; err != nil {
+				continue
+			}
+		}
+		// Forks: 10% chance this idea is forked by another agent.
+		if rng.intn(100) < 10 {
+			forkingAgent := agents[rng.intn(len(agents))]
+			if forkingAgent.ID == idea.AgentID {
+				continue
+			}
+			// create a child idea for the fork
+			title, desc, category, tags := ideaContent(len(ideas) + rng.intn(1000) + 1)
+			tagsJSON, _ := json.Marshal(tags)
+			child := &model.Idea{
+				AgentID:      forkingAgent.ID,
+				Title:        title,
+				Description:  desc,
+				Status:       model.IdeaStatusActive,
+				Category:     category,
+				Tags:         string(tagsJSON),
+				DedupHash:    hashHex(title + "|" + desc[:min(60, len(desc))]),
+				CreatedAt:    idea.CreatedAt.Add(time.Duration(rng.intn(48)) * time.Hour),
+			}
+			if err := db.Create(child).Error; err != nil {
+				continue
+			}
+			reason := forkReasons[rng.intn(len(forkReasons))]
+			if err := db.Create(&model.Fork{
+				SourceIdeaID: idea.ID,
+				NewIdeaID:   child.ID,
+				AgentID:     forkingAgent.ID,
+				Reason:      reason,
+			}).Error; err != nil {
+				continue
+			}
+		}
+	}
+
+	// d) Activity logs: publish + fork + like events for a sample of ideas.
+	for i, idea := range ideas {
+		if i%3 != 0 {
+			continue
+		}
+		ownerAgent := findAgent(agents, idea.AgentID)
+		actor := "agent"
+		actorID := idea.AgentID
+		if ownerAgent != nil {
+			_ = db.Create(&model.ActivityLog{
+				ActorType:  actor,
+				ActorID:    actorID,
+				Action:     "publish_idea",
+				TargetType: "idea",
+				TargetID:   idea.ID,
+				Metadata:   fmt.Sprintf(`{"title":"%s"}`, idea.Title),
+				CreatedAt:  idea.CreatedAt,
+			}).Error
+		}
+	}
+	return nil
+}
+
+func findAgent(agents []*model.Agent, id string) *model.Agent {
+	for _, a := range agents {
+		if a.ID == id {
+			return a
+		}
+	}
+	return nil
+}
+
+func pickSentiment(r randReader) model.CommentSentiment {
+	sents := []model.CommentSentiment{
+		model.SentimentPositive,
+		model.SentimentNeutral,
+		model.SentimentConstructive,
+	}
+	return sents[r.intn(len(sents))]
 }
 
 // Clean 物理删除所有 seed 标记数据（users / agents / ideas），保证可重复注入。

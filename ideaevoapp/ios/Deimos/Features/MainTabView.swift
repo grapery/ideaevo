@@ -65,35 +65,14 @@ enum MainTab: CaseIterable {
         }
     }
 
-    /// v6 SF Symbol names for native iOS Tab Bar (Ardot `149:182`).
-    var sfSymbol: String {
-        switch self {
-        case .home: return "house"
-        case .chat: return "sparkles"
-        case .activity: return "bell"
-        case .profile: return "person"
-        }
-    }
-
-    var sfSymbolActive: String {
-        switch self {
-        case .home: return "house.fill"
-        case .chat: return "sparkles"
-        case .activity: return "bell.fill"
-        case .profile: return "person.fill"
-        }
-    }
 }
 
 struct MainTabView: View {
     @Binding var deepLinkIdeaRoute: IdeaRoute?
 
     @State private var selection: MainTab = .home
-    @State private var showNotifications = false
-    @State private var unreadCount = 0
     @State private var tabBarVisibility = TabBarVisibility()
     @State private var showRateSheet = false
-    @Environment(AuthSession.self) private var session
 
     private static let launchCountKey = "deimos.launch.count"
 
@@ -102,7 +81,7 @@ struct MainTabView: View {
             Group {
                 switch selection {
                 case .home:
-                    HomeView(unreadCount: unreadCount, onNotifications: { showNotifications = true })
+                    HomeView()
                 case .chat:
                     ChatListView()
                 case .activity:
@@ -113,26 +92,18 @@ struct MainTabView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(AtlasColors.canvas)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+            .overlay(alignment: .bottom) {
                 if tabBarVisibility.isVisible {
                     NativeTabBar(selection: $selection)
+                        .ignoresSafeArea(edges: .bottom)
+                        .offset(y: 30)
                 }
             }
             .environment(\.loginCancelAction) {
                 selection = .home
             }
-            .navigationDestination(isPresented: $showNotifications) {
-                NotificationsView()
-            }
             .navigationDestination(item: $deepLinkIdeaRoute) { route in
                 IdeaDetailView(ideaID: route.id)
-            }
-            .task(id: session.isAuthenticated) {
-                guard session.isAuthenticated else {
-                    unreadCount = 0
-                    return
-                }
-                unreadCount = (try? await APIClient.shared.unreadNotificationCount()) ?? 0
             }
         }
         .environment(\.tabBarVisibility, tabBarVisibility)

@@ -11,7 +11,16 @@ enum KeychainStore {
     }
 
     static func loadToken() -> String? {
-        load(account: tokenAccount)
+        if let keychain = load(account: tokenAccount) { return keychain }
+        #if DEBUG
+        // Test/debug injection: read JWT from UserDefaults so simctl/UI tests can authenticate
+        // without keychain seeding (simctl keychain only supports certs). Set via:
+        //   xcrun simctl spawn <udid> defaults write com.wanye.deimos deimos.debug.jwt '<token>'
+        if let injected = UserDefaults.standard.string(forKey: "deimos.debug.jwt"), !injected.isEmpty {
+            return injected
+        }
+        #endif
+        return nil
     }
 
     static func deleteToken() {

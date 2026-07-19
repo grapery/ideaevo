@@ -31,12 +31,25 @@ enum DeimosIcon: String {
     case check
     case users
     case document
+    case bookmark
     case externalLink
     case more
+    case devices
+    case logout
+    case user
+    case mail
+    case eye
+    case eyeOff
     case wifiOff
+    case refresh
+    case download
+    case wrench
+    case clock
+    case star
+    case archive
 
     /// Vector assets exported from Ardot (`35:*` / `88:*` icon components).
-    var assetName: String? {
+    var assetName: String {
         switch self {
         case .heart: return "deimos-heart"
         case .flower: return "deimos-flower"
@@ -67,49 +80,25 @@ enum DeimosIcon: String {
         case .check: return "deimos-check"
         case .users: return "deimos-users"
         case .document: return "deimos-document"
+        case .bookmark: return "deimos-bookmark"
         case .externalLink: return "deimos-external-link"
         case .more: return "deimos-more"
-        default: return nil
+        case .devices: return "deimos-devices"
+        case .logout: return "deimos-logout"
+        case .user: return "deimos-user"
+        case .mail: return "deimos-mail"
+        case .eye: return "deimos-eye"
+        case .eyeOff: return "deimos-eye-off"
+        case .wifiOff: return "deimos-wifi-off"
+        case .refresh: return "deimos-refresh"
+        case .download: return "deimos-download"
+        case .wrench: return "deimos-wrench"
+        case .clock: return "deimos-clock"
+        case .star: return "deimos-star"
+        case .archive: return "deimos-archive"
         }
     }
 
-    /// SF Symbol fallback when no exported asset exists.
-    var sfSymbol: String {
-        switch self {
-        case .heart: return "heart"
-        case .flower: return "flower"
-        case .comment: return "bubble.left"
-        case .fork: return "point.3.connected.trianglepath.dotted"
-        case .home: return "house"
-        case .chat: return "bubble.left.and.bubble.right"
-        case .activity: return "chart.bar"
-        case .profile: return "person"
-        case .search: return "magnifyingglass"
-        case .bell: return "bell"
-        case .share: return "square.and.arrow.up"
-        case .send: return "paperplane.fill"
-        case .sparkles: return "sparkles"
-        case .chevronBack: return "chevron.left"
-        case .chevronRight: return "chevron.right"
-        case .gear: return "gearshape"
-        case .lock: return "lock"
-        case .edit: return "pencil"
-        case .sliders: return "slider.horizontal.3"
-        case .info: return "info.circle"
-        case .shield: return "shield"
-        case .plus: return "plus"
-        case .phone: return "phone"
-        case .trash: return "trash"
-        case .globe: return "globe"
-        case .close: return "xmark"
-        case .check: return "checkmark"
-        case .users: return "person.2"
-        case .document: return "doc.text"
-        case .externalLink: return "arrow.up.right"
-        case .more: return "ellipsis"
-        case .wifiOff: return "wifi.exclamationmark"
-        }
-    }
 }
 
 struct DeimosIconView: View {
@@ -118,17 +107,10 @@ struct DeimosIconView: View {
     var color: Color = AtlasColors.inkFaint
 
     var body: some View {
-        Group {
-            if let assetName = icon.assetName {
-                Image(assetName)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-            } else {
-                Image(systemName: icon.sfSymbol)
-                    .font(.system(size: size, weight: .regular))
-            }
-        }
+        Image(icon.assetName)
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
         .frame(width: size, height: size)
         .foregroundStyle(color)
     }
@@ -150,19 +132,24 @@ extension View {
         shadow(color: AtlasMetrics.shadowCardColor, radius: AtlasMetrics.shadowCardRadius, y: AtlasMetrics.shadowCardY)
     }
 
-    /// v6 toolbar float chrome — bg #F1F3F7, no shadow (flat design).
-    /// For square/circular icon buttons pass default cornerRadius (→ Circle clip).
-    /// For wide text pills pass a finite radius (→ RoundedRectangle clip so text isn't cut off).
+    /// Contextual controls intentionally use material so scrolling content remains
+    /// visible, softened and visually separated below the toolbar.
+    ///
+    /// Apple floating-glass spec (ardot iOS26): white/72% fill + #E8EAEC/65% border + soft ink
+    /// shadow. Earlier 0.38 overlay read as flat grey with no edge — the border + higher opacity
+    /// restore the glass-pill silhouette used across idea detail / chat / profile toolbars.
     @ViewBuilder
     func atlasToolbarFloat(cornerRadius: CGFloat = 999) -> some View {
         if cornerRadius >= 999 {
-            // Icon button: circular chrome
-            background(AtlasColors.surfaceSecondary)
-                .clipShape(Circle())
+            background(.ultraThinMaterial, in: Circle())
+                .overlay(Circle().fill(Color.white.opacity(0.72)))
+                .overlay(Circle().stroke(AtlasColors.border.opacity(0.65), lineWidth: 1))
+                .shadow(color: AtlasColors.ink.opacity(0.10), radius: 7, y: 3)
         } else {
-            // Text pill: rounded-rectangle chrome matching the requested radius
-            background(AtlasColors.surfaceSecondary)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).fill(Color.white.opacity(0.72)))
+                .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).stroke(AtlasColors.border.opacity(0.65), lineWidth: 1))
+                .shadow(color: AtlasColors.ink.opacity(0.10), radius: 7, y: 3)
         }
     }
 

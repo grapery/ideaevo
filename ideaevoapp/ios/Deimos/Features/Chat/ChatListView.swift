@@ -155,113 +155,112 @@ struct ChatListView: View {
     }
 
     private var guestContent: some View {
-        ScrollView {
-            // Content Wrapper (S06 179:389): VERTICAL itemSpacing=16, padding=[24,24,0,0]
-            VStack(alignment: .leading, spacing: 16) {
-                // Large Title (S06 179:391)
-                Text("对话")
-                    .font(.system(size: 36, weight: .heavy))
-                    .atlasTrackedTitle(36)
-                    .foregroundStyle(AtlasColors.ink)
+        VStack(spacing: 0) {
+            chatHeader(newChatAction: { showAuthSheet = true })
 
-                aiAssistantHero
-
-                Spacer(minLength: 0)
-                AtlasDesignedEmptyStates.chatEmpty {
-                    showAuthSheet = true
-                }
+            Spacer()
+            AtlasDesignedEmptyStates.chatEmpty {
+                showAuthSheet = true
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, AtlasMetrics.bottomClear)
+            Spacer()
         }
     }
 
-    private var authenticatedContent: some View {
-        // Content Wrapper (S06 179:389): VERTICAL itemSpacing=16, padding=[24,24,0,0]
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Large Title (S06 179:391)
+    private func chatHeader(newChatAction: @escaping () -> Void) -> some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("DEIMOS")
+                    .font(AtlasTypography.overline())
+                    .foregroundStyle(AtlasColors.inkSoft)
                 Text("对话")
-                    .font(.system(size: 36, weight: .heavy))
-                    .atlasTrackedTitle(36)
+                    .font(AtlasTypography.largeTitle())
                     .foregroundStyle(AtlasColors.ink)
+                    .atlasTrackedTitle(30)
+            }
 
-                // AI Assistant Hero (S06 179:392)
-                aiAssistantHero
+            Spacer()
 
-                if viewModel.isLoading && viewModel.sessions.isEmpty {
-                    HStack { Spacer(); ProgressView(); Spacer() }
-                        .padding(.top, 40)
-                } else if let error = viewModel.errorMessage, viewModel.sessions.isEmpty {
-                    errorEmptyState(error)
-                } else if viewModel.sessions.isEmpty {
-                    sessionsEmptyState
-                } else {
-                    // Section Header (S06 179:397): "最近会话" 24pt ExtraBold
-                    Text("最近会话")
-                        .font(.system(size: 24, weight: .heavy))
-                        .foregroundStyle(AtlasColors.ink)
+            // ardot S06 (237:154): plain text button, 14pt Semibold, ink — no fill, no capsule.
+            Button(action: newChatAction) {
+                Text("新建")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .frame(height: 40)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, AtlasMetrics.pageX)
+        .padding(.top, 8)
+        .padding(.bottom, 20)
+    }
 
-                    LazyVStack(spacing: 16) {
+    private var authenticatedContent: some View {
+        VStack(spacing: 0) {
+            chatHeader(newChatAction: { showAgentPicker = true })
+
+            // The assistant is the entry point for the whole conversation space.
+            aiAssistantHero
+                .padding(.horizontal, AtlasMetrics.pageX)
+                .padding(.bottom, 26)
+
+            if viewModel.isLoading && viewModel.sessions.isEmpty {
+                Spacer()
+                ProgressView()
+                Spacer()
+            } else if let error = viewModel.errorMessage, viewModel.sessions.isEmpty {
+                errorEmptyState(error)
+            } else if viewModel.sessions.isEmpty {
+                sessionsEmptyState
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        Text("最近会话")
+                            .font(AtlasTypography.sectionHeader())
+                            .foregroundStyle(AtlasColors.ink)
+                            .padding(.bottom, 4)
                         ForEach(viewModel.sessions, id: \.id) { chatSession in
                             sessionCard(chatSession)
                         }
                     }
+                    .padding(.horizontal, AtlasMetrics.pageX)
+                    .padding(.top, 4)
+                    .padding(.bottom, AtlasMetrics.bottomClear)
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, AtlasMetrics.bottomClear)
         }
     }
 
-    /// AI Assistant Hero (S06 179:392): VERTICAL itemSpacing=8, padding=[18,0,16,18], r28,
-    /// lemon bg + stroke #E7EAF0, 342×136.
+    /// A compact workspace rather than another list row.
     private var aiAssistantHero: some View {
         Button {
+            // Find the pinned assistant session or create one
             if let assistant = viewModel.sessions.first(where: { ChatListViewModel.isAssistantSession($0) }) {
                 selectedSession = ChatSessionRoute(id: assistant.id, title: assistant.displayTitle)
             } else {
-                if session.isAuthenticated {
-                    showAgentPicker = true
-                } else {
-                    showAuthSheet = true
-                }
+                showAgentPicker = true
             }
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                // Hero Title (S06 179:393): 20pt Bold lemonInk, lineHeight=26
-                Text("把零散想法整理成可发布的 idea")
-                    .font(.system(size: 20, weight: .bold))
+            VStack(alignment: .leading, spacing: 12) {
+                Text("万叶助手")
+                    .font(AtlasTypography.heroTitle())
+                    .foregroundStyle(.white)
+
+                Text("登记想法、语义搜索、Fork 建议")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(AtlasColors.lemon)
+
+                Text("开始聊天")
+                    .font(AtlasTypography.cta())
                     .foregroundStyle(AtlasColors.lemonInk)
-                    .lineLimit(2)
-
-                // Hero Body (S06 179:394): 13pt Regular olive, lineHeight=18
-                Text("支持搜索、登记、Fork、状态更新和评论建议。")
-                    .font(.system(size: 13))
-                    .foregroundStyle(AtlasColors.olive)
-                    .lineLimit(2)
-
-                // Start Chat Button (S06 179:395): 112×36 r18 bg=white, "开始对话" 12pt SemiBold olive
-                Text("开始对话")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AtlasColors.olive)
-                    .padding(.horizontal, 18)
-                    .frame(height: 36)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .padding(.horizontal, 20)
+                    .frame(height: 40)
+                    .background(AtlasColors.primaryAction)
+                    .clipShape(Capsule())
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 18)
-            .padding(.top, 16)
-            .padding(.trailing, 0)
-            .padding(.bottom, 0)
-            .frame(height: 136)
-            .background(AtlasColors.lemon)
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(AtlasColors.border, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .padding(20)
+            .background(AtlasColors.lemonInk)
+            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusHero, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -271,74 +270,79 @@ struct ChatListView: View {
             AtlasDesignedEmptyStates.chatEmpty {
                 showAgentPicker = true
             }
+            Spacer()
+        }
+    }
+
+    private var searchEmptyState: some View {
+        VStack(spacing: 16) {
+            AtlasDesignedEmptyStates.chatSearchEmpty {
+                viewModel.searchQuery = ""
+            }
+            Spacer()
         }
     }
 
     private func errorEmptyState(_ error: String) -> some View {
-        AtlasDesignedEmptyStates.loadFailed(message: error) {
-            Task { await viewModel.load() }
+        VStack(spacing: 16) {
+            AtlasDesignedEmptyStates.loadFailed(message: error) {
+                Task { await viewModel.load() }
+            }
+            Spacer()
         }
-        .frame(maxWidth: .infinity)
     }
 
-    /// Session Card (S06 179:398): HORIZONTAL itemSpacing=12, padding=[14,0,14,14], r20,
-    /// bg=#F8FAFC + stroke, 342×96.
-    /// Avatar: 50×50 r25 lemonStrong. Summary: 15pt SemiBold ink, two-line.
     private func sessionCard(_ chatSession: ChatSession) -> some View {
         let pinned = ChatListViewModel.isAssistantSession(chatSession)
-        let summary = viewModel.previews[chatSession.id] ?? "开始新的讨论"
-        let displayText = pinned ? "万叶助手\n\(summary)" : "\(chatSession.displayTitle)\n\(summary)"
-
-        return Button {
-            selectedSession = ChatSessionRoute(id: chatSession.id, title: chatSession.displayTitle)
-        } label: {
-            HStack(spacing: 12) {
-                // Avatar (S06 179:399): 50×50 r25 bg=lemonStrong — solid circle
-                Circle()
-                    .fill(AtlasColors.lemonStrong)
-                    .frame(width: 50, height: 50)
-
-                // Session Summary (S06 179:400): two-line text 15pt SemiBold ink, lineHeight=22
-                Text(displayText)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(AtlasColors.ink)
-                    .lineSpacing(22 - 15 * 1.2) // approximate lineHeight=22
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Menu {
-                    Button("重命名") {
-                        renameDraft = chatSession.title
-                        sessionToRename = chatSession
-                        showRenameSheet = true
+        return CompactListCard(
+            leading: {
+                EntityAvatar.agent(
+                    id: chatSession.agentID,
+                    url: chatSession.agent?.avatarLink,
+                    name: chatSession.displayTitle,
+                    size: 48
+                )
+            },
+            title: chatSession.displayTitle,
+            subtitle: viewModel.previews[chatSession.id] ?? "开始新的讨论",
+            timestamp: chatSession.updatedAt.relativeShort,
+            layoutStyle: .flat,
+            trailing: {
+                HStack(spacing: 6) {
+                    if pinned {
+                        Text("助手")
+                            .font(AtlasTypography.tabBarLabel())
+                            .foregroundStyle(AtlasColors.accentActive)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(AtlasColors.accentActiveSoft)
+                            .clipShape(Capsule())
                     }
-                    Button("Fork 会话") {
-                        selectedSession = ChatSessionRoute(id: chatSession.id, title: chatSession.displayTitle)
+                    Menu {
+                        Button("重命名") {
+                            renameDraft = chatSession.title
+                            sessionToRename = chatSession
+                            showRenameSheet = true
+                        }
+                        Button("Fork 会话") {
+                            Task { await forkSession(chatSession) }
+                        }
+                        Button("删除", role: .destructive) {
+                            sessionToDelete = chatSession
+                            showDeleteDialog = true
+                        }
+                    } label: {
+                        DeimosIconView(icon: .more, size: 16, color: AtlasColors.inkFaint)
+                            .frame(width: 32, height: 32)
                     }
-                    Button("删除", role: .destructive) {
-                        sessionToDelete = chatSession
-                        showDeleteDialog = true
-                    }
-                } label: {
-                    DeimosIconView(icon: .more, size: 16, color: AtlasColors.inkFaint)
-                        .frame(width: 32, height: 32)
+                    .disabled(isWorking)
                 }
-                .disabled(isWorking)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 14)
-            .padding(.bottom, 0)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: 96)
-            .background(Color(hex: 0xF8FAFC))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(AtlasColors.border, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedSession = ChatSessionRoute(id: chatSession.id, title: chatSession.displayTitle)
         }
-        .buttonStyle(.plain)
     }
 
     private func renameSheet(_ chatSession: ChatSession) -> some View {

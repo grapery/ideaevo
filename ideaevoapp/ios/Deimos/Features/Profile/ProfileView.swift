@@ -6,29 +6,36 @@ struct ProfileView: View {
     @State private var ideas: [Idea] = []
     @State private var unreadCount = 0
     @State private var showNotifications = false
-    @State private var showSettings = false
     @State private var showMyAgents = false
     @State private var showPublishIdea = false
     @State private var showMyIdeas = false
+    @State private var showSettings = false
     @State private var selectedRoute: IdeaRoute?
-    @State private var followListRoute: FollowListRoute?
+
+    /// Set true when a guest (logged-out) user taps the login affordance on the Profile tab.
+    /// AuthRequiredSheet pushes the full-screen LoginView.
+    @State private var showAuthSheet = false
 
     var body: some View {
         Group {
             if let user = session.user {
                 loggedInProfile(user)
             } else {
-                LoginView()
+                // Guest browsing (S02G): the Profile tab is a lightweight gate, not an inline
+                // LoginView. The full-screen auth flow lives in RootView; here we just invite the
+                // guest to sign in via AuthRequiredSheet so the tab bar stays consistent.
+                guestProfileGate
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AtlasColors.canvas)
-        .navigationBarHidden(session.user != nil)
+        .navigationBarHidden(true)
+        .sheet(isPresented: $showAuthSheet) {
+            AuthRequiredSheet()
+                .atlasBottomSheetStyle()
+        }
         .navigationDestination(isPresented: $showNotifications) {
             NotificationsView()
-        }
-        .navigationDestination(isPresented: $showSettings) {
-            SettingsView()
         }
         .navigationDestination(isPresented: $showMyAgents) {
             MyAgentsView()
@@ -41,11 +48,11 @@ struct ProfileView: View {
                 UserProfileView(userID: userID)
             }
         }
+        .navigationDestination(isPresented: $showSettings) {
+            SettingsView()
+        }
         .navigationDestination(item: $selectedRoute) { route in
             IdeaDetailView(ideaID: route.id)
-        }
-        .navigationDestination(item: $followListRoute) { route in
-            FollowersFollowingView(userID: route.userID, initialKind: route.kind)
         }
         .task(id: session.user?.id) {
             guard let userID = session.user?.id else { return }
@@ -57,81 +64,144 @@ struct ProfileView: View {
         }
     }
 
+    /// Lightweight guest gate shown when a logged-out user opens the Profile tab while browsing.
+    /// Not a full login form — tapping the CTA opens `AuthRequiredSheet`, which in turn pushes
+    /// the full-screen `LoginView` from the RootView auth gate.
+    private var guestProfileGate: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            DeimosIconView(icon: .profile, size: 56, color: AtlasColors.inkSoft)
+                .frame(width: 88, height: 88)
+                .background(AtlasColors.surfaceSecondary, in: Circle())
+            Text("登录后查看个人主页")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+            Text("送花、评论、Fork、关注与对话都需要登录 Deimos 账号。")
+                .font(AtlasTypography.bodyMedium())
+                .foregroundStyle(AtlasColors.inkSoft)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            Button {
+                showAuthSheet = true
+            } label: {
+                Text("登录 / 注册")
+                    .font(AtlasTypography.button())
+                    .foregroundStyle(AtlasColors.lemonInk)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: AtlasMetrics.primaryButtonHeight)
+                    .background(AtlasColors.primaryAction)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, AtlasMetrics.pageX)
+            Spacer()
+        }
+        .padding(.vertical, 32)
+    }
+
     private func loggedInProfile(_ user: User) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Header row — bell icon (right) + settings gear
-                HStack {
-                    Spacer()
-                    bellButton
-                    settingsButton
+        VStack(spacing: 0) {
+            // S35 Top Actions · Floating Glass (ardot 210:4): right-aligned Bell + Settings gear,
+            // NO large title — the profile header (avatar + name) below is the identity.
+            // primaryAxisAlignItems: MAX, itemSpacing 10.
+            HStack(spacing: 10) {
+                Spacer()
+                Button { showNotifications = true } label: {
+                    ZStack(alignment: .topTrailing) {
+                        DeimosIconView(icon: .bell, size: 18, color: AtlasColors.ink)
+                            .frame(width: 44, height: 44)
+                            .atlasToolbarFloat()
+                        if unreadCount > 0 {
+                            Circle()
+                                .fill(AtlasColors.destructive)
+                                .frame(width: 8, height: 8)
+                                .offset(x: 4, y: -2)
+                        }
+                    }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 4)
+                .buttonStyle(.plain)
+                .accessibilityLabel(unreadCount > 0 ? "通知, \(unreadCount) 条未读" : "通知")
 
-                // Compact profile header — avatar + name + bio + meta labels
-                profileHeader(user)
-
-                // Inline stat labels — small, no big card
-                statLabels(user)
-
-                // Quick actions — pill buttons
-                HStack(spacing: 10) {
-                    pillButton("发布想法", icon: "plus", isPrimary: true) { showPublishIdea = true }
-                    pillButton("我的 Agent", icon: "sparkles", isPrimary: false) { showMyAgents = true }
+                Button { showSettings = true } label: {
+                    DeimosIconView(icon: .gear, size: 18, color: AtlasColors.ink)
+                        .frame(width: 44, height: 44)
+                        .atlasToolbarFloat()
                 }
-                .padding(.horizontal, 20)
+                .buttonStyle(.plain)
+                .accessibilityLabel("设置")
+            }
+            .padding(.horizontal, AtlasMetrics.pageX)
+            .padding(.top, 8)
+            .padding(.bottom, 16)
 
-                // Recent ideas — compact rows
+            ScrollView {
+            VStack(spacing: 16) {
+                // S09 deliberately separates identity, stats, and actions so each
+                // action remains scannable instead of reading as one dashboard card.
+                OwnerIdentityCard(
+                    user: user,
+                    profile: profile
+                )
+                .padding(.horizontal, AtlasMetrics.pageX)
+
+                OwnerStatsBand(
+                    ideaCount: profile?.ideaCount ?? 0,
+                    followerCount: user.followerCount,
+                    followingCount: user.followingCount,
+                    onMyIdeas: { showMyIdeas = true }
+                )
+                .padding(.horizontal, AtlasMetrics.pageX)
+
+                OwnerActionBar(
+                    onPublish: { showPublishIdea = true },
+                    onMyAgents: { showMyAgents = true }
+                )
+                .padding(.horizontal, AtlasMetrics.pageX)
+
                 if !ideas.isEmpty {
                     ideasSection
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, AtlasMetrics.pageX)
                 }
             }
             .padding(.bottom, AtlasMetrics.bottomClear)
-        }
-    }
-
-    // MARK: - Bell button (top-right, with red dot)
-
-    private var bellButton: some View {
-        Button { showNotifications = true } label: {
-            ZStack(alignment: .topTrailing) {
-                Image(systemName: "bell")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(AtlasColors.ink)
-                    .frame(width: 36, height: 36)
-                    .background(AtlasColors.surfaceSecondary)
-                    .clipShape(Circle())
-
-                if unreadCount > 0 {
-                    Circle()
-                        .fill(AtlasColors.destructive)
-                        .frame(width: 8, height: 8)
-                        .offset(x: -2, y: 2)
-                }
             }
         }
-        .buttonStyle(.plain)
     }
 
-    private var settingsButton: some View {
-        Button { showSettings = true } label: {
-            Image(systemName: "gearshape")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(AtlasColors.ink)
-                .frame(width: 36, height: 36)
-                .background(AtlasColors.surfaceSecondary)
-                .clipShape(Circle())
+    private var ideasSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("最近想法")
+                    .font(AtlasTypography.sectionHeader())
+                    .foregroundStyle(AtlasColors.ink)
+                Spacer()
+                Button("全部") { showMyIdeas = true }
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AtlasColors.primary)
+            }
+
+            ForEach(ideas.prefix(3)) { idea in
+                IdeaCoverCard(
+                    idea: idea,
+                    coverImageURL: idea.iconLink,
+                    onTap: { selectedRoute = IdeaRoute(id: idea.id) }
+                )
+            }
         }
-        .buttonStyle(.plain)
     }
+}
 
-    // MARK: - Compact profile header
+// MARK: - Creator Identity Card (Ardot S35 · 210:11)
 
-    /// Avatar (48px) + name label + bio label + meta labels — no big card wrapper.
-    private func profileHeader(_ user: User) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+/// Profile header (ardot S35 210:11): 48×48 lemon circle avatar + name block (Display Name
+/// 20pt Bold + Bio 13pt Regular), itemSpacing 12. Identity is the page title — no eyebrow,
+/// no DEIMOS CREATOR caption, no heavy card chrome.
+struct OwnerIdentityCard: View {
+    let user: User
+    let profile: UserProfileData?
+
+    var body: some View {
+        HStack(spacing: 12) {
             EntityAvatar.user(
                 id: user.id,
                 url: user.avatarLink,
@@ -143,126 +213,89 @@ struct ProfileView: View {
                 Text(user.name)
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(AtlasColors.ink)
+                    .lineLimit(2)
 
-                if let bio = user.bio, !bio.isEmpty {
-                    Text(bio)
-                        .font(.system(size: 13))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                        .lineLimit(2)
-                }
+                Text(user.bio?.isEmpty == false ? (user.bio ?? "") : "AI 想法探索者")
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(AtlasColors.inkTertiary)
+                    .lineLimit(1)
             }
-            .padding(.top, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
 
+private struct OwnerStatsBand: View {
+    let ideaCount: Int
+    let followerCount: Int
+    let followingCount: Int
+    let onMyIdeas: () -> Void
+
+    var body: some View {
+        // Ardot S35 210:16 — inline row of three `icon(13) + value(15pt Bold) + label(12pt)`.
+        // itemSpacing 16. Labels: 想法 / 粉丝 / Agent.
+        HStack(spacing: 16) {
+            statGroup(icon: .sparkles, value: ideaCount, label: "想法", action: onMyIdeas)
+            statGroup(icon: .users, value: followerCount, label: "粉丝", action: nil)
+            statGroup(icon: .user, value: followingCount, label: "Agent", action: nil)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 20)
     }
 
-    // MARK: - Inline stat labels — small labels with icons, no big card
-
-    private func statLabels(_ user: User) -> some View {
-        HStack(spacing: 16) {
-            statChip(icon: "square.grid.2x2", value: "\(profile?.ideaCount ?? 0)", label: "想法") {
-                showMyIdeas = true
-            }
-            statChip(icon: "person.2", value: "\(user.followerCount)", label: "粉丝") {
-                followListRoute = FollowListRoute(userID: user.id, kind: .followers)
-            }
-            statChip(icon: "person.crop.circle.badge.plus", value: "\(user.followingCount)", label: "关注") {
-                followListRoute = FollowListRoute(userID: user.id, kind: .following)
-            }
-            Spacer()
+    private func statGroup(icon: DeimosIcon, value: Int, label: String, action: (() -> Void)?) -> some View {
+        let content = HStack(spacing: 4) {
+            DeimosIconView(icon: icon, size: 13, color: AtlasColors.inkSoft)
+            Text("\(value)")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(AtlasColors.inkSoft)
         }
-        .padding(.horizontal, 20)
-    }
+        .fixedSize()
 
-    /// Small stat chip — 14×14 icon + value 15pt Bold + label 12pt, all inline.
-    private func statChip(icon: String, value: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 11))
-                    .foregroundStyle(AtlasColors.olive)
-                Text(value)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
-                    .monospacedDigit()
-                Text(label)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AtlasColors.inkSoft)
+        return Group {
+            if let action {
+                Button(action: action) { content }.buttonStyle(.plain)
+            } else {
+                content
             }
         }
-        .buttonStyle(.plain)
+    }
+}
+
+private struct OwnerActionBar: View {
+    let onPublish: () -> Void
+    let onMyAgents: () -> Void
+
+    var body: some View {
+        // Ardot S35 210:29 — two independent 170×44 r22 pills, itemSpacing 10.
+        // 发布 Idea (lemon-strong fill, lemonInk text) + 管理 Agent (white fill + border, ink text).
+        HStack(spacing: 10) {
+            quickActionButton("发布 Idea", icon: .plus, isPrimary: true, action: onPublish)
+            quickActionButton("管理 Agent", icon: .sliders, isPrimary: false, action: onMyAgents)
+        }
     }
 
-    // MARK: - Pill button
-
-    private func pillButton(_ title: String, icon: String, isPrimary: Bool, action: @escaping () -> Void) -> some View {
+    private func quickActionButton(_ title: String, icon: DeimosIcon, isPrimary: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .semibold))
+                DeimosIconView(icon: icon, size: 15, color: isPrimary ? AtlasColors.lemonInk : AtlasColors.ink)
                 Text(title)
                     .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(isPrimary ? AtlasColors.lemonInk : AtlasColors.ink)
             }
-            .foregroundStyle(isPrimary ? AtlasColors.lemonInk : AtlasColors.ink)
             .frame(maxWidth: .infinity)
-            .frame(height: 40)
-            .background(isPrimary ? AtlasColors.lemonStrong : AtlasColors.surface)
+            .frame(height: 44)
+            .background(isPrimary ? AtlasColors.primaryAction : AtlasColors.surface)
             .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(AtlasColors.border, lineWidth: isPrimary ? 0 : 1)
+                Capsule(style: .continuous)
+                    .stroke(isPrimary ? Color.clear : AtlasColors.border, lineWidth: 1)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .clipShape(Capsule(style: .continuous))
         }
-        .buttonStyle(AtlasPressableStyle())
-    }
-
-    // MARK: - Ideas section
-
-    private var ideasSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("我的想法")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
-                Spacer()
-                Button("全部") { showMyIdeas = true }
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AtlasColors.olive)
-            }
-
-            ForEach(ideas.prefix(3)) { idea in
-                Button {
-                    selectedRoute = IdeaRoute(id: idea.id)
-                } label: {
-                    HStack(spacing: 10) {
-                        EntityAvatar.idea(id: idea.id, url: idea.iconLink, name: idea.displaySlug, size: 36)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(idea.displayTitle)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(AtlasColors.ink)
-                                .lineLimit(1)
-                            Text(idea.feedSummaryText ?? "")
-                                .font(.system(size: 13))
-                                .foregroundStyle(AtlasColors.inkSoft)
-                                .lineLimit(1)
-                        }
-                        Spacer()
-                        Text(idea.createdAt.relativeShort)
-                            .font(.system(size: 12))
-                            .foregroundStyle(AtlasColors.inkFaint)
-                    }
-                    .padding(14)
-                    .background(AtlasColors.surface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(AtlasColors.border, lineWidth: 1)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-        }
+        .buttonStyle(.plain)
     }
 }

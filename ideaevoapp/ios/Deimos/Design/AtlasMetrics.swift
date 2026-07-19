@@ -34,8 +34,8 @@ enum AtlasMetrics {
     static let bottomClear: CGFloat = 120
 
     static let inputHeight: CGFloat = 48
-    /// Primary button height — **56px** (v6: pill shape).
-    static let primaryButtonHeight: CGFloat = 56
+    /// Primary button height — **52px** (Deimos iOS26 C/PrimaryButton 237:40).
+    static let primaryButtonHeight: CGFloat = 52
     /// Minimum touch target — 44pt.
     static let touchTarget: CGFloat = 44
     /// Settings/list row minimum height.
@@ -43,7 +43,7 @@ enum AtlasMetrics {
     /// Tab root action button size (`+` on Home) — 40×40 circle (v6).
     static let centerActionSize: CGFloat = 40
     /// Back button — **36×36** circle (v6: was 36, now bg #F1F3F7).
-    static let backButtonSize: CGFloat = 36
+    static let backButtonSize: CGFloat = 40
     /// Send button FAB — **52×52** circle (v6).
     static let sendButtonSize: CGFloat = 52
     /// Cover-page float button — **44×44** white circle (v6: transparent overlay).
@@ -61,12 +61,13 @@ enum AtlasMetrics {
     static let radiusCard: CGFloat = 20
     /// Cover card radius — **24px** (v6: image cover cards).
     static let radiusCover: CGFloat = 24
-    /// Hero card radius — **28px** (v6: AI hero large cards).
-    static let radiusHero: CGFloat = 28
-    static let radiusSheet: CGFloat = 28
+    /// Hero card radius — **24px** (Deimos iOS26 Metrics radius-hero 237:35).
+    static let radiusHero: CGFloat = 24
+    /// Sheet corner radius — **24px** (project.manifest radiusSheet).
+    static let radiusSheet: CGFloat = 24
     /// Pills/chips/buttons — full corner radius.
-    static let radiusChip: CGFloat = 999
-    static let radiusPill: CGFloat = 999
+    static let radiusChip: CGFloat = 9999
+    static let radiusPill: CGFloat = 9999
 
     // MARK: - Tab Bar (Native iOS · v6 core change)
 
@@ -85,6 +86,13 @@ enum AtlasMetrics {
 
     static let engagementBarHeight: CGFloat = 64
     static let bottomInputBarHeight: CGFloat = 56
+
+    // MARK: - iOS26 Chrome Heights
+
+    /// Status bar height — **62px** (Deimos iOS26 Metrics status-height).
+    static let statusHeight: CGFloat = 62
+    /// Push/floating nav toolbar height — **48px** (Deimos iOS26 Metrics nav-height).
+    static let navHeight: CGFloat = 48
 
     // MARK: - Shadow presets (v6: ink-colored, subtle)
 

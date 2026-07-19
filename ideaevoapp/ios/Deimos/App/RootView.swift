@@ -11,6 +11,9 @@ struct RootView: View {
     @State private var bootstrapFailed = false
     @State private var forceUpdateVersion: String?
     @State private var showMaintenance = false
+    /// Set true when the user taps "先逛逛" on the login gate. Lets a logged-out user browse the
+    /// public feed without authenticating. Cleared on next cold start.
+    @State private var allowGuestBrowse = false
 
     private let minimumLaunchDisplayNanoseconds: UInt64 = 1_600_000_000
 
@@ -44,6 +47,13 @@ struct RootView: View {
                     AppPreferencesStore.hasCompletedOnboarding = true
                     withAnimation { showOnboarding = false }
                 }
+            } else if session.user == nil && !allowGuestBrowse {
+                // Auth gate: login is a full-screen flow with no tab bar. The user may bypass into
+                // guest browsing via "先逛逛" (sets allowGuestBrowse) and still authenticate later.
+                LoginView(onCancel: {
+                    withAnimation { allowGuestBrowse = true }
+                })
+                .transition(.opacity)
             } else {
                 MainTabView(deepLinkIdeaRoute: $deepLinkIdeaRoute)
             }
@@ -170,19 +180,7 @@ private struct DeimosLaunchView: View {
     }
 
     private var launchBackground: some View {
-        ZStack {
-            AtlasColors.canvas
-            LinearGradient(
-                colors: [
-                    AtlasColors.badgeBg.opacity(0.45),
-                    AtlasColors.canvas,
-                    AtlasColors.entityIdea.opacity(0.18),
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-        }
+        AtlasColors.canvas.ignoresSafeArea()
     }
 }
 
@@ -192,18 +190,15 @@ private struct DeimosLaunchIcon: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(AtlasColors.aiGradient)
+                .fill(AtlasColors.ink)
                 .frame(width: 104, height: 104)
-                .shadow(color: AtlasColors.aiStart.opacity(0.28), radius: 22, y: 10)
+                .shadow(color: AtlasColors.ink.opacity(0.14), radius: 18, y: 8)
 
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .stroke(.white.opacity(0.48), lineWidth: 1)
                 .frame(width: 88, height: 88)
 
-            Image(systemName: "point.3.connected.trianglepath.dotted")
-                .font(.system(size: 38, weight: .semibold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.white)
+            DeimosIconView(icon: .fork, size: 38, color: AtlasColors.lemon)
                 .rotationEffect(.degrees(animating ? 360 : 0))
                 .animation(.linear(duration: 7.2).repeatForever(autoreverses: false), value: animating)
 
