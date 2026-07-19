@@ -125,25 +125,33 @@ private let settingsCardBodyOlive = Color(red: 0.384, green: 0.455, blue: 0.020)
 private let settingsCardBodyInkSoft = Color(red: 0.353, green: 0.392, blue: 0.447)
 private let settingsRowBodyTertiary = Color(red: 0.541, green: 0.580, blue: 0.651)
 
-/// ardot S11 (`179:6`): group container — white fill, `#E7EBF0` hairline border, radius 20,
-/// NO section header label (the row's two-line title carries the context). Used by Settings main.
+/// iOS 26 Liquid Glass — group container radius. Slightly larger than radiusCard (20) for the
+/// softer, more rounded silhouette of the new system style.
+private let settingsGroupRadius: CGFloat = 22
+
+/// ardot S11 (`179:6`) refined for iOS 26 Liquid Glass: group container is a translucent glass
+/// surface (ultraThinMaterial) with a hairline border, a soft drop shadow, and a 22pt continuous
+/// corner — NOT a flat white rectangle. Content rows render directly on the glass. NO section
+/// header label (the row's two-line title carries the context).
 struct AtlasSettingsGroup<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         VStack(spacing: 0) { content() }
-            .background(AtlasColors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: settingsGroupRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                RoundedRectangle(cornerRadius: settingsGroupRadius, style: .continuous)
                     .stroke(settingsGroupStroke, lineWidth: 1)
             )
+            .shadow(color: AtlasColors.ink.opacity(0.04), radius: 10, x: 0, y: 4)
     }
 }
 
-/// ardot S11 row (`195:9`): 56h, HORIZONTAL `SPACE_BETWEEN`, 14pt leading padding, no leading icon.
-/// Row text is two-line (title `\n` subtitle) at 17pt Sarasa Gothic SC Semi Bold ink; trailing
-/// slot is a chevron (default) or a status pill (notification row) or a value.
+/// ardot S11 row (`195:9`) refined: 56h, HORIZONTAL `SPACE_BETWEEN`, 14pt leading padding, no
+/// leading icon. Title is **17pt Regular** ink (was Semi Bold — too heavy for the iOS 26 system
+/// aesthetic which favors Regular-weight labels); subtitle is 13pt inkFaint for clear hierarchy.
+/// Trailing slot is a chevron (default) or a status pill (notification row).
 struct AtlasSettingsNavRow<Trailing: View>: View {
     let title: String
     let subtitle: String
@@ -163,11 +171,11 @@ struct AtlasSettingsNavRow<Trailing: View>: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: .regular))
                     .foregroundStyle(AtlasColors.ink)
                 if !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(AtlasTypography.mobileSubheadline())
+                        .font(.system(size: 13))
                         .foregroundStyle(AtlasColors.inkFaint)
                 }
             }
@@ -180,12 +188,15 @@ struct AtlasSettingsNavRow<Trailing: View>: View {
     }
 }
 
-/// ardot S11 1px in-group divider (`195:12`): full-width rule `#F0F2F5`.
+/// ardot S11 in-group divider (`195:12`) refined: 1px rule `#F0F2F5` **leading-inset by 14pt**
+/// to align with the row text (Apple convention — in-group separators don't span the full card
+/// width, they start at the text gutter). Trailing edge stays at the card padding edge.
 struct AtlasSettingsGroupDivider: View {
     var body: some View {
         Rectangle()
             .fill(AtlasColors.rule)
             .frame(height: 1)
+            .padding(.leading, 14)
     }
 }
 

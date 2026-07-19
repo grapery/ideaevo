@@ -31,7 +31,7 @@ struct SettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 14) {
+            VStack(spacing: 18) {
                 // ardot `195:5` — lemonSoft summary card. Top edge scrolls under the floating
                 // glass toolbar; bottom edge is the start of the settings stack.
                 AtlasSettingsSummaryCard(
