@@ -388,6 +388,21 @@ export default function ChatPage() {
     }
   };
 
+  const handleArchiveSession = async (id: string) => {
+    try {
+      const res = await chatApi.archiveSession(id);
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+      if (activeId === id) {
+        setActiveId(null);
+        setMessages([]);
+      }
+      const summary = res.result?.summary;
+      notify.success(summary ? `已归档：${summary.slice(0, 40)}` : "会话已归档");
+    } catch (err) {
+      notify.error(getErrorMessage(err, "归档失败"));
+    }
+  };
+
   const handleMessageFeedback = useCallback(
     async (messageId: string, rating: "like" | "dislike" | null) => {
       if (!activeId) return;
@@ -494,16 +509,28 @@ export default function ChatPage() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium text-[var(--title)] truncate">{s.title}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteSession(s.id);
-                    }}
-                    className="text-xs text-[var(--text-muted)] hover:text-[var(--coral)] shrink-0"
-                  >
-                    删除
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleArchiveSession(s.id);
+                      }}
+                      className="text-xs text-[var(--text-muted)] hover:text-[var(--ink)]"
+                    >
+                      归档
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSession(s.id);
+                      }}
+                      className="text-xs text-[var(--text-muted)] hover:text-[var(--coral)]"
+                    >
+                      删除
+                    </button>
+                  </div>
                 </div>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
                   {s.agent?.name || s.agent_id?.slice(0, 8)} · {s.message_count} 条消息

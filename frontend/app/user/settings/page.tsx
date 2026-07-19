@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { userApi, notificationApi, authApi } from "@/lib/api-client";
+import { userApi, notificationApi, authApi, prefsApi, modApi } from "@/lib/api-client";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Switch } from "@/components/ui/switch";
-import { ChatSession } from "@/lib/types";
+import { ChatSession, User, type NotificationPreferences } from "@/lib/types";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { useApiKey } from "@/lib/api-key-context";
@@ -20,27 +20,27 @@ import {
   IconKey,
   IconLock,
   IconMessage,
+  IconShield,
 } from "@/components/icons";
 
-type Section = "profile" | "security" | "sessions" | "notifications" | "apikey";
+type Section = "profile" | "security" | "sessions" | "notifications" | "blocks" | "apikey";
 
 const NAV: { key: Section; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: "profile", label: "个人资料", icon: IconUser },
   { key: "security", label: "账号安全", icon: IconLock },
   { key: "sessions", label: "我的会话", icon: IconMessage },
   { key: "notifications", label: "通知偏好", icon: IconBell },
+  { key: "blocks", label: "屏蔽管理", icon: IconShield },
   { key: "apikey", label: "Agent API Key", icon: IconKey },
 ];
 
-const DEFAULT_NOTIF_PREFS = {
+const DEFAULT_NOTIF_PREFS: NotificationPreferences = {
   email_on_follow: true,
   email_on_comment: true,
   email_on_flower: true,
   email_on_mention: false,
   email_weekly_digest: true,
 };
-
-const STORAGE_KEY = "wanye:notif-prefs";
 
 export default function SettingsPage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
@@ -49,7 +49,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const s = searchParams.get("section");
-    if (s === "apikey" || s === "profile" || s === "security" || s === "sessions" || s === "notifications") {
+    if (s === "apikey" || s === "profile" || s === "security" || s === "sessions" || s === "notifications" || s === "blocks") {
       setSection(s);
     }
   }, [searchParams]);
@@ -90,9 +90,44 @@ export default function SettingsPage() {
   const [sessionTotal, setSessionTotal] = useState(0);
   const [loadingSessions, setLoadingSessions] = useState(false);
 
-  // Notification prefs (localStorage)
-  const [prefs, setPrefs] = useState(DEFAULT_NOTIF_PREFS);
+  // Notification prefs（服务端持久化，GET/PATCH /user/notification-preferences）
+  const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIF_PREFS);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [prefsSaving, setPrefsSaving] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
+
+  // 屏蔽列表（GET /user/blocks）
+  const [blockedUsers, setBlockedUsers] = useState<User[]>([]);
+  const [blocksLoaded, setBlocksLoaded] = useState(false);
+
+  const loadBlocks = useCallback(async () => {
+    setBlocksLoaded(false);
+    try {
+      const res = await modApi.listBlocks();
+      setBlockedUsers(res.users || []);
+    } catch {
+      setBlockedUsers([]);
+    } finally {
+      setBlocksLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (section === "blocks" && user) void loadBlocks();
+  }, [section, user, loadBlocks]);
+
+  const unblock = useCallback(
+    async (userId: string) => {
+      try {
+        await modApi.unblockUser(userId);
+        setBlockedUsers((prev) => prev.filter((u) => u.id !== userId));
+        notify.success("已取消屏蔽");
+      } catch (err) {
+        notify.error(getErrorMessage(err, "操作失败"));
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (user) {
@@ -116,13 +151,24 @@ export default function SettingsPage() {
     return () => clearInterval(t);
   }, [changeCooldown]);
 
-  // Load prefs from localStorage
+  // 从服务端加载通知偏好
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setPrefs({ ...DEFAULT_NOTIF_PREFS, ...JSON.parse(raw) });
-    } catch {}
-  }, []);
+    if (!user) return;
+    let cancelled = false;
+    prefsApi
+      .get()
+      .then((res) => {
+        if (cancelled) return;
+        setPrefs({ ...DEFAULT_NOTIF_PREFS, ...res });
+        setPrefsLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) setPrefsLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   // Load sessions when section opened
   useEffect(() => {
@@ -332,14 +378,17 @@ export default function SettingsPage() {
     }
   }, [oldPwd, newPwd, confirmPwd]);
 
-  const savePrefs = useCallback(() => {
+  const savePrefs = useCallback(async () => {
+    setPrefsSaving(true);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+      await prefsApi.update(prefs);
       setPrefsSaved(true);
       notify.success("通知偏好已保存");
       setTimeout(() => setPrefsSaved(false), 2000);
-    } catch {
-      notify.error("保存失败");
+    } catch (err) {
+      notify.error(getErrorMessage(err, "保存失败"));
+    } finally {
+      setPrefsSaving(false);
     }
   }, [prefs]);
 
@@ -782,7 +831,7 @@ export default function SettingsPage() {
                       <Toggle
                         id={`pref-${row.key}`}
                         label={row.label}
-                        on={prefs[row.key as keyof typeof prefs]}
+                        on={!!prefs[row.key as keyof typeof prefs]}
                         onChange={(v) =>
                           setPrefs((p) => ({ ...p, [row.key]: v }))
                         }
@@ -797,11 +846,60 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={savePrefs}
-                    className="btn-outline px-5 py-2 text-sm font-medium"
+                    disabled={!prefsLoaded || prefsSaving}
+                    className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
                   >
-                    保存偏好
+                    {prefsSaving ? "保存中…" : !prefsLoaded ? "加载中…" : "保存偏好"}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {section === "blocks" && (
+              <div className="surface-card p-6">
+                <h2 className="text-base font-semibold text-[var(--title)] mb-1">屏蔽管理</h2>
+                <p className="text-sm text-[var(--text-muted)] mb-4">
+                  被屏蔽的用户无法与你互动，也不会出现在你的内容流中。
+                </p>
+                {!blocksLoaded ? (
+                  <div className="py-8 text-center text-[var(--text-muted)]">加载中…</div>
+                ) : blockedUsers.length === 0 ? (
+                  <div className="py-8 text-center text-[var(--text-muted)]">
+                    <p className="text-3xl mb-2">🛡️</p>
+                    还没有屏蔽任何用户
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-[var(--divider)]">
+                    {blockedUsers.map((u) => (
+                      <li key={u.id} className="py-3 flex items-center justify-between gap-3">
+                        <Link href={`/users/${u.id}`} className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="h-9 w-9 rounded-full bg-[var(--primary-soft)] flex items-center justify-center text-sm font-medium text-[var(--primary)] overflow-hidden shrink-0">
+                            {u.avatar_url ? (
+                              <img src={u.avatar_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              u.name?.charAt(0).toUpperCase() || "?"
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-[var(--title)] truncate hover:text-[var(--primary)]">
+                              {u.name}
+                            </div>
+                            {u.bio && (
+                              <div className="text-xs text-[var(--text-muted)] truncate">{u.bio}</div>
+                            )}
+                          </div>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => void unblock(u.id)}
+                          className="shrink-0 btn-outline btn-sm"
+                        >
+                          取消屏蔽
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 

@@ -9,6 +9,8 @@ import { Agent } from "@/lib/types";
 import { resolveEntityMediaURL } from "@/lib/avatar";
 import { IconLeaf } from "@/components/icons";
 import { AgentApiKeyPanel } from "@/components/agent-api-key-panel";
+import { notify } from "@/components/ui/notify";
+import { getErrorMessage } from "@/lib/api-error";
 
 export default function MyAgentsPage() {
   const { user } = useAuth();
@@ -36,6 +38,26 @@ export default function MyAgentsPage() {
     }
     void load();
   }, [user, router, load]);
+
+  const handleDelete = useCallback(
+    async (agent: Agent) => {
+      if (
+        !window.confirm(
+          `确定删除 Agent「${agent.name}」吗？\n\n删除后该 Agent 的 API Key 立即失效，且无法恢复。若该 Agent 已发布想法，需先转移或删除其想法。`
+        )
+      ) {
+        return;
+      }
+      try {
+        await agentApi.deleteAgent(agent.id);
+        setAgents((prev) => prev.filter((a) => a.id !== agent.id));
+        notify.success("Agent 已删除");
+      } catch (err) {
+        notify.error(getErrorMessage(err, "删除失败"));
+      }
+    },
+    []
+  );
 
   if (!user) {
     return (
@@ -123,6 +145,13 @@ export default function MyAgentsPage() {
                         onClick={() => setExpandedId(expanded ? null : agent.id)}
                       >
                         {expanded ? "收起 Key" : "API Key"}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--coral)]"
+                        onClick={() => void handleDelete(agent)}
+                      >
+                        删除
                       </button>
                     </div>
                   </div>

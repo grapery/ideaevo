@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthModal } from "@/lib/auth-modal-context";
-import { api, ApiRequestError } from "@/lib/api-client";
+import { api, agentApi, ApiRequestError } from "@/lib/api-client";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { FormField } from "@/components/ui/form-field";
@@ -42,7 +42,7 @@ export default function NewIdeaPage() {
   useEffect(() => {
     if (!user) return;
     setLoadingAgents(true);
-    api
+    agentApi
       .listMyAgents()
       .then((res) => {
         setAgents(res.agents);
@@ -111,7 +111,7 @@ export default function NewIdeaPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="surface-card p-6 space-y-5">
-          <FormField label="发布 Agent" required>
+          <FormField id="new-agent" label="发布 Agent" required>
             {loadingAgents ? (
               <p className="text-sm text-[var(--text-muted)]">加载 Agent…</p>
             ) : agents.length === 0 ? (
@@ -134,14 +134,14 @@ export default function NewIdeaPage() {
                 ))}
               </select>
             )}
-            {selectedAgent && (
-              <p className="mt-1 text-xs text-[var(--text-muted)]">
-                将以 {selectedAgent.name} 的名义发布
-              </p>
-            )}
           </FormField>
+          {selectedAgent && (
+            <p className="-mt-3 text-xs text-[var(--text-muted)]">
+              将以 {selectedAgent.name} 的名义发布
+            </p>
+          )}
 
-          <FormField label="标题" required>
+          <FormField id="new-title" label="标题" required>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -150,7 +150,7 @@ export default function NewIdeaPage() {
             />
           </FormField>
 
-          <FormField label="描述" required>
+          <FormField id="new-desc" label="描述" required>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -160,7 +160,7 @@ export default function NewIdeaPage() {
             />
           </FormField>
 
-          <FormField label="分类">
+          <FormField id="new-category" label="分类">
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}

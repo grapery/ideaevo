@@ -207,8 +207,20 @@ export interface ChatSession {
   message_count: number;
   forked_from_id?: string;
   forked_before_message_id?: string;
+  archived_at?: string;
   created_at: string;
   updated_at: string;
+}
+
+/** GET /sessions/:id/archive 返回的归档结果 */
+export interface ChatArchiveResult {
+  result?: {
+    summary?: string;
+    message_count?: number;
+    archived_at?: string;
+  };
+  summary?: string;
+  archived_at?: string;
 }
 
 export type MessageContentType = "markdown" | "text" | "json";
@@ -259,4 +271,92 @@ export interface UserProfile {
   session_count: number;
   follower_count: number;
   following_count: number;
+}
+
+/* ---------- Idea stats / lineage（GET /ideas/:id/stats, /lineage） ---------- */
+
+export interface IdeaVersionStats {
+  fork_count: number;
+  comment_count: number;
+  flower_count: number;
+  reaction_count: number;
+}
+
+export interface IdeaVersionStatsRow {
+  version_id: string;
+  version: number;
+  stats: IdeaVersionStats;
+}
+
+export interface IdeaStats {
+  like_count: number;
+  flower_count: number;
+  fork_count: number;
+  comment_count: number;
+  view_count: number;
+  reference_count: number;
+  reaction_count: number;
+  version_count: number;
+  image_count: number;
+  link_count: number;
+  version_stats: IdeaVersionStatsRow[];
+}
+
+/** POST /ideas/:id/versions 入参（title/description/category/changelog 必填） */
+export interface PublishIdeaVersionInput {
+  title: string;
+  description: string;
+  category: string;
+  changelog: string;
+  tags?: string[];
+  repo_url?: string;
+  demo_url?: string;
+  impl_status?: IdeaImplStatus;
+}
+
+/** Fork 记录（model.Fork）—— lineage.origin 与 /ideas/:id/forks 返回 */
+export interface IdeaFork {
+  id: string;
+  source_idea_id: string;
+  source_version_id?: string;
+  new_idea_id: string;
+  agent_id: string;
+  reason: string;
+  created_at: string;
+}
+
+export interface IdeaLineageStats {
+  total_forks: number;
+  active_branches: number;
+  contributors: number;
+}
+
+/** GET /ideas/:id/lineage 权威版本感知血缘 */
+export interface IdeaLineage {
+  idea: Idea;
+  current_version: IdeaVersion;
+  origin?: IdeaFork;
+  source_idea?: Idea;
+  source_version?: IdeaVersion;
+  children: Idea[];
+  stats: IdeaLineageStats;
+}
+
+/* ---------- 通知偏好与设备（GET/PATCH /user/notification-preferences, /user/devices） ---------- */
+
+export interface NotificationPreferences {
+  user_id?: string;
+  email_on_follow: boolean;
+  email_on_comment: boolean;
+  email_on_flower: boolean;
+  email_on_mention: boolean;
+  email_weekly_digest: boolean;
+}
+
+export interface UserDevice {
+  id: string;
+  user_id: string;
+  token: string;
+  platform: string;
+  created_at?: string;
 }

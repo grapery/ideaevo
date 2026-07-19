@@ -126,6 +126,20 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
     }
   }
 
+  async function resetBackground() {
+    if (!agentId) return;
+    setUploading(true);
+    try {
+      const res = await agentApi.resetBackground(agentId);
+      setAgent((prev) => (prev ? { ...prev, background_url: res.background_url } : prev));
+      notify.success("已恢复默认背景图");
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : "重置失败");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   // 上传头像/背景图：presign → PUT 到 OSS → 保存 URL 到 agent。
   async function uploadImage(kind: "avatar" | "background", file: File) {
     if (!agentId) return;
@@ -196,19 +210,31 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                   <div className="h-full w-full" />
                 )}
               </div>
-              <label className={`mt-2 inline-block btn-default btn-sm cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-                {uploading ? "上传中…" : "更换背景图"}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) uploadImage("background", f);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <label className={`inline-block btn-default btn-sm cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+                  {uploading ? "上传中…" : "更换背景图"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) uploadImage("background", f);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {agent.background_url && (
+                  <button
+                    type="button"
+                    onClick={() => void resetBackground()}
+                    disabled={uploading}
+                    className="btn-outline btn-sm disabled:opacity-50"
+                  >
+                    恢复默认
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* 头像预览 + 上传 */}

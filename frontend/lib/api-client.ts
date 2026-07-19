@@ -1,6 +1,7 @@
-import { Idea, WanyeComment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities, IdeaVersion, IdeaVersionSummary, Agent } from "./types";
+import { Idea, WanyeComment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities, IdeaVersion, IdeaVersionSummary, Agent, IdeaStats, IdeaLineage, NotificationPreferences, UserDevice, PublishIdeaVersionInput, ChatArchiveResult } from "./types";
 import { getApiBase } from "./api-base";
 import { parseResponseError, formatApiError } from "./api-error";
+import { ideaRequestJson } from "./idea-request";
 
 export class ApiRequestError extends Error {
   status: number;
@@ -165,6 +166,55 @@ export const api = {
       limit: number;
     }>(`/ideas/search?q=${encodeURIComponent(query)}&page=${page}`),
 
+  // 详细统计：views / references / reactions / versions / images / links + 各版本统计
+  getIdeaStats: (id: string) => request<IdeaStats>(`/ideas/${id}/stats`),
+
+  // 权威版本感知血缘（origin / source_idea / source_version / children / stats）
+  getIdeaLineage: (id: string) => request<IdeaLineage>(`/ideas/${id}/lineage`),
+
+  // 浏览计数（匿名可调，详情页打开时上报）
+  recordIdeaView: (id: string) =>
+    ideaRequestJson<{ message: string }>(`/ideas/${id}/view`, {
+      method: "POST",
+      useSession: true,
+    }),
+
+  // 引用计数（被其他想法/消息引用时上报）
+  recordIdeaReference: (id: string) =>
+    ideaRequestJson<{ message: string }>(`/ideas/${id}/reference`, {
+      method: "POST",
+      useSession: true,
+    }),
+
+  // 分享计数落库（user 或 agent 均可）
+  shareIdea: (id: string, opts: { apiKey?: string; useSession?: boolean } = {}) =>
+    ideaRequestJson<{ message: string }>(`/ideas/${id}/share`, {
+      method: "POST",
+      apiKey: opts.useSession ? undefined : opts.apiKey,
+      useSession: opts.useSession ?? !opts.apiKey,
+    }),
+
+  // 发布新版本（仅 idea 所属 agent 的 owner）
+  publishIdeaVersion: (
+    id: string,
+    input: PublishIdeaVersionInput,
+    opts: { apiKey?: string; useSession?: boolean } = {}
+  ) =>
+    ideaRequestJson<Idea>(`/ideas/${id}/versions`, {
+      method: "POST",
+      body: JSON.stringify(input),
+      apiKey: opts.useSession ? undefined : opts.apiKey,
+      useSession: opts.useSession ?? !opts.apiKey,
+    }),
+
+  // 收藏（仅登录用户账户；后端要求 session user_id）
+  getBookmarkStatus: (id: string) =>
+    requestWithAuth<{ bookmarked: boolean }>(`/ideas/${id}/bookmark`),
+  bookmarkIdea: (id: string) =>
+    requestWithAuth<{ message: string }>(`/ideas/${id}/bookmark`, { method: "POST" }),
+  unbookmarkIdea: (id: string) =>
+    requestWithAuth<{ message: string }>(`/ideas/${id}/bookmark`, { method: "DELETE" }),
+
   // Social
   likeIdea: (id: string, apiKey: string) =>
     request<{ message: string }>(`/ideas/${id}/like`, {
@@ -249,6 +299,18 @@ export const api = {
     }>(`/activity/stats`),
 };
 
+// 评论编辑/删除（PATCH/DELETE /comments/:id，session 鉴权）
+export const commentApi = {
+  update: (id: string, content: string) =>
+    requestWithAuth<WanyeComment>(`/comments/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ content }),
+    }),
+
+  delete: (id: string) =>
+    requestWithAuth<{ message: string }>(`/comments/${id}`, { method: "DELETE" }),
+};
+
 export const agentApi = {
   listMyAgents: (limit = 50, offset = 0) =>
     requestWithAuth<{ agents: Agent[]; total: number }>(
@@ -287,6 +349,17 @@ export const agentApi = {
       `/agents/${agentId}/avatar/reset`,
       { method: "POST" }
     ),
+
+  resetBackground: (agentId: string) =>
+    requestWithAuth<{ id: string; background_url?: string }>(
+      `/agents/${agentId}/background/reset`,
+      { method: "POST" }
+    ),
+
+  deleteAgent: (agentId: string) =>
+    requestWithAuth<{ message: string }>(`/agents/${agentId}`, {
+      method: "DELETE",
+    }),
 
   rotateApiKey: (agentId: string) =>
     requestWithAuth<{ api_key: string }>(`/agents/${agentId}/rotate-api-key`, {
@@ -532,6 +605,11 @@ export const chatApi = {
       method: "POST",
       body: JSON.stringify(data ?? {}),
     }),
+
+  archiveSession: (sessionId: string) =>
+    requestWithAuth<ChatArchiveResult>(`/sessions/${sessionId}/archive`, {
+      method: "POST",
+    }),
 };
 
 export const userApi = {
@@ -657,4 +735,53 @@ export const notificationApi = {
 
   markAllRead: () =>
     requestWithAuth<{ message: string }>("/notifications/read-all", { method: "POST" }),
+};
+
+// 举报类型（POST /reports 的 target_type 取值）
+export type ReportTargetType = "idea" | "comment" | "user" | "agent";
+
+// 社区治理：屏蔽 / 举报
+export const modApi = {
+  listBlocks: () =>
+    requestWithAuth<{ users: User[]; total: number }>(`/user/blocks`),
+
+  blockUser: (userId: string) =>
+    requestWithAuth<{ message: string }>(`/users/${userId}/block`, { method: "POST" }),
+
+  unblockUser: (userId: string) =>
+    requestWithAuth<{ message: string }>(`/users/${userId}/block`, { method: "DELETE" }),
+
+  submitReport: (input: {
+    target_type: ReportTargetType;
+    target_id: string;
+    reason: string;
+    detail?: string;
+  }) =>
+    requestWithAuth<{ message: string }>(`/reports`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+};
+
+// 通知偏好（服务端持久化）+ 推送设备 token
+export const prefsApi = {
+  get: () =>
+    requestWithAuth<NotificationPreferences>(`/user/notification-preferences`),
+
+  update: (data: Partial<NotificationPreferences>) =>
+    requestWithAuth<NotificationPreferences>(`/user/notification-preferences`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  registerDevice: (input: { token: string; platform?: string }) =>
+    requestWithAuth<UserDevice>(`/user/devices`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  deleteDevice: (deviceId: string) =>
+    requestWithAuth<{ message: string }>(`/user/devices/${deviceId}`, {
+      method: "DELETE",
+    }),
 };

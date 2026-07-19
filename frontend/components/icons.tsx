@@ -95,6 +95,22 @@ export function IconShare({ className = "h-3.5 w-3.5" }: IconProps) {
   );
 }
 
+export function IconBookmark({ className = "h-3.5 w-3.5", filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" aria-hidden="true" focusable="false" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+    </svg>
+  );
+}
+
+export function IconShield({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" focusable="false" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
 export function IconSearch({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" focusable="false" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

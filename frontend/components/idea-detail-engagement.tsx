@@ -8,8 +8,11 @@ import {
   ideaRequestJson,
 } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
+import { useAuth } from "@/lib/auth-context";
+import { api } from "@/lib/api-client";
 import { ReactionBar } from "./reaction-bar";
-import { IconFlower, IconGitFork, IconHeart, IconMessage, IconShare } from "./icons";
+import { ReportDialog } from "./report-dialog";
+import { IconBookmark, IconFlower, IconGitFork, IconHeart, IconMessage, IconShare } from "./icons";
 
 export function IdeaDetailEngagement({
   ideaId,
@@ -29,12 +32,15 @@ export function IdeaDetailEngagement({
   onForkListToggle?: () => void;
 }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
+  const { user } = useAuth();
   const [likes, setLikes] = useState(initialLikes);
   const [flowers, setFlowers] = useState(initialFlowers);
   const [liked, setLiked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
   const [myReaction, setMyReaction] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     setLikes(initialLikes);
@@ -63,6 +69,37 @@ export function IdeaDetailEngagement({
       .then((res) => setLiked(res.liked))
       .catch(() => {});
   }, [ideaId, canAct, apiKey, useSession]);
+
+  // 收藏状态（仅登录用户账户可用，后端要求 session user_id）
+  useEffect(() => {
+    if (!user) {
+      setBookmarked(false);
+      return;
+    }
+    api
+      .getBookmarkStatus(ideaId)
+      .then((res) => setBookmarked(res.bookmarked))
+      .catch(() => {});
+  }, [ideaId, user]);
+
+  async function toggleBookmark() {
+    if (!user) return;
+    setLoading("bookmark");
+    try {
+      if (bookmarked) {
+        await api.unbookmarkIdea(ideaId);
+        setBookmarked(false);
+      } else {
+        await api.bookmarkIdea(ideaId);
+        setBookmarked(true);
+        notify.success("已收藏");
+      }
+    } catch (err) {
+      notify.error(getErrorMessage(err, "收藏失败"));
+    } finally {
+      setLoading(null);
+    }
+  }
 
   async function toggleLike() {
     if (!canAct) {
@@ -123,15 +160,25 @@ export function IdeaDetailEngagement({
 
   async function shareIdea() {
     const url = window.location.href;
+    let shared = false;
     try {
       if (navigator.share) {
         await navigator.share({ url, title: document.title });
-        return;
+        shared = true;
+      } else {
+        await navigator.clipboard.writeText(url);
+        shared = true;
+        notify.success("链接已复制");
       }
-      await navigator.clipboard.writeText(url);
-      notify.success("链接已复制");
     } catch {
+      // 用户取消分享 (AbortError) 也会进这里，不计为分享成功
       notify.error("分享失败");
+    }
+    // 分享/复制成功后，向后端落库一次分享计数（fire-and-forget）
+    if (shared && canAct) {
+      api
+        .shareIdea(ideaId, { apiKey: useSession ? undefined : apiKey, useSession })
+        .catch(() => {});
     }
   }
 
@@ -191,6 +238,20 @@ export function IdeaDetailEngagement({
         <span>{comments}</span>
       </button>
 
+      {user && (
+        <button
+          type="button"
+          onClick={toggleBookmark}
+          disabled={loading === "bookmark"}
+          aria-label="收藏"
+          aria-pressed={bookmarked}
+          className={`${actionBtn} ${bookmarked ? "text-[var(--primary)]" : ""}`}
+        >
+          <IconBookmark filled={bookmarked} />
+          <span>收藏</span>
+        </button>
+      )}
+
       <button
         type="button"
         onClick={shareIdea}
@@ -200,7 +261,25 @@ export function IdeaDetailEngagement({
         <IconShare />
         <span>分享</span>
       </button>
+
+      {user && (
+        <button
+          type="button"
+          onClick={() => setReportOpen(true)}
+          aria-label="举报这个想法"
+          className={actionBtn}
+        >
+          <span>举报</span>
+        </button>
+      )}
       </div>
+
+      <ReportDialog
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="idea"
+        targetId={ideaId}
+      />
     </div>
   );
 }

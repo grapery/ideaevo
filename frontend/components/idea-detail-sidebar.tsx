@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Idea, FlowerDonor } from "@/lib/types";
+import { Idea, FlowerDonor, IdeaLineage, IdeaStats } from "@/lib/types";
 import { SendFlowerButton } from "./idea-action-bar";
 import { ForkFlowGraph } from "./fork-flow-graph";
 import { WireframeAvatar } from "./wireframe-avatar";
@@ -24,11 +24,46 @@ interface ForkRecord {
 export function ForkTreePanel({
   idea,
   forks,
+  lineage,
 }: {
   idea: Idea;
   forks: ForkRecord[];
+  lineage?: IdeaLineage | null;
 }) {
-  return <ForkFlowGraph idea={idea} forks={forks} />;
+  return (
+    <div className="surface-card p-5">
+      <h3 className={`${sidebarTitleClass} mb-3`}>Fork 谱系</h3>
+
+      {lineage && (
+        <div className="mb-3 space-y-2 text-xs">
+          {lineage.source_idea && (
+            <div className="rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] p-2.5">
+              <div className="mb-0.5 text-[var(--text-muted)]">衍生自</div>
+              <Link
+                href={`/ideas/${lineage.source_idea.id}`}
+                className="block truncate font-medium text-[var(--ink)] hover:text-[var(--primary)]"
+              >
+                {lineage.source_idea.title}
+              </Link>
+              {lineage.source_version && (
+                <div className="mt-0.5 text-[var(--text-muted)]">
+                  版本 v{lineage.source_version.version}
+                  {lineage.origin?.reason && ` · ${lineage.origin.reason}`}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[var(--text-muted)]">
+            <span>共 {lineage.stats.total_forks} 个 Fork</span>
+            <span>{lineage.stats.active_branches} 个活跃分支</span>
+            <span>{lineage.stats.contributors} 位贡献者</span>
+          </div>
+        </div>
+      )}
+
+      <ForkFlowGraph idea={idea} forks={forks} />
+    </div>
+  );
 }
 
 function donorProfileHref(donor: FlowerDonor): string | undefined {
@@ -144,23 +179,57 @@ export function RelatedIdeasPanel({ ideas, currentId }: { ideas: Idea[]; current
   );
 }
 
-export function IdeaStatsPanel({ idea }: { idea: Idea }) {
+export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats | null }) {
+  const rows: [string, number][] = stats
+    ? [
+        ["点赞", stats.like_count],
+        ["鲜花", stats.flower_count],
+        ["Fork", stats.fork_count],
+        ["评论", stats.comment_count],
+        ["浏览", stats.view_count],
+        ["引用", stats.reference_count],
+        ["表情反应", stats.reaction_count],
+        ["版本", stats.version_count],
+        ["图片", stats.image_count],
+        ["链接", stats.link_count],
+      ]
+    : [
+        ["点赞", idea.like_count],
+        ["鲜花", idea.flower_count],
+        ["Fork", idea.fork_count],
+        ["评论", idea.comment_count],
+      ];
+
   return (
     <div className={sidebarCardClass}>
       <h3 className={`${sidebarTitleClass} mb-3`}>想法统计</h3>
       <div className="space-y-2.5 text-sm">
-        {[
-          ["点赞", idea.like_count],
-          ["鲜花", idea.flower_count],
-          ["Fork", idea.fork_count],
-          ["评论", idea.comment_count],
-        ].map(([label, count]) => (
-          <div key={label as string} className="flex items-center justify-between gap-4">
+        {rows.map(([label, count]) => (
+          <div key={label} className="flex items-center justify-between gap-4">
             <span className="text-[var(--text-muted)]">{label}</span>
             <span className="font-medium tabular-nums text-[var(--title)]">{count}</span>
           </div>
         ))}
       </div>
+      {stats && stats.version_stats.length > 1 && (
+        <div className="mt-4 border-t border-[var(--divider)] pt-3">
+          <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">各版本互动</p>
+          <div className="space-y-1.5">
+            {stats.version_stats.map((row) => (
+              <div
+                key={row.version_id}
+                className="flex items-center justify-between gap-2 text-xs text-[var(--text-muted)]"
+              >
+                <span>v{row.version}</span>
+                <span className="tabular-nums">
+                  Fork {row.stats.fork_count} · 评论 {row.stats.comment_count} · 花{" "}
+                  {row.stats.flower_count} · 反应 {row.stats.reaction_count}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

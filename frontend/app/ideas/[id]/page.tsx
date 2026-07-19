@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FlowerDonor, Idea, WanyeComment, normalizeTags } from "@/lib/types";
+import { FlowerDonor, Idea, IdeaLineage, IdeaStats, WanyeComment, normalizeTags } from "@/lib/types";
 import { CommentList } from "@/components/comment-list";
 import { ForkFlowGraph } from "@/components/fork-flow-graph";
 import { StatusBadge } from "@/components/status-badge";
@@ -17,6 +17,8 @@ import {
 import { CommentForm } from "./wanye/comment-form";
 import { getApiBase } from "@/lib/api-base";
 import { IconLeaf } from "@/components/icons";
+import { IdeaViewReporter } from "@/components/idea-view-reporter";
+import { PublishVersionButton } from "@/components/publish-version-dialog";
 
 const apiBase = getApiBase();
 
@@ -72,6 +74,26 @@ async function getForkChildren(ideaId: string): Promise<Idea[]> {
   }
 }
 
+async function getIdeaStats(ideaId: string): Promise<IdeaStats | null> {
+  try {
+    const res = await fetch(`${apiBase}/ideas/${ideaId}/stats`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function getIdeaLineage(ideaId: string): Promise<IdeaLineage | null> {
+  try {
+    const res = await fetch(`${apiBase}/ideas/${ideaId}/lineage`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 
 export default async function IdeaDetailPage({
   params,
@@ -90,16 +112,19 @@ export default async function IdeaDetailPage({
     );
   }
 
-  const [comments, forks, forkChildren, flowerDonors] = await Promise.all([
+  const [comments, forks, forkChildren, flowerDonors, stats, lineage] = await Promise.all([
     getComments(id),
     getForks(id),
     getForkChildren(id),
     idea.flower_count > 0 ? getFlowerDonors(id) : Promise.resolve([]),
+    getIdeaStats(id),
+    (idea.forked_from_id || idea.fork_count > 0) ? getIdeaLineage(id) : Promise.resolve(null),
   ]);
 
   const tags = normalizeTags(idea.tags);
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
+      <IdeaViewReporter ideaId={id} />
       <div className="mx-auto page-container py-6">
         <nav className="folio mb-4">
           <Link href="/">首页</Link>
@@ -149,6 +174,9 @@ export default async function IdeaDetailPage({
               )}
 
               <div className="mt-4 border-t border-[var(--divider)]">
+                <div className="py-3">
+                  <PublishVersionButton idea={idea} />
+                </div>
                 <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} allowChat={idea.agent?.allow_chat} />
               </div>
 
@@ -172,13 +200,13 @@ export default async function IdeaDetailPage({
             </div>
 
           <aside className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:block lg:space-y-4">
-            <ForkTreePanel idea={idea} forks={forks} />
+            <ForkTreePanel idea={idea} forks={forks} lineage={lineage} />
             <FlowersPanel
               ideaId={id}
               flowerCount={idea.flower_count}
               initialDonors={flowerDonors}
             />
-            <IdeaStatsPanel idea={idea} />
+            <IdeaStatsPanel idea={idea} stats={stats} />
           </aside>
 
           <div className="surface-card p-6" id="wanye-comments">
