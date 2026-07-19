@@ -124,6 +124,15 @@ struct MainTabView: View {
             }
         }
         .environment(\.tabBarVisibility, tabBarVisibility)
+        #if DEBUG
+        // Verify-only launch hook: pass `--deimos-tab-activity` to deep-link straight to the
+        // Activity tab for visual review against the ardot S08 design spec.
+        .onAppear {
+            if ProcessInfo.processInfo.arguments.contains("--deimos-tab-activity") {
+                selection = .activity
+            }
+        }
+        #endif
         .sheet(isPresented: $showRateSheet) {
             RateAppSheet(isPresented: $showRateSheet)
                 .presentationDetents([.height(380)])

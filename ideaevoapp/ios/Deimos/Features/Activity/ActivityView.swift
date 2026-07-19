@@ -135,8 +135,8 @@ struct ActivityScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // v6 large title header
-            HStack(alignment: .center) {
+            // v6 large title header — stats live in a compact toolbar chip on the right (ardot 311:1).
+            HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("DEIMOS")
                         .font(AtlasTypography.overline())
@@ -149,16 +149,13 @@ struct ActivityScreen: View {
 
                 Spacer()
 
+                ActivityToolbarStatsChip(stats: viewModel.stats)
             }
             .padding(.horizontal, AtlasMetrics.pageX)
             .padding(.top, 8)
             .padding(.bottom, 20)
 
             AtlasSegmentedPill(items: ["全局", "关注"], selection: $viewModel.segment)
-                .padding(.horizontal, AtlasMetrics.pageX)
-                .padding(.bottom, 12)
-
-            activityOverview
                 .padding(.horizontal, AtlasMetrics.pageX)
                 .padding(.bottom, 12)
 
@@ -252,43 +249,9 @@ struct ActivityScreen: View {
         }
     }
 
-    private var activityOverview: some View {
-        HStack(spacing: 12) {
-            overviewMetric(
-                title: "今日新增想法",
-                value: "\(viewModel.stats.todayNewIdeas)",
-                subtitle: "较昨日 +18%",
-                tint: AtlasColors.lemonSoft,
-                isLemon: true
-            )
-            overviewMetric(
-                title: "今日 Fork",
-                value: "\(viewModel.stats.todayForks)",
-                subtitle: "较昨日 +9%",
-                tint: Color(hex: 0xF2F5F8)
-            )
-        }
-    }
-
-    /// Ardot 237:177 Stats — 165×96 r20 cards, 13pt label, 26pt Bold value, 11pt Medium trend.
-    private func overviewMetric(title: String, value: String, subtitle: String, tint: Color, isLemon: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.system(size: 13, weight: .regular))
-                .foregroundStyle(isLemon ? AtlasColors.oliveMeta : AtlasColors.inkTertiary)
-            Text(value)
-                .font(.system(size: 26, weight: .bold))
-                .foregroundStyle(AtlasColors.ink)
-            Text(subtitle)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(isLemon ? AtlasColors.oliveMeta : AtlasColors.inkSoft)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(tint)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-    }
-
+    /// ardot 311:1 — replaced the large `activityOverview` cards with this compact stats chip in
+    /// the title row's top-right. Two metrics side by side: 今日新想法 (lemon tile) | 今日 Fork
+    /// (white tile), separated by a hairline divider inside a lemonSoft pill.
     @ViewBuilder
     private var scopeToolbarControl: some View {
         if viewModel.segment == 0 {
@@ -487,5 +450,79 @@ struct ActivityScreen: View {
             )
         }
         .frame(maxHeight: .infinity)
+    }
+}
+
+// MARK: - ardot 311:1 · Activity toolbar stats chip
+
+/// Compact two-stat pill that sits in the top-right of the Activity title row, replacing the
+/// old large overview cards. Layout matches ardot `311:1`: lemonSoft capsule with a hairline
+/// border, two icon-tile + value + label stacks separated by a vertical divider.
+struct ActivityToolbarStatsChip: View {
+    let stats: ActivityStats
+
+    var body: some View {
+        HStack(spacing: 8) {
+            statTile(
+                value: "\(stats.todayNewIdeas)",
+                label: "今日新想法",
+                icon: .sparkles,
+                tileFill: AtlasColors.lemonStrong,
+                iconColor: AtlasColors.lemonInk,
+                valueColor: AtlasColors.lemonInk,
+                labelColor: AtlasColors.oliveMeta
+            )
+
+            Capsule()
+                .fill(AtlasColors.borderProfile)
+                .frame(width: 1, height: 26)
+
+            statTile(
+                value: "\(stats.todayForks)",
+                label: "今日 Fork",
+                icon: .fork,
+                tileFill: AtlasColors.surface,
+                iconColor: AtlasColors.ink,
+                valueColor: AtlasColors.ink,
+                labelColor: AtlasColors.oliveMeta
+            )
+        }
+        .padding(6)
+        .background(
+            Capsule(style: .continuous)
+                .fill(AtlasColors.lemonSoft)
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .stroke(AtlasColors.borderProfile, lineWidth: 1)
+        )
+    }
+
+    private func statTile(
+        value: String,
+        label: String,
+        icon: DeimosIcon,
+        tileFill: Color,
+        iconColor: Color,
+        valueColor: Color,
+        labelColor: Color
+    ) -> some View {
+        HStack(spacing: 6) {
+            // Icon tile (26×26, r13) matching ardot 311:2/311:9.
+            DeimosIconView(icon: icon, size: 14, color: iconColor)
+                .frame(width: 26, height: 26)
+                .background(tileFill, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(valueColor)
+                    .lineLimit(1)
+                Text(label)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(labelColor)
+                    .lineLimit(1)
+            }
+        }
     }
 }
