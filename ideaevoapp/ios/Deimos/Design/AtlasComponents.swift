@@ -943,29 +943,31 @@ struct BottomInputBar: View {
             AtlasMultilineTextField(
                 placeholder: placeholder,
                 text: $text,
-                minHeight: AtlasMetrics.inputHeight,
+                minHeight: 36,
                 maxHeight: 120,
                 onSubmit: onSend
             )
             .padding(.horizontal, 12)
-            .background(AtlasColors.fill)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
 
+            // Send button: 40×40 lemon circle r20, ardot send SVG icon.
             Button(action: onSend) {
                 DeimosIconView(icon: .send, size: 20, color: AtlasColors.lemonInk)
-                    .frame(width: AtlasMetrics.sendButtonSize, height: AtlasMetrics.sendButtonSize)
-                    .background(sendEnabled ? AtlasColors.chatBlue : AtlasColors.inkDisabled)
+                    .frame(width: 40, height: 40)
+                    .background(sendEnabled ? AtlasColors.lemonStrong : AtlasColors.inkDisabled)
                     .clipShape(Circle())
             }
             .disabled(!sendEnabled)
         }
-        .padding(.horizontal, AtlasMetrics.detailX)
+        .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .frame(height: AtlasMetrics.bottomInputBarHeight)
-        .background(AtlasColors.surface)
-        .overlay(alignment: .top) {
-            Rectangle().fill(AtlasColors.border).frame(height: 1)
-        }
+        // ardot S07 Message Composer: floating glass pill — white/34% + white/80% border + shadow.
+        .background(Capsule(style: .continuous).fill(Color.white.opacity(0.34)))
+        .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.80), lineWidth: 1))
+        .overlay(Capsule(style: .continuous).stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1))
+        .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.11), radius: 28, x: 0, y: 12)
+        .clipShape(Capsule(style: .continuous))
+        .padding(.horizontal, AtlasMetrics.detailX)
+        .padding(.bottom, 6)
     }
 }
 

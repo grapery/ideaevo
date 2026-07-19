@@ -67,8 +67,6 @@ struct CommentsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AtlasPushNavBar(title: commentCount > 0 ? "评论 · \(commentCount)" : "评论", onBack: { dismiss() })
-
             content
 
             if session.isAuthenticated {
@@ -78,6 +76,11 @@ struct CommentsView: View {
             }
         }
         .background(AtlasColors.canvas)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            // S05 (ardot 296:251): "Toolbar · 评论 · floating glass overlay" — translucent,
+            // content scrolls underneath. Uses AtlasOverlayPushNavBar (ultraThinMaterial, not solid).
+            AtlasOverlayPushNavBar(title: commentCount > 0 ? "评论 · \(commentCount)" : "评论", onBack: { dismiss() })
+        }
         .atlasSheetZoomBackground(isPresented: showAuthSheet)
         .navigationBarHidden(true)
         .suppressTabBar()
@@ -124,10 +127,11 @@ struct CommentsView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 4)
 
+                // Send button: 40×40 lemon circle r20, ardot send SVG icon (ardot 179:274).
                 Button {
                     Task { await submitComment() }
                 } label: {
-                    DeimosIconView(icon: .send, size: 18, color: canSend ? AtlasColors.lemonInk : AtlasColors.inkFaint)
+                    DeimosIconView(icon: .send, size: 20, color: AtlasColors.lemonInk)
                         .frame(width: 40, height: 40)
                         .background(canSend ? AtlasColors.lemonStrong : AtlasColors.inkDisabled)
                         .clipShape(Circle())
@@ -136,12 +140,13 @@ struct CommentsView: View {
                 .disabled(!canSend)
             }
             .padding(8)
-            .background(AtlasColors.surfaceSecondary)
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(AtlasColors.border, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            // ardot 179:272: "Comment Composer · Apple Floating Glass Pill" — white/34% fill +
+            // white/80% border + ink/6% border + shadow, r28.
+            .background(Capsule(style: .continuous).fill(Color.white.opacity(0.34)))
+            .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.80), lineWidth: 1))
+            .overlay(Capsule(style: .continuous).stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1))
+            .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.11), radius: 28, x: 0, y: 12)
+            .clipShape(Capsule(style: .continuous))
             .padding(.horizontal, AtlasMetrics.detailX)
             .padding(.bottom, 8)
         }
