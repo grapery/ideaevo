@@ -450,6 +450,16 @@ struct AtlasPushNavBar<Trailing: View>: View {
 /// A translucent push bar for detail covers. It preserves the cover beneath
 /// the controls and takes on the correct blurred state while content scrolls.
 /// Title (when present) sits in the same glass capsule as `AtlasPushNavBar`.
+/// ardot C/Push Toolbar (`237:94`) — Apple Floating Glass Controls (scroll under).
+/// The toolbar is **float-liquid**: two independent floating glass elements (back-button circle
+/// + title capsule) sitting on a TRANSPARENT container — NO full-width material bar, NO bottom
+/// hairline. Content scrolls underneath the floating glass. This matches the ardot spec exactly:
+/// the component frame has no fills/strokes; only the back button (`237:95`, 44×44 circle:
+/// white/36% + white/78% stroke + ink/8% stroke + drop shadow) and the title capsule
+/// (`296:265`, 182×44 r22: white/30% + white/78% + ink/6% + drop shadow) carry glass treatment.
+///
+/// Previously this view wrongly added `.background(.ultraThinMaterial)` + a bottom hairline,
+/// producing a solid bar that didn't match the design's floating-glass intent.
 struct AtlasOverlayPushNavBar<Trailing: View>: View {
     var title: String
     let onBack: () -> Void
@@ -474,6 +484,8 @@ struct AtlasOverlayPushNavBar<Trailing: View>: View {
                     .frame(minHeight: AtlasToolbarMetrics.hitTarget)
             }
             if !title.isEmpty {
+                // ardot `296:265`: title glass capsule — independent floating element with its own
+                // glass fill + dual strokes + drop shadow (NOT inherited from a bar background).
                 Text(title)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(AtlasColors.ink.opacity(0.92))
@@ -484,14 +496,12 @@ struct AtlasOverlayPushNavBar<Trailing: View>: View {
                     .background(Capsule(style: .continuous).fill(Color.white.opacity(0.30)))
                     .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.78), lineWidth: 1))
                     .overlay(Capsule(style: .continuous).stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1))
+                    .shadow(color: AtlasColors.ink.opacity(0.08), radius: 18, x: 0, y: 8)
             }
         }
         .padding(.horizontal, AtlasMetrics.detailX)
         .frame(height: AtlasToolbarMetrics.barHeight)
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(AtlasColors.border.opacity(0.45)).frame(height: 1)
-        }
+        // NO background, NO bottom hairline — float-liquid per ardot `237:94`.
     }
 }
 

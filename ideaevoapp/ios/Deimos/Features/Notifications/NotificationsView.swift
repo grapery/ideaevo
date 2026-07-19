@@ -96,55 +96,52 @@ struct NotificationsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // ardot C/Push Nav Bar (237:94): 48h floating-glass back + 14pt Semibold title in
-            // glass capsule. Pinned as a VStack header (not via `.safeAreaInset`) so the back
-            // button + title reliably render above content on every iOS version.
-            AtlasOverlayPushNavBar(title: "通知", onBack: { dismiss() })
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(NotificationCategory.allCases) { item in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                category = item
+        ScrollView {
+            VStack(spacing: 0) {
+                // ardot S37 layout: a horizontal category pill row directly under the floating
+                // glass toolbar, with content scrolling underneath the transparent toolbar.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(NotificationCategory.allCases) { item in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    category = item
+                                }
+                            } label: {
+                                Text(item.title)
+                                    .font(.system(size: 14, weight: category == item ? .semibold : .regular))
+                                    .foregroundStyle(category == item ? .white : AtlasColors.inkSoft)
+                                    .padding(.horizontal, 14)
+                                    .frame(height: 32)
+                                    .background(category == item ? AtlasColors.primary : AtlasColors.surfaceSecondary)
+                                    .clipShape(Capsule())
                             }
-                        } label: {
-                            Text(item.title)
-                                .font(.system(size: 14, weight: category == item ? .semibold : .regular))
-                                .foregroundStyle(category == item ? .white : AtlasColors.inkSoft)
-                                .padding(.horizontal, 14)
-                                .frame(height: 32)
-                                .background(category == item ? AtlasColors.primary : AtlasColors.surfaceSecondary)
-                                .clipShape(Capsule())
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, AtlasMetrics.detailX)
                 }
-                .padding(.horizontal, AtlasMetrics.detailX)
-            }
-            .padding(.top, 8)
-            .padding(.bottom, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
 
-            if viewModel.isLoading && viewModel.items.isEmpty {
-                Spacer()
-                ProgressView()
-                Spacer()
-            } else if let error = viewModel.errorMessage, viewModel.items.isEmpty {
-                AtlasDesignedEmptyStates.loadFailed(message: error) {
-                    Task { await viewModel.load() }
-                }
-                .frame(maxHeight: .infinity)
-            } else if viewModel.items.isEmpty {
-                // ardot S11-aligned: when there are no notifications, show just the empty state
-                // with NO "去探索" CTA (previously passed `dismiss()` which surfaced the button).
-                AtlasDesignedEmptyStates.notificationsEmpty()
-                    .frame(maxHeight: .infinity)
-            } else if filteredItems.isEmpty {
-                AtlasDesignedEmptyStates.notificationsCategoryEmpty()
-                    .frame(maxHeight: .infinity)
-            } else {
-                ScrollView {
+                if viewModel.isLoading && viewModel.items.isEmpty {
+                    // loading state — keep some height so the empty/loading content centers below
+                    Color.clear.frame(height: 1)
+                } else if let error = viewModel.errorMessage, viewModel.items.isEmpty {
+                    AtlasDesignedEmptyStates.loadFailed(message: error) {
+                        Task { await viewModel.load() }
+                    }
+                    .padding(.top, 40)
+                } else if viewModel.items.isEmpty {
+                    // ardot S11-aligned: when there are no notifications, show just the empty
+                    // state with NO "去探索" CTA (previously passed `dismiss()` which surfaced
+                    // the button).
+                    AtlasDesignedEmptyStates.notificationsEmpty()
+                        .padding(.top, 40)
+                } else if filteredItems.isEmpty {
+                    AtlasDesignedEmptyStates.notificationsCategoryEmpty()
+                        .padding(.top, 40)
+                } else {
                     LazyVStack(spacing: 12) {
                         if unreadCount > 0 {
                             Button {
@@ -186,6 +183,12 @@ struct NotificationsView: View {
             }
         }
         .background(AtlasColors.canvas)
+        // ardot C/Push Toolbar (`237:94`) — float-liquid: transparent container holds the
+        // floating glass back-button circle + title capsule; content scrolls underneath. The
+        // toolbar itself has NO bar background (matching the design).
+        .safeAreaInset(edge: .top, spacing: 0) {
+            AtlasOverlayPushNavBar(title: "通知", onBack: { dismiss() })
+        }
         .navigationBarHidden(true)
         .suppressTabBar()
         .navigationDestination(item: $ideaRoute) { route in
