@@ -33,7 +33,7 @@ struct ForkLineageView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AtlasPushNavBar(title: "Fork 谱系", onBack: { dismiss() })
+            AtlasPushNavBar(title: "Fork 脉络", onBack: { dismiss() })
 
             if viewModel.isLoading {
                 Spacer()

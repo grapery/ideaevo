@@ -417,10 +417,24 @@ struct AtlasDetailGlassToolbar: View {
     let onSave: () -> Void
     let onForkLineage: () -> Void
     let onMore: () -> Void
+    /// Scrolled-state title (ardot S04C `246:6` "想法详情" 18pt Bold). When non-nil and `showTitle`
+    /// is true, a centered label appears between the back button and the action cluster — matching
+    /// the design's scroll-state glass nav. Leave nil for cover-visible initial state.
+    var navTitle: String? = nil
+    var showTitle: Bool = false
 
     var body: some View {
         HStack(spacing: 8) {
             AtlasToolbarFloatIconButton(icon: .chevronBack, size: 44, iconSize: 18, action: onBack)
+            Spacer(minLength: 12)
+            if showTitle, let navTitle {
+                Text(navTitle)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .lineLimit(1)
+                    .frame(maxWidth: 180)
+                    .transition(.opacity)
+            }
             Spacer(minLength: 12)
             AtlasToolbarFloatIconButton(icon: .share, size: 44, iconSize: 18, action: onShare)
             AtlasToolbarFloatIconButton(icon: .bookmark, size: 44, iconSize: 18, action: onSave)

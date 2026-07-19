@@ -236,6 +236,8 @@ struct IdeaDetailView: View {
     @State private var showReportSheet = false
     @State private var showBlockDialog = false
     @State private var selectedRepoTab = 0
+    /// True when the cover has scrolled past the glass toolbar — reveals the centered nav title.
+    @State private var hasScrolledPastCover = false
 
     private var isSheetZoomActive: Bool {
         showAuthSheet || showForkSheet || showShareSheet || showBuryConfirm || showActionMenu || showReportSheet
@@ -445,6 +447,15 @@ struct IdeaDetailView: View {
         ZStack(alignment: .top) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    // Scroll-offset tracker: fires when the idea identity card passes under the toolbar.
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: ScrollOffsetKey.self,
+                            value: geo.frame(in: .named("detailScroll")).minY
+                        )
+                    }
+                    .frame(height: 0)
+
                     ideaIdentityCard(idea)
                     agentOwnershipCard(idea)
                     overviewCard(idea)
@@ -452,7 +463,7 @@ struct IdeaDetailView: View {
                     forkLineagePreview(idea)
                     attachmentsCard(idea)
 
-                    // Secondary artifact material stays below the Product Reality first fold.
+                    // Secondary artifact material remains below the Product Reality first fold.
                     implProgressCard(idea)
                     mediaGallerySection(idea)
 
@@ -483,6 +494,13 @@ struct IdeaDetailView: View {
                 .padding(.top, 112)
                 .padding(.bottom, AtlasMetrics.bottomClear)
             }
+            .coordinateSpace(name: "detailScroll")
+            .onPreferenceChange(ScrollOffsetKey.self) { offset in
+                // Cover scrolls away when offset goes below ~-60 (identity card entering toolbar zone).
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    hasScrolledPastCover = offset < -60
+                }
+            }
 
             AtlasDetailGlassToolbar(
                 onBack: { dismiss() },
@@ -492,7 +510,9 @@ struct IdeaDetailView: View {
                 },
                 onSave: { Task { await handleBookmark() } },
                 onForkLineage: { forkLineageRoute = IdeaRoute(id: idea.id) },
-                onMore: { showActionMenu = true }
+                onMore: { showActionMenu = true },
+                navTitle: "想法详情",
+                showTitle: hasScrolledPastCover
             )
             .zIndex(1)
         }
@@ -1395,5 +1415,13 @@ struct IdeaDetailView: View {
         } catch {
             forkError = error.localizedDescription
         }
+    }
+}
+
+/// PreferenceKey for tracking scroll offset in IdeaDetailView's detail ScrollView.
+private struct ScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }

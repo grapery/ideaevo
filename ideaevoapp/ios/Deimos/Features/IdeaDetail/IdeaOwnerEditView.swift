@@ -159,6 +159,9 @@ struct IdeaOwnerEditView: View {
             }
         }
         .background(AtlasColors.canvas)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            settingsBackHeader(title: "编辑 Idea", dismiss: dismiss)
+        }
         .atlasSheetZoomBackground(isPresented: showBuryConfirm)
         .navigationBarHidden(true)
         .suppressTabBar()
@@ -175,18 +178,6 @@ struct IdeaOwnerEditView: View {
     private var editorContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                // S27 Back button row — aligns with content at detailX
-                HStack(spacing: 8) {
-                    AtlasNavBackButton { dismiss() }
-                    Spacer()
-                }
-
-                // S27 Screen Title — 28pt Bold ink (Ardot 189:69)
-                Text("编辑 Idea")
-                    .font(.system(size: 28, weight: .bold))
-                    .atlasTrackedTitle(28)
-                    .foregroundStyle(AtlasColors.ink)
-
                 if let idea = viewModel.idea {
                     // S27 Idea core identity — #F8FAFC card r16 (Ardot 189:70)
                     HStack(spacing: 12) {
