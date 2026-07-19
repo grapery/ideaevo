@@ -62,6 +62,15 @@ struct ProfileView: View {
                 ideas = myIdeas
             }
         }
+        #if DEBUG
+        // Verify-only launch hook: pass `--deimos-goto-settings` to deep-link straight to the
+        // Settings screen for visual review against the ardot S11 design spec.
+        .onAppear {
+            if ProcessInfo.processInfo.arguments.contains("--deimos-goto-settings") {
+                showSettings = true
+            }
+        }
+        #endif
     }
 
     /// Lightweight guest gate shown when a logged-out user opens the Profile tab while browsing.

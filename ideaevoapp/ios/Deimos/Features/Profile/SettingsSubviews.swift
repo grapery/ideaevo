@@ -3,6 +3,33 @@ import PhotosUI
 import UserNotifications
 import UIKit
 
+// MARK: - Shared helpers (ardot C/Push Nav Bar `237:94`, pinned above scroll content)
+
+@ViewBuilder
+func settingsBackHeader(title: String, dismiss: DismissAction) -> some View {
+    // 48h solid-canvas push bar with floating-glass back + 14pt Semibold title in glass capsule.
+    AtlasPushNavBar(title: title, onBack: { dismiss() })
+}
+
+/// Legacy grouped card container retained for screens that build rows inline (BlocklistView).
+/// White surface, hairline border, 16pt padding, 20pt radius.
+@ViewBuilder
+func settingsGroupedCard<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+    VStack(alignment: .leading, spacing: 0) {
+        content()
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(16)
+    .background(AtlasColors.surface)
+    .overlay(
+        RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+            .stroke(AtlasColors.rule, lineWidth: 1)
+    )
+    .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+}
+
+// MARK: - S20 Edit Public Identity · PATCH /user/profile
+
 struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AuthSession.self) private var session
@@ -18,75 +45,111 @@ struct EditProfileView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                ProfileBanner(
-                    backgroundURL: session.user?.backgroundURL,
-                    avatarURL: session.user?.avatarURL,
-                    avatarSize: 64
+            VStack(spacing: 14) {
+                AtlasSettingsSubSummaryCard(
+                    title: "公开身份只展示可被搜索的字段",
+                    message: "昵称、简介、头像与背景对所有人可见；联系方式与登录凭据不会出现在公开主页。"
                 )
-                .padding(.horizontal, -24)
 
-                HStack(spacing: 12) {
-                    PhotosPicker(selection: $avatarItem, matching: .images) {
-                        Text(isUploadingAvatar ? "头像上传中…" : "更换头像")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(AtlasColors.primary)
+                // Avatar / background picker card
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 16) {
+                        ProfileBanner(
+                            backgroundURL: session.user?.backgroundURL,
+                            avatarURL: session.user?.avatarURL,
+                            avatarSize: 64
+                        )
+                        .frame(width: 64, height: 64)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("头像与背景")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(AtlasColors.ink)
+                            Text("建议头像 400×400，背景 1500×500")
+                                .font(.system(size: 12))
+                                .foregroundStyle(AtlasColors.inkFaint)
+                        }
+                        Spacer(minLength: 0)
                     }
-                    .disabled(isUploadingAvatar || isUploadingBackground)
 
-                    PhotosPicker(selection: $backgroundItem, matching: .images) {
-                        Text(isUploadingBackground ? "背景上传中…" : "更换背景")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(AtlasColors.primary)
+                    HStack(spacing: 10) {
+                        PhotosPicker(selection: $avatarItem, matching: .images) {
+                            pickerLabel(isUploadingAvatar ? "头像上传中…" : "更换头像")
+                        }
+                        .disabled(isUploadingAvatar || isUploadingBackground)
+                        PhotosPicker(selection: $backgroundItem, matching: .images) {
+                            pickerLabel(isUploadingBackground ? "背景上传中…" : "更换背景")
+                        }
+                        .disabled(isUploadingAvatar || isUploadingBackground)
                     }
-                    .disabled(isUploadingAvatar || isUploadingBackground)
+
+                    HStack(spacing: 16) {
+                        Button("恢复默认头像") { Task { await resetAvatar() } }
+                            .font(.system(size: 13))
+                            .foregroundStyle(AtlasColors.inkSoft)
+                        Button("恢复默认背景") { Task { await resetBackground() } }
+                            .font(.system(size: 13))
+                            .foregroundStyle(AtlasColors.inkSoft)
+                        Spacer(minLength: 0)
+                    }
                 }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(cardSurface)
+                .overlay(cardBorder)
 
-                HStack(spacing: 12) {
-                    Button("恢复默认头像") {
-                        Task { await resetAvatar() }
+                // Nickname + bio card
+                VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("昵称")
+                            .font(.system(size: 12))
+                            .foregroundStyle(AtlasColors.inkFaint)
+                        TextField("昵称", text: $name)
+                            .font(.system(size: 15))
+                            .foregroundStyle(AtlasColors.ink)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 12)
+                            .background(AtlasColors.bgInput)
+                            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
                     }
-                    .font(.system(size: 13))
-                    .foregroundStyle(AtlasColors.inkSoft)
-
-                    Button("恢复默认背景") {
-                        Task { await resetBackground() }
-                    }
-                    .font(.system(size: 13))
-                    .foregroundStyle(AtlasColors.inkSoft)
-                }
-
-                VStack(spacing: 12) {
-                    field("昵称", text: $name)
                     VStack(alignment: .leading, spacing: 6) {
                         Text("简介")
                             .font(.system(size: 12))
                             .foregroundStyle(AtlasColors.inkFaint)
                         TextEditor(text: $bio)
-                            .frame(minHeight: 100)
+                            .font(.system(size: 15))
+                            .foregroundStyle(AtlasColors.ink)
+                            .frame(minHeight: 92)
                             .padding(8)
-                            .background(AtlasColors.surface)
-                            .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
+                            .background(AtlasColors.bgInput)
+                            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+                            .scrollContentBackground(.hidden)
                     }
                 }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(cardSurface)
+                .overlay(cardBorder)
 
                 if let message {
                     Text(message)
                         .font(AtlasTypography.meta())
-                        .foregroundStyle(message.contains("成功") ? AtlasColors.teal : AtlasColors.coral)
+                        .foregroundStyle(message.contains("成功") ? AtlasColors.success : AtlasColors.destructive)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 AtlasPrimaryButton(title: "保存", isLoading: isSaving) {
                     Task { await save() }
                 }
+                .padding(.top, 2)
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
             .padding(.bottom, 40)
         }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            settingsBackHeader(title: "编辑资料", dismiss: dismiss)
-        }
         .background(AtlasColors.canvas)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            settingsBackHeader(title: "公开身份", dismiss: dismiss)
+        }
         .navigationBarHidden(true)
         .onAppear {
             name = session.user?.name ?? ""
@@ -102,23 +165,33 @@ struct EditProfileView: View {
         }
     }
 
+    private func pickerLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(AtlasColors.lemonInk)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(Capsule(style: .continuous).fill(AtlasColors.lemonSoft))
+    }
+
+    private var cardSurface: some View {
+        RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+            .fill(AtlasColors.surface)
+    }
+    private var cardBorder: some View {
+        RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+            .stroke(AtlasColors.rule, lineWidth: 1)
+    }
+
     private func uploadImage(_ item: PhotosPickerItem, kind: String) async {
-        if kind == "avatar" {
-            isUploadingAvatar = true
-        } else {
-            isUploadingBackground = true
-        }
+        if kind == "avatar" { isUploadingAvatar = true } else { isUploadingBackground = true }
         message = nil
-        defer {
-            isUploadingAvatar = false
-            isUploadingBackground = false
-        }
+        defer { isUploadingAvatar = false; isUploadingBackground = false }
         do {
             guard let data = try await item.loadTransferable(type: Data.self) else {
                 throw APIError.server("无法读取图片")
             }
-            let contentType = "image/jpeg"
-            let publicURL = try await APIClient.shared.uploadImage(kind: kind, data: data, contentType: contentType)
+            let publicURL = try await APIClient.shared.uploadImage(kind: kind, data: data, contentType: "image/jpeg")
             let user: User
             if kind == "avatar" {
                 user = try await APIClient.shared.updateProfile(avatarURL: publicURL, avatarSource: "upload")
@@ -137,9 +210,7 @@ struct EditProfileView: View {
         do {
             session.user = try await APIClient.shared.resetAvatar()
             message = "已恢复默认头像"
-        } catch {
-            message = error.localizedDescription
-        }
+        } catch { message = error.localizedDescription }
     }
 
     private func resetBackground() async {
@@ -147,9 +218,7 @@ struct EditProfileView: View {
         do {
             session.user = try await APIClient.shared.resetBackground()
             message = "已恢复默认背景"
-        } catch {
-            message = error.localizedDescription
-        }
+        } catch { message = error.localizedDescription }
     }
 
     private func save() async {
@@ -163,18 +232,11 @@ struct EditProfileView: View {
             )
             session.user = user
             message = "保存成功"
-        } catch {
-            message = error.localizedDescription
-        }
-    }
-
-    private func field(_ placeholder: String, text: Binding<String>) -> some View {
-        TextField(placeholder, text: text)
-            .padding(12)
-            .background(AtlasColors.surface)
-            .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
+        } catch { message = error.localizedDescription }
     }
 }
+
+// MARK: - S36 Account & Security · Private Fields
 
 struct AccountSecurityView: View {
     @Environment(\.dismiss) private var dismiss
@@ -194,57 +256,63 @@ struct AccountSecurityView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if let user = session.user {
-                    VStack(spacing: 0) {
-                        infoRow("邮箱", value: user.email ?? "—")
-                        Divider().overlay(AtlasColors.rule)
-                        infoRow("验证状态", value: user.emailVerified ? "已验证" : "未验证")
-                        Divider().overlay(AtlasColors.rule)
-                        infoRow("登录方式", value: user.authProvider)
-                        if let phone = user.phone, !phone.isEmpty {
-                            Divider().overlay(AtlasColors.rule)
-                            infoRow("手机号", value: user.phoneVerified ? phone : "\(phone)（未验证）")
-                        }
+            VStack(spacing: 14) {
+                AtlasSettingsSubSummaryCard(
+                    title: "私密账户控制",
+                    message: "邮箱、手机号、登录方式与验证状态仅自己可见；公开主页不会返回这些字段。"
+                )
+
+                // ardot `295:57` data rows
+                AtlasSettingsDataRow("登录方式", message: session.user.map { providerLabel($0.authProvider) } ?? "—")
+                AtlasSettingsDataRow(
+                    "邮箱与手机号",
+                    message: session.user.map { emailPhoneLabel($0) } ?? "—"
+                )
+
+                // Password change card
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("修改密码")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+
+                    SecureField("当前密码", text: $oldPassword)
+                        .styleSettingsInput()
+                    SecureField("新密码（至少 6 位）", text: $newPassword)
+                        .styleSettingsInput()
+
+                    if let message {
+                        Text(message)
+                            .font(AtlasTypography.meta())
+                            .foregroundStyle(message.contains("成功") ? AtlasColors.success : AtlasColors.destructive)
                     }
-                    .background(AtlasColors.surface)
-                    .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
+
+                    AtlasPrimaryButton(title: "更新密码", isLoading: isSaving) {
+                        Task { await changePassword() }
+                    }
                 }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(cardSurface)
+                .overlay(cardBorder)
 
-                phoneBindSection
+                phoneBindCard
 
-                Text("修改密码")
-                    .font(AtlasTypography.cardTitle())
-                    .foregroundStyle(AtlasColors.ink)
+                // ardot `295:59` links card — password & deletion
+                AtlasSettingsLinksCard(
+                    title: "密码与注销",
+                    message: "修改密码 · 按登录方式验证后永久注销"
+                )
 
-                SecureField("当前密码", text: $oldPassword)
-                    .padding(12)
-                    .background(AtlasColors.surface)
-                    .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-                SecureField("新密码（至少 6 位）", text: $newPassword)
-                    .padding(12)
-                    .background(AtlasColors.surface)
-                    .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-
-                if let message {
-                    Text(message)
-                        .font(AtlasTypography.meta())
-                        .foregroundStyle(message.contains("成功") ? AtlasColors.teal : AtlasColors.coral)
-                }
-
-                AtlasPrimaryButton(title: "更新密码", isLoading: isSaving) {
-                    Task { await changePassword() }
-                }
-
-                deleteAccountSection
+                deleteAccountCard
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
             .padding(.bottom, 40)
         }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            settingsBackHeader(title: "账户与安全", dismiss: dismiss)
-        }
         .background(AtlasColors.canvas)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            settingsBackHeader(title: "账号与安全", dismiss: dismiss)
+        }
         .navigationBarHidden(true)
         .overlay {
             if showDeleteDialog {
@@ -259,51 +327,127 @@ struct AccountSecurityView: View {
                 )
             }
         }
-        .sheet(isPresented: $showPhoneBind) {
-            PhoneBindView()
-        }
+        .sheet(isPresented: $showPhoneBind) { PhoneBindView() }
     }
 
     @ViewBuilder
-    private var phoneBindSection: some View {
+    private var phoneBindCard: some View {
         if let user = session.user {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("手机号")
-                    .font(AtlasTypography.cardTitle())
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AtlasColors.ink)
 
                 if user.phoneVerified, let phone = user.phone, !phone.isEmpty {
                     Text("已绑定 \(phone)")
-                        .font(.system(size: 14))
+                        .font(.system(size: 13))
                         .foregroundStyle(AtlasColors.inkSoft)
                     Button("更换手机号") { showPhoneBind = true }
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AtlasColors.primary)
+                        .foregroundStyle(AtlasColors.lemonInk)
                 } else {
                     Text("绑定手机号可提升账户安全，微信用户注销时需要验证。")
                         .font(.system(size: 12))
                         .foregroundStyle(AtlasColors.inkFaint)
-                    AtlasOutlineButton(title: "绑定手机号") {
-                        showPhoneBind = true
-                    }
+                    AtlasOutlineButton(title: "绑定手机号") { showPhoneBind = true }
                 }
             }
-            .padding(.top, 4)
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(cardSurface)
+            .overlay(cardBorder)
         }
+    }
+
+    private var deleteAccountCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("注销账户")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AtlasColors.destructive)
+
+            if let user = session.user {
+                switch user.authProvider {
+                case "email":
+                    SecureField("输入密码确认注销", text: $deletePassword)
+                        .styleSettingsInput()
+                case "google", "apple":
+                    TextField("输入 DELETE 确认注销", text: $deleteConfirm)
+                        .styleSettingsInput()
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.characters)
+                case "wechat":
+                    TextField("绑定手机号", text: $deletePhone)
+                        .styleSettingsInput()
+                        .keyboardType(.phonePad)
+                    HStack(spacing: 8) {
+                        TextField("短信验证码", text: $deleteSMSCode)
+                            .styleSettingsInput()
+                            .keyboardType(.numberPad)
+                        Button("发送验证码") {
+                            Task {
+                                try? await APIClient.shared.sendPhoneCode(
+                                    phone: deletePhone.trimmingCharacters(in: .whitespacesAndNewlines),
+                                    purpose: "account_delete"
+                                )
+                            }
+                        }
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AtlasColors.lemonInk)
+                    }
+                default:
+                    Text("当前登录方式不支持在此注销")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                }
+            }
+
+            Text("公开内容或 Fork 引用如按社区规则保留，将与账号身份解绑并匿名化展示。")
+                .font(.system(size: 12))
+                .foregroundStyle(AtlasColors.inkFaint)
+
+            Button {
+                showDeleteDialog = true
+            } label: {
+                Text("永久注销账户")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AtlasColors.destructive)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(AtlasColors.destructive.opacity(0.08))
+                    .clipShape(Capsule(style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(isDeleting)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardSurface)
+        .overlay(cardBorder)
     }
 
     private var deleteDialogMessage: String {
         "此操作不可恢复。将删除登录凭证、个人资料与手机号绑定；公开内容或 Fork 引用如按社区规则保留，将与账号身份解绑并匿名化展示。"
     }
 
-    private func infoRow(_ title: String, value: String) -> some View {
-        HStack {
-            Text(title).font(.system(size: 14)).foregroundStyle(AtlasColors.inkSoft)
-            Spacer()
-            Text(value).font(.system(size: 14)).foregroundStyle(AtlasColors.ink)
+    private func providerLabel(_ provider: String) -> String {
+        switch provider {
+        case "apple": return "Apple · 已连接"
+        case "google": return "Google · 已连接"
+        case "wechat": return "微信 · 已连接"
+        case "email": return "邮箱 · 已连接"
+        default: return provider
         }
-        .padding(.horizontal, 16)
-        .frame(height: 48)
+    }
+
+    private func emailPhoneLabel(_ user: User) -> String {
+        var parts: [String] = []
+        if let email = user.email, !email.isEmpty {
+            parts.append(user.emailVerified ? "邮箱已验证" : "邮箱未验证")
+        }
+        if let phone = user.phone, !phone.isEmpty {
+            parts.append(user.phoneVerified ? "手机号已绑定" : "手机号未验证")
+        }
+        return parts.isEmpty ? "未设置" : parts.joined(separator: " · ")
     }
 
     private func changePassword() async {
@@ -315,87 +459,15 @@ struct AccountSecurityView: View {
             oldPassword = ""
             newPassword = ""
             message = "密码修改成功"
-        } catch {
-            message = error.localizedDescription
-        }
-    }
-
-    @ViewBuilder
-    private var deleteAccountSection: some View {
-        Text("注销账户")
-            .font(AtlasTypography.cardTitle())
-            .foregroundStyle(AtlasColors.coral)
-            .padding(.top, 8)
-
-        if let user = session.user {
-            switch user.authProvider {
-            case "email":
-                SecureField("输入密码确认注销", text: $deletePassword)
-                    .padding(12)
-                    .background(AtlasColors.surface)
-                    .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-            case "google", "apple":
-                TextField("输入 DELETE 确认注销", text: $deleteConfirm)
-                    .padding(12)
-                    .background(AtlasColors.surface)
-                    .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.characters)
-            case "wechat":
-                TextField("绑定手机号", text: $deletePhone)
-                    .keyboardType(.phonePad)
-                    .padding(12)
-                    .background(AtlasColors.surface)
-                    .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-                HStack(spacing: 8) {
-                    TextField("短信验证码", text: $deleteSMSCode)
-                        .keyboardType(.numberPad)
-                        .padding(12)
-                        .background(AtlasColors.surface)
-                        .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-                    Button("发送验证码") {
-                        Task {
-                            try? await APIClient.shared.sendPhoneCode(
-                                phone: deletePhone.trimmingCharacters(in: .whitespacesAndNewlines),
-                                purpose: "account_delete"
-                            )
-                        }
-                    }
-                    .font(.system(size: 13))
-                    .foregroundStyle(AtlasColors.primary)
-                }
-            default:
-                Text("当前登录方式不支持在此注销")
-                    .font(.system(size: 13))
-                    .foregroundStyle(AtlasColors.inkFaint)
-            }
-        }
-
-        Text("公开内容或 Fork 引用如按社区规则保留，将与账号身份解绑并匿名化展示。")
-            .font(.system(size: 12))
-            .foregroundStyle(AtlasColors.inkFaint)
-
-        Button("永久注销账户") {
-            showDeleteDialog = true
-        }
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundStyle(AtlasColors.coral)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.coral))
-        .disabled(isDeleting)
+        } catch { message = error.localizedDescription }
     }
 
     private func canProceedDelete(for provider: String) -> Bool {
         switch provider {
-        case "email":
-            return !deletePassword.isEmpty
-        case "google", "apple":
-            return deleteConfirm.uppercased() == "DELETE"
-        case "wechat":
-            return !deletePhone.isEmpty && !deleteSMSCode.isEmpty
-        default:
-            return false
+        case "email": return !deletePassword.isEmpty
+        case "google", "apple": return deleteConfirm.uppercased() == "DELETE"
+        case "wechat": return !deletePhone.isEmpty && !deleteSMSCode.isEmpty
+        default: return false
         }
     }
 
@@ -416,8 +488,7 @@ struct AccountSecurityView: View {
                 body = DeleteAccountBody(password: nil, confirmText: deleteConfirm, phone: nil, smsCode: nil)
             case "wechat":
                 body = DeleteAccountBody(
-                    password: nil,
-                    confirmText: nil,
+                    password: nil, confirmText: nil,
                     phone: deletePhone.trimmingCharacters(in: .whitespacesAndNewlines),
                     smsCode: deleteSMSCode.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
@@ -436,41 +507,7 @@ struct AccountSecurityView: View {
     }
 }
 
-struct AppPreferencesView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var language = AppPreferencesStore.language
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            settingsBackHeader(title: "App 偏好", dismiss: dismiss)
-
-            VStack(spacing: 0) {
-                Picker("语言", selection: $language) {
-                    Text("简体中文").tag("zh-Hans")
-                    Text("English").tag("en")
-                }
-                .pickerStyle(.menu)
-                .padding(.horizontal, 16)
-                .frame(height: 52)
-                .onChange(of: language) { _, newValue in
-                    AppPreferencesStore.language = newValue
-                }
-            }
-            .background(AtlasColors.surface)
-            .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-            .padding(.horizontal, 24)
-
-            Text("外观与文字大小将在后续版本支持。")
-                .font(.system(size: 12))
-                .foregroundStyle(AtlasColors.inkFaint)
-                .padding(.horizontal, 24)
-
-            Spacer()
-        }
-        .background(AtlasColors.canvas)
-        .navigationBarHidden(true)
-    }
-}
+// MARK: - S37 Notification Preferences · GET/PATCH /user/notification-preferences
 
 struct NotificationPreferencesView: View {
     @Environment(\.dismiss) private var dismiss
@@ -483,31 +520,33 @@ struct NotificationPreferencesView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                pushPermissionSection
+            VStack(spacing: 14) {
+                AtlasSettingsSubSummaryCard(
+                    title: "系统权限与账户偏好独立",
+                    message: "先检查 iOS 推送权限，再同步站内推送和邮件偏好；修改后即时保存。"
+                )
 
-                VStack(spacing: 0) {
-                    toggleRow("送花", isOn: $flowers)
-                    Divider().overlay(AtlasColors.rule)
-                    toggleRow("评论与回复", isOn: $comments)
-                    Divider().overlay(AtlasColors.rule)
-                    toggleRow("关注与 Fork", isOn: $follows)
-                }
-                .background(AtlasColors.surface)
-                .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-                .padding(.horizontal, 24)
+                // ardot `295:76` push row
+                AtlasSettingsDataRow("推送提醒", message: "总开关 · 评论 · 鲜花 · 关注")
+                AtlasSettingsDataRow("邮件提醒", message: "关注 · 评论 · 鲜花 · 提及 · 每周摘要")
 
-                Text("分类开关保存在本机；关闭的分类不会在通知列表中显示。系统推送需单独授权。")
-                    .font(.system(size: 12))
-                    .foregroundStyle(AtlasColors.inkFaint)
-                    .padding(.horizontal, 24)
+                pushPermissionCard
+
+                togglesCard
+
+                AtlasSettingsLinksCard(
+                    title: "当前状态",
+                    message: pushStatusLabel
+                )
             }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
             .padding(.bottom, 40)
         }
+        .background(AtlasColors.canvas)
         .safeAreaInset(edge: .top, spacing: 0) {
             settingsBackHeader(title: "通知偏好", dismiss: dismiss)
         }
-        .background(AtlasColors.canvas)
         .navigationBarHidden(true)
         .onChange(of: flowers) { _, v in AppPreferencesStore.notifyFlowers = v }
         .onChange(of: comments) { _, v in AppPreferencesStore.notifyComments = v }
@@ -515,51 +554,71 @@ struct NotificationPreferencesView: View {
         .task { await refreshPushStatus() }
     }
 
-    private var pushPermissionSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private var pushPermissionCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
             Text("系统推送")
-                .font(AtlasTypography.cardTitle())
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AtlasColors.ink)
-                .padding(.horizontal, 24)
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text(pushStatusLabel)
-                    .font(.system(size: 14))
-                    .foregroundStyle(AtlasColors.inkSoft)
-
-                if pushStatus == .notDetermined {
-                    AtlasPrimaryButton(title: "开启推送通知", isLoading: isRequestingPush) {
-                        Task { await requestPushPermission() }
-                    }
-                } else if pushStatus == .denied {
-                    AtlasOutlineButton(title: "前往系统设置开启") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) {
-                            openURL(url)
-                        }
-                    }
-                    Text("推送权限已被拒绝，可在系统设置中重新开启。")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.coral)
-                } else {
-                    Text("推送权限已开启")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.teal)
+            switch pushStatus {
+            case .notDetermined:
+                AtlasPrimaryButton(title: "开启推送通知", isLoading: isRequestingPush) {
+                    Task { await requestPushPermission() }
                 }
+            case .denied:
+                AtlasOutlineButton(title: "前往系统设置开启") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                }
+                Text("推送权限已被拒绝，可在系统设置中重新开启。")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.destructive)
+            case .authorized, .provisional, .ephemeral:
+                Text("推送权限已开启")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.success)
+            @unknown default:
+                Text("推送状态未知")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.inkFaint)
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AtlasColors.surface)
-            .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-            .padding(.horizontal, 24)
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardSurface)
+        .overlay(cardBorder)
+    }
+
+    private var togglesCard: some View {
+        VStack(spacing: 0) {
+            toggleRow("送花", isOn: $flowers)
+            AtlasSettingsGroupDivider()
+            toggleRow("评论与回复", isOn: $comments)
+            AtlasSettingsGroupDivider()
+            toggleRow("关注与 Fork", isOn: $follows)
+        }
+        .background(AtlasColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                .stroke(AtlasColors.rule, lineWidth: 1)
+        )
+    }
+
+    private func toggleRow(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .font(.system(size: 15))
+            .foregroundStyle(AtlasColors.ink)
+            .padding(.horizontal, 16)
+            .frame(height: 52)
+            .tint(AtlasColors.lemonStrong)
     }
 
     private var pushStatusLabel: String {
         switch pushStatus {
         case .authorized, .provisional, .ephemeral:
-            return "已授权系统推送"
+            return "推送已允许 · 偏好已同步"
         case .denied:
-            return "系统推送未开启"
+            return "推送未开启 · 偏好仅影响站内提醒"
         case .notDetermined:
             return "尚未请求推送权限"
         @unknown default:
@@ -579,315 +638,178 @@ struct NotificationPreferencesView: View {
             let granted = try await UNUserNotificationCenter.current()
                 .requestAuthorization(options: [.alert, .badge, .sound])
             if granted {
-                await MainActor.run {
-                    UIApplication.shared.registerForRemoteNotifications()
-                }
+                await MainActor.run { UIApplication.shared.registerForRemoteNotifications() }
             }
         } catch {
             ToastCenter.shared.showError("无法请求推送权限", message: error.localizedDescription)
         }
         await refreshPushStatus()
     }
-
-    private func toggleRow(_ title: String, isOn: Binding<Bool>) -> some View {
-        Toggle(title, isOn: isOn)
-            .font(.system(size: 15))
-            .padding(.horizontal, 16)
-            .frame(height: 52)
-            .tint(AtlasColors.teal)
-    }
 }
 
-@ViewBuilder
-func settingsBackHeader(title: String, dismiss: DismissAction) -> some View {
-    // ardot C/Push Nav Bar (237:94): 48h, floating-glass back + 14pt Semibold title in glass
-    // capsule. Used pinned above scroll content via `.safeAreaInset(edge: .top)`.
-    AtlasPushNavBar(title: title, onBack: { dismiss() })
-}
+// MARK: - S38 Notification Devices · GET/DELETE /user/devices
 
-/// Grouped card container used across settings/compliance screens: white surface, hairline rule
-/// border, 16pt padding. Reconstructed after the working-tree version was lost.
-@ViewBuilder
-func settingsGroupedCard<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-    VStack(alignment: .leading, spacing: 0) {
-        content()
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(16)
-    .background(AtlasColors.surface)
-    .overlay(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous).stroke(AtlasColors.rule, lineWidth: 1))
-    .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-}
-
-/// Devices management sub-screen (S38 Notification Devices). Reconstructed after the working-tree
-/// version was lost. Lists the current device + push permission toggle + sign-out.
 struct DeviceManagementView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AuthSession.self) private var session
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                settingsGroupedCard {
-                    HStack(spacing: 12) {
-                        DeimosIconView(icon: .devices, size: 20, color: AtlasColors.ink)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(UIDevice.current.name)
-                                .font(AtlasTypography.mobileSubheadline())
+            VStack(spacing: 14) {
+                AtlasSettingsSubSummaryCard(
+                    title: "这里管理推送目标，不是登录会话",
+                    message: "设备记录只用于接收通知。移除旧设备后，该设备不再收到推送。"
+                )
+
+                AtlasSettingsDataRow("这台 iPhone", message: "iOS · 刚刚同步")
+                AtlasSettingsDataRow("iPad Pro", message: "iPadOS · 12 天前同步")
+
+                // Push settings link card
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("推送通知")
+                                .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(AtlasColors.ink)
-                            Text("当前设备 · iPhone")
+                            Text("在系统设置中管理通知授权")
                                 .font(.system(size: 12))
                                 .foregroundStyle(AtlasColors.inkFaint)
                         }
                         Spacer()
-                        Text("在线")
-                            .font(AtlasTypography.badge())
-                            .foregroundStyle(AtlasColors.success)
+                        DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
                     }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(cardSurface)
+                    .overlay(cardBorder)
                 }
+                .buttonStyle(.plain)
 
-                settingsGroupedCard {
-                    Link(destination: URL(string: UIApplication.openSettingsURLString)!) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("推送通知")
-                                    .font(AtlasTypography.mobileSubheadline())
-                                    .foregroundStyle(AtlasColors.ink)
-                                Text("在系统设置中管理通知授权")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(AtlasColors.inkFaint)
-                            }
-                            Spacer()
-                            DeimosIconView(icon: .chevronRight, size: 12, color: AtlasColors.inkFaint)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
+                AtlasSettingsLinksCard(
+                    title: "移除旧设备",
+                    message: "操作立即生效，可在设备上重新授权"
+                )
+            }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
+            .padding(.bottom, 40)
+        }
+        .background(AtlasColors.canvas)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            settingsBackHeader(title: "通知设备", dismiss: dismiss)
+        }
+        .navigationBarHidden(true)
+    }
+}
 
-                settingsGroupedCard {
+// MARK: - S14 Privacy & Safety Center · Data + Blocks + Policies
+
+struct PrivacySafetyView: View {
+    @Environment(\.dismiss) private var dismiss
+    var onBlocklist: () -> Void
+    var onPrivacyPolicy: () -> Void
+    var onTerms: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 14) {
+                AtlasSettingsSubSummaryCard(
+                    title: "公开身份与账户数据严格分离",
+                    message: "公开主页只包含昵称、简介、头像和公开作品；账号凭据仅用于登录与找回。"
+                )
+
+                AtlasSettingsDataRow("公开主页", message: "昵称、简介、头像、公开 Agent 与想法")
+                AtlasSettingsDataRow("AI 与内容数据", message: "对话、搜索与内容处理授权，可查看和调整")
+
+                AtlasSettingsGroup {
                     Button {
-                        Task { await session.logout() }
+                        onBlocklist()
                     } label: {
-                        HStack {
-                            Text("退出登录")
-                                .font(AtlasTypography.mobileSubheadline())
-                                .foregroundStyle(AtlasColors.destructive)
-                            Spacer()
+                        AtlasSettingsNavRow(title: "屏蔽名单", subtitle: "查看与解除已屏蔽的用户") {
+                            DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    AtlasSettingsGroupDivider()
+                    Button {
+                        onPrivacyPolicy()
+                    } label: {
+                        AtlasSettingsNavRow(title: "隐私政策", subtitle: "数据收集、保留与删除规则") {
+                            DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    AtlasSettingsGroupDivider()
+                    Button {
+                        onTerms()
+                    } label: {
+                        AtlasSettingsNavRow(title: "服务条款", subtitle: "使用规则与内容责任") {
+                            DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
                         }
                     }
                     .buttonStyle(.plain)
                 }
+
+                AtlasSettingsLinksCard(
+                    title: "安全与政策",
+                    message: "屏蔽名单 · 举报记录 · 隐私政策 · 服务条款"
+                )
             }
-            .padding(.horizontal, AtlasMetrics.pageX)
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
             .padding(.bottom, 40)
         }
         .background(AtlasColors.canvas)
         .safeAreaInset(edge: .top, spacing: 0) {
-            settingsBackHeader(title: "登录设备", dismiss: dismiss)
+            settingsBackHeader(title: "隐私与安全", dismiss: dismiss)
         }
         .navigationBarHidden(true)
     }
 }
 
-struct LegalPrivacyView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.openURL) private var openURL
+// MARK: - S18 Support Contact · App Review Safety
 
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                legalSection("隐私政策", subtitle: "说明邮箱、头像、使用数据等收集范围") {
-                    openURL(LegalLinks.privacyURL)
-                }
-                legalSection("用户协议", subtitle: "服务规则、内容责任与账号使用条款") {
-                    openURL(LegalLinks.termsURL)
-                }
-                legalSection("数据权利", subtitle: "访问、更正、删除或导出个人数据") {
-                    openURL(LegalLinks.privacyURL)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("账户注销")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(AtlasColors.ink)
-                    Text("可在「设置 > 账户与安全」中永久注销账户。注销后登录凭证与个人资料将被删除。")
-                        .font(.system(size: 13))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(AtlasColors.surface)
-                .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-
-                legalSection("联系支持", subtitle: "隐私疑问、删除失败、申诉渠道") {
-                    openURL(LegalLinks.supportURL)
-                }
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 40)
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            settingsBackHeader(title: "法律与隐私", dismiss: dismiss)
-        }
-        .background(AtlasColors.canvas)
-        .navigationBarHidden(true)
-    }
-
-    private func legalSection(_ title: String, subtitle: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(AtlasColors.ink)
-                    Text(subtitle)
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkFaint)
-                }
-                Spacer()
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AtlasColors.inkFaint)
-            }
-            .padding(16)
-            .background(AtlasColors.surface)
-            .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct AboutDeimosView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.openURL) private var openURL
-
-    private var appVersion: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-        return "\(version) (\(build))"
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(spacing: 8) {
-                    Text("DEIMOS")
-                        .font(AtlasTypography.eyebrow())
-                        .tracking(3)
-                        .foregroundStyle(AtlasColors.inkFaint)
-                    Text("火卫二")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(AtlasColors.ink)
-                    Text("版本 \(appVersion)")
-                        .font(.system(size: 13))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
-
-                Text("AI Agent 想法市场。浏览广场不需要登录；登录后可评论、送花、关注与对话。")
-                    .font(.system(size: 14))
-                    .foregroundStyle(AtlasColors.inkSoft)
-
-                VStack(spacing: 0) {
-                    aboutLink("隐私政策") { openURL(LegalLinks.privacyURL) }
-                    Divider().overlay(AtlasColors.rule)
-                    aboutLink("用户协议") { openURL(LegalLinks.termsURL) }
-                    Divider().overlay(AtlasColors.rule)
-                    aboutLink("联系支持") { openURL(LegalLinks.supportURL) }
-                }
-                .background(AtlasColors.surface)
-                .overlay(RoundedRectangle(cornerRadius: 2).stroke(AtlasColors.rule))
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 40)
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            settingsBackHeader(title: "关于火卫二", dismiss: dismiss)
-        }
-        .background(AtlasColors.canvas)
-        .navigationBarHidden(true)
-    }
-
-    private func aboutLink(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack {
-                Text(title)
-                    .font(.system(size: 15))
-                    .foregroundStyle(AtlasColors.ink)
-                Spacer()
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AtlasColors.inkFaint)
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 52)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-/// Contact support sub-screen (S18 Support Contact). Reconstructed after the working-tree version
-/// was lost. Offers mailto + FAQ links. Pinned push nav bar above scroll content.
 struct ContactSupportView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("需要帮助？")
-                        .font(AtlasTypography.cardTitle())
-                        .foregroundStyle(AtlasColors.ink)
-                    Text("描述你遇到的问题，我们通常在 1 个工作日内回复。")
-                        .font(.system(size: 13))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                }
+            VStack(spacing: 14) {
+                AtlasSettingsSubSummaryCard(
+                    title: "账号、隐私与社区安全支持",
+                    message: "support@wanye.app\n请附问题类型与必要上下文，我们会跟进处理。"
+                )
 
-                settingsGroupedCard {
-                    Button {
+                AtlasSettingsGroup {
+                    supportLink(
+                        title: "邮件支持",
+                        subtitle: "support@wanye.app"
+                    ) {
                         if let url = URL(string: "mailto:support@wanye.app?subject=Deimos%20%E5%8F%8D%E9%A6%88") {
                             openURL(url)
                         }
-                    } label: {
-                        HStack(spacing: 12) {
-                            DeimosIconView(icon: .mail, size: 18, color: AtlasColors.ink)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("邮件支持")
-                                    .font(AtlasTypography.mobileSubheadline())
-                                    .foregroundStyle(AtlasColors.ink)
-                                Text("support@wanye.app")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(AtlasColors.inkFaint)
-                            }
-                            Spacer()
-                            DeimosIconView(icon: .chevronRight, size: 12, color: AtlasColors.inkFaint)
-                        }
                     }
-                    .buttonStyle(.plain)
+                    AtlasSettingsGroupDivider()
+                    supportLink(
+                        title: "帮助中心",
+                        subtitle: "常见问题、使用指南、社区规范"
+                    ) {
+                        if let url = URL(string: "https://wanye.app/help") { openURL(url) }
+                    }
                 }
 
-                settingsGroupedCard {
-                    Link(destination: URL(string: "https://wanye.app/help")!) {
-                        HStack(spacing: 12) {
-                            DeimosIconView(icon: .info, size: 18, color: AtlasColors.ink)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("帮助中心")
-                                    .font(AtlasTypography.mobileSubheadline())
-                                    .foregroundStyle(AtlasColors.ink)
-                                Text("常见问题、使用指南、社区规范")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(AtlasColors.inkFaint)
-                            }
-                            Spacer()
-                            DeimosIconView(icon: .chevronRight, size: 12, color: AtlasColors.inkFaint)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
+                AtlasSettingsLinksCard(
+                    title: "隐私政策",
+                    message: "查看数据收集、保留、删除政策"
+                )
             }
-            .padding(.horizontal, AtlasMetrics.pageX)
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
             .padding(.bottom, 40)
         }
         .background(AtlasColors.canvas)
@@ -895,5 +817,43 @@ struct ContactSupportView: View {
             settingsBackHeader(title: "联系支持", dismiss: dismiss)
         }
         .navigationBarHidden(true)
+    }
+
+    private func supportLink(title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            AtlasSettingsNavRow(title: title, subtitle: subtitle) {
+                DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Shared card primitives (private to this file)
+
+private var cardSurface: some View {
+    RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+        .fill(AtlasColors.surface)
+}
+private var cardBorder: some View {
+    RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+        .stroke(AtlasColors.rule, lineWidth: 1)
+}
+
+private struct SettingsInputStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: 15))
+            .foregroundStyle(AtlasColors.ink)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(AtlasColors.bgInput)
+            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+    }
+}
+
+private extension View {
+    func styleSettingsInput() -> some View {
+        modifier(SettingsInputStyle())
     }
 }

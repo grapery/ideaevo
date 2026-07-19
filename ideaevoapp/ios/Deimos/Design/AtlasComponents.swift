@@ -114,61 +114,56 @@ struct AtlasLoginPrimaryButton: View {
     }
 }
 
-// MARK: - Settings (Ardot S11 `27:124`)
+// MARK: - Settings (Ardot S11 `179:6` + sub-screens S36/S37/S38/S39/S14/S18)
 
-struct AtlasSettingsSection<Content: View>: View {
-    let title: String
+/// ardot S11 group stroke `rgb(0.906,0.918,0.941)` = `#E7EBF0`.
+private let settingsGroupStroke = Color(red: 0.906, green: 0.918, blue: 0.941)
+
+/// ardot summary-card body color `rgb(0.384,0.455,0.020)` (olive) for S11 main card; sub-screens
+/// use inkSoft. Kept private here so callers pass colors explicitly.
+private let settingsCardBodyOlive = Color(red: 0.384, green: 0.455, blue: 0.020)
+private let settingsCardBodyInkSoft = Color(red: 0.353, green: 0.392, blue: 0.447)
+private let settingsRowBodyTertiary = Color(red: 0.541, green: 0.580, blue: 0.651)
+
+/// ardot S11 (`179:6`): group container — white fill, `#E7EBF0` hairline border, radius 20,
+/// NO section header label (the row's two-line title carries the context). Used by Settings main.
+struct AtlasSettingsGroup<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AtlasColors.inkSoft)
-                .padding(.leading, 4)
-
-            VStack(spacing: 0) {
-                content()
-            }
+        VStack(spacing: 0) { content() }
             .background(AtlasColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                    .stroke(AtlasColors.borderProfile, lineWidth: 1)
+                    .stroke(settingsGroupStroke, lineWidth: 1)
             )
-            .atlasProfileCard()
-        }
     }
 }
 
-struct AtlasSettingsDivider: View {
-    var leadingInset: CGFloat = 58
-
-    var body: some View {
-        Divider()
-            .overlay(AtlasColors.rule)
-            .padding(.leading, leadingInset)
-    }
-}
-
-struct AtlasSettingsRow: View {
-    let icon: DeimosIcon
-    let iconColor: Color
+/// ardot S11 row (`195:9`): 56h, HORIZONTAL `SPACE_BETWEEN`, 14pt leading padding, no leading icon.
+/// Row text is two-line (title `\n` subtitle) at 17pt Sarasa Gothic SC Semi Bold ink; trailing
+/// slot is a chevron (default) or a status pill (notification row) or a value.
+struct AtlasSettingsNavRow<Trailing: View>: View {
     let title: String
-    var subtitle: String = ""
-    var value: String?
-    var showsLeadingIcon = true
+    let subtitle: String
+    @ViewBuilder var trailing: () -> Trailing
+
+    init(
+        title: String,
+        subtitle: String,
+        @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.trailing = trailing
+    }
 
     var body: some View {
-        HStack(spacing: 14) {
-            if showsLeadingIcon {
-                // v6: flat shared SVG line icon, no colored rounded-rect background.
-                DeimosIconView(icon: icon, size: 22, color: iconColor)
-            }
-
+        HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(AtlasTypography.mobileBody())
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(AtlasColors.ink)
                 if !subtitle.isEmpty {
                     Text(subtitle)
@@ -176,23 +171,44 @@ struct AtlasSettingsRow: View {
                         .foregroundStyle(AtlasColors.inkFaint)
                 }
             }
-
-            Spacer()
-
-            if let value {
-                Text(value)
-                    .font(AtlasTypography.mobileSubheadline())
-                    .foregroundStyle(AtlasColors.inkFaint)
-            }
-
-            DeimosIconView(icon: .chevronRight, size: 15, color: AtlasColors.inkFaint.opacity(0.5))
+            Spacer(minLength: 0)
+            trailing()
         }
-        .frame(minHeight: AtlasMetrics.settingsRowMinHeight)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 56, alignment: .center)
         .contentShape(Rectangle())
     }
 }
 
+/// ardot S11 1px in-group divider (`195:12`): full-width rule `#F0F2F5`.
+struct AtlasSettingsGroupDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(AtlasColors.rule)
+            .frame(height: 1)
+    }
+}
+
+/// ardot S11 "已开启" pill (`195:19`): 56×28 lemon fill `#CBEA16`, radius 14, 12pt Bold
+/// lemonInk text. Used as the trailing element on the Notification Preferences row.
+struct AtlasSettingsStatusPill: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(AtlasColors.lemonInk)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(AtlasColors.lemonStrong)
+            )
+    }
+}
+
+/// ardot S11 logout button (`195:38`): 350×46, `#F1F3F7` fill, radius 25, 15pt Bold ink text,
+/// centered, NOT destructive. (Destructive-red logout is reserved for Account & Security delete.)
 struct AtlasSettingsLogoutButton: View {
     var isLoading = false
     let action: () -> Void
@@ -200,25 +216,145 @@ struct AtlasSettingsLogoutButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                if isLoading {
-                    ProgressView().tint(AtlasColors.destructive)
-                }
-                DeimosIconView(icon: .logout, size: 20, color: AtlasColors.destructive)
+                if isLoading { ProgressView().tint(AtlasColors.inkSoft) }
                 Text("退出登录")
-                    .font(AtlasTypography.cardTitle())
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(AtlasColors.ink)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 53)
-            .foregroundStyle(AtlasColors.destructive)
-            .background(AtlasColors.surface)
-            .overlay(
-                RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                    .stroke(AtlasColors.border, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-            .atlasProfileCard()
+            .frame(height: 46)
+            .background(AtlasColors.fill)
+            .clipShape(Capsule(style: .continuous))
         }
+        .buttonStyle(.plain)
         .disabled(isLoading)
+    }
+}
+
+/// ardot S11 main summary card (`195:5`): 350×112 lemonSoft fill, radius 20, 14pt padding.
+/// Title 17pt Bold lemonInk; body 13pt Regular olive, lineHeight 19.
+/// Used at the top of Settings — its top edge intentionally scrolls under the floating toolbar.
+struct AtlasSettingsSummaryCard: View {
+    let title: String
+    let message: String
+    var bodyColor: Color = settingsCardBodyOlive
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(AtlasColors.lemonInk)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(message)
+                .font(.system(size: 13))
+                .foregroundStyle(bodyColor)
+                .lineSpacing(19 - UIFont.systemFont(ofSize: 13).lineHeight)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                .fill(AtlasColors.lemonSoft)
+        )
+    }
+}
+
+/// ardot sub-screen summary card (S36/S37/S38/S39/S14/S18): 350×132 lemonSoft fill + hairline
+/// border, radius 20, 16pt padding. Title 16pt SemiBold ink-tertiary `#111218`; body 13pt Regular
+/// `#5A6472`, lineHeight 19. Slightly smaller/darker than the S11 main card.
+struct AtlasSettingsSubSummaryCard: View {
+    let title: String
+    let message: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color(red: 0.067, green: 0.075, blue: 0.094))
+                .fixedSize(horizontal: false, vertical: true)
+            Text(message)
+                .font(.system(size: 13))
+                .foregroundStyle(settingsCardBodyInkSoft)
+                .lineSpacing(19 - UIFont.systemFont(ofSize: 13).lineHeight)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                .fill(AtlasColors.lemonSoft)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                .stroke(settingsGroupStroke, lineWidth: 1)
+        )
+    }
+}
+
+/// ardot sub-screen data row (S36 `295:57` etc.): 350×72, `#F8FAFC` fill + hairline border,
+/// radius 20, VERTICAL layout, 16pt padding, 6pt spacing. Title 15pt SemiBold ink-dark
+/// `#111218`; body 12pt Regular tertiary `#8A94A6`.
+struct AtlasSettingsDataRow: View {
+    let title: String
+    let message: String
+
+    init(_ title: String, message: String) {
+        self.title = title
+        self.message = message
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color(red: 0.067, green: 0.075, blue: 0.094))
+            Text(message)
+                .font(.system(size: 12))
+                .foregroundStyle(settingsRowBodyTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                .fill(Color(red: 0.973, green: 0.980, blue: 0.992))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                .stroke(settingsGroupStroke, lineWidth: 1)
+        )
+    }
+}
+
+/// ardot sub-screen "Privacy Links" card (S36 `295:59` etc.): 350×112, same surface + border,
+/// radius 20, 16pt padding, 12pt spacing. Title 15pt SemiBold; body 13pt Regular `#5A6472`.
+/// Use for the last card that lists policy links / status summary.
+struct AtlasSettingsLinksCard: View {
+    let title: String
+    let message: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color(red: 0.067, green: 0.075, blue: 0.094))
+            Text(message)
+                .font(.system(size: 13))
+                .foregroundStyle(settingsCardBodyInkSoft)
+                .lineSpacing(19 - UIFont.systemFont(ofSize: 13).lineHeight)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                .fill(Color(red: 0.973, green: 0.980, blue: 0.992))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                .stroke(settingsGroupStroke, lineWidth: 1)
+        )
     }
 }
 

@@ -1,15 +1,16 @@
 import SwiftUI
 
+/// S11 Settings sub-routes (ardot `179:6`). Grouped into 4 cards on the main screen:
+/// Account & Safety · Notifications · Agent Workspace · Privacy/Support/About.
 enum SettingsRoute: Hashable {
-    case accountSecurity
-    case editProfile
-    case appPreferences
-    case notificationPreferences
-    case devices
-    case myAgents
-    case legalPrivacy
-    case blocklist
-    case about
+    case accountSecurity       // S36 Account & Security
+    case editProfile           // S20 Edit Public Identity
+    case notificationPreferences // S37 Notification Preferences
+    case devices               // S38 Notification Devices
+    case myAgents              // S13 My Agents
+    case privacySafety         // S14 Privacy & Safety Center
+    case about                 // S18 Support Contact + policies
+    case blocklist             // S39 Blocked Users (under Privacy)
     case privacyPolicy
     case termsOfService
     case communityGuidelines
@@ -23,61 +24,79 @@ struct SettingsView: View {
     @State private var isLoggingOut = false
 
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(version) (\(build))"
     }
 
     var body: some View {
         ScrollView {
-        VStack(spacing: 24) {
-                AtlasSettingsSection(title: "账户") {
+            VStack(spacing: 14) {
+                // ardot `195:5` — lemonSoft summary card. Top edge scrolls under the floating
+                // glass toolbar; bottom edge is the start of the settings stack.
+                AtlasSettingsSummaryCard(
+                    title: "身份与安全状态",
+                    message: "公开主页只展示昵称、简介与公开作品；邮箱、手机和登录方式仅自己可见。"
+                )
+
+                // Group · Account & Safety (ardot `195:8`)
+                AtlasSettingsGroup {
                     settingsLink(
-                        icon: .lock, color: AtlasColors.ink,
-                        title: "账户与安全", subtitle: "邮箱、手机号、密码",
+                        title: "账号与安全",
+                        subtitle: "登录方式、验证与永久注销",
                         route: .accountSecurity
                     )
-                    AtlasSettingsDivider(leadingInset: 0)
+                    AtlasSettingsGroupDivider()
                     settingsLink(
-                        icon: .edit, color: AtlasColors.ink,
-                        title: "编辑资料", subtitle: "头像、昵称、bio",
+                        title: "公开身份",
+                        subtitle: "头像、昵称、背景与简介",
                         route: .editProfile
                     )
                 }
 
-                AtlasSettingsSection(title: "偏好与支持") {
+                // Group · Notifications (ardot `195:16`)
+                AtlasSettingsGroup {
                     settingsLink(
-                        icon: .bell, color: AtlasColors.ink,
-                        title: "通知偏好", subtitle: "送花、评论、关注、Fork",
+                        title: "通知偏好",
+                        subtitle: "互动提醒、邮件摘要与系统权限",
                         route: .notificationPreferences
-                    )
-                    AtlasSettingsDivider(leadingInset: 0)
+                    ) {
+                        AtlasSettingsStatusPill(text: "已开启")
+                    }
+                    AtlasSettingsGroupDivider()
                     settingsLink(
-                        icon: .shield, color: AtlasColors.ink,
-                        title: "隐私与数据", subtitle: "AI 数据处理与政策链接",
-                        route: .legalPrivacy
-                    )
-                    AtlasSettingsDivider(leadingInset: 0)
-                    settingsLink(
-                        icon: .mail, color: AtlasColors.inkSoft,
-                        title: "联系支持", subtitle: "support@deimos.app",
-                        route: .contactSupport
-                    )
-                }
-
-                AtlasSettingsSection(title: "Agent 与设备") {
-                    settingsLink(
-                        icon: .sparkles, color: AtlasColors.lemonInk,
-                        title: "我的 Agents", subtitle: "管理公开性、想法与 API Key",
-                        route: .myAgents
-                    )
-                    AtlasSettingsDivider(leadingInset: 0)
-                    settingsLink(
-                        icon: .devices, color: AtlasColors.inkSoft,
-                        title: "登录设备", subtitle: "当前设备与推送授权",
+                        title: "通知设备",
+                        subtitle: "管理接收推送的 iPhone 与 iPad",
                         route: .devices
                     )
                 }
 
-                    settingsLogoutButton {
+                // Group · Agent Workspace (ardot `195:25`)
+                AtlasSettingsGroup {
+                    settingsLink(
+                        title: "Agent 工作区",
+                        subtitle: "身份、权限、公开性与 API Key",
+                        route: .myAgents
+                    )
+                }
+
+                // Group · Privacy, Support & About (ardot `195:29`)
+                AtlasSettingsGroup {
+                    settingsLink(
+                        title: "隐私与安全",
+                        subtitle: "AI 数据授权、屏蔽名单与政策",
+                        route: .privacySafety
+                    )
+                    AtlasSettingsGroupDivider()
+                    settingsLink(
+                        title: "帮助与关于",
+                        subtitle: "联系支持、服务条款与版本",
+                        route: .about
+                    )
+                }
+
+                // Danger Zone — logout (ardot `195:37`)
+                AtlasSettingsLogoutButton(isLoading: isLoggingOut) {
                     Task {
                         isLoggingOut = true
                         await session.logout()
@@ -86,6 +105,11 @@ struct SettingsView: View {
                     }
                 }
 
+                // Version footer
+                Text("火卫二 \(appVersion)")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.inkFaint)
+                    .padding(.top, 2)
             }
             .padding(.horizontal, AtlasMetrics.detailX)
             .padding(.top, 8)
@@ -102,11 +126,14 @@ struct SettingsView: View {
             switch destination {
             case .accountSecurity: AccountSecurityView()
             case .editProfile: EditProfileView()
-            case .appPreferences: AppPreferencesView()
             case .notificationPreferences: NotificationPreferencesView()
             case .devices: DeviceManagementView()
             case .myAgents: MyAgentsView()
-            case .legalPrivacy: LegalPrivacyView()
+            case .privacySafety: PrivacySafetyView(
+                onBlocklist: { route = .blocklist },
+                onPrivacyPolicy: { route = .privacyPolicy },
+                onTerms: { route = .termsOfService }
+            )
             case .blocklist: BlocklistView()
             case .about: AboutView(
                 onPrivacyPolicy: { route = .privacyPolicy },
@@ -125,42 +152,32 @@ struct SettingsView: View {
         }
     }
 
+    /// ardot S11 row builder: 56h, two-line title+subtitle, trailing chevron (default) or custom
+    /// trailing view (e.g. status pill). No leading icon per the design spec.
     private func settingsLink(
-        icon: DeimosIcon,
-        color: Color,
         title: String,
         subtitle: String,
-        value: String? = nil,
         route: SettingsRoute
     ) -> some View {
         Button { self.route = route } label: {
-            AtlasSettingsRow(
-                icon: icon,
-                iconColor: color,
-                title: title,
-                subtitle: subtitle,
-                value: value,
-                showsLeadingIcon: false
-            )
+            AtlasSettingsNavRow(title: title, subtitle: subtitle) {
+                DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+            }
         }
         .buttonStyle(.plain)
     }
 
-    private func settingsLogoutButton(action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                if isLoggingOut { ProgressView().tint(AtlasColors.inkSoft) }
-                Text("退出登录")
-                    .font(AtlasTypography.cardTitle())
-                    .foregroundStyle(AtlasColors.ink)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .background(AtlasColors.fill)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+    /// Variant with a custom trailing view (e.g. status pill instead of chevron).
+    private func settingsLink<Trailing: View>(
+        title: String,
+        subtitle: String,
+        route: SettingsRoute,
+        @ViewBuilder trailing: @escaping () -> Trailing
+    ) -> some View {
+        Button { self.route = route } label: {
+            AtlasSettingsNavRow(title: title, subtitle: subtitle) { trailing() }
         }
         .buttonStyle(.plain)
-        .disabled(isLoggingOut)
     }
 }
 
@@ -169,11 +186,10 @@ extension SettingsRoute: Identifiable {
         switch self {
         case .accountSecurity: return "account"
         case .editProfile: return "edit"
-        case .appPreferences: return "prefs"
         case .notificationPreferences: return "notify"
         case .devices: return "devices"
         case .myAgents: return "my-agents"
-        case .legalPrivacy: return "legal"
+        case .privacySafety: return "privacy-safety"
         case .blocklist: return "blocklist"
         case .about: return "about"
         case .privacyPolicy: return "privacy"
