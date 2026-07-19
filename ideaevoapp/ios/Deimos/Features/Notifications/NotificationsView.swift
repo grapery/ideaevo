@@ -97,6 +97,11 @@ struct NotificationsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // ardot C/Push Nav Bar (237:94): 48h floating-glass back + 14pt Semibold title in
+            // glass capsule. Pinned as a VStack header (not via `.safeAreaInset`) so the back
+            // button + title reliably render above content on every iOS version.
+            AtlasOverlayPushNavBar(title: "通知", onBack: { dismiss() })
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(NotificationCategory.allCases) { item in
@@ -131,7 +136,9 @@ struct NotificationsView: View {
                 }
                 .frame(maxHeight: .infinity)
             } else if viewModel.items.isEmpty {
-                AtlasDesignedEmptyStates.notificationsEmpty { dismiss() }
+                // ardot S11-aligned: when there are no notifications, show just the empty state
+                // with NO "去探索" CTA (previously passed `dismiss()` which surfaced the button).
+                AtlasDesignedEmptyStates.notificationsEmpty()
                     .frame(maxHeight: .infinity)
             } else if filteredItems.isEmpty {
                 AtlasDesignedEmptyStates.notificationsCategoryEmpty()
@@ -179,9 +186,6 @@ struct NotificationsView: View {
             }
         }
         .background(AtlasColors.canvas)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            AtlasOverlayPushNavBar(title: "通知", onBack: { dismiss() })
-        }
         .navigationBarHidden(true)
         .suppressTabBar()
         .navigationDestination(item: $ideaRoute) { route in

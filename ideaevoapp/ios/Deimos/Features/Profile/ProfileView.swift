@@ -65,9 +65,12 @@ struct ProfileView: View {
         #if DEBUG
         // Verify-only launch hook: pass `--deimos-goto-settings` to deep-link straight to the
         // Settings screen for visual review against the ardot S11 design spec.
+        // `--deimos-goto-notifications` deep-links to the Notifications list.
         .onAppear {
             if ProcessInfo.processInfo.arguments.contains("--deimos-goto-settings") {
                 showSettings = true
+            } else if ProcessInfo.processInfo.arguments.contains("--deimos-goto-notifications") {
+                showNotifications = true
             }
         }
         #endif

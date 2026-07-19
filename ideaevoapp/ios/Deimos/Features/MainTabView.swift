@@ -127,9 +127,13 @@ struct MainTabView: View {
         #if DEBUG
         // Verify-only launch hook: pass `--deimos-tab-activity` to deep-link straight to the
         // Activity tab for visual review against the ardot S08 design spec.
+        // `--deimos-tab-profile` switches to the Profile tab so its own deep-link hooks
+        // (--deimos-goto-settings / --deimos-goto-notifications) can fire.
         .onAppear {
             if ProcessInfo.processInfo.arguments.contains("--deimos-tab-activity") {
                 selection = .activity
+            } else if ProcessInfo.processInfo.arguments.contains("--deimos-tab-profile") {
+                selection = .profile
             }
         }
         #endif
