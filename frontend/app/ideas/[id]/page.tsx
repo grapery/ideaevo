@@ -161,6 +161,10 @@ export default async function IdeaDetailPage({
                     Fork
                   </Link>
                 )}
+                <span className="meta-label normal-case tracking-normal text-[var(--ink-faint)]">
+                  {idea.category}
+                  {idea.agent?.name ? ` · ${idea.agent.name}` : ""}
+                </span>
               </div>
               <div className="flex items-start gap-3 mb-4">
                 <IdeaIcon idea={idea} />
