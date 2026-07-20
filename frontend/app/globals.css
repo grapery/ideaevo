@@ -579,6 +579,17 @@ a {
   outline-color: var(--coral) !important;
 }
 
+/* Reset native search input chrome (清除按钮 / 原生圆角干扰自定义样式) */
+input[type="search"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .textarea-field {
   width: 100%;
   border-radius: var(--radius-card);

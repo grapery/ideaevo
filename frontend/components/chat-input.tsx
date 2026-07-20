@@ -2,6 +2,7 @@
 
 import { useState, useRef, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { IconSend } from "@/components/icons";
 
 export default function ChatInput({
   onSend,
@@ -66,9 +67,17 @@ export default function ChatInput({
           type="button"
           onClick={handleSend}
           disabled={!text.trim() || sending || disabled}
-          className="btn-outline px-4 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          aria-label="发送"
+          className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-md border border-[var(--ink)] bg-[var(--ink)] text-[var(--bg-surface)] shrink-0 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
         >
-          {sending ? "…" : "发送"}
+          {sending ? (
+            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" />
+            </svg>
+          ) : (
+            <IconSend className="h-4 w-4" />
+          )}
         </button>
       </div>
       <div className="mt-2 flex flex-wrap gap-2">

@@ -18,6 +18,17 @@ import {
   upsertChatMessage,
 } from "@/lib/chat-messages";
 
+function formatSessionTime(dateStr: string) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  }
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 7) return `${diffDays}天前`;
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 export default function ChatPage() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
@@ -496,47 +507,65 @@ export default function ChatPage() {
                 还没有对话，点击「+ 新对话」开始
               </p>
             )}
-            {filteredSessions.map((s) => (
+            {filteredSessions.map((s) => {
+              const agentName = s.agent?.name || s.agent_id?.slice(0, 8) || "Agent";
+              return (
               <div
                 key={s.id}
                 role="button"
                 tabIndex={0}
                 onClick={() => handleSelectSession(s.id)}
                 onKeyDown={(e) => e.key === "Enter" && handleSelectSession(s.id)}
-                className={`px-4 py-3 cursor-pointer border-b border-[var(--divider)] hover:bg-[var(--bg-subtle)] transition-colors ${
+                className={`px-4 py-3 flex items-start gap-3 cursor-pointer border-b border-[var(--divider)] hover:bg-[var(--bg-subtle)] transition-colors ${
                   activeId === s.id ? "bg-[var(--primary-soft)]" : ""
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-[var(--title)] truncate">{s.title}</span>
-                  <div className="flex shrink-0 items-center gap-2.5">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleArchiveSession(s.id);
-                      }}
-                      className="text-xs text-[var(--text-muted)] hover:text-[var(--ink)]"
-                    >
-                      归档
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSession(s.id);
-                      }}
-                      className="text-xs text-[var(--text-muted)] hover:text-[var(--coral)]"
-                    >
-                      删除
-                    </button>
+                <div className="h-9 w-9 shrink-0 rounded-full bg-[var(--primary-soft)] flex items-center justify-center text-sm font-medium text-[var(--primary)] overflow-hidden border border-[var(--rule)]">
+                  {s.agent?.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.agent.avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span>{agentName.charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-[var(--title)] truncate">{s.title}</span>
+                    <span className="text-[10px] text-[var(--text-muted)] shrink-0 tabular-nums">
+                      {formatSessionTime(s.updated_at)}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 flex items-center justify-between gap-2">
+                    <p className="text-xs text-[var(--text-muted)] truncate">
+                      {agentName} · {s.message_count} 条消息
+                    </p>
+                    <div className="flex shrink-0 items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleArchiveSession(s.id);
+                        }}
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--ink)]"
+                      >
+                        归档
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSession(s.id);
+                        }}
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--coral)]"
+                      >
+                        删除
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
-                  {s.agent?.name || s.agent_id?.slice(0, 8)} · {s.message_count} 条消息
-                </p>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
