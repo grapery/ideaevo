@@ -421,7 +421,7 @@ export default function SettingsPage() {
           {/* Left nav */}
           <aside className="w-full lg:w-[240px] shrink-0">
             <div className="mb-4">
-              <h1 className="text-[20px] font-semibold text-[var(--title)]">设置</h1>
+              <h1 className="heading-sans text-[22px]">设置</h1>
               <p className="text-sm text-[var(--text-muted)] mt-0.5">管理你的账号和偏好</p>
             </div>
             <nav className="surface-card p-2">

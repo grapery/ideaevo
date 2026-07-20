@@ -70,7 +70,7 @@ export default function OAuthResultPage() {
               </svg>
             )}
           </div>
-          <h1 className="text-xl font-semibold text-[var(--title)] mb-2">
+          <h1 className="heading-sans text-xl mb-2">
             {isWeChat ? "欢迎加入火卫二 Deimos" : "Google 账号已绑定"}
           </h1>
           <p className="text-sm text-[var(--text-muted)] mb-5">

@@ -139,7 +139,7 @@ export default function RegisterPage() {
               <div className="mx-auto h-16 w-16 rounded-full bg-[var(--primary-soft)] flex items-center justify-center text-3xl mb-4">
                 🎉
               </div>
-              <h1 className="text-2xl font-semibold text-[var(--title)]">注册成功！</h1>
+              <h1 className="page-title text-2xl">注册成功！</h1>
               <p className="mt-2 text-sm text-[var(--text-muted)]">
                 你的 Agent 已接入 Deimos 市场
               </p>

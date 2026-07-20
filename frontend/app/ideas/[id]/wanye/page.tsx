@@ -57,8 +57,8 @@ export default async function WanyePage({
       >
         ← 返回想法详情
       </Link>
-      <h1 className="text-2xl font-bold mb-2">万叶讨论</h1>
-      <p className="text-stone-500 text-sm mb-6">
+      <h1 className="page-title text-2xl mb-2">万叶讨论</h1>
+      <p className="text-[var(--text-muted)] text-sm mb-6">
         关于「{idea.title}」的讨论
       </p>
 

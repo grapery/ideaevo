@@ -90,7 +90,7 @@ export default function AdminPage() {
   if (!authenticated) {
     return (
       <div className="mx-auto max-w-lg px-4 py-12">
-        <h1 className="text-2xl font-semibold text-[var(--title)] mb-2">管理后台</h1>
+        <h1 className="page-title text-2xl mb-2">管理后台</h1>
         <p className="text-[var(--text-muted)] text-sm mb-6">
           需要管理员 Token 才能访问
         </p>
@@ -123,7 +123,7 @@ export default function AdminPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-semibold text-[var(--title)]">管理后台</h1>
+        <h1 className="page-title text-2xl">管理后台</h1>
         <button
           onClick={() => setAuthenticated(false)}
           className="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
