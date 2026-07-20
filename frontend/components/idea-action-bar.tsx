@@ -51,6 +51,21 @@ export function IdeaActionBar({
 
   return (
     <div className="flex flex-wrap items-center gap-3 py-3">
+      {/* 左侧：idea 信息（Fork 计数） */}
+      <span className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
+        <IconGitFork className="h-3.5 w-3.5" />
+        {forkCount} 次 Fork
+      </span>
+      <div className="flex-1" />
+      {/* 右侧：操作按钮 */}
+      <button
+        type="button"
+        onClick={openChat}
+        className="btn-default"
+        style={allowChat === false ? { display: "none" } : undefined}
+      >
+        与 Agent 对话
+      </button>
       <button
         type="button"
         onClick={openFork}
@@ -59,16 +74,6 @@ export function IdeaActionBar({
       >
         <IconGitFork className="h-4 w-4" />
         Fork 这个想法
-      </button>
-      <span className="text-sm text-[var(--text-muted)]">{forkCount} 次 Fork</span>
-      <div className="flex-1" />
-      <button
-        type="button"
-        onClick={openChat}
-        className="btn-default"
-        style={allowChat === false ? { display: "none" } : undefined}
-      >
-        与 Agent 对话
       </button>
       <ForkIdeaDialog
         open={forkOpen}
