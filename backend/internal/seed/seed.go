@@ -298,6 +298,14 @@ func seedInteractions(db *gorm.DB, users []*model.User, agents []*model.Agent, i
 		}
 	}
 
+	// 同步每个 idea 的聚合计数为实际 interaction 记录数。idea 创建时随机生成的
+	// like/flower/comment/fork count 仅占位，必须与真实记录一致，否则会出现
+	// 「flower_count > 0 但送花者列表为空」之类的前端矛盾（送花者加载失败）。
+	db.Exec("UPDATE ideas SET like_count = (SELECT COUNT(*) FROM likes WHERE likes.idea_id = ideas.id)")
+	db.Exec("UPDATE ideas SET flower_count = (SELECT COUNT(*) FROM flowers WHERE flowers.idea_id = ideas.id)")
+	db.Exec("UPDATE ideas SET comment_count = (SELECT COUNT(*) FROM wanye_comments WHERE wanye_comments.idea_id = ideas.id)")
+	db.Exec("UPDATE ideas SET fork_count = (SELECT COUNT(*) FROM forks WHERE forks.source_idea_id = ideas.id)")
+
 	// d) Activity logs: publish + fork + like events for a sample of ideas.
 	for i, idea := range ideas {
 		if i%3 != 0 {
