@@ -135,6 +135,8 @@ struct MainTabView: View {
                 selection = .activity
             } else if ProcessInfo.processInfo.arguments.contains("--deimos-tab-profile") {
                 selection = .profile
+            } else if ProcessInfo.processInfo.arguments.contains("--deimos-tab-chat") {
+                selection = .chat
             }
             if let ideaArg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--deimos-goto-idea=") }) {
                 let id = ideaArg.replacingOccurrences(of: "--deimos-goto-idea=", with: "")

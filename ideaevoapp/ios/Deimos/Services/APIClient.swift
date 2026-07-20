@@ -1005,6 +1005,18 @@ final class APIClient {
         return response.session
     }
 
+    /// Fetch a single chat session by ID (used by ChatThreadView to discover the pinned
+    /// idea context, since callers from ChatListView/AgentProfileView only know the title).
+    /// The backend `GetSession` returns the session object directly (NOT wrapped in
+    /// `{"session": ...}`), so we decode `ChatSession` directly.
+    func getSession(id: String) async throws -> ChatSession {
+        let session: ChatSession = try await request(
+            path: "/sessions/\(id)",
+            auth: .user
+        )
+        return session
+    }
+
     func getMessages(sessionID: String, limit: Int = 50) async throws -> [ChatMessage] {
         let response: MessagesResponse = try await request(
             path: "/sessions/\(sessionID)/messages?limit=\(limit)",

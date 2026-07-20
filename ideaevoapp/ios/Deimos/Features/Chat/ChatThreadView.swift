@@ -5,6 +5,8 @@ struct ChatThreadView: View {
     @State private var title: String
 
     @Environment(\.dismiss) private var dismiss
+    @State private var session: ChatSession?
+    @State private var contextIdea: Idea?
     @State private var messages: [ChatMessage] = []
     @State private var draft = ""
     @State private var activityText: String?
@@ -16,6 +18,7 @@ struct ChatThreadView: View {
     @State private var isArchiving = false
     @State private var archiveSummary: String?
     @State private var showArchiveResult = false
+    @State private var streamingAssistantID: String?
 
     private var isSheetZoomActive: Bool {
         showArchiveResult
@@ -28,64 +31,71 @@ struct ChatThreadView: View {
 
     private let streamService = ChatStreamService()
 
+    /// Default starter prompts shown when the conversation is empty. ardot S07b.
+    private let starterPrompts: [(DeimosIcon, String)] = [
+        (.sparkles, "这个想法怎么落地？"),
+        (.fork, "能不能给个更轻量的子版本？"),
+        (.info, "这个方案的实现风险是什么？")
+    ]
+
+    /// Messages grouped by calendar day, preserving order. Each group is rendered with a
+    /// leading `ChatDateDivider`. Used by the message list to match Apple Messages' pattern.
+    private var groupedMessages: [(date: Date, messages: [ChatMessage])] {
+        let cal = Calendar.current
+        let grouped = Dictionary(grouping: messages) { cal.startOfDay(for: $0.createdAt) }
+        return grouped.keys.sorted().map { ($0, grouped[$0] ?? []) }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // S07 Thread Nav (ardot 237:291): 56h, SOLID white bg (not glass), back is a 44×44
-            // #F2F3F5 solid circle (not floating glass), title 17pt Semibold + 12pt Regular subtitle,
-            // left-aligned. The thread is the focus — no glass blur, no centered capsule.
-            HStack(spacing: 12) {
-                Button { dismiss() } label: {
-                    DeimosIconView(icon: .chevronBack, size: 17, color: AtlasColors.ink)
-                        .frame(width: 44, height: 44)
-                        .background(AtlasColors.surfaceSecondary, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("返回")
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(AtlasColors.ink)
-                        .lineLimit(1)
-                    Text("带着 Idea 上下文")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .frame(height: 56)
-            .background(AtlasColors.canvas)
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(AtlasColors.border.opacity(0.45)).frame(height: 1)
-            }
-
-            if let errorMessage, !isLoading {
-                chatErrorBanner(errorMessage)
-                .padding(.horizontal, 24)
-                .padding(.top, 8)
-            }
-
+            // S07 v2: scrollable message list fills the space; toolbar + composer float above.
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: AtlasMetrics.chatGap) {
+                        // Pinned idea context banner — only when the session carries an ideaID.
+                        if let idea = contextIdea {
+                            ChatIdeaContextBanner(
+                                title: idea.displayTitle,
+                                version: nil
+                            ) {
+                                ideaRoute = IdeaRoute(id: idea.id)
+                            }
+                            .padding(.top, 6)
+                        }
+
                         if isLoading && messages.isEmpty {
                             ChatThreadLoadingSkeleton()
+                                .padding(.top, 12)
+                        } else if let errorMessage, messages.isEmpty {
+                            // Error state — show retry banner instead of starter prompts so the
+                            // user knows the load failed (not that the conversation is empty).
+                            chatErrorBanner(errorMessage)
+                                .padding(.top, 24)
+                        } else if messages.isEmpty {
+                            // Empty state — starter prompts to lower the cold-start cost.
+                            chatEmptyState
+                                .padding(.top, 24)
+                        } else {
+                            ForEach(groupedMessages, id: \.date) { group in
+                                ChatDateDivider(date: group.date)
+                                ForEach(group.messages) { message in
+                                    ChatMessageBubble(
+                                        message: message,
+                                        sessionID: sessionID,
+                                        agentName: title,
+                                        isStreaming: streamingAssistantID == message.id,
+                                        feedbackEnabled: message.isAssistant && !pendingFeedbackIDs.contains(message.id),
+                                        onIdeaTap: { ideaRoute = IdeaRoute(id: $0) }
+                                    )
+                                    .id(message.id)
+                                }
+                            }
                         }
+
                         if let activityText {
-                            toolActivityBar(activityText)
-                        }
-                        ForEach(messages) { message in
-                            ChatMessageBubble(
-                                message: message,
-                                sessionID: sessionID,
-                                agentName: title,
-                                feedbackEnabled: message.isAssistant && !pendingFeedbackIDs.contains(message.id),
-                                onIdeaTap: { ideaRoute = IdeaRoute(id: $0) }
-                            )
-                            .id(message.id)
+                            ChatToolActivityPill(text: activityText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 4)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -101,17 +111,27 @@ struct ChatThreadView: View {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
+                .onChange(of: activityText) { _, _ in
+                    if let last = messages.last {
+                        withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                    }
+                }
             }
 
             BottomInputBar(
                 text: $draft,
-                placeholder: "给万叶助手发消息...",
+                placeholder: session.map { "给 \($0.agent?.name ?? "Agent") 发消息..." } ?? "发送消息...",
                 isSending: isSending,
                 onSend: { Task { await send() } }
             )
         }
         .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: isSheetZoomActive)
+        // S07 v2 toolbar: float-liquid glass — back circle + left-aligned title/subtitle +
+        // trailing archive circle. Replaces the old solid `AtlasColors.canvas` bar + hairline.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            chatToolbar
+        }
         .navigationBarHidden(true)
         .suppressTabBar()
         .sheet(isPresented: $showArchiveResult) {
@@ -123,15 +143,54 @@ struct ChatThreadView: View {
         }
     }
 
-    private func toolActivityBar(_ text: String) -> some View {
-        Text(text)
-            .font(AtlasTypography.caption())
-            .foregroundStyle(AtlasColors.accentActive)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color(red: 0.91, green: 0.96, blue: 0.93))
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    /// Float-liquid glass toolbar. The title is left-aligned (not centered in a capsule) so
+    /// the agent name + idea-context subtitle read like a nav bar. Trailing archive button.
+    private var chatToolbar: some View {
+        HStack(spacing: 10) {
+            AtlasToolbarFloatIconButton(icon: .chevronBack, size: AtlasMetrics.backButtonSize, iconSize: 17) {
+                dismiss()
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .lineLimit(1)
+                Text(contextIdea != nil ? "带着 Idea 上下文" : "对话")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            AtlasToolbarFloatIconButton(icon: .document, size: AtlasMetrics.backButtonSize, iconSize: 17) {
+                Task { await archiveSession() }
+            }
+            .accessibilityLabel("封存对话")
+        }
+        .padding(.horizontal, AtlasMetrics.detailX)
+        .frame(height: AtlasToolbarMetrics.barHeight)
+    }
+
+    /// Empty-conversation state: a friendly header + 3 starter prompt chips.
+    /// Tapping a chip fills the draft (doesn't auto-send) so the user can edit before sending.
+    private var chatEmptyState: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("和 \(title) 开启对话")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(AtlasColors.ink)
+                Text(contextIdea != nil
+                     ? "基于当前 Idea 上下文，选一个建议开始或直接提问"
+                     : "选一个建议开始，或直接输入你的问题")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AtlasColors.inkSoft)
+            }
+            ForEach(starterPrompts, id: \.1) { icon, text in
+                ChatStarterPrompt(text: text, icon: icon) {
+                    draft = text
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func chatErrorBanner(_ message: String) -> some View {
@@ -211,11 +270,32 @@ struct ChatThreadView: View {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
+        // Load messages first — the chat is unusable without them. Session detail (used for
+        // the context banner + agent name) is best-effort enrichment, so a failure there
+        // must never block the message list.
         do {
             messages = try await APIClient.shared.getMessages(sessionID: sessionID)
             pendingFeedbackIDs = []
         } catch {
             errorMessage = error.localizedDescription
+            messages = []
+            return
+        }
+        // Best-effort session fetch — overrides the placeholder title with the real agent
+        // name and discovers the pinned idea context. Failures are swallowed silently so a
+        // session-detail glitch never blocks the readable message thread.
+        if session == nil {
+            if let fetched = try? await APIClient.shared.getSession(id: sessionID) {
+                session = fetched
+                if let agentName = fetched.agent?.name, !agentName.isEmpty {
+                    title = agentName
+                } else if !fetched.title.isEmpty {
+                    title = fetched.title
+                }
+                if let ideaID = fetched.ideaID, contextIdea == nil {
+                    contextIdea = try? await APIClient.shared.getIdea(id: ideaID)
+                }
+            }
         }
     }
 
@@ -239,6 +319,7 @@ struct ChatThreadView: View {
         messages.append(tempUser)
         let assistantID = UUID().uuidString
         pendingFeedbackIDs.insert(assistantID)
+        streamingAssistantID = assistantID
         messages.append(ChatMessage(
             id: assistantID,
             sessionID: sessionID,
@@ -261,17 +342,21 @@ struct ChatThreadView: View {
                 case .done(let text):
                     updateAssistant(id: assistantID, content: text)
                     activityText = nil
+                    streamingAssistantID = nil
                 case .error(let message):
                     errorMessage = message
                     activityText = nil
+                    streamingAssistantID = nil
                     ToastCenter.shared.showError("发送失败", message: message)
                 }
             }
             messages = try await APIClient.shared.getMessages(sessionID: sessionID)
             pendingFeedbackIDs = []
+            streamingAssistantID = nil
         } catch {
             errorMessage = error.localizedDescription
             activityText = nil
+            streamingAssistantID = nil
             ToastCenter.shared.showError("发送失败", message: error.localizedDescription)
         }
     }
@@ -295,6 +380,7 @@ struct ChatMessageBubble: View {
     let message: ChatMessage
     let sessionID: String
     let agentName: String
+    var isStreaming: Bool = false
     let feedbackEnabled: Bool
     var onIdeaTap: (String) -> Void = { _ in }
 
@@ -321,14 +407,23 @@ struct ChatMessageBubble: View {
     var body: some View {
         VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
             // AI header — agent name above the bubble (user messages have no header).
-            if message.isAssistant, showsTextBubble || !ideaSuggestions.isEmpty {
+            if message.isAssistant, showsTextBubble || isStreaming || !ideaSuggestions.isEmpty {
                 Text(agentName)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AtlasColors.ink)
                     .padding(.leading, 4)
             }
 
-            if showsTextBubble {
+            if isStreaming && message.content.isEmpty {
+                // Typing indicator — three bouncing lemon dots inside the assistant bubble.
+                // Replaces the old empty bubble shown while the first chunk streams in.
+                HStack(alignment: .top, spacing: 0) {
+                    ChatTypingIndicator()
+                        .background(Color(hex: 0xF1F5FF))
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    Spacer(minLength: 0)
+                }
+            } else if showsTextBubble {
                 HStack(alignment: .top, spacing: 0) {
                     if message.isUser { Spacer(minLength: 0) }
                     // Bubble content — hug text width, cap at 260pt max
@@ -368,7 +463,7 @@ struct ChatMessageBubble: View {
 
             // Per-message action row: like / dislike / copy + timestamp (right).
             // Matches ardot S07 message action pattern (AI-chat style).
-            if showsTextBubble || !ideaSuggestions.isEmpty {
+            if (showsTextBubble || !ideaSuggestions.isEmpty) && !isStreaming {
                 actionBar
             }
         }

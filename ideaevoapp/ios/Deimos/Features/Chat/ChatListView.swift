@@ -152,6 +152,16 @@ struct ChatListView: View {
         .sheet(isPresented: $showAuthSheet) {
             AuthRequiredSheet()
         }
+        #if DEBUG
+        // Verify-only launch hook: `--deimos-goto-chat=<sessionID>` deep-links straight to a
+        // chat thread for visual review against the ardot S07 design spec.
+        .onAppear {
+            if let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--deimos-goto-chat=") }) {
+                let id = arg.replacingOccurrences(of: "--deimos-goto-chat=", with: "")
+                if !id.isEmpty { selectedSession = ChatSessionRoute(id: id, title: "对话") }
+            }
+        }
+        #endif
     }
 
     private var guestContent: some View {

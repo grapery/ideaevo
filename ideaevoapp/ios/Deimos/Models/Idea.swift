@@ -423,6 +423,8 @@ extension JSONDecoder {
                 "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX",
                 "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXXXX",
                 "yyyy-MM-dd'T'HH:mm:ssXXXXX",
+                "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+                "yyyy-MM-dd'T'HH:mm:ssXXX",
                 "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'",
                 "yyyy-MM-dd'T'HH:mm:ss'Z'",
             ]

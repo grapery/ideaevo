@@ -1151,6 +1151,176 @@ struct BottomInputBar: View {
     }
 }
 
+// MARK: - Chat Bubbles & States (Ardot S07 `179:5`)
+
+/// Three bouncing lemon dots shown inside an assistant bubble while the agent is streaming
+/// its first chunk. Ardot S07c (`311:107`). The dots use a staggered phase animation so they
+/// look like the iMessage / Telegram typing indicator, but tinted lemonInk to match the app.
+struct ChatTypingIndicator: View {
+    @State private var phase: CGFloat = 0
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .fill(AtlasColors.lemonInk.opacity(0.55 + 0.45 * bounceFactor(for: index)))
+                    .frame(width: 8, height: 8)
+                    .offset(y: bounceOffset(for: index))
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 14)
+        .onAppear {
+            withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) {
+                phase = 1
+            }
+        }
+    }
+
+    private func bounceFactor(for index: Int) -> CGFloat {
+        let step: CGFloat = 0.33
+        let offset = (phase + CGFloat(index) * step).truncatingRemainder(dividingBy: 1)
+        return sin(offset * .pi)
+    }
+
+    private func bounceOffset(for index: Int) -> CGFloat {
+        -3 * bounceFactor(for: index)
+    }
+}
+
+/// Floating glass pill that surfaces tool/A2A activity during streaming. Replaces the old
+/// solid green bar. Ardot S07d (`311:110`) — glass fill + spinner + activity text.
+struct ChatToolActivityPill: View {
+    let text: String
+    @State private var rotation: Double = 0
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AtlasColors.lemonInk)
+                .rotationEffect(.degrees(rotation))
+            Text(text)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AtlasColors.inkTertiary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Capsule(style: .continuous).fill(Color.white.opacity(0.50)))
+        .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.78), lineWidth: 1))
+        .overlay(Capsule(style: .continuous).stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1))
+        .shadow(color: AtlasColors.ink.opacity(0.06), radius: 8, x: 0, y: 4)
+        .onAppear {
+            withAnimation(.linear(duration: 1.0).repeatForever(autoreverses: false)) {
+                rotation = 360
+            }
+        }
+    }
+}
+
+/// Centered date chip that separates message groups by day (今天 / 昨天 / 2026-07-15).
+/// Ardot S07e (`311:114`). Sits inline in the message list, not sticky — matches Apple
+/// Messages pattern where the chip scrolls with content.
+struct ChatDateDivider: View {
+    let date: Date
+
+    private var label: String {
+        let cal = Calendar.current
+        if cal.isDateInToday(date) { return "今天" }
+        if cal.isDateInYesterday(date) { return "昨天" }
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: date)
+    }
+
+    var body: some View {
+        HStack {
+            Rectangle().fill(AtlasColors.rule).frame(height: 1)
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AtlasColors.inkFaint)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Capsule(style: .continuous).fill(AtlasColors.fill))
+            Rectangle().fill(AtlasColors.rule).frame(height: 1)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+/// Starter prompt card shown when the conversation is empty (no messages yet).
+/// Ardot S07b (`311:97`). lemonSoft fill, taps fill the draft (caller decides send vs edit).
+struct ChatStarterPrompt: View {
+    let text: String
+    var icon: DeimosIcon = .sparkles
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.6))
+                        .frame(width: 36, height: 36)
+                    DeimosIconView(icon: icon, size: 16, color: AtlasColors.lemonInk)
+                }
+                Text(text)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+                DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.lemonInk.opacity(0.6))
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AtlasColors.lemonSoft)
+            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Pinned idea context banner. Ardot S07 `179:122` — light-blue card (#F1F5FF) sitting
+/// between the toolbar and the message scroll. Tells the user which idea/version the agent
+/// is reasoning about; tap navigates to the idea detail.
+struct ChatIdeaContextBanner: View {
+    let title: String
+    let version: Int?
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.white.opacity(0.6))
+                        .frame(width: 36, height: 36)
+                    DeimosIconView(icon: .document, size: 16, color: AtlasColors.accentActive)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(version.map { "当前上下文：\(title) · v\($0)" } ?? "当前上下文：\(title)")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color(hex: 0x253044))
+                        .lineLimit(1)
+                    Text("回复、建议和 Fork 都会引用这个版本")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(hex: 0xF1F5FF))
+            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 /// Tab 根页 Header：Screen Title + 右侧 float 操作区（统一 44pt 行高）。
 struct AtlasTabScreenHeader<Trailing: View>: View {
     let title: String
