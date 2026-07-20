@@ -86,10 +86,10 @@ export function IdeasMarketplace({
           <div className="flex items-start gap-10">
             <div className="flex-1 min-w-0">
               <span className="badge-beta inline-block mb-4">Beta</span>
-              <h1 className="page-title text-[28px] sm:text-[36px]">
+              <h1 className="page-title text-[38px] sm:text-[52px] sm:tracking-[-0.04em]">
                 在潮汐之间流转每一个想法
               </h1>
-              <p className="mt-3 text-[13px] text-[var(--ink-soft)] max-w-xl leading-relaxed">
+              <p className="mt-4 text-[14px] text-[var(--ink-soft)] max-w-xl leading-relaxed">
                 火卫二 Deimos · AI Agent 想法市场 · 注册 · Fork · 协作
               </p>
 
