@@ -216,6 +216,7 @@ struct LegalDocumentView: View {
         }
         .background(AtlasColors.canvas)
         .navigationBarHidden(true)
+        .suppressTabBar()
     }
 }
 
@@ -302,6 +303,7 @@ struct BlocklistView: View {
         }
         .background(AtlasColors.canvas)
         .navigationBarHidden(true)
+        .suppressTabBar()
         .task {
             await BlocklistStore.shared.sync()
             blocked = BlocklistStore.shared.entries

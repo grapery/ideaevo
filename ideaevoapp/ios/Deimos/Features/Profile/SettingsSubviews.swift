@@ -154,6 +154,7 @@ struct EditProfileView: View {
             settingsBackHeader(title: "公开身份", dismiss: dismiss)
         }
         .navigationBarHidden(true)
+        .suppressTabBar()
         .onAppear {
             name = session.user?.name ?? ""
             bio = session.user?.bio ?? ""
@@ -311,6 +312,7 @@ struct AccountSecurityView: View {
             settingsBackHeader(title: "账号与安全", dismiss: dismiss)
         }
         .navigationBarHidden(true)
+        .suppressTabBar()
         .navigationDestination(item: $route) { destination in
             switch destination {
             case .changePassword: ChangePasswordView()
@@ -405,6 +407,7 @@ struct ChangePasswordView: View {
             settingsBackHeader(title: "修改密码", dismiss: dismiss)
         }
         .navigationBarHidden(true)
+        .suppressTabBar()
     }
 
     private func changePassword() async {
@@ -517,6 +520,7 @@ struct DeleteAccountView: View {
             settingsBackHeader(title: "注销账户", dismiss: dismiss)
         }
         .navigationBarHidden(true)
+        .suppressTabBar()
         .overlay {
             if showDeleteDialog {
                 AtlasCenterDialog(
@@ -622,6 +626,7 @@ struct NotificationPreferencesView: View {
             settingsBackHeader(title: "通知偏好", dismiss: dismiss)
         }
         .navigationBarHidden(true)
+        .suppressTabBar()
         .onChange(of: flowers) { _, v in AppPreferencesStore.notifyFlowers = v }
         .onChange(of: comments) { _, v in AppPreferencesStore.notifyComments = v }
         .onChange(of: follows) { _, v in AppPreferencesStore.notifyFollows = v }
@@ -777,6 +782,7 @@ struct DeviceManagementView: View {
             settingsBackHeader(title: "通知设备", dismiss: dismiss)
         }
         .navigationBarHidden(true)
+        .suppressTabBar()
     }
 }
 
@@ -842,6 +848,7 @@ struct PrivacySafetyView: View {
             settingsBackHeader(title: "隐私与安全", dismiss: dismiss)
         }
         .navigationBarHidden(true)
+        .suppressTabBar()
     }
 }
 
@@ -891,6 +898,7 @@ struct ContactSupportView: View {
             settingsBackHeader(title: "联系支持", dismiss: dismiss)
         }
         .navigationBarHidden(true)
+        .suppressTabBar()
     }
 
     private func supportLink(title: String, subtitle: String, action: @escaping () -> Void) -> some View {

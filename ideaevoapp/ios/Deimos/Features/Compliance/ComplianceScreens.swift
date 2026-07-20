@@ -301,6 +301,7 @@ struct AboutView: View {
             AtlasOverlayPushNavBar(title: "关于万叶", onBack: { dismiss() })
         }
         .navigationBarHidden(true)
+        .suppressTabBar()
     }
 
     private func aboutRow(icon: DeimosIcon, iconColor: Color, iconBg: Color, label: String, action: @escaping () -> Void) -> some View {
@@ -388,6 +389,7 @@ struct PrivacyPolicyView: View {
             AtlasOverlayPushNavBar(title: "隐私政策", onBack: { dismiss() })
         }
         .navigationBarHidden(true)
+        .suppressTabBar()
     }
 
     private func privacySection(title: String, body: String) -> some View {
