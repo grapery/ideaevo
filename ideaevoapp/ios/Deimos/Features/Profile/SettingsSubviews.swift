@@ -239,22 +239,23 @@ struct EditProfileView: View {
     }
 }
 
-// MARK: - S36 Account & Security · Private Fields
+// MARK: - S36 Account & Security · Navigation Hub
 
+/// Sub-routes pushed from AccountSecurityView (kept local — these don't belong in the
+/// top-level SettingsRoute enum since they're only reachable from this screen).
+enum AccountSecurityRoute: Hashable {
+    case changePassword
+    case deleteAccount
+}
+
+/// S36 v2 — navigation hub. The old screen stuffed change-password, phone-bind and
+/// delete-account into one long scroll. Now it's a hub: summary + login-method info rows +
+/// 3 nav rows that each push/sheet to a dedicated screen. ardot S36 (`295:50`).
 struct AccountSecurityView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AuthSession.self) private var session
 
-    @State private var oldPassword = ""
-    @State private var newPassword = ""
-    @State private var isSaving = false
-    @State private var message: String?
-    @State private var deleteConfirm = ""
-    @State private var deletePassword = ""
-    @State private var deletePhone = ""
-    @State private var deleteSMSCode = ""
-    @State private var isDeleting = false
-    @State private var showDeleteDialog = false
+    @State private var route: AccountSecurityRoute?
     @State private var showPhoneBind = false
 
     var body: some View {
@@ -272,7 +273,104 @@ struct AccountSecurityView: View {
                     message: session.user.map { emailPhoneLabel($0) } ?? "—"
                 )
 
-                // Password change card
+                // 3-function hub group. Each row routes to a dedicated screen.
+                AtlasSettingsGroup {
+                    Button { route = .changePassword } label: {
+                        AtlasSettingsNavRow(title: "修改密码", subtitle: "更新登录密码") {
+                            DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    AtlasSettingsGroupDivider()
+                    Button { showPhoneBind = true } label: {
+                        AtlasSettingsNavRow(title: "手机号绑定", subtitle: phoneBindSubtitle) {
+                            DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    AtlasSettingsGroupDivider()
+                    Button { route = .deleteAccount } label: {
+                        AtlasSettingsNavRow(title: "注销账户", subtitle: "永久删除账户与个人资料") {
+                            DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                AtlasSettingsLinksCard(
+                    title: "密码与注销",
+                    message: "修改密码 · 按登录方式验证后永久注销"
+                )
+            }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
+            .padding(.bottom, 40)
+        }
+        .background(AtlasColors.canvas)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            settingsBackHeader(title: "账号与安全", dismiss: dismiss)
+        }
+        .navigationBarHidden(true)
+        .navigationDestination(item: $route) { destination in
+            switch destination {
+            case .changePassword: ChangePasswordView()
+            case .deleteAccount: DeleteAccountView()
+            }
+        }
+        .sheet(isPresented: $showPhoneBind) { PhoneBindView() }
+    }
+
+    /// Dynamic subtitle for the phone-bind nav row: shows the bound phone or a hint.
+    private var phoneBindSubtitle: String {
+        guard let user = session.user else { return "未绑定" }
+        if user.phoneVerified, let phone = user.phone, !phone.isEmpty {
+            return "已绑定 \(phone)"
+        }
+        return user.authProvider == "wechat" ? "微信注销需要验证" : "提升账户安全"
+    }
+
+    private func providerLabel(_ provider: String) -> String {
+        switch provider {
+        case "apple": return "Apple · 已连接"
+        case "google": return "Google · 已连接"
+        case "wechat": return "微信 · 已连接"
+        case "email": return "邮箱 · 已连接"
+        default: return provider
+        }
+    }
+
+    private func emailPhoneLabel(_ user: User) -> String {
+        var parts: [String] = []
+        if let email = user.email, !email.isEmpty {
+            parts.append(user.emailVerified ? "邮箱已验证" : "邮箱未验证")
+        }
+        if let phone = user.phone, !phone.isEmpty {
+            parts.append(user.phoneVerified ? "手机号已绑定" : "手机号未验证")
+        }
+        return parts.isEmpty ? "未设置" : parts.joined(separator: " · ")
+    }
+}
+
+// MARK: - S36b Change Password · POST /auth/user/change-password
+
+/// Dedicated change-password screen extracted from the old AccountSecurityView.
+/// ardot S36b (`329:1`). Summary + current/new password inputs + update button.
+struct ChangePasswordView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var oldPassword = ""
+    @State private var newPassword = ""
+    @State private var isSaving = false
+    @State private var message: String?
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 14) {
+                AtlasSettingsSubSummaryCard(
+                    title: "修改登录密码",
+                    message: "新密码至少 6 位；修改后当前会话不退出，其他设备会要求重新登录。"
+                )
+
                 VStack(alignment: .leading, spacing: 14) {
                     Text("修改密码")
                         .font(.system(size: 15, weight: .semibold))
@@ -297,16 +395,6 @@ struct AccountSecurityView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(cardSurface)
                 .overlay(cardBorder)
-
-                phoneBindCard
-
-                // ardot `295:59` links card — password & deletion
-                AtlasSettingsLinksCard(
-                    title: "密码与注销",
-                    message: "修改密码 · 按登录方式验证后永久注销"
-                )
-
-                deleteAccountCard
             }
             .padding(.horizontal, AtlasMetrics.detailX)
             .padding(.top, 8)
@@ -314,7 +402,119 @@ struct AccountSecurityView: View {
         }
         .background(AtlasColors.canvas)
         .safeAreaInset(edge: .top, spacing: 0) {
-            settingsBackHeader(title: "账号与安全", dismiss: dismiss)
+            settingsBackHeader(title: "修改密码", dismiss: dismiss)
+        }
+        .navigationBarHidden(true)
+    }
+
+    private func changePassword() async {
+        isSaving = true
+        message = nil
+        defer { isSaving = false }
+        do {
+            try await APIClient.shared.changePassword(oldPassword: oldPassword, newPassword: newPassword)
+            oldPassword = ""
+            newPassword = ""
+            message = "密码修改成功"
+        } catch { message = error.localizedDescription }
+    }
+}
+
+// MARK: - S36c Delete Account · POST /auth/user/delete
+
+/// Dedicated delete-account screen extracted from the old AccountSecurityView.
+/// ardot S36c (`329:15`). Warning summary + provider-specific confirm input +
+/// permanent-delete button + center confirmation dialog.
+struct DeleteAccountView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AuthSession.self) private var session
+
+    @State private var deleteConfirm = ""
+    @State private var deletePassword = ""
+    @State private var deletePhone = ""
+    @State private var deleteSMSCode = ""
+    @State private var isDeleting = false
+    @State private var showDeleteDialog = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 14) {
+                AtlasSettingsSubSummaryCard(
+                    title: "永久注销账户",
+                    message: "此操作不可恢复。将删除登录凭证、个人资料与手机号绑定；公开内容或 Fork 引用如按社区规则保留，将与账号身份解绑并匿名化展示。"
+                )
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("注销账户")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AtlasColors.destructive)
+
+                    if let user = session.user {
+                        switch user.authProvider {
+                        case "email":
+                            SecureField("输入密码确认注销", text: $deletePassword)
+                                .styleSettingsInput()
+                        case "google", "apple":
+                            TextField("输入 DELETE 确认注销", text: $deleteConfirm)
+                                .styleSettingsInput()
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.characters)
+                        case "wechat":
+                            TextField("绑定手机号", text: $deletePhone)
+                                .styleSettingsInput()
+                                .keyboardType(.phonePad)
+                            HStack(spacing: 8) {
+                                TextField("短信验证码", text: $deleteSMSCode)
+                                    .styleSettingsInput()
+                                    .keyboardType(.numberPad)
+                                Button("发送验证码") {
+                                    Task {
+                                        try? await APIClient.shared.sendPhoneCode(
+                                            phone: deletePhone.trimmingCharacters(in: .whitespacesAndNewlines),
+                                            purpose: "account_delete"
+                                        )
+                                    }
+                                }
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(AtlasColors.lemonInk)
+                            }
+                        default:
+                            Text("当前登录方式不支持在此注销")
+                                .font(.system(size: 13))
+                                .foregroundStyle(AtlasColors.inkFaint)
+                        }
+                    }
+
+                    Text("公开内容或 Fork 引用如按社区规则保留，将与账号身份解绑并匿名化展示。")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.inkFaint)
+
+                    Button {
+                        showDeleteDialog = true
+                    } label: {
+                        Text("永久注销账户")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(AtlasColors.destructive)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 46)
+                            .background(AtlasColors.destructive.opacity(0.08))
+                            .clipShape(Capsule(style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isDeleting)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(cardSurface)
+                .overlay(cardBorder)
+            }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
+            .padding(.bottom, 40)
+        }
+        .background(AtlasColors.canvas)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            settingsBackHeader(title: "注销账户", dismiss: dismiss)
         }
         .navigationBarHidden(true)
         .overlay {
@@ -330,139 +530,10 @@ struct AccountSecurityView: View {
                 )
             }
         }
-        .sheet(isPresented: $showPhoneBind) { PhoneBindView() }
-    }
-
-    @ViewBuilder
-    private var phoneBindCard: some View {
-        if let user = session.user {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("手机号")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(AtlasColors.ink)
-
-                if user.phoneVerified, let phone = user.phone, !phone.isEmpty {
-                    Text("已绑定 \(phone)")
-                        .font(.system(size: 13))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                    Button("更换手机号") { showPhoneBind = true }
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AtlasColors.lemonInk)
-                } else {
-                    Text("绑定手机号可提升账户安全，微信用户注销时需要验证。")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkFaint)
-                    AtlasOutlineButton(title: "绑定手机号") { showPhoneBind = true }
-                }
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(cardSurface)
-            .overlay(cardBorder)
-        }
-    }
-
-    private var deleteAccountCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("注销账户")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AtlasColors.destructive)
-
-            if let user = session.user {
-                switch user.authProvider {
-                case "email":
-                    SecureField("输入密码确认注销", text: $deletePassword)
-                        .styleSettingsInput()
-                case "google", "apple":
-                    TextField("输入 DELETE 确认注销", text: $deleteConfirm)
-                        .styleSettingsInput()
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.characters)
-                case "wechat":
-                    TextField("绑定手机号", text: $deletePhone)
-                        .styleSettingsInput()
-                        .keyboardType(.phonePad)
-                    HStack(spacing: 8) {
-                        TextField("短信验证码", text: $deleteSMSCode)
-                            .styleSettingsInput()
-                            .keyboardType(.numberPad)
-                        Button("发送验证码") {
-                            Task {
-                                try? await APIClient.shared.sendPhoneCode(
-                                    phone: deletePhone.trimmingCharacters(in: .whitespacesAndNewlines),
-                                    purpose: "account_delete"
-                                )
-                            }
-                        }
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(AtlasColors.lemonInk)
-                    }
-                default:
-                    Text("当前登录方式不支持在此注销")
-                        .font(.system(size: 13))
-                        .foregroundStyle(AtlasColors.inkFaint)
-                }
-            }
-
-            Text("公开内容或 Fork 引用如按社区规则保留，将与账号身份解绑并匿名化展示。")
-                .font(.system(size: 12))
-                .foregroundStyle(AtlasColors.inkFaint)
-
-            Button {
-                showDeleteDialog = true
-            } label: {
-                Text("永久注销账户")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(AtlasColors.destructive)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background(AtlasColors.destructive.opacity(0.08))
-                    .clipShape(Capsule(style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .disabled(isDeleting)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardSurface)
-        .overlay(cardBorder)
     }
 
     private var deleteDialogMessage: String {
         "此操作不可恢复。将删除登录凭证、个人资料与手机号绑定；公开内容或 Fork 引用如按社区规则保留，将与账号身份解绑并匿名化展示。"
-    }
-
-    private func providerLabel(_ provider: String) -> String {
-        switch provider {
-        case "apple": return "Apple · 已连接"
-        case "google": return "Google · 已连接"
-        case "wechat": return "微信 · 已连接"
-        case "email": return "邮箱 · 已连接"
-        default: return provider
-        }
-    }
-
-    private func emailPhoneLabel(_ user: User) -> String {
-        var parts: [String] = []
-        if let email = user.email, !email.isEmpty {
-            parts.append(user.emailVerified ? "邮箱已验证" : "邮箱未验证")
-        }
-        if let phone = user.phone, !phone.isEmpty {
-            parts.append(user.phoneVerified ? "手机号已绑定" : "手机号未验证")
-        }
-        return parts.isEmpty ? "未设置" : parts.joined(separator: " · ")
-    }
-
-    private func changePassword() async {
-        isSaving = true
-        message = nil
-        defer { isSaving = false }
-        do {
-            try await APIClient.shared.changePassword(oldPassword: oldPassword, newPassword: newPassword)
-            oldPassword = ""
-            newPassword = ""
-            message = "密码修改成功"
-        } catch { message = error.localizedDescription }
     }
 
     private func canProceedDelete(for provider: String) -> Bool {
