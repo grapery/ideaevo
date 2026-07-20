@@ -1,46 +1,46 @@
 @import "tailwindcss";
 
 :root {
-  /* A1 Daylight — paper & ink */
-  --bg-canvas: #fafaf7;
-  --bg-surface: #ffffff;
-  --bg-subtle: #f3f3ee;
+  /* Magazine — warm paper & ink */
+  --bg-canvas: #f6f0e4;
+  --bg-surface: #fbf6ec;
+  --bg-subtle: #efe6d4;
   --background: var(--bg-canvas);
-  --foreground: #14171b;
+  --foreground: #1c1814;
 
-  --ink: #14171b;
-  --ink-soft: #555b65;
-  --ink-faint: #969ba5;
-  --rule: #d4d6da;
-  --rule-light: #e8eaed;
+  --ink: #1c1814;
+  --ink-soft: #5b5346;
+  --ink-faint: #9a9080;
+  --rule: #ddd2bd;
+  --rule-light: #e8ddc8;
 
   --card: var(--bg-surface);
   --card-hover: var(--bg-subtle);
   --border: var(--rule);
   --divider: var(--rule);
 
-  /* Semantic accents (atlas-inspired) */
-  --accent-stamp: #c8341f;
-  --accent-link: #1d4ed8;
-  --accent-live: #1f6a3a;
-  --accent-moss: #1f6a3a;
+  /* Semantic accents — terracotta-led magazine palette */
+  --accent-stamp: #bf4528;
+  --accent-link: #bf4528;
+  --accent-live: #6b7a3a;
+  --accent-moss: #6b7a3a;
   --accent-ochre: #9a7b4f;
-  --accent-amber: #d4a04a;
-  --accent-blue: #1d4ed8;
-  --accent-red: #c8341f;
+  --accent-amber: #c98a3a;
+  --accent-blue: #3a5a78;
+  --accent-red: #bf4528;
 
-  /* Brand & actions — mapped for compatibility */
-  --primary: var(--accent-link);
-  --primary-hover: #1e40af;
-  --primary-light: #eff6ff;
-  --primary-soft: #eff6ff;
+  /* Brand & actions — 赤沙 (terracotta) as primary */
+  --primary: #bf4528;
+  --primary-hover: #a33a20;
+  --primary-light: #f6e4dd;
+  --primary-soft: #f6e4dd;
   --cta: var(--ink);
   --cta-hover: var(--ink-soft);
 
   --teal: var(--accent-live);
-  --teal-soft: #e8f5ec;
+  --teal-soft: #e9ecd9;
   --coral: var(--accent-stamp);
-  --coral-soft: #fdecea;
+  --coral-soft: #f6e4dd;
 
   /* Typography colors */
   --title: var(--ink);
@@ -92,8 +92,6 @@
 
 body {
   background-color: var(--background);
-  background-image: radial-gradient(circle, var(--rule-light) 1px, transparent 1px);
-  background-size: 32px 32px;
   color: var(--body);
   font-family: var(--font-sans);
   font-size: 13px;
@@ -103,8 +101,8 @@ body {
 
 /* Typography utilities */
 .heading-serif {
-  font-family: var(--font-serif);
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--title);
 }
