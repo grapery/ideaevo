@@ -76,7 +76,7 @@ export default function ChatInput({
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" />
             </svg>
           ) : (
-            <IconSend className="h-4 w-4" />
+            <IconSend className="h-4 w-4 pointer-events-none" />
           )}
         </button>
       </div>
