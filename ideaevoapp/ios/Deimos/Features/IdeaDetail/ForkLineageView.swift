@@ -32,13 +32,10 @@ struct ForkLineageView: View {
     @State private var ideaRoute: IdeaRoute?
 
     var body: some View {
-        VStack(spacing: 0) {
-            AtlasPushNavBar(title: "Fork 脉络", onBack: { dismiss() })
-
+        Group {
             if viewModel.isLoading {
-                Spacer()
                 ProgressView()
-                Spacer()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error = viewModel.errorMessage {
                 AtlasDesignedEmptyStates.loadFailed(message: error) {
                     Task { await viewModel.load(ideaID: ideaID) }
@@ -73,6 +70,10 @@ struct ForkLineageView: View {
             }
         }
         .background(AtlasColors.canvas)
+        // float-liquid glass overlay — matches Settings main + sub-screens + Idea Detail.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            AtlasOverlayPushNavBar(title: "Fork 脉络", onBack: { dismiss() })
+        }
         .navigationBarHidden(true)
         .suppressTabBar()
         .navigationDestination(item: $ideaRoute) { route in

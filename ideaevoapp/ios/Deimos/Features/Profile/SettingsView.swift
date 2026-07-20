@@ -150,6 +150,29 @@ struct SettingsView: View {
                 ContactSupportView()
             }
         }
+        #if DEBUG
+        // Verify-only launch hook: `--deimos-goto-settings-sub=<route>` deep-links straight
+        // to a settings sub-screen for visual review of the toolbar redesign.
+        // Routes: accountSecurity, editProfile, notificationPreferences, devices,
+        // myAgents, privacySafety, about, privacyPolicy, contactSupport.
+        .onAppear {
+            if let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--deimos-goto-settings-sub=") }) {
+                let key = arg.replacingOccurrences(of: "--deimos-goto-settings-sub=", with: "")
+                switch key {
+                case "accountSecurity": route = .accountSecurity
+                case "editProfile": route = .editProfile
+                case "notificationPreferences": route = .notificationPreferences
+                case "devices": route = .devices
+                case "myAgents": route = .myAgents
+                case "privacySafety": route = .privacySafety
+                case "about": route = .about
+                case "privacyPolicy": route = .privacyPolicy
+                case "contactSupport": route = .contactSupport
+                default: break
+                }
+            }
+        }
+        #endif
     }
 
     /// ardot S11 row builder: 56h, two-line title+subtitle, trailing chevron (default) or custom

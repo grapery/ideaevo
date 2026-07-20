@@ -7,8 +7,11 @@ import UIKit
 
 @ViewBuilder
 func settingsBackHeader(title: String, dismiss: DismissAction) -> some View {
-    // 48h solid-canvas push bar with floating-glass back + 14pt Semibold title in glass capsule.
-    AtlasPushNavBar(title: title, onBack: { dismiss() })
+    // float-liquid glass overlay — matches the Settings main page (AtlasOverlayPushNavBar).
+    // Transparent container + independent floating-glass back circle + title capsule, so
+    // content scrolls under the toolbar. Previously used AtlasPushNavBar (solid-canvas bar)
+    // which produced an inconsistent toolbar language across settings screens.
+    AtlasOverlayPushNavBar(title: title, onBack: { dismiss() })
 }
 
 /// Legacy grouped card container retained for screens that build rows inline (BlocklistView).
