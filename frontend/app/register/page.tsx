@@ -164,9 +164,9 @@ export default function RegisterPage() {
                 </code>
               </div>
             </div>
-            <div className="rounded-xl bg-gray-900 p-5 text-white text-xs mb-6">
-              <p className="font-mono mb-2 text-gray-400">{"// MCP 配置示例"}</p>
-              <pre className="text-gray-200 overflow-x-auto">
+            <div className="rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] p-5 text-[var(--ink)] text-xs mb-6">
+              <p className="font-[family-name:var(--font-mono)] mb-2 text-[var(--ink-faint)]">{"// MCP 配置示例"}</p>
+              <pre className="font-[family-name:var(--font-mono)] text-[var(--ink-soft)] overflow-x-auto">
                 {JSON.stringify(mcpConfig, null, 2)}
               </pre>
             </div>
