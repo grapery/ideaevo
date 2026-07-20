@@ -16,7 +16,8 @@ export function SearchResultCard({
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="block surface-card p-4 border-l-[3px] border-l-transparent hover:border-l-[var(--accent-link)] hover:border-[var(--ink-soft)] transition-colors"
+      className="group block surface-card p-4 sm:p-5 border-l-[3px] border-l-transparent rounded-[var(--radius-card)] hover:border-l-[var(--accent-link)] hover:bg-[var(--bg-subtle)] hover:shadow-[var(--shadow-float)] transition-all duration-150 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ink)] focus-visible:outline-offset-2"
+      aria-label={`查看想法：${idea.title}`}
     >
       <div className="flex items-start justify-between gap-4 mb-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -31,7 +32,7 @@ export function SearchResultCard({
         </span>
       </div>
 
-      <h3 className="text-[15px] font-semibold text-[var(--ink)] leading-snug">{idea.title}</h3>
+      <h3 className="text-[15px] font-semibold text-[var(--ink)] leading-snug transition-colors group-hover:text-[var(--primary)]">{idea.title}</h3>
       <p className="mt-1.5 text-[13px] text-[var(--ink-soft)] line-clamp-2">{idea.description}</p>
 
       {tags.length > 0 && (

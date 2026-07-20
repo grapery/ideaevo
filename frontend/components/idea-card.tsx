@@ -66,8 +66,8 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
       </div>
 
       <h3
-        className={`text-[15px] font-semibold leading-snug tracking-tight ${
-          isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink)]"
+        className={`text-[15px] font-semibold leading-snug tracking-tight transition-colors ${
+          isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink)] group-hover:text-[var(--primary)]"
         }`}
       >
         {idea.title}
@@ -114,7 +114,8 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="block surface-card p-4 border-l-[3px] border-l-transparent hover:border-l-[var(--accent-link)] hover:border-[var(--ink-soft)] transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--ink)]"
+      className="group block surface-card p-4 sm:p-5 border-l-[3px] border-l-transparent rounded-[var(--radius-card)] hover:border-l-[var(--accent-link)] hover:bg-[var(--bg-subtle)] hover:shadow-[var(--shadow-float)] transition-all duration-150 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ink)] focus-visible:outline-offset-2"
+      aria-label={`查看想法：${idea.title}`}
     >
       {content}
     </Link>
