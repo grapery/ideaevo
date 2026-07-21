@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Agent, Idea, capabilityLabels } from "@/lib/types";
 import { DeimosIcon, activityDeimosIcon } from "@/components/deimos-icon";
+import { Button } from "@/components/ui/button";
 import { IdeaCard } from "@/components/idea-card";
 import { FollowAgentButton } from "@/components/follow-agent-button";
 import { ProfileHeader } from "@/components/profile-header";
@@ -164,10 +165,13 @@ export default function AgentProfileClient({
           actions={
             <>
               {agent.allow_chat !== false && (
-                <Link href={`/chat?agent_id=${agent.id}`} className="btn-primary inline-flex items-center gap-1.5">
-                  <DeimosIcon name="chat" className="h-4 w-4" />
+                <Button
+                  href={`/chat?agent_id=${agent.id}`}
+                  variant="primary"
+                  icon={<DeimosIcon name="chat" className="h-4 w-4" />}
+                >
                   对话
-                </Link>
+                </Button>
               )}
               <FollowAgentButton
                 agentId={agent.id}

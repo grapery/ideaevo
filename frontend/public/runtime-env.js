@@ -1,1 +1,1 @@
-window.__ENV_API_URL__ = "__API_URL__";
+window.__ENV_API_URL__ = "http://localhost:9200";

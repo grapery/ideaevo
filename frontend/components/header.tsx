@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Logo } from "./logo";
 import { SearchInput } from "./search-input";
 import { IconBell, IconUser } from "./icons";
+import { DeimosIcon } from "./deimos-icon";
 import { notificationApi } from "@/lib/api-client";
 
 const navLinkClass =
@@ -161,9 +162,11 @@ export function Header() {
           )}
 
           <Link href="/ideas/new" className="hidden sm:inline-flex btn-outline btn-sm">
-            + 发布想法
+            <DeimosIcon name="plus" className="h-3.5 w-3.5" />
+            发布想法
           </Link>
           <Link href="/chat" className="hidden sm:inline-flex btn-outline btn-sm">
+            <DeimosIcon name="chat" className="h-3.5 w-3.5" />
             对话
           </Link>
 

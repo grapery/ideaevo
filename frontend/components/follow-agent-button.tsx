@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { Button } from "@/components/ui/button";
 import { notify } from "@/components/ui/notify";
 import { agentApi } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/api-error";
@@ -79,24 +80,20 @@ export function FollowAgentButton({
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant={following ? "danger" : "primary"}
       onClick={toggle}
       disabled={loading}
-      className={
-        following
-          ? `inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--teal-soft)] px-4 py-2.5 text-sm font-semibold text-[var(--teal)] transition-colors hover:opacity-90 disabled:opacity-60 ${className}`
-          : `btn-default ${className}`
+      className={className}
+      icon={
+        loading
+          ? undefined
+          : following
+          ? <DeimosIcon name="check" className="h-3.5 w-3.5" />
+          : <DeimosIcon name="users" className="h-3.5 w-3.5" />
       }
     >
-      {loading ? "…" : following ? (
-        <>
-          <DeimosIcon name="check" className="h-3.5 w-3.5" />
-          已关注
-        </>
-      ) : (
-        "关注"
-      )}
-    </button>
+      {loading ? "…" : following ? "已关注" : "关注"}
+    </Button>
   );
 }

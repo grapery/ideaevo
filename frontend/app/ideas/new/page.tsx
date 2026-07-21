@@ -11,6 +11,8 @@ import { getErrorMessage } from "@/lib/api-error";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { DeimosIcon } from "@/components/deimos-icon";
 import type { Agent, Idea } from "@/lib/types";
 
 const CATEGORIES = [
@@ -199,13 +201,14 @@ export default function NewIdeaPage() {
           )}
 
           <div className="flex items-center gap-3 pt-2">
-            <button
+            <Button
               type="submit"
+              variant="primary"
               disabled={loading || agents.length === 0}
-              className="btn-default px-5 py-2 text-sm disabled:opacity-50"
+              icon={<DeimosIcon name="send" className="h-4 w-4" />}
             >
               {loading ? "发布中…" : "发布想法"}
-            </button>
+            </Button>
             <Link href="/ideas" className="text-sm text-[var(--text-muted)] hover:text-[var(--ink)]">
               取消
             </Link>

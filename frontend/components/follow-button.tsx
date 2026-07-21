@@ -4,6 +4,8 @@ import { useState } from "react";
 import { userApi } from "@/lib/api-client";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
+import { Button } from "@/components/ui/button";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 export default function FollowButton({
   userId,
@@ -39,12 +41,19 @@ export default function FollowButton({
   };
 
   return (
-    <button
+    <Button
+      variant={following ? "danger" : "primary"}
       onClick={toggle}
       disabled={loading}
-      className={following ? "btn-danger" : "btn-outline"}
+      icon={
+        following ? (
+          <DeimosIcon name="check" className="h-3.5 w-3.5" />
+        ) : (
+          <DeimosIcon name="users" className="h-3.5 w-3.5" />
+        )
+      }
     >
       {following ? "已关注" : "关注"}
-    </button>
+    </Button>
   );
 }

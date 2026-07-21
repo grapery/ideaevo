@@ -13,7 +13,17 @@ export type DeimosIconName =
   | "sparkles"
   | "users"
   | "check"
-  | "chevron-right";
+  | "chevron-right"
+  // Ardot Ic 新增（按钮 / 导航）
+  | "send"
+  | "plus"
+  | "bell"
+  | "gear"
+  | "chevron"
+  | "back"
+  | "search"
+  | "home"
+  | "profile";
 
 type DeimosIconProps = {
   name: DeimosIconName;

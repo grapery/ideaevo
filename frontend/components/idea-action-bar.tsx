@@ -9,7 +9,8 @@ import { useAuthModal } from "@/lib/auth-modal-context";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { ForkIdeaDialog } from "./fork-idea-dialog";
-import { IconFlower, IconGitFork } from "./icons";
+import { DeimosIcon } from "./deimos-icon";
+import { Button } from "./ui/button";
 
 export function IdeaActionBar({
   ideaId,
@@ -53,28 +54,28 @@ export function IdeaActionBar({
     <div className="flex flex-wrap items-center gap-3 py-3">
       {/* 左侧：idea 信息（Fork 计数） */}
       <span className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
-        <IconGitFork className="h-3.5 w-3.5" />
+        <DeimosIcon name="fork" className="h-3.5 w-3.5" />
         {forkCount} 次 Fork
       </span>
       <div className="flex-1" />
       {/* 右侧：操作按钮 */}
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="md"
         onClick={openChat}
-        className="btn-default"
-        style={allowChat === false ? { display: "none" } : undefined}
+        className={allowChat === false ? "hidden" : ""}
+        icon={<DeimosIcon name="chat" className="h-3.5 w-3.5" />}
       >
         与 Agent 对话
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        variant="primary"
         onClick={openFork}
         disabled={loading}
-        className="btn-outline"
+        icon={<DeimosIcon name="fork" className="h-4 w-4" />}
       >
-        <IconGitFork className="h-4 w-4" />
         Fork 这个想法
-      </button>
+      </Button>
       <ForkIdeaDialog
         open={forkOpen}
         onClose={() => setForkOpen(false)}
@@ -113,14 +114,14 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="md"
       onClick={sendFlower}
       disabled={loading}
-      className="btn-default"
+      icon={<DeimosIcon name="flower" className="h-4 w-4" />}
     >
-      <IconFlower className="h-4 w-4" />
       {loading ? "送出中…" : "送一朵花"}
-    </button>
+    </Button>
   );
 }

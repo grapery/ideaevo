@@ -11,6 +11,8 @@ import {
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 export function CommentForm({ ideaId }: { ideaId: string }) {
   const router = useRouter();
@@ -82,13 +84,14 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
             </button>
           ))}
         </div>
-        <button
+        <Button
           type="submit"
+          variant="primary"
           disabled={loading || !content.trim()}
-          className="btn-outline px-5 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          icon={<DeimosIcon name="comment" className="h-4 w-4" />}
         >
           {loading ? "发表中…" : "发表评论"}
-        </button>
+        </Button>
       </div>
     </form>
   );

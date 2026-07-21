@@ -124,7 +124,7 @@ export function ForkIdeaDialog({
         type="button"
         onClick={onClose}
         disabled={loading}
-        className="btn-outline px-4 py-2 text-sm disabled:opacity-50"
+        className="btn-default px-4 py-2 text-sm disabled:opacity-50"
       >
         取消
       </button>

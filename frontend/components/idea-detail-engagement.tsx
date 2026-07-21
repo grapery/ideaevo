@@ -13,7 +13,9 @@ import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api-client";
 import { ReactionBar } from "./reaction-bar";
 import { ReportDialog } from "./report-dialog";
-import { IconBookmark, IconFlower, IconGitFork, IconHeart, IconMessage, IconShare } from "./icons";
+import { IconBookmark, IconShare } from "./icons";
+import { DeimosIcon } from "./deimos-icon";
+import { CountButton } from "./ui/count-button";
 
 export function IdeaDetailEngagement({
   ideaId,
@@ -186,9 +188,6 @@ export function IdeaDetailEngagement({
     }
   }
 
-  const actionBtn =
-    "inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] tabular-nums transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-[var(--bg-subtle)] active:scale-90 disabled:opacity-50";
-
   return (
     <div className="space-y-3">
       <ReactionBar
@@ -196,86 +195,78 @@ export function IdeaDetailEngagement({
         initialCounts={reactionCounts}
         initialMine={myReaction}
       />
-      <div className="flex items-center gap-5 text-[var(--text-secondary)]">
-      <button
-        type="button"
-        onClick={toggleLike}
-        disabled={loading === "like"}
-        aria-label="点赞"
-        aria-pressed={liked}
-        className={`${actionBtn} ${liked ? "text-[var(--coral)]" : ""}`}
-      >
-        <IconHeart />
-        <span>{likes}</span>
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <CountButton
+          variant="soft"
+          icon={<DeimosIcon name="heart" className="h-3.5 w-3.5" />}
+          count={likes}
+          active={liked}
+          tone="coral"
+          onClick={toggleLike}
+          disabled={loading === "like"}
+          ariaLabel="点赞"
+        />
 
-      <button
-        type="button"
-        onClick={sendFlower}
-        disabled={loading === "flower"}
-        aria-label="送花"
-        className={`${actionBtn} text-[var(--coral)]`}
-      >
-        <IconFlower />
-        <span>{flowers}</span>
-      </button>
+        <CountButton
+          variant="soft"
+          icon={<DeimosIcon name="flower" className="h-3.5 w-3.5" />}
+          count={flowers}
+          active
+          tone="coral"
+          onClick={sendFlower}
+          disabled={loading === "flower"}
+          ariaLabel="送花"
+        />
 
-      <button
-        type="button"
-        onClick={() => onForkListToggle?.()}
-        disabled={!onForkListToggle}
-        aria-label="查看 Fork 衍生想法"
-        aria-expanded={forkListOpen}
-        className={`${actionBtn} ${forkListOpen ? "bg-[var(--primary-soft)] text-[var(--primary)]" : ""}`}
-      >
-        <IconGitFork />
-        <span>{forks}</span>
-      </button>
+        <CountButton
+          variant="soft"
+          icon={<DeimosIcon name="fork" className="h-3.5 w-3.5" />}
+          count={forks}
+          active={forkListOpen}
+          tone="primary"
+          onClick={() => onForkListToggle?.()}
+          disabled={!onForkListToggle}
+          ariaLabel="查看 Fork 衍生想法"
+        />
 
-      <button
-        type="button"
-        onClick={scrollToComments}
-        aria-label="查看评论"
-        className={actionBtn}
-      >
-        <IconMessage />
-        <span>{comments}</span>
-      </button>
+        <CountButton
+          variant="soft"
+          icon={<DeimosIcon name="comment" className="h-3.5 w-3.5" />}
+          count={comments}
+          onClick={scrollToComments}
+          ariaLabel="查看评论"
+        />
 
-      {user && (
-        <button
-          type="button"
-          onClick={toggleBookmark}
-          disabled={loading === "bookmark"}
-          aria-label="收藏"
-          aria-pressed={bookmarked}
-          className={`${actionBtn} ${bookmarked ? "text-[var(--primary)]" : ""}`}
-        >
-          <IconBookmark filled={bookmarked} />
-          <span>收藏</span>
-        </button>
-      )}
+        {user && (
+          <CountButton
+            variant="soft"
+            icon={<IconBookmark filled={bookmarked} className="h-3.5 w-3.5" />}
+            label="收藏"
+            active={bookmarked}
+            tone="primary"
+            onClick={toggleBookmark}
+            disabled={loading === "bookmark"}
+            ariaLabel="收藏"
+          />
+        )}
 
-      <button
-        type="button"
-        onClick={shareIdea}
-        aria-label="分享"
-        className={`${actionBtn} ml-auto`}
-      >
-        <IconShare />
-        <span>分享</span>
-      </button>
+        <CountButton
+          variant="soft"
+          icon={<IconShare className="h-3.5 w-3.5" />}
+          label="分享"
+          onClick={shareIdea}
+          ariaLabel="分享"
+          className="ml-auto"
+        />
 
-      {user && (
-        <button
-          type="button"
-          onClick={() => setReportOpen(true)}
-          aria-label="举报这个想法"
-          className={actionBtn}
-        >
-          <span>举报</span>
-        </button>
-      )}
+        {user && (
+          <CountButton
+            variant="soft"
+            label="举报"
+            onClick={() => setReportOpen(true)}
+            ariaLabel="举报这个想法"
+          />
+        )}
       </div>
 
       <ReportDialog
