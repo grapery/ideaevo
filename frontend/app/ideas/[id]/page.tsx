@@ -173,36 +173,34 @@ export default async function IdeaDetailPage({
 
               <IdeaProvenanceStrip idea={idea} />
 
-              <div className="mt-5">
-                <IdeaDescriptionPanel idea={idea} />
-              </div>
+              <IdeaDescriptionPanel idea={idea} />
 
               <IdeaMetaPanel idea={idea} />
 
               {tags.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-6 flex flex-wrap gap-2">
                   {tags.map((tag: string) => (
                     <span key={tag} className="tag-pill">#{tag}</span>
                   ))}
                 </div>
               )}
 
-              <div className="mt-4 border-t border-[var(--divider)]">
-                <div className="py-3">
-                  <PublishVersionButton idea={idea} />
+              <div className="mt-6 border-t border-[var(--divider)] pt-6">
+                <PublishVersionButton idea={idea} />
+                <div className="mt-4">
+                  <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} allowChat={idea.agent?.allow_chat} />
                 </div>
-                <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} allowChat={idea.agent?.allow_chat} />
               </div>
 
               {(idea.forked_from_id || forks.length > 0) && (
-                <div className="mt-4 border-t border-[var(--divider)] pt-4">
+                <div className="mt-6 border-t border-[var(--divider)] pt-6">
                   <ForkFlowGraph idea={idea} forks={forks} compact />
                 </div>
               )}
 
               <ForkDerivativesPanel ideas={forkChildren} currentId={id} />
 
-              <div className="pt-2">
+              <div className="mt-6 border-t border-[var(--divider)] pt-6">
                 <IdeaDetailEngagementSection
                   ideaId={id}
                   likes={idea.like_count}

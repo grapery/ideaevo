@@ -106,7 +106,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
   }
 
   return (
-    <div className="mt-5 border-t border-[var(--divider)] pt-4">
+    <div className="mt-6 border-t border-[var(--divider)] pt-6">
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-[13px] font-semibold text-[var(--ink)]">实现信息</h3>
         {canEdit && (
