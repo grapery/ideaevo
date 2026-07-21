@@ -127,10 +127,16 @@ struct ChatThreadView: View {
         }
         .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: isSheetZoomActive)
-        // S07 v2 toolbar: float-liquid glass — back circle + left-aligned title/subtitle +
-        // trailing archive circle. Replaces the old solid `AtlasColors.canvas` bar + hairline.
+        // S07 v2 toolbar: float-liquid glass overlay — back circle + centered title in glass
+        // capsule + trailing archive circle. Matches the C/Push Toolbar pattern (ardot 237:94)
+        // used by every other push screen (settings, idea detail, etc.) for visual consistency.
         .safeAreaInset(edge: .top, spacing: 0) {
-            chatToolbar
+            AtlasOverlayPushNavBar(title: title, onBack: { dismiss() }) {
+                AtlasToolbarFloatIconButton(icon: .document, size: AtlasMetrics.backButtonSize, iconSize: 17) {
+                    Task { await archiveSession() }
+                }
+                .accessibilityLabel("封存对话")
+            }
         }
         .navigationBarHidden(true)
         .suppressTabBar()
@@ -141,33 +147,6 @@ struct ChatThreadView: View {
         .navigationDestination(item: $ideaRoute) { route in
             IdeaDetailView(ideaID: route.id)
         }
-    }
-
-    /// Float-liquid glass toolbar. The title is left-aligned (not centered in a capsule) so
-    /// the agent name + idea-context subtitle read like a nav bar. Trailing archive button.
-    private var chatToolbar: some View {
-        HStack(spacing: 10) {
-            AtlasToolbarFloatIconButton(icon: .chevronBack, size: AtlasMetrics.backButtonSize, iconSize: 17) {
-                dismiss()
-            }
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(AtlasColors.ink)
-                    .lineLimit(1)
-                Text(contextIdea != nil ? "带着 Idea 上下文" : "对话")
-                    .font(.system(size: 11))
-                    .foregroundStyle(AtlasColors.inkSoft)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-            AtlasToolbarFloatIconButton(icon: .document, size: AtlasMetrics.backButtonSize, iconSize: 17) {
-                Task { await archiveSession() }
-            }
-            .accessibilityLabel("封存对话")
-        }
-        .padding(.horizontal, AtlasMetrics.detailX)
-        .frame(height: AtlasToolbarMetrics.barHeight)
     }
 
     /// Empty-conversation state: a friendly header + 3 starter prompt chips.
@@ -419,7 +398,7 @@ struct ChatMessageBubble: View {
                 // Replaces the old empty bubble shown while the first chunk streams in.
                 HStack(alignment: .top, spacing: 0) {
                     ChatTypingIndicator()
-                        .background(Color(hex: 0xF1F5FF))
+                        .background(AtlasColors.chatAssistantBubble)
                         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     Spacer(minLength: 0)
                 }
@@ -445,7 +424,7 @@ struct ChatMessageBubble: View {
                     .padding(.horizontal, 14)
                     .padding(.top, 12)
                     .padding(.bottom, 10)
-                    .background(message.isUser ? AtlasColors.lemonStrong : Color(hex: 0xF1F5FF))
+                    .background(message.isUser ? AtlasColors.lemonChat : AtlasColors.chatAssistantBubble)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     if !message.isUser { Spacer(minLength: 0) }
                 }
@@ -495,14 +474,15 @@ struct ChatMessageBubble: View {
 
             Text(timestampText)
                 .font(.system(size: 11))
-                .foregroundStyle(AtlasColors.inkFaint)
+                .foregroundStyle(AtlasColors.inkSoft)
         }
         .padding(.horizontal, 2)
     }
 
     private func actionButton(icon: DeimosIcon, active: Bool, activeColor: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            DeimosIconView(icon: icon, size: 15, color: active ? activeColor : AtlasColors.inkFaint)
+            // ardot S07: idle icons stroked #8C96A8 — closest existing token is inkSoft (#8A94A6).
+            DeimosIconView(icon: icon, size: 15, color: active ? activeColor : AtlasColors.inkSoft)
         }
         .buttonStyle(.plain)
     }

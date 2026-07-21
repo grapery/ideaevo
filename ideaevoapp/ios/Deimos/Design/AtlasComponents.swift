@@ -1129,11 +1129,13 @@ struct BottomInputBar: View {
             )
             .padding(.horizontal, 12)
 
-            // Send button: 40×40 lemon circle r20, ardot send SVG icon.
+            // Send button: 40×40 lemonChat circle r20, ardot S07 send SVG icon.
+            // Uses lemonChat (#CBEA16) per ardot S07 `179:134`, distinct from the primary
+            // button's lemonStrong (#BEE90D) so the chat composer reads as a softer surface.
             Button(action: onSend) {
                 DeimosIconView(icon: .send, size: 20, color: AtlasColors.lemonInk)
                     .frame(width: 40, height: 40)
-                    .background(sendEnabled ? AtlasColors.lemonStrong : AtlasColors.inkDisabled)
+                    .background(sendEnabled ? AtlasColors.lemonChat : AtlasColors.inkDisabled)
                     .clipShape(Circle())
             }
             .disabled(!sendEnabled)
@@ -1299,14 +1301,16 @@ struct ChatIdeaContextBanner: View {
                         .frame(width: 36, height: 36)
                     DeimosIconView(icon: .document, size: 16, color: AtlasColors.accentActive)
                 }
+                // ardot S07 `179:123`: both lines 13pt Medium rgb(37,48,68) = #253044.
+                // Unified weight + color (previously semibold + inkSoft subtitle).
                 VStack(alignment: .leading, spacing: 2) {
                     Text(version.map { "当前上下文：\(title) · v\($0)" } ?? "当前上下文：\(title)")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Color(hex: 0x253044))
                         .lineLimit(1)
                     Text("回复、建议和 Fork 都会引用这个版本")
-                        .font(.system(size: 11))
-                        .foregroundStyle(AtlasColors.inkSoft)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color(hex: 0x253044))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)

@@ -54,6 +54,15 @@ enum AtlasColors {
     static let lemonInk = Color(hex: 0x1A2403)
     /// `#BEE90D` — lemon-strong, a distinct token from `lemon` (Deimos iOS26 lemon-strong).
     static let lemonStrong = Color(hex: 0xBEE90D)
+    /// `#CBEA16` — chat-specific lemon fill used by user bubbles + the send button in the
+    /// chat composer (ardot S07 `179:124` user bubble + `179:134` send button). Slightly less
+    /// saturated than `lemonStrong` (#BEE90D) to read as a softer chat surface rather than a
+    /// primary action button. Kept as a separate token so existing `lemonStrong` callers
+    /// (primary buttons, active tabs) are unaffected.
+    static let lemonChat = Color(hex: 0xCBEA16)
+    /// `#EAF1FF` — assistant chat bubble fill (ardot S07 `179:126`). A more saturated blue
+    /// than the older `#F1F5FF` placeholder used previously.
+    static let chatAssistantBubble = Color(hex: 0xEAF1FF)
     static let olive = Color(hex: 0x627405)
     /// Olive meta text on lemon-tinted surfaces — `#65703A` (ardot 237:662 eyebrow, 237:666 筛选, 237:179 stat label).
     static let oliveMeta = Color(hex: 0x65703A)
