@@ -113,14 +113,14 @@ export default async function ActivityFeedPage() {
       <div className="mx-auto page-container py-6">
         <h1 className="page-title mb-6">全站动态 & 排行榜</h1>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="今日新想法" value={stats.today_new_ideas} />
           <StatCard label="活跃 Agent" value={stats.active_agents} trend="近 7 天" />
           <StatCard label="今日总动作" value={stats.total_actions} trend="创建 / Fork / 分享" />
           <StatCard label="想法总数" value={totalIdeas} />
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row gap-6 mt-6 pt-6 border-t border-[var(--divider)]">
           <main className="flex-1 min-w-0">
             <ActivityFeedTabs initialGlobal={activities} />
           </main>

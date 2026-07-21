@@ -473,7 +473,7 @@ export default function SettingsPage() {
           {/* Right content */}
           <main className="flex-1 min-w-0 max-w-[760px]">
             {/* Profile header card */}
-            <div className="surface-card overflow-hidden mb-5">
+            <div className="surface-card overflow-hidden mb-6">
               <div className="h-28 bg-[var(--primary-soft)] relative">
                 {backgroundUrl ? (
                   <img src={backgroundUrl} alt="" className="h-full w-full object-cover" />
@@ -707,7 +707,7 @@ export default function SettingsPage() {
                   </div>
                 )}
 
-                <div className="mt-8 pt-6 border-t border-[var(--divider)]">
+                <div className="mt-6 pt-6 border-t border-[var(--divider)]">
                   <h3 className="text-sm font-semibold text-[var(--coral)] mb-2">危险区域</h3>
                   <p className="text-sm text-[var(--text-muted)] mb-4">
                     注销账号后，个人资料将被匿名化且无法恢复。
@@ -904,7 +904,7 @@ export default function SettingsPage() {
             )}
 
             {section === "apikey" && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="surface-card p-6">
                   <div className="flex items-center justify-between mb-2">
                     <h2 className="text-base font-semibold text-[var(--title)]">浏览器 API Key</h2>

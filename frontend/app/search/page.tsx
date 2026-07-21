@@ -148,7 +148,7 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       {/* Search Hero */}
-      <section className="border-b border-[var(--border)]">
+      <section className="border-b border-[var(--divider)]">
         <div className="mx-auto page-container py-6">
           <h1 className="page-title mb-4">搜索想法</h1>
           <SearchInput
