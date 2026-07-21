@@ -1,5 +1,17 @@
 import SwiftUI
 
+// MARK: - Shared card primitives (mirror SettingsSubviews.swift so compliance screens
+// use the same card language as the settings stack: solid white surface + rule border).
+
+private var cardSurface: some View {
+    RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+        .fill(AtlasColors.surface)
+}
+private var cardBorder: some View {
+    RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+        .stroke(AtlasColors.rule, lineWidth: 1)
+}
+
 // MARK: - Action menus (S04M · S09M)
 
 struct AtlasMenuAction: Identifiable {
@@ -190,7 +202,7 @@ struct LegalDocumentView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 14) {
                 ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(section.heading)
@@ -203,12 +215,12 @@ struct LegalDocumentView: View {
                     }
                     .padding(AtlasMetrics.cardPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(AtlasColors.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard))
-                    .atlasElevatedCard()
+                    .background(cardSurface)
+                    .overlay(cardBorder)
                 }
             }
-            .padding(.horizontal, AtlasMetrics.pageX)
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
             .padding(.bottom, 40)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -253,17 +265,18 @@ struct BlocklistView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("拉黑的用户不会出现在你的动态、广场、搜索与通知中。可在用户主页 ⋯ 菜单中拉黑。")
-                    .font(AtlasTypography.meta())
-                    .foregroundStyle(AtlasColors.inkSoft)
+            VStack(alignment: .leading, spacing: 14) {
+                AtlasSettingsSubSummaryCard(
+                    title: "黑名单管理",
+                    message: "拉黑的用户不会出现在你的动态、广场、搜索与通知中。可在用户主页 ⋯ 菜单中拉黑。"
+                )
 
                 if blocked.isEmpty {
                     AtlasDesignedEmptyStates.blocklistEmpty()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 48)
                 } else {
-                    settingsGroupedCard {
+                    AtlasSettingsGroup {
                         ForEach(Array(blocked.enumerated()), id: \.element.id) { index, user in
                             HStack(spacing: 12) {
                                 EntityAvatar.user(id: user.id, url: nil, name: user.name, size: 40)
@@ -285,17 +298,17 @@ struct BlocklistView: View {
                                 .font(AtlasTypography.badge())
                                 .foregroundStyle(AtlasColors.destructive)
                             }
-                            .padding(.horizontal, AtlasMetrics.cardPadding)
-                            .padding(.vertical, 12)
+                            .frame(minHeight: 56)
 
                             if index < blocked.count - 1 {
-                                Divider().padding(.leading, AtlasMetrics.cardPadding + 52)
+                                AtlasSettingsGroupDivider()
                             }
                         }
                     }
                 }
             }
-            .padding(.horizontal, AtlasMetrics.pageX)
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
             .padding(.bottom, 40)
         }
         .safeAreaInset(edge: .top, spacing: 0) {

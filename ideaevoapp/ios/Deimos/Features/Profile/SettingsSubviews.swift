@@ -85,13 +85,25 @@ struct EditProfileView: View {
                         .disabled(isUploadingAvatar || isUploadingBackground)
                     }
 
-                    HStack(spacing: 16) {
-                        Button("恢复默认头像") { Task { await resetAvatar() } }
-                            .font(.system(size: 13))
-                            .foregroundStyle(AtlasColors.inkSoft)
-                        Button("恢复默认背景") { Task { await resetBackground() } }
-                            .font(.system(size: 13))
-                            .foregroundStyle(AtlasColors.inkSoft)
+                    HStack(spacing: 10) {
+                        Button { Task { await resetAvatar() } } label: {
+                            Text("恢复默认头像")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(AtlasColors.inkSoft)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Capsule(style: .continuous).fill(AtlasColors.fill))
+                        }
+                        .buttonStyle(.plain)
+                        Button { Task { await resetBackground() } } label: {
+                            Text("恢复默认背景")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(AtlasColors.inkSoft)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Capsule(style: .continuous).fill(AtlasColors.fill))
+                        }
+                        .buttonStyle(.plain)
                         Spacer(minLength: 0)
                     }
                 }
@@ -107,12 +119,7 @@ struct EditProfileView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(AtlasColors.inkFaint)
                         TextField("昵称", text: $name)
-                            .font(.system(size: 15))
-                            .foregroundStyle(AtlasColors.ink)
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 12)
-                            .background(AtlasColors.bgInput)
-                            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+                            .styleSettingsInput()
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("简介")
@@ -122,7 +129,7 @@ struct EditProfileView: View {
                             .font(.system(size: 15))
                             .foregroundStyle(AtlasColors.ink)
                             .frame(minHeight: 92)
-                            .padding(8)
+                            .padding(12)
                             .background(AtlasColors.bgInput)
                             .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
                             .scrollContentBackground(.hidden)
@@ -470,16 +477,22 @@ struct DeleteAccountView: View {
                                 TextField("短信验证码", text: $deleteSMSCode)
                                     .styleSettingsInput()
                                     .keyboardType(.numberPad)
-                                Button("发送验证码") {
+                                Button {
                                     Task {
                                         try? await APIClient.shared.sendPhoneCode(
                                             phone: deletePhone.trimmingCharacters(in: .whitespacesAndNewlines),
                                             purpose: "account_delete"
                                         )
                                     }
+                                } label: {
+                                    Text("发送验证码")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(AtlasColors.lemonInk)
+                                        .padding(.horizontal, 12)
+                                        .frame(height: 36)
+                                        .background(Capsule(style: .continuous).fill(AtlasColors.lemonSoft))
                                 }
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(AtlasColors.lemonInk)
+                                .buttonStyle(.plain)
                             }
                         default:
                             Text("当前登录方式不支持在此注销")
@@ -668,27 +681,23 @@ struct NotificationPreferencesView: View {
     }
 
     private var togglesCard: some View {
-        VStack(spacing: 0) {
+        // Use the shared AtlasSettingsGroup (glass material, r22, #E7EBF0 border, shadow)
+        // so the toggle group matches the other settings nav groups on this screen and hub.
+        AtlasSettingsGroup {
             toggleRow("送花", isOn: $flowers)
             AtlasSettingsGroupDivider()
             toggleRow("评论与回复", isOn: $comments)
             AtlasSettingsGroupDivider()
             toggleRow("关注与 Fork", isOn: $follows)
         }
-        .background(AtlasColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                .stroke(AtlasColors.rule, lineWidth: 1)
-        )
     }
 
     private func toggleRow(_ title: String, isOn: Binding<Bool>) -> some View {
         Toggle(title, isOn: isOn)
-            .font(.system(size: 15))
+            .font(AtlasTypography.mobileSubheadline())
             .foregroundStyle(AtlasColors.ink)
-            .padding(.horizontal, 16)
-            .frame(height: 52)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 56)
             .tint(AtlasColors.lemonStrong)
     }
 
@@ -743,30 +752,20 @@ struct DeviceManagementView: View {
                 AtlasSettingsDataRow("这台 iPhone", message: "iOS · 刚刚同步")
                 AtlasSettingsDataRow("iPad Pro", message: "iPadOS · 12 天前同步")
 
-                // Push settings link card
-                Button {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("推送通知")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(AtlasColors.ink)
-                            Text("在系统设置中管理通知授权")
-                                .font(.system(size: 12))
-                                .foregroundStyle(AtlasColors.inkFaint)
+                // Push permission link — uses the shared AtlasSettingsGroup + NavRow pattern
+                // so it reads like the other settings nav groups (consistent height/typography).
+                AtlasSettingsGroup {
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
                         }
-                        Spacer()
-                        DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                    } label: {
+                        AtlasSettingsNavRow(title: "推送通知", subtitle: "在系统设置中管理通知授权") {
+                            DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                        }
                     }
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(cardSurface)
-                    .overlay(cardBorder)
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
 
                 AtlasSettingsLinksCard(
                     title: "移除旧设备",

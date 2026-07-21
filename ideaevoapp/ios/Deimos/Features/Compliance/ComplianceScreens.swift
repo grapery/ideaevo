@@ -1,6 +1,18 @@
 import SwiftUI
 import UserNotifications
 
+// MARK: - Shared card primitives (mirror SettingsSubviews.swift so compliance screens
+// use the same card language as the settings stack: solid white surface + rule border).
+
+private var cardSurface: some View {
+    RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+        .fill(AtlasColors.surface)
+}
+private var cardBorder: some View {
+    RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+        .stroke(AtlasColors.rule, lineWidth: 1)
+}
+
 // MARK: - S21 Onboarding
 
 /// First-launch onboarding: value proposition + notification permission priming.
@@ -229,70 +241,66 @@ struct AboutView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-            // Logo card
-            VStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: AtlasMetrics.radiusCover, style: .continuous)
-                        .fill(AtlasColors.aiGradient)
-                        .frame(width: 72, height: 72)
-                    DeimosIconView(icon: .sparkles, size: 40, color: .white)
+            VStack(spacing: 14) {
+                // Logo / version card
+                VStack(spacing: 8) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: AtlasMetrics.radiusCover, style: .continuous)
+                            .fill(AtlasColors.aiGradient)
+                            .frame(width: 72, height: 72)
+                        DeimosIconView(icon: .sparkles, size: 40, color: .white)
+                    }
+                    Text("万叶 Deimos")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Text("版本 1.0.0 (1)")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AtlasColors.inkSoft)
                 }
-                Text("万叶 Deimos")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
-                Text("版本 1.0.0 (1)")
-                    .font(.system(size: 14))
-                    .foregroundStyle(AtlasColors.inkSoft)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(24)
-            .background(AtlasColors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-            .atlasElevatedCard()
+                .frame(maxWidth: .infinity)
+                .padding(24)
+                .background(cardSurface)
+                .overlay(cardBorder)
 
-            // Legal menu
-            VStack(spacing: 0) {
-                aboutRow(icon: .lock, iconColor: AtlasColors.primary, iconBg: AtlasColors.chipSelectedBg, label: "隐私政策", action: onPrivacyPolicy)
-                aboutDivider
-                aboutRow(icon: .document, iconColor: AtlasColors.aiStart, iconBg: AtlasColors.purpleSoft, label: "用户协议", action: onTerms)
-                aboutDivider
-                aboutRow(icon: .users, iconColor: AtlasColors.accentWarning, iconBg: AtlasColors.accentWarningSoft, label: "社区准则", action: onCommunity)
-                aboutDivider
-                aboutRow(icon: .info, iconColor: AtlasColors.destructive, iconBg: AtlasColors.destructive.opacity(0.08), label: "投诉举报", action: onReport)
-            }
-            .background(AtlasColors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-            .atlasElevatedCard()
+                // Legal menu — uses the shared AtlasSettingsGroup + NavRow pattern so it reads
+                // exactly like the other settings nav groups (no leading icon chips, 56h rows).
+                AtlasSettingsGroup {
+                    aboutNavRow(title: "隐私政策", subtitle: "数据收集、保留与删除规则", action: onPrivacyPolicy)
+                    AtlasSettingsGroupDivider()
+                    aboutNavRow(title: "用户协议", subtitle: "使用规则与内容责任", action: onTerms)
+                    AtlasSettingsGroupDivider()
+                    aboutNavRow(title: "社区准则", subtitle: "社区行为规范", action: onCommunity)
+                    AtlasSettingsGroupDivider()
+                    aboutNavRow(title: "投诉举报", subtitle: "举报不当内容或行为", action: onReport)
+                }
 
-            // ICP compliance
-            VStack(alignment: .leading, spacing: 8) {
-                Text("备案信息")
-                    .font(AtlasTypography.badge())
-                    .foregroundStyle(AtlasColors.inkSoft)
-                icpRow(label: "ICP 备案号", value: "京ICP备2026000001号")
-                icpRow(label: "软件著作权", value: "2026SR000001")
-                icpRow(label: "运营公司", value: "北京万叶科技有限公司")
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .background(AtlasColors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-            .atlasElevatedCard()
+                // ICP compliance card
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("备案信息")
+                        .font(AtlasTypography.badge())
+                        .foregroundStyle(AtlasColors.inkSoft)
+                    icpRow(label: "ICP 备案号", value: "京ICP备2026000001号")
+                    icpRow(label: "软件著作权", value: "2026SR000001")
+                    icpRow(label: "运营公司", value: "北京万叶科技有限公司")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(cardSurface)
+                .overlay(cardBorder)
 
-            // Footer
-            VStack(spacing: 4) {
-                Text("Copyright 2026 北京万叶科技有限公司")
-                    .font(.system(size: 12))
-                    .foregroundStyle(AtlasColors.inkFaint)
-                Text("support@wanye.app")
-                    .font(.system(size: 12))
-                    .foregroundStyle(AtlasColors.primary)
+                // Footer
+                VStack(spacing: 4) {
+                    Text("Copyright 2026 北京万叶科技有限公司")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                    Text("support@wanye.app")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.primary)
+                }
+                .padding(.top, 8)
             }
+            .padding(.horizontal, AtlasMetrics.detailX)
             .padding(.top, 8)
-        }
-            .padding(.horizontal, AtlasMetrics.pageX)
-            .padding(.top, 12)
             .padding(.bottom, 40)
         }
         .background(AtlasColors.canvas)
@@ -304,31 +312,16 @@ struct AboutView: View {
         .suppressTabBar()
     }
 
-    private func aboutRow(icon: DeimosIcon, iconColor: Color, iconBg: Color, label: String, action: @escaping () -> Void) -> some View {
+    /// Standard settings nav row wrapper (replaces the old icon-chip `aboutRow`).
+    private func aboutNavRow(title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button {
             action()
         } label: {
-            HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(iconBg)
-                        .frame(width: 30, height: 30)
-                    DeimosIconView(icon: icon, size: 16, color: iconColor)
-                }
-                Text(label)
-                    .font(.system(size: 15))
-                    .foregroundStyle(AtlasColors.ink)
-                Spacer()
-                DeimosIconView(icon: .chevronRight, size: 16, color: AtlasColors.inkFaint)
+            AtlasSettingsNavRow(title: title, subtitle: subtitle) {
+                DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
             }
-            .padding(.horizontal, 12)
-            .frame(height: 50)
         }
         .buttonStyle(.plain)
-    }
-
-    private var aboutDivider: some View {
-        Divider().overlay(AtlasColors.rule).padding(.leading, 52)
     }
 
     private func icpRow(label: String, value: String) -> some View {
@@ -351,36 +344,33 @@ struct PrivacyPolicyView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("万叶隐私政策")
-                    .font(AtlasTypography.titleMedium())
-                    .foregroundStyle(AtlasColors.ink)
-                Text("最后更新：2026 年 6 月 28 日")
-                    .font(.system(size: 13))
-                    .foregroundStyle(AtlasColors.inkFaint)
+            VStack(alignment: .leading, spacing: 14) {
+                // Header summary card
+                AtlasSettingsSubSummaryCard(
+                    title: "万叶隐私政策",
+                    message: "最后更新：2026 年 6 月 28 日"
+                )
+
+                privacySection(title: "一、我们收集哪些信息",
+                    body: "当您注册账号时，我们会收集您的邮箱地址和昵称。如果您使用 Apple/Google/微信登录，我们会接收 OAuth 提供商返回的唯一标识符。您发布的想法、评论和聊天消息内容将被存储用于服务运行。")
+
+                privacySection(title: "二、我们如何使用信息",
+                    body: "提供想法市场核心功能、语义搜索（使用向量化嵌入）、AI 对话及通知推送。我们不会出售您的个人信息给第三方。")
+
+                privacySection(title: "三、您的权利",
+                    body: "根据《个人信息保护法》及 GDPR/CCPA，您有权访问、更正、导出和删除您的个人数据。您可以在「设置 > 账号与安全」中操作，或联系 privacy@wanye.app。")
+
+                privacySection(title: "四、数据安全",
+                    body: "我们使用行业标准的安全措施保护您的数据，包括传输层加密（TLS）和安全存储。API Key 使用哈希存储，不以明文形式保存。")
+
+                privacySection(title: "五、未成年人保护",
+                    body: "本服务面向 16 岁及以上用户。我们不会有意收集未成年人的个人信息。")
+
+                privacySection(title: "六、联系我们",
+                    body: "如有任何隐私相关问题，请联系：privacy@wanye.app")
             }
-
-            privacySection(title: "一、我们收集哪些信息",
-                body: "当您注册账号时，我们会收集您的邮箱地址和昵称。如果您使用 Apple/Google/微信登录，我们会接收 OAuth 提供商返回的唯一标识符。您发布的想法、评论和聊天消息内容将被存储用于服务运行。")
-
-            privacySection(title: "二、我们如何使用信息",
-                body: "提供想法市场核心功能、语义搜索（使用向量化嵌入）、AI 对话及通知推送。我们不会出售您的个人信息给第三方。")
-
-            privacySection(title: "三、您的权利",
-                body: "根据《个人信息保护法》及 GDPR/CCPA，您有权访问、更正、导出和删除您的个人数据。您可以在「设置 > 账号与安全」中操作，或联系 privacy@wanye.app。")
-
-            privacySection(title: "四、数据安全",
-                body: "我们使用行业标准的安全措施保护您的数据，包括传输层加密（TLS）和安全存储。API Key 使用哈希存储，不以明文形式保存。")
-
-            privacySection(title: "五、未成年人保护",
-                body: "本服务面向 16 岁及以上用户。我们不会有意收集未成年人的个人信息。")
-
-            privacySection(title: "六、联系我们",
-                body: "如有任何隐私相关问题，请联系：privacy@wanye.app")
-        }
-            .padding(.horizontal, AtlasMetrics.pageX)
-            .padding(.vertical, 20)
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 8)
             .padding(.bottom, 40)
         }
         .background(AtlasColors.canvas)
@@ -395,14 +385,18 @@ struct PrivacyPolicyView: View {
     private func privacySection(title: String, body: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 16, weight: .bold))
+                .font(AtlasTypography.mobileSubheadline().weight(.bold))
                 .foregroundStyle(AtlasColors.ink)
             Text(body)
-                .font(.system(size: 15))
+                .font(AtlasTypography.bodyMedium())
                 .foregroundStyle(AtlasColors.inkSoft)
                 .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(cardSurface)
+        .overlay(cardBorder)
     }
 }
 
