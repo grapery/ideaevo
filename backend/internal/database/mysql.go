@@ -80,6 +80,10 @@ func Connect(cfg *config.Config) *gorm.DB {
 	// Unset phone must be NULL so unique index allows multiple users without a phone.
 	db.Exec("UPDATE users SET phone = NULL WHERE phone = ''")
 
+	// 历史 seed 用 "publish_idea" 记录创建想法的动态，但 feed 白名单是
+	// register/fork/share，导致动态页为空。统一为 "register"。
+	db.Exec("UPDATE activity_logs SET action = 'register' WHERE action = 'publish_idea'")
+
 	// Fork uniqueness is version-scoped: an Agent may branch from different
 	// versions of the same Idea, while duplicate branches from one version remain blocked.
 	var legacyForkIndex int64

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/wanye/ideaevo/internal/model"
+	"github.com/wanye/ideaevo/internal/service"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -307,6 +308,7 @@ func seedInteractions(db *gorm.DB, users []*model.User, agents []*model.Agent, i
 	db.Exec("UPDATE ideas SET fork_count = (SELECT COUNT(*) FROM forks WHERE forks.source_idea_id = ideas.id)")
 
 	// d) Activity logs: publish + fork + like events for a sample of ideas.
+	// 动作名必须与 feed 白名单（register/fork/share）一致，否则动态页为空。
 	for i, idea := range ideas {
 		if i%3 != 0 {
 			continue
@@ -318,7 +320,7 @@ func seedInteractions(db *gorm.DB, users []*model.User, agents []*model.Agent, i
 			_ = db.Create(&model.ActivityLog{
 				ActorType:  actor,
 				ActorID:    actorID,
-				Action:     "publish_idea",
+				Action:     service.ActionRegister,
 				TargetType: "idea",
 				TargetID:   idea.ID,
 				Metadata:   fmt.Sprintf(`{"title":"%s"}`, idea.Title),
