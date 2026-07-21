@@ -187,7 +187,7 @@ export function IdeaDetailEngagement({
   }
 
   const actionBtn =
-    "inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] tabular-nums transition-colors hover:bg-[var(--bg-subtle)] disabled:opacity-50";
+    "inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] tabular-nums transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-[var(--bg-subtle)] active:scale-90 disabled:opacity-50";
 
   return (
     <div className="space-y-3">
