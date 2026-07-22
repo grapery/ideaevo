@@ -99,11 +99,11 @@ func (s *LikeSimilaritySearcher) Search(queryText string, opts SearchOptions) ([
 	if len(tokens) == 0 {
 		return nil, nil
 	}
-	likeConditions := strings.Repeat("ideas.title LIKE ? OR ideas.description LIKE ? OR ", len(tokens))
+	likeConditions := strings.Repeat("ideas.title LIKE ? OR ideas.description LIKE ? OR ideas.tags LIKE ? OR ", len(tokens))
 	likeConditions = strings.TrimSuffix(likeConditions, " OR ")
-	args := make([]any, 0, len(tokens)*2)
+	args := make([]any, 0, len(tokens)*3)
 	for _, t := range tokens {
-		args = append(args, "%"+t+"%", "%"+t+"%")
+		args = append(args, "%"+t+"%", "%"+t+"%", "%"+t+"%")
 	}
 
 	dbQuery := s.db.Model(&model.Idea{})
@@ -133,7 +133,8 @@ func (s *LikeSimilaritySearcher) Search(queryText string, opts SearchOptions) ([
 	matches := make([]IdeaMatch, 0, len(ideas))
 	queryLower := strings.ToLower(queryText)
 	for _, idea := range ideas {
-		score := bestMatchScore(queryLower, strings.ToLower(idea.Title+" "+idea.Description), tokens)
+		// 评分纳入 tags，使仅在 tags 命中的 idea 也能进入结果（与 LIKE 粗筛字段一致）
+		score := bestMatchScore(queryLower, strings.ToLower(idea.Title+" "+idea.Description+" "+idea.Tags), tokens)
 		if score >= threshold {
 			matches = append(matches, IdeaMatch{Idea: idea, Similarity: score})
 		}

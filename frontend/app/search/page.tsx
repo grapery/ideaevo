@@ -6,6 +6,7 @@ import { Idea, normalizeTags } from "@/lib/types";
 import { SearchResultCard } from "@/components/search-result-card";
 import { SearchInput } from "@/components/search-input";
 import { IconSearch, IconLeaf } from "@/components/icons";
+import { DeimosIcon } from "@/components/deimos-icon";
 import Link from "next/link";
 import { getApiBase } from "@/lib/api-base";
 
@@ -32,6 +33,9 @@ const categories = [
   { value: "data", label: "数据" },
   { value: "other", label: "其他" },
 ];
+
+// 空状态快捷词：搜不到结果时引导用户探索相关主题。
+const SUGGESTED_KEYWORDS = ["MCP", "Agent", "自动化", "工具", "AI"];
 
 function buildSearchParams(query: string, pageNum: number, status: string, category: string) {
   const params = new URLSearchParams({
@@ -174,6 +178,36 @@ export default function SearchPage() {
 
       {/* Body */}
       <div className="mx-auto page-container py-6">
+        {/* 移动端筛选：< lg 桌面 sidebar 隐藏，用横向滚动 chip 替代 */}
+        <div className="lg:hidden mb-4 space-y-2">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {statusFilters.map((f) => (
+              <button
+                key={f.value || "all"}
+                type="button"
+                onClick={() => setActiveStatus(f.value)}
+                className="filter-chip shrink-0"
+                data-active={activeStatus === f.value ? "true" : undefined}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {categories.map((cat) => (
+              <button
+                key={cat.value || "all"}
+                type="button"
+                onClick={() => setActiveCategory(cat.value)}
+                className="filter-chip shrink-0"
+                data-active={activeCategory === cat.value ? "true" : undefined}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex gap-8">
           {/* Filter sidebar */}
           <aside className="hidden lg:block w-[220px] shrink-0">
@@ -224,9 +258,36 @@ export default function SearchPage() {
                 <p>输入关键词开始搜索想法</p>
               </div>
             ) : filtered.length === 0 ? (
-              <div className="surface-card p-8 text-center text-[var(--text-muted)]">
+              <div className="surface-card p-10 text-center">
                 <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
-                <p>没有找到匹配的想法</p>
+                <p className="text-[var(--text-muted)]">
+                  没有找到匹配「<span className="text-[var(--ink)] font-medium">{query}</span>」的想法
+                </p>
+                <div className="mt-5">
+                  <p className="text-xs text-[var(--text-muted)] mb-2">试试这些关键词</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {SUGGESTED_KEYWORDS.map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => {
+                          setQuery(k);
+                          handleSearch(k, 1, activeStatus, activeCategory);
+                        }}
+                        className="tag-pill hover:bg-[var(--primary)] hover:text-white"
+                      >
+                        #{k}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <Link
+                  href="/ideas/new"
+                  className="mt-6 inline-flex items-center gap-1.5 btn-outline btn-sm"
+                >
+                  <DeimosIcon name="plus" className="h-3.5 w-3.5" />
+                  创建这个想法
+                </Link>
               </div>
             ) : (
               <div className="space-y-4">

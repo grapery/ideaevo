@@ -147,9 +147,8 @@ func (h *IdeaHandler) Search(c *gin.Context) {
 	offset := (page - 1) * limit
 
 	status := c.Query("status")
-	if status == "" {
-		status = "active"
-	}
+	// 空字符串 = "全部"（不过滤状态），与前端「全部」筛选按钮契约一致。
+	// 仅当显式传值时才校验白名单；空值透传给 service，service 同样以空值表示不过滤。
 	if status != "" && !validStatuses[status] {
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyMessage("invalid status filter")})
 		return
@@ -628,6 +627,7 @@ func (h *IdeaHandler) SendFlowers(c *gin.Context) {
 
 	agentIDStr := c.GetString("agent_id")
 	userID := extractUserID(c)
+	fmt.Printf("[flowers] SendFlowers idea=%s user=%q agent=%q\n", ideaID, userID, agentIDStr)
 
 	if err := h.socialSvc.SendFlowers(service.SendFlowersInput{
 		IdeaID:  ideaID,
@@ -635,6 +635,7 @@ func (h *IdeaHandler) SendFlowers(c *gin.Context) {
 		AgentID: agentIDStr,
 		Message: input.Message,
 	}); err != nil {
+		fmt.Printf("[flowers] SendFlowers failed idea=%s err=%v\n", ideaID, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
@@ -788,11 +789,14 @@ func (h *IdeaHandler) GetForkChildren(c *gin.Context) {
 }
 
 func (h *IdeaHandler) GetFlowers(c *gin.Context) {
-	donors, err := h.socialSvc.GetFlowerDonors(c.Param("id"), 20)
+	ideaID := c.Param("id")
+	donors, err := h.socialSvc.GetFlowerDonors(ideaID, 20)
 	if err != nil {
+		fmt.Printf("[flowers] GetFlowerDonors idea=%s err=%v\n", ideaID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
+	fmt.Printf("[flowers] GetFlowers idea=%s donors=%d\n", ideaID, len(donors))
 	if donors == nil {
 		donors = []service.FlowerDonorView{}
 	}

@@ -84,17 +84,26 @@ export function FlowersPanel({
 }) {
   const [donors, setDonors] = useState<FlowerDonor[]>(initialDonors);
   const [loaded, setLoaded] = useState(initialDonors.length > 0 || flowerCount === 0);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
   const [listOpen, setListOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setLoadFailed(false);
     fetch(`${getApiBase()}/ideas/${ideaId}/flowers`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { donors: [] }))
+      .then((r) => {
+        if (!r.ok) throw new Error("flowers fetch failed");
+        return r.json();
+      })
       .then((data) => {
         if (!cancelled) setDonors(data.donors || []);
       })
       .catch(() => {
-        if (!cancelled && initialDonors.length === 0) setDonors([]);
+        if (!cancelled) {
+          setLoadFailed(true);
+          if (initialDonors.length === 0) setDonors([]);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoaded(true);
@@ -102,7 +111,7 @@ export function FlowersPanel({
     return () => {
       cancelled = true;
     };
-  }, [ideaId, flowerCount, initialDonors.length]);
+  }, [ideaId, flowerCount, initialDonors.length, retryToken]);
 
   const displayDonors = donors.slice(0, 12);
   const hiddenDonorCount = Math.max(0, donors.length - displayDonors.length);
@@ -143,8 +152,22 @@ export function FlowersPanel({
             </span>
           )}
         </button>
+      ) : loadFailed ? (
+        <div className="mb-2.5">
+          <p className="text-sm text-[var(--text-muted)]">送花者信息加载失败</p>
+          <button
+            type="button"
+            onClick={() => {
+              setLoaded(false);
+              setRetryToken((t) => t + 1);
+            }}
+            className="mt-1 text-xs text-[var(--primary)] hover:underline"
+          >
+            重新加载
+          </button>
+        </div>
       ) : flowerCount > 0 ? (
-        <p className="mb-2.5 text-sm text-[var(--text-muted)]">送花者信息加载失败</p>
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">送花者详情暂不可用</p>
       ) : (
         <p className="mb-2.5 text-sm text-[var(--text-muted)]">还没有人送花</p>
       )}
