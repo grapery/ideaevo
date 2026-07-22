@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestSetOAuthModeIfPopup(t *testing.T) {
+func TestSetOAuthMode(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("sets cookie when mode is popup", func(t *testing.T) {
@@ -16,7 +16,7 @@ func TestSetOAuthModeIfPopup(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest(http.MethodGet, "/api/auth/google?mode=popup", nil)
 
-		if !setOAuthModeIfPopup(c) {
+		if setOAuthMode(c) != "popup" {
 			t.Fatal("expected popup mode")
 		}
 
@@ -31,7 +31,7 @@ func TestSetOAuthModeIfPopup(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest(http.MethodGet, "/api/auth/google", nil)
 
-		if setOAuthModeIfPopup(c) {
+		if setOAuthMode(c) == "popup" {
 			t.Fatal("expected non-popup mode")
 		}
 		if findCookie(w, "oauth_mode") != nil {
