@@ -23,7 +23,14 @@ export type DeimosIconName =
   | "back"
   | "search"
   | "home"
-  | "profile";
+  | "profile"
+  // 补充图标（ardot 风格线框，对齐全站）
+  | "share"
+  | "bookmark"
+  | "shield"
+  | "lock"
+  | "key"
+  | "leaf";
 
 type DeimosIconProps = {
   name: DeimosIconName;
