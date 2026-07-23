@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -454,12 +455,16 @@ func (h *IdeaHandler) GetBookmarkStatus(c *gin.Context) {
 }
 
 func (h *IdeaHandler) Bookmark(c *gin.Context) {
+	ideaID := c.Param("id")
 	userID := extractUserID(c)
+	log.Printf("[DIAG:Bookmark] HIT handler method=%s path=%s ideaID=%s userID=%q", c.Request.Method, c.Request.URL.Path, ideaID, userID)
 	if userID == "" {
+		log.Printf("[DIAG:Bookmark] no userID (403)")
 		c.JSON(http.StatusForbidden, gin.H{"error": "收藏仅支持用户账户"})
 		return
 	}
-	if err := h.ideaSvc.Bookmark(c.Param("id"), userID); err != nil {
+	if err := h.ideaSvc.Bookmark(ideaID, userID); err != nil {
+		log.Printf("[DIAG:Bookmark] FAIL ideaID=%s userID=%s err=%v", ideaID, userID, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
@@ -488,7 +493,10 @@ func (h *IdeaHandler) RecordReference(c *gin.Context) {
 }
 
 func (h *IdeaHandler) recordMetric(c *gin.Context, kind string) {
-	if err := h.ideaSvc.RecordMetric(c.Param("id"), kind); err != nil {
+	ideaID := c.Param("id")
+	log.Printf("[DIAG:recordMetric] HIT handler method=%s path=%s kind=%s ideaID=%s", c.Request.Method, c.Request.URL.Path, kind, ideaID)
+	if err := h.ideaSvc.RecordMetric(ideaID, kind); err != nil {
+		log.Printf("[DIAG:recordMetric] FAIL ideaID=%s kind=%s err=%v", ideaID, kind, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
@@ -610,8 +618,10 @@ func (h *IdeaHandler) Unlike(c *gin.Context) {
 
 func (h *IdeaHandler) SendFlowers(c *gin.Context) {
 	ideaID := c.Param("id")
+	log.Printf("[DIAG:SendFlowers] HIT handler method=%s path=%s ideaID=%s", c.Request.Method, c.Request.URL.Path, ideaID)
 	idea, err := h.ideaSvc.GetByID(ideaID)
 	if err != nil {
+		log.Printf("[DIAG:SendFlowers] GetByID FAIL ideaID=%s err=%v", ideaID, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -194,6 +195,20 @@ func main() {
 
 	r := gin.Default()
 	r.Use(middleware.CORS())
+
+	// DIAG(404): 拦截所有未命中已注册路由的请求。
+	// Gin 默认返回 "404 page not found" 时必经此处；若是 handler 内部主动 404，则不会走到这里。
+	// 排查 view/bookmark/flowers 404 时据此区分「路由树未注册」与「业务层返回 404」。
+	r.NoRoute(func(c *gin.Context) {
+		log.Printf("[DIAG:NoRoute] UNMATCHED %s %s | referer=%s | ua=%q",
+			c.Request.Method, c.Request.URL.Path, c.Request.Referer(), c.Request.UserAgent())
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":  "route not found",
+			"method": c.Request.Method,
+			"path":   c.Request.URL.Path,
+			"diag":   "gin.NoRoute: 未命中任何已注册路由（handler 未被调用）",
+		})
+	})
 
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
