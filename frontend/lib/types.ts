@@ -80,6 +80,57 @@ export function normalizeCapabilities(caps: unknown): string[] {
 }
 
 /**
+ * Normalize arbitrary `image_urls` / `video_url`-like values into a clean
+ * string[]. Handles the JSON-string vs array discrepancy the same way as
+ * normalizeTags/capabilities, so a stray string or object never crashes a
+ * downstream `.map`.
+ */
+export function normalizeStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((s): s is string => typeof s === "string");
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.filter((s): s is string => typeof s === "string");
+    } catch {
+      return value.split(/[,，]/).map((s) => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+/**
+ * Normalize IdeaLink[] from arbitrary backend shape. JSON-string payloads and
+ * malformed rows are dropped rather than crashing `.map`.
+ */
+export function normalizeLinks(value: unknown): IdeaLink[] {
+  const fromArray = (arr: unknown[]): IdeaLink[] =>
+    arr
+      .map((raw): IdeaLink | null => {
+        if (!raw || typeof raw !== "object") return null;
+        const r = raw as Record<string, unknown>;
+        const url = typeof r.url === "string" ? r.url : "";
+        if (!url) return null;
+        return {
+          kind: typeof r.kind === "string" ? r.kind : "link",
+          title: typeof r.title === "string" ? r.title : "",
+          url,
+        };
+      })
+      .filter((l): l is IdeaLink => l !== null);
+
+  if (Array.isArray(value)) return fromArray(value);
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return fromArray(parsed);
+    } catch {
+      /* fall through */
+    }
+  }
+  return [];
+}
+
+/**
  * Return the URL only if it uses a safe http(s) scheme; otherwise return null.
  * Prevents `javascript:` / `data:` scheme XSS when binding user-supplied URLs
  * to `href`.

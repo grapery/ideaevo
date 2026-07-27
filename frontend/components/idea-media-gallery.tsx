@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Idea } from "@/lib/types";
+import { normalizeStringArray } from "@/lib/types";
 import { VideoCoverButton } from "./video-player";
 
 /**
@@ -11,7 +12,7 @@ import { VideoCoverButton } from "./video-player";
  */
 export function IdeaMediaGallery({ idea }: { idea: Idea }) {
   const hasVideo = Boolean(idea.video_url);
-  const images = idea.image_urls ?? [];
+  const images = normalizeStringArray(idea.image_urls);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   if (!hasVideo && images.length === 0) return null;

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Idea,
   IDEA_IMPL_STATUS_LABELS,
+  normalizeLinks,
   safeUrl,
   type IdeaImplStatus,
 } from "@/lib/types";
@@ -31,6 +32,9 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
   const { user } = useAuth();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // links 后端可能返回 JSON 字符串或非数组值,这里归一化避免 .map 崩溃
+  const links = useMemo(() => normalizeLinks(idea.links), [idea.links]);
 
   const canEdit = useMemo(() => {
     if (!user) return false;
@@ -245,7 +249,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                 {demo.replace(/^https?:\/\//, "")}
               </a>
             )}
-            {(idea.links ?? []).filter((l) => safeUrl(l.url)).map((link, i) => {
+            {links.filter((l) => safeUrl(l.url)).map((link, i) => {
               const url = safeUrl(link.url)!;
               // 跳过已在 repo/demo 展示的
               if (url === repo || url === demo) return null;
