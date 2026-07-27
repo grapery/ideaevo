@@ -345,7 +345,14 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
                   查看历史版本 · v{selectedSummary.version} · {formatVersionTime(selectedSummary.created_at)}
                 </p>
               )}
-              <MarkdownContent content={content} />
+              {idea.is_markdown === false ? (
+                // 纯文本模式:按原始格式渲染,不当 markdown 解析(避免歧义)
+                <p className="whitespace-pre-wrap break-words text-[14px] leading-relaxed text-[var(--ink)]">
+                  {content}
+                </p>
+              ) : (
+                <MarkdownContent content={content} />
+              )}
             </>
           )}
         </div>

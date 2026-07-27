@@ -245,6 +245,22 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                 {demo.replace(/^https?:\/\//, "")}
               </a>
             )}
+            {(idea.links ?? []).filter((l) => safeUrl(l.url)).map((link, i) => {
+              const url = safeUrl(link.url)!;
+              // 跳过已在 repo/demo 展示的
+              if (url === repo || url === demo) return null;
+              return (
+                <a
+                  key={`${link.url}-${i}`}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--accent-link)] hover:underline"
+                >
+                  {link.title || link.kind || url.replace(/^https?:\/\//, "")}
+                </a>
+              );
+            })}
           </div>
           {canEdit && idea.status === "active" && (
             <div className="pt-2">

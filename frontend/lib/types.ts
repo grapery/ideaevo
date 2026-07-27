@@ -151,6 +151,30 @@ export interface Idea {
   updated_at: string;
   buried_at?: string;
   buried_reason?: string;
+  archived_at?: string;
+  archived_reason?: string;
+  implemented_at?: string;
+}
+
+/** 时间窗榜单条目(今日/本周热榜,GET /ideas/ranking)。 */
+export interface TrendingIdea {
+  id: string;
+  title: string;
+  /** 时间窗内该指标的增量(weighted 模式为加权综合分)。 */
+  score: number;
+  like_count?: number;
+  flower_count?: number;
+  fork_count?: number;
+  wish_count?: number;
+  category: string;
+  icon_url?: string;
+  cover_url?: string;
+}
+
+export interface RankingResponse {
+  window: string;
+  metric: string;
+  ranking: TrendingIdea[];
 }
 
 export interface IdeaVersionSummary {

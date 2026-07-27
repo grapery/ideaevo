@@ -136,6 +136,17 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
 
   const content = (
     <>
+      {idea.cover_url && (
+        <div className="mb-3 h-28 w-full overflow-hidden rounded-lg bg-[var(--fill,#f2f3f7)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={idea.cover_url}
+            alt=""
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            loading="lazy"
+          />
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-2">
         <WireframeAvatar
           name={idea.title}

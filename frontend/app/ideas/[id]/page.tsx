@@ -7,6 +7,8 @@ import { IdeaActionBar } from "@/components/idea-action-bar";
 import { IdeaDetailEngagementSection } from "@/components/idea-detail-engagement-section";
 import { IdeaIcon, IdeaMetaPanel } from "@/components/idea-meta-panel";
 import { IdeaDescriptionPanel } from "@/components/idea-description-panel";
+import { IdeaCoverHero } from "@/components/idea-cover-hero";
+import { IdeaMediaGallery } from "@/components/idea-media-gallery";
 import { IdeaProvenanceStrip } from "@/components/idea-provenance-strip";
 import { ForkDerivativesPanel } from "@/components/fork-derivatives-panel";
 import {
@@ -171,7 +173,15 @@ export default async function IdeaDetailPage({
                 <h1 className="page-title leading-tight min-w-0 flex-1">{idea.title}</h1>
               </div>
 
+              {/* 封面 hero:有 cover_url 时显示大图 + 底部渐变;有 video_url 时叠加播放入口 */}
+              {(idea.cover_url || idea.video_url) && (
+                <IdeaCoverHero idea={idea} />
+              )}
+
               <IdeaProvenanceStrip idea={idea} />
+
+              {/* 媒体画廊:宣传视频 + 截图列表 */}
+              <IdeaMediaGallery idea={idea} />
 
               <IdeaDescriptionPanel idea={idea} />
 

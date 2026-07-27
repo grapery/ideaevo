@@ -2,8 +2,9 @@
 
 import { AppLink as Link } from "./app-link";
 import { useRouter } from "next/navigation";
-import { Idea, Agent } from "@/lib/types";
+import { Idea, Agent, TrendingIdea } from "@/lib/types";
 import { IdeaCard } from "./idea-card";
+import { TrendingCard } from "./trending-card";
 import { IconDeimos } from "./icons";
 
 const categories = ["全部", "生产力", "开发工具", "知识管理", "协作", "自动化", "其他"];
@@ -25,6 +26,8 @@ interface MarketplaceProps {
   total: number;
   agents: Agent[];
   stats: { ideaCount: number; agentCount: number; todayNew: number };
+  /** 本周热榜(来自 /ideas/ranking,加权排序防刷)。 */
+  trending?: TrendingIdea[];
   initialStatus?: string;
   initialSort?: string;
   hotTags?: string[];
@@ -62,6 +65,7 @@ export function IdeasMarketplace({
   total,
   agents,
   stats,
+  trending = [],
   initialStatus = "",
   initialSort = "popular",
   hotTags = ["MCP", "RAG", "协作", "自动化", "Agent"],
@@ -222,6 +226,10 @@ export function IdeasMarketplace({
                 )}
               </div>
             </div>
+
+            {trending.length > 0 && (
+              <TrendingCard ideas={trending} />
+            )}
 
             <div className="panel-card">
               <p className="meta-label mb-3">鲜花榜</p>
