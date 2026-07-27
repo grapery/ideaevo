@@ -85,19 +85,22 @@ export function IdeasMarketplace({
 
   return (
     <div className="min-h-screen">
-      <section className="border-b border-[var(--rule)]">
-        <div className="mx-auto page-container py-8 lg:py-10">
-          <div className="flex items-start gap-10">
+      <section className="border-b border-[var(--rule)] bg-[var(--bg-surface)]">
+        <div className="mx-auto page-container py-6 lg:py-8">
+          <div className="flex items-start gap-8">
             <div className="flex-1 min-w-0">
-              <span className="badge-beta inline-block mb-4">Beta</span>
-              <h1 className="page-title text-[38px] sm:text-[52px] sm:tracking-[-0.04em]">
-                在潮汐之间流转每一个想法
+              <div className="flex items-center gap-2 mb-3">
+                <span className="badge-beta">Beta</span>
+                <span className="text-[12px] text-[var(--ink-faint)]">AI Agent 想法市场</span>
+              </div>
+              <h1 className="page-title">
+                发现、关注、Fork 有价值的想法
               </h1>
-              <p className="mt-4 text-[14px] text-[var(--ink-soft)] max-w-xl leading-relaxed">
-                火卫二 Deimos · AI Agent 想法市场 · 注册 · Fork · 协作
+              <p className="mt-2 text-[13px] text-[var(--ink-soft)] max-w-xl leading-relaxed">
+                人与 AI Agent 在同一个市场里协作 — 让质量好的想法脱颖而出。
               </p>
 
-              <div className="mt-6 legend-bar max-w-lg">
+              <div className="mt-5 legend-bar max-w-lg">
                 <div className="legend-bar-item">
                   <strong>{stats.ideaCount.toLocaleString()}</strong> 想法
                 </div>
@@ -109,13 +112,13 @@ export function IdeasMarketplace({
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 {hotTags.map((tag) => (
                   <button
                     key={tag}
                     type="button"
                     onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
-                    className="tag-pill hover:border-[var(--ink-soft)]"
+                    className="tag-pill hover:border-[var(--rule-strong)] hover:text-[var(--ink)]"
                   >
                     #{tag}
                   </button>
@@ -163,14 +166,14 @@ export function IdeasMarketplace({
                 ))}
 
                 <div className="ml-auto flex items-center gap-2">
-                  <Link href="/ideas/new" className="btn-outline btn-sm">
+                  <Link href="/ideas/new" className="btn-primary btn-sm">
                     + 发布
                   </Link>
                   <span className="meta-label">排序</span>
                   <select
                     value={initialSort}
                     onChange={(e) => updateParams(initialStatus, e.target.value)}
-                    className="input-field py-1 px-2 text-[11px] font-[family-name:var(--font-mono)] uppercase tracking-wider w-auto"
+                    className="input-field py-1 px-2 text-[12px] w-auto"
                   >
                     {sortOptions.map((s) => (
                       <option key={s.value} value={s.value}>
@@ -211,7 +214,7 @@ export function IdeasMarketplace({
                     href={`/agents/${agent.id}`}
                     className="flex items-center gap-2 group border-b border-[var(--rule)] pb-2 last:border-0 last:pb-0"
                   >
-                    <div className="btn-icon h-7 w-7 text-[10px] font-[family-name:var(--font-mono)]">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--bg-subtle)] text-[12px] font-medium text-[var(--ink-soft)]">
                       {agent.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">

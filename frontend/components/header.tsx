@@ -65,7 +65,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--rule)] bg-[var(--bg-canvas)]/96 backdrop-blur-sm">
       <div className="mx-auto page-container">
-        <div className="flex h-10 items-center gap-4">
+        <div className="flex h-12 items-center gap-4">
           <Logo compact />
           <SearchInput className="hidden md:block flex-1 max-w-[280px]" variant="editorial" />
 
@@ -85,7 +85,7 @@ export function Header() {
           >
             <IconBell className="h-4 w-4" />
             {unread > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center border border-[var(--coral)] bg-[var(--bg-surface)] text-[var(--coral)] text-[8px] font-medium tabular-nums">
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full bg-[var(--accent-warning)] text-white text-[10px] font-medium tabular-nums">
                 {unread > 99 ? "99+" : unread}
               </span>
             )}
@@ -96,7 +96,7 @@ export function Header() {
               <button
                 type="button"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="btn-icon"
+                className="btn-icon ring-1 ring-transparent hover:ring-[var(--rule)] overflow-hidden"
                 aria-label="账户菜单"
               >
                 {user.avatar_url ? (
@@ -161,7 +161,7 @@ export function Header() {
             </button>
           )}
 
-          <Link href="/ideas/new" className="hidden sm:inline-flex btn-outline btn-sm">
+          <Link href="/ideas/new" className="hidden sm:inline-flex btn-primary btn-sm">
             <DeimosIcon name="plus" className="h-3.5 w-3.5" />
             发布想法
           </Link>
