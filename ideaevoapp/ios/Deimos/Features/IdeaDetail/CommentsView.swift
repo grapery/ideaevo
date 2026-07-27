@@ -51,6 +51,7 @@ struct CommentsView: View {
     @State private var draft = ""
     @State private var showAuthSheet = false
     @State private var replyingTo: FlatComment?
+    @FocusState private var composerFocused: Bool
 
     private var contextSlug: String {
         let trimmed = ideaTitle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -100,7 +101,7 @@ struct CommentsView: View {
             .overlay(alignment: .top) { Rectangle().fill(AtlasColors.rule).frame(height: 0.5) }
     }
 
-    /// S05 Comment input bar — #F4F5F8 bg r28, 56h, send button 40h r20 lemonStrong (Ardot 179:272).
+    /// Ardot S05 (`237:288`): full-width 82pt input bar, 286×44 field and 52pt send button.
     private var composer: some View {
         VStack(spacing: 0) {
             if let replyingTo {
@@ -116,39 +117,37 @@ struct CommentsView: View {
                 .padding(.horizontal, AtlasMetrics.detailX)
                 .padding(.bottom, 6)
             }
-            HStack(spacing: 8) {
+            HStack(spacing: 12) {
                 AtlasMultilineTextField(
-                    placeholder: replyingTo == nil ? "写下评论或给 Agent 一个建议" : "写下回复…",
+                    placeholder: replyingTo == nil ? "写下评论…" : "写下回复…",
                     text: $draft,
-                    minHeight: 40,
-                    maxHeight: 100,
+                    minHeight: 44,
+                    maxHeight: 44,
                     onSubmit: { Task { await submitComment() } }
                 )
+                .focused($composerFocused)
+                .frame(height: 44)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 4)
+                .background(AtlasColors.bgInput)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-                // Send button: 40×40 lemon circle r20, ardot send SVG icon (ardot 179:274).
                 Button {
                     Task { await submitComment() }
                 } label: {
                     DeimosIconView(icon: .send, size: 20, color: AtlasColors.lemonInk)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 52, height: 52)
                         .background(canSend ? AtlasColors.lemonStrong : AtlasColors.inkDisabled)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .disabled(!canSend)
             }
-            .padding(8)
-            // ardot 179:272: "Comment Composer · Apple Floating Glass Pill" — white/34% fill +
-            // white/80% border + ink/6% border + shadow, r28.
-            .background(Capsule(style: .continuous).fill(Color.white.opacity(0.34)))
-            .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.80), lineWidth: 1))
-            .overlay(Capsule(style: .continuous).stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1))
-            .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.11), radius: 28, x: 0, y: 12)
-            .clipShape(Capsule(style: .continuous))
-            .padding(.horizontal, AtlasMetrics.detailX)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 20)
+            .frame(height: 82)
+            .background(AtlasColors.surface)
+            .overlay(alignment: .top) {
+                Rectangle().fill(AtlasColors.settingsRowStroke).frame(height: 1)
+            }
         }
     }
 
@@ -170,7 +169,13 @@ struct CommentsView: View {
                         .padding(.top, 4)
 
                     if viewModel.comments.isEmpty {
-                        AtlasDesignedEmptyStates.commentsEmpty()
+                        AtlasDesignedEmptyStates.commentsEmpty {
+                            if session.isAuthenticated {
+                                composerFocused = true
+                            } else {
+                                showAuthSheet = true
+                            }
+                        }
                             .padding(.top, 24)
                     } else {
                         ForEach(viewModel.comments) { item in
@@ -194,19 +199,19 @@ struct CommentsView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AtlasColors.ink)
                 .lineLimit(1)
-            Text("\(commentCount) 条评论")
-                .font(.system(size: 12))
+            Text(contextSubtitle)
+                .font(.system(size: 11))
                 .foregroundStyle(AtlasColors.inkTertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .frame(height: 68)
         .background(AtlasColors.lemonSoft)
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(AtlasColors.border, lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     // MARK: - S05 Comment stream
@@ -239,9 +244,9 @@ struct CommentsView: View {
                 }
 
                 Text(item.comment.content)
-                    .font(.system(size: 14))
+                    .font(.system(size: 16))
                     .foregroundStyle(AtlasColors.ink)
-                    .lineSpacing(3)
+                    .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 12) {
@@ -258,9 +263,9 @@ struct CommentsView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 16)
+        .padding(.vertical, 12)
         .overlay(alignment: .bottom) {
-            Rectangle().fill(AtlasColors.rule).frame(height: 0.5)
+            Rectangle().fill(AtlasColors.rule).frame(height: 1)
         }
         .padding(.leading, item.depth > 0 ? CGFloat(item.depth * 20) : 0)
     }

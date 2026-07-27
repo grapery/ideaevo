@@ -781,9 +781,9 @@ final class APIClient {
         try await request(path: "/activity/feed?limit=\(limit)", auth: .none)
     }
 
-    func followingFeed(limit: Int = 20) async throws -> [ActivityView] {
+    func followingFeed(limit: Int = 20, offset: Int = 0) async throws -> [ActivityView] {
         let response: FollowingFeedResponse = try await request(
-            path: "/activity/following?limit=\(limit)",
+            path: "/activity/following?limit=\(limit)&offset=\(offset)",
             auth: .user
         )
         return response.activities

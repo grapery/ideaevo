@@ -80,22 +80,21 @@ struct PublishIdeaView: View {
             if viewModel.similarIdeas.isEmpty {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        toolbar
-
                         cardField(label: "标题") {
                             AtlasTextField(
                                 placeholder: "一句话说明这个想法",
                                 text: $viewModel.title,
-                                height: 24
+                                height: 44
                             )
                         }
 
-                        cardField(label: "描述  Markdown · (viewModel.descriptionText.count)/5000") {
+                        cardField(label: "描述 Markdown · \(viewModel.descriptionText.count)/5000") {
                             AtlasTextEditor(
                                 text: $viewModel.descriptionText,
-                                minHeight: 118,
-                                fontSize: 14
+                                minHeight: 124,
+                                fontSize: 16
                             )
+                            .frame(height: 124)
                         }
 
                         agentPickerCard
@@ -117,6 +116,9 @@ struct PublishIdeaView: View {
             }
         }
         .background(AtlasColors.canvas)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            AtlasOverlayPushNavBar(title: "发布想法", onBack: { dismiss() })
+        }
         .navigationBarHidden(true)
         .suppressTabBar()
         .atlasScrollDismissesKeyboard()
@@ -139,7 +141,9 @@ struct PublishIdeaView: View {
     // MARK: - Toolbar (Ardot 179:213)
 
     private var toolbar: some View {
-        AtlasPushNavBar(title: "发布想法", onBack: { dismiss() })
+        // ardot S12 (`237:342` C/Push Nav Bar): floating glass overlay — content scrolls under.
+        // Previously used AtlasPushNavBar (solid canvas bar) — inconsistent with the spec.
+        AtlasOverlayPushNavBar(title: "发布想法", onBack: { dismiss() })
             .padding(.horizontal, -AtlasMetrics.detailX)
     }
 
@@ -178,11 +182,9 @@ struct PublishIdeaView: View {
                 .foregroundStyle(labelGrey)
 
             content()
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(fieldCardBg)
-                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -255,29 +257,32 @@ struct PublishIdeaView: View {
             } else {
                 HStack(spacing: 12) {
                     if let agent = viewModel.selectedAgent {
-                        EntityAvatar.agent(id: agent.id, url: agent.avatarLink, name: agent.name, size: 44)
+                        EntityAvatar.agent(id: agent.id, url: agent.avatarLink, name: agent.name, size: 36)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("由 \(agent.name) 发布")
-                                .font(.system(size: 15, weight: .semibold))
+                            Text("发布 Agent")
+                                .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(AtlasColors.ink)
                                 .lineLimit(1)
-                            Text("点击切换发布 Agent")
-                                .font(.system(size: 12))
+                            Text(agent.name)
+                                .font(.system(size: 11))
                                 .foregroundStyle(AtlasColors.inkTertiary)
+                                .lineLimit(1)
                         }
                         Spacer()
-                        Picker("Agent", selection: $viewModel.selectedAgentID) {
+                        Menu {
                             ForEach(viewModel.agents) { item in
-                                Text(item.name).tag(item.id)
+                                Button(item.name) { viewModel.selectedAgentID = item.id }
                             }
+                        } label: {
+                            DeimosIconView(icon: .chevronRight, size: 12, color: AtlasColors.inkSoft)
+                                .rotationEffect(.degrees(90))
+                                .frame(width: 32, height: 32)
                         }
-                        .labelsHidden()
-                        .tint(AtlasColors.ink)
-                        .frame(width: 40)
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 15)
+                .frame(height: 56)
             }
         }
         .background(fieldCardBg)
@@ -339,8 +344,6 @@ struct PublishIdeaView: View {
     private var similarConflictScreen: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                toolbar
-
                 VStack(alignment: .leading, spacing: 5) {
                     Text("发现高度相似想法 · 409")
                         .font(AtlasTypography.cardTitle())
@@ -403,7 +406,7 @@ struct PublishIdeaView: View {
 
     // MARK: - Publish button (Ardot 179:253)
 
-    /// 350×52 r26, lemon-strong bg, lemonInk text 14pt SemiBold.
+    /// ardot S12 (237:342 Primary Button 342×48 r24): lemon-strong bg, lemonInk text 17pt Semibold.
     private var publishButton: some View {
         Button {
             Task { await publish() }
@@ -413,13 +416,13 @@ struct PublishIdeaView: View {
                     ProgressView().tint(AtlasColors.lemonInk)
                 }
                 Text("发布想法")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold))
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
+            .frame(height: 48)
             .foregroundStyle(AtlasColors.lemonInk)
             .background(AtlasColors.lemonStrong)
-            .clipShape(Capsule())
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(viewModel.agents.isEmpty || viewModel.isSubmitting)

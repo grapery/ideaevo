@@ -47,98 +47,54 @@ struct EditProfileView: View {
     @State private var isUploadingBackground = false
 
     var body: some View {
+        let avatarID = session.user?.id ?? "current-user"
+        let avatarURL = session.user?.avatarLink
+        let avatarName = session.user?.name ?? name
         ScrollView {
-            VStack(spacing: 14) {
-                AtlasSettingsSubSummaryCard(
-                    title: "公开身份只展示可被搜索的字段",
-                    message: "昵称、简介、头像与背景对所有人可见；联系方式与登录凭据不会出现在公开主页。"
-                )
-
-                // Avatar / background picker card
-                VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 20) {
+                PhotosPicker(selection: $avatarItem, matching: .images) {
                     HStack(spacing: 16) {
-                        ProfileBanner(
-                            backgroundURL: session.user?.backgroundURL,
-                            avatarURL: session.user?.avatarURL,
-                            avatarSize: 64
+                        EntityAvatar.user(
+                            id: avatarID,
+                            url: avatarURL,
+                            name: avatarName,
+                            size: 72
                         )
-                        .frame(width: 64, height: 64)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("头像与背景")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(AtlasColors.ink)
-                            Text("建议头像 400×400，背景 1500×500")
-                                .font(.system(size: 12))
-                                .foregroundStyle(AtlasColors.inkFaint)
-                        }
-                        Spacer(minLength: 0)
-                    }
-
-                    HStack(spacing: 10) {
-                        PhotosPicker(selection: $avatarItem, matching: .images) {
-                            pickerLabel(isUploadingAvatar ? "头像上传中…" : "更换头像")
-                        }
-                        .disabled(isUploadingAvatar || isUploadingBackground)
-                        PhotosPicker(selection: $backgroundItem, matching: .images) {
-                            pickerLabel(isUploadingBackground ? "背景上传中…" : "更换背景")
-                        }
-                        .disabled(isUploadingAvatar || isUploadingBackground)
-                    }
-
-                    HStack(spacing: 10) {
-                        Button { Task { await resetAvatar() } } label: {
-                            Text("恢复默认头像")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(AtlasColors.inkSoft)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Capsule(style: .continuous).fill(AtlasColors.fill))
-                        }
-                        .buttonStyle(.plain)
-                        Button { Task { await resetBackground() } } label: {
-                            Text("恢复默认背景")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(AtlasColors.inkSoft)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Capsule(style: .continuous).fill(AtlasColors.fill))
-                        }
-                        .buttonStyle(.plain)
-                        Spacer(minLength: 0)
-                    }
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(cardSurface)
-                .overlay(cardBorder)
-
-                // Nickname + bio card
-                VStack(alignment: .leading, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("昵称")
-                            .font(.system(size: 12))
-                            .foregroundStyle(AtlasColors.inkFaint)
-                        TextField("昵称", text: $name)
-                            .styleSettingsInput()
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("简介")
-                            .font(.system(size: 12))
-                            .foregroundStyle(AtlasColors.inkFaint)
-                        TextEditor(text: $bio)
-                            .font(.system(size: 15))
+                        Text(isUploadingAvatar ? "头像上传中…" : "更换头像")
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(AtlasColors.ink)
-                            .frame(minHeight: 92)
-                            .padding(12)
-                            .background(AtlasColors.bgInput)
-                            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
-                            .scrollContentBackground(.hidden)
+                        Spacer(minLength: 0)
                     }
                 }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(cardSurface)
-                .overlay(cardBorder)
+                .buttonStyle(.plain)
+                .disabled(isUploadingAvatar)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("昵称")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                    TextField("昵称", text: $name)
+                        .font(.system(size: 16))
+                        .foregroundStyle(AtlasColors.ink)
+                        .padding(.horizontal, 16)
+                        .frame(height: 48)
+                        .background(AtlasColors.bgInput)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("简介")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                    TextEditor(text: $bio)
+                        .font(.system(size: 16))
+                        .foregroundStyle(AtlasColors.ink)
+                        .padding(12)
+                        .frame(height: 96)
+                        .background(AtlasColors.bgInput)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .scrollContentBackground(.hidden)
+                }
 
                 if let message {
                     Text(message)
@@ -147,18 +103,27 @@ struct EditProfileView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                AtlasPrimaryButton(title: "保存", isLoading: isSaving) {
-                    Task { await save() }
+                Button { Task { await save() } } label: {
+                    Group {
+                        if isSaving { ProgressView().tint(AtlasColors.lemonInk) }
+                        else { Text("保存") }
+                    }
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(AtlasColors.lemonInk)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(AtlasColors.lemon)
+                    .clipShape(Capsule())
                 }
-                .padding(.top, 2)
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, AtlasMetrics.detailX)
-            .padding(.top, 8)
+            .padding(.horizontal, 24)
+            .padding(.top, 10)
             .padding(.bottom, 40)
         }
         .background(AtlasColors.canvas)
         .safeAreaInset(edge: .top, spacing: 0) {
-            settingsBackHeader(title: "公开身份", dismiss: dismiss)
+            settingsBackHeader(title: "编辑资料", dismiss: dismiss)
         }
         .navigationBarHidden(true)
         .suppressTabBar()
@@ -178,7 +143,7 @@ struct EditProfileView: View {
 
     private func pickerLabel(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 14, weight: .medium))
+            .font(.system(size: 15, weight: .medium))
             .foregroundStyle(AtlasColors.lemonInk)
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
@@ -445,20 +410,41 @@ struct DeleteAccountView: View {
     @State private var deleteSMSCode = ""
     @State private var isDeleting = false
     @State private var showDeleteDialog = false
+    @State private var showVerification = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
-                AtlasSettingsSubSummaryCard(
-                    title: "永久注销账户",
-                    message: "此操作不可恢复。将删除登录凭证、个人资料与手机号绑定；公开内容或 Fork 引用如按社区规则保留，将与账号身份解绑并匿名化展示。"
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("这会删除账号和关联个人数据")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("个人资料、登录凭证、设备 token 和通知设置将被删除。")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color(hex: 0xFFF1F1))
                 )
 
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("注销账户")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(AtlasColors.destructive)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("1. 验证邮箱或手机号")
+                    Text("2. 显示删除预计完成时间")
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(AtlasColors.ink)
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AtlasColors.fill)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
+                if showVerification {
+                    VStack(alignment: .leading, spacing: 10) {
                     if let user = session.user {
                         switch user.authProvider {
                         case "email":
@@ -500,29 +486,36 @@ struct DeleteAccountView: View {
                                 .foregroundStyle(AtlasColors.inkFaint)
                         }
                     }
-
-                    Text("公开内容或 Fork 引用如按社区规则保留，将与账号身份解绑并匿名化展示。")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkFaint)
-
-                    Button {
-                        showDeleteDialog = true
-                    } label: {
-                        Text("永久注销账户")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(AtlasColors.destructive)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 46)
-                            .background(AtlasColors.destructive.opacity(0.08))
-                            .clipShape(Capsule(style: .continuous))
                     }
-                    .buttonStyle(.plain)
-                    .disabled(isDeleting)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(cardSurface)
-                .overlay(cardBorder)
+
+                Button {
+                    if showVerification { showDeleteDialog = true }
+                    else { withAnimation(.easeInOut(duration: 0.2)) { showVerification = true } }
+                } label: {
+                    Text(showVerification ? "确认删除" : "删除")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(AtlasColors.destructiveFill)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(isDeleting)
+
+                Button { dismiss() } label: {
+                    Text("保留账号")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(AtlasColors.fill)
+                        .overlay(Capsule().stroke(AtlasColors.border, lineWidth: 1))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, AtlasMetrics.detailX)
             .padding(.top, 8)
@@ -530,7 +523,7 @@ struct DeleteAccountView: View {
         }
         .background(AtlasColors.canvas)
         .safeAreaInset(edge: .top, spacing: 0) {
-            settingsBackHeader(title: "注销账户", dismiss: dismiss)
+            settingsBackHeader(title: "删除账号", dismiss: dismiss)
         }
         .navigationBarHidden(true)
         .suppressTabBar()
@@ -795,48 +788,28 @@ struct PrivacySafetyView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 14) {
-                AtlasSettingsSubSummaryCard(
-                    title: "公开身份与账户数据严格分离",
-                    message: "公开主页只包含昵称、简介、头像和公开作品；账号凭据仅用于登录与找回。"
-                )
-
-                AtlasSettingsDataRow("公开主页", message: "昵称、简介、头像、公开 Agent 与想法")
-                AtlasSettingsDataRow("AI 与内容数据", message: "对话、搜索与内容处理授权，可查看和调整")
-
-                AtlasSettingsGroup {
-                    Button {
-                        onBlocklist()
-                    } label: {
-                        AtlasSettingsNavRow(title: "屏蔽名单", subtitle: "查看与解除已屏蔽的用户") {
-                            DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    AtlasSettingsGroupDivider()
-                    Button {
-                        onPrivacyPolicy()
-                    } label: {
-                        AtlasSettingsNavRow(title: "隐私政策", subtitle: "数据收集、保留与删除规则") {
-                            DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    AtlasSettingsGroupDivider()
-                    Button {
-                        onTerms()
-                    } label: {
-                        AtlasSettingsNavRow(title: "服务条款", subtitle: "使用规则与内容责任") {
-                            DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
-                        }
-                    }
-                    .buttonStyle(.plain)
+            VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("提交前可查看数据用途")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("账号、搜索、聊天、用户内容会用于核心功能；可随时管理同意与删除请求。")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AtlasColors.chatActivityInk)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                AtlasSettingsLinksCard(
-                    title: "安全与政策",
-                    message: "屏蔽名单 · 举报记录 · 隐私政策 · 服务条款"
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(AtlasColors.chatActivityFill)
                 )
+                .padding(.bottom, 10)
+
+                privacyRow(title: "账号资料", subtitle: "邮箱、手机号、头像、Agent 归属", action: {})
+                privacyRow(title: "用户内容", subtitle: "想法、评论、聊天、搜索历史", action: {})
+                privacyRow(title: "政策链接", subtitle: "隐私政策 · 服务条款 · 数据删除说明", action: onPrivacyPolicy)
             }
             .padding(.horizontal, AtlasMetrics.detailX)
             .padding(.top, 8)
@@ -844,10 +817,29 @@ struct PrivacySafetyView: View {
         }
         .background(AtlasColors.canvas)
         .safeAreaInset(edge: .top, spacing: 0) {
-            settingsBackHeader(title: "隐私与安全", dismiss: dismiss)
+            settingsBackHeader(title: "隐私与数据", dismiss: dismiss)
         }
         .navigationBarHidden(true)
         .suppressTabBar()
+    }
+
+    private func privacyRow(title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                }
+                Spacer(minLength: 0)
+                DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkSoft)
+            }
+            .frame(height: 68)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -859,34 +851,51 @@ struct ContactSupportView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 14) {
-                AtlasSettingsSubSummaryCard(
-                    title: "账号、隐私与社区安全支持",
-                    message: "support@wanye.app\n请附问题类型与必要上下文，我们会跟进处理。"
-                )
-
-                AtlasSettingsGroup {
-                    supportLink(
-                        title: "邮件支持",
-                        subtitle: "support@wanye.app"
-                    ) {
-                        if let url = URL(string: "mailto:support@wanye.app?subject=Deimos%20%E5%8F%8D%E9%A6%88") {
-                            openURL(url)
-                        }
-                    }
-                    AtlasSettingsGroupDivider()
-                    supportLink(
-                        title: "帮助中心",
-                        subtitle: "常见问题、使用指南、社区规范"
-                    ) {
-                        if let url = URL(string: "https://wanye.app/help") { openURL(url) }
+            VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("我们会处理举报和账号请求")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("support@deimos.app")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
+                        Text("通常 24 小时内响应社区安全与账号问题。")
+                            .font(.system(size: 14))
+                            .foregroundStyle(AtlasColors.chatActivityInk)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-
-                AtlasSettingsLinksCard(
-                    title: "隐私政策",
-                    message: "查看数据收集、保留、删除政策"
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(AtlasColors.chatActivityFill)
                 )
+
+                .padding(.bottom, 10)
+
+                supportLink(title: "隐私政策", subtitle: "数据收集与删除说明") {
+                    if let url = URL(string: "https://wanye.app/privacy") { openURL(url) }
+                }
+                supportLink(title: "服务条款", subtitle: "社区规则与 AI 使用边界") {
+                    if let url = URL(string: "https://wanye.app/terms") { openURL(url) }
+                }
+
+                Button {
+                    if let url = URL(string: "mailto:support@deimos.app?subject=Deimos%20%E5%8F%8D%E9%A6%88") { openURL(url) }
+                } label: {
+                    Text("发送邮件")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(AtlasColors.lemonInk)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(AtlasColors.lemon)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 8)
             }
             .padding(.horizontal, AtlasMetrics.detailX)
             .padding(.top, 8)
@@ -902,9 +911,19 @@ struct ContactSupportView: View {
 
     private func supportLink(title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            AtlasSettingsNavRow(title: title, subtitle: subtitle) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                }
+                Spacer(minLength: 0)
                 DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
             }
+            .frame(height: 68)
         }
         .buttonStyle(.plain)
     }
@@ -924,7 +943,7 @@ private var cardBorder: some View {
 private struct SettingsInputStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(.system(size: 15))
+            .font(.system(size: 16))
             .foregroundStyle(AtlasColors.ink)
             .padding(.vertical, 12)
             .padding(.horizontal, 14)

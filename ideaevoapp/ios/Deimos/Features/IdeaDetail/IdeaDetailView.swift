@@ -161,28 +161,30 @@ final class IdeaDetailViewModel {
 /// and fork (lemon-filled with count). Matches the iOS 26 Liquid Glass aesthetic and the
 /// top floating-glass toolbar language.
 private struct IdeaEvolutionActionBar: View {
+    let likeCount: Int
+    let flowerCount: Int
     let commentCount: Int
     let forkCount: Int
-    let isBookmarked: Bool
+    let isLiked: Bool
+    let onLike: () -> Void
+    let onFlower: () -> Void
     let onComment: () -> Void
-    let onShare: () -> Void
-    let onBookmark: () -> Void
     let onFork: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
-            circleButton(icon: .comment, count: commentCount, isActive: false, action: onComment)
-                .accessibilityLabel("评论，\(commentCount) 条")
-            circleButton(icon: .share, count: nil, isActive: false, action: onShare)
-                .accessibilityLabel("分享")
-            circleButton(icon: .bookmark, count: nil, isActive: isBookmarked, action: onBookmark)
-                .accessibilityLabel(isBookmarked ? "取消收藏" : "收藏")
-            circleButton(icon: .fork, count: forkCount, isActive: false, isLemon: true, action: onFork)
+            metricButton(icon: .heart, count: likeCount, isActive: isLiked, action: onLike)
+                .accessibilityLabel("喜欢，\(likeCount) 次")
+            metricButton(icon: .flower, count: flowerCount, isActive: false, action: onFlower)
+                .accessibilityLabel("送花，\(flowerCount) 朵")
+            metricButton(icon: .fork, count: forkCount, isActive: false, action: onFork)
                 .accessibilityLabel("Fork，\(forkCount) 次")
+            metricButton(icon: .comment, count: commentCount, isActive: false, action: onComment)
+                .accessibilityLabel("评论，\(commentCount) 条")
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
         .frame(maxWidth: .infinity)
+        .frame(height: 52)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(Color.white.opacity(0.36))
@@ -196,56 +198,30 @@ private struct IdeaEvolutionActionBar: View {
                 .stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1)
         )
         .shadow(color: AtlasColors.ink.opacity(0.10), radius: 18, x: 0, y: 8)
-        .padding(.horizontal, AtlasMetrics.detailX)
-        .padding(.bottom, 8)
+        .padding(.bottom, 2)
     }
 
-    /// One circular action. Default state: white/36% glass circle with an ink icon; an
-    /// optional count badge sits below the icon. `isActive` recolours the icon (e.g. saved
-    /// bookmark). `isLemon` swaps the glass fill for the lemonStrong primary-action fill.
-    @ViewBuilder
-    private func circleButton(
+    private func metricButton(
         icon: DeimosIcon,
-        count: Int?,
+        count: Int,
         isActive: Bool,
-        isLemon: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             VStack(spacing: 2) {
-                ZStack {
-                    Circle()
-                        .fill(isLemon
-                              ? AtlasColors.lemonStrong
-                              : Color.white.opacity(0.36))
-                        .frame(width: 40, height: 40)
-                    DeimosIconView(
-                        icon: icon,
-                        size: 17,
-                        color: isLemon
-                            ? AtlasColors.lemonInk
-                            : (isActive ? AtlasColors.lemonInk : AtlasColors.ink)
-                    )
-                }
-                .overlay(
-                    Circle().stroke(Color.white.opacity(0.78), lineWidth: 1)
+                Text("\(count)")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(isActive ? AtlasColors.lemonInk : AtlasColors.inkSoft)
+                    .monospacedDigit()
+                DeimosIconView(
+                    icon: icon,
+                    size: 14,
+                    color: isActive || icon == .fork ? AtlasColors.lemonInk : AtlasColors.ink
                 )
-                .overlay(
-                    Circle().stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1)
-                )
-
-                if let count {
-                    Text("\(count)")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(isLemon ? AtlasColors.lemonInk : AtlasColors.inkSoft)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                } else {
-                    Color.clear.frame(height: 12)
-                }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
+            .frame(height: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -330,12 +306,14 @@ struct IdeaDetailView: View {
         .safeAreaInset(edge: .bottom) {
             if let idea = viewModel.idea {
                 IdeaEvolutionActionBar(
+                    likeCount: idea.likeCount,
+                    flowerCount: idea.flowerCount,
                     commentCount: idea.commentCount,
                     forkCount: idea.forkCount,
-                    isBookmarked: viewModel.isBookmarked,
+                    isLiked: viewModel.isLiked,
+                    onLike: { Task { await handleLike() } },
+                    onFlower: { Task { await handleFlower() } },
                     onComment: { openComments(idea) },
-                    onShare: { Task { await shareIdea() } },
-                    onBookmark: { Task { await handleBookmark() } },
                     onFork: { openForkSheet() }
                 )
             }
@@ -445,12 +423,45 @@ struct IdeaDetailView: View {
         .onChange(of: session.isAuthenticated) { _, loggedIn in
             Task { await viewModel.load(id: ideaID, isAuthenticated: loggedIn) }
         }
+        #if DEBUG
+        .onChange(of: viewModel.isLoading) { _, isLoading in
+            guard !isLoading, let idea = viewModel.idea else { return }
+            fireDebugDeepLinks(for: idea)
+        }
+        .onChange(of: viewModel.idea?.id) { _, _ in
+            if let idea = viewModel.idea, !viewModel.isLoading {
+                fireDebugDeepLinks(for: idea)
+            }
+        }
+        #endif
     }
 
     private func isUnavailableIdea(_ message: String) -> Bool {
         let normalized = message.lowercased()
         return normalized.contains("404") || normalized.contains("not found") || message.contains("不存在") || normalized.contains("forbidden") || message.contains("权限")
     }
+
+    #if DEBUG
+    @State private var debugDeepLinkFired = false
+    private func fireDebugDeepLinks(for idea: Idea) {
+        guard !debugDeepLinkFired else { return }
+        debugDeepLinkFired = true
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--deimos-goto-comments") {
+            openComments(idea)
+        } else if args.contains("--deimos-goto-fork-sheet") {
+            showForkSheet = true
+        } else if args.contains("--deimos-goto-fork-lineage") {
+            forkLineageRoute = IdeaRoute(id: idea.id)
+        } else if args.contains("--deimos-goto-owner-edit") {
+            ownerEditRoute = IdeaRoute(id: idea.id)
+        } else if args.contains("--deimos-goto-report") {
+            showReportSheet = true
+        } else if args.contains("--deimos-goto-block") {
+            showBlockDialog = true
+        }
+    }
+    #endif
 
     private var buryReasonSheet: some View {
         VStack(spacing: 16) {
@@ -484,58 +495,62 @@ struct IdeaDetailView: View {
         .presentationCornerRadius(AtlasMetrics.radiusSheet)
     }
 
-    // MARK: - v6 Cover Page with Transparent Float Navigation (Ardot 138:334)
+    // MARK: - S04 Cover Page (Ardot `237:230`)
 
-    /// Product Reality (Ardot 246:2 + v2 redesign): glass toolbar + card stack.
-    /// v2 reorder: identity (now holds author info) → flowers row → description →
-    /// links → evolution+version timeline (merged) → attachments → impl/media → chat.
+    /// ardot S04 (`237:230`) layout: full-width 390×220 #F3FFC8 cover sits at the top (no
+    /// horizontal padding), then everything below scrolls inside a padded column. The cover
+    /// carries the title, status line, accent rule, and back/more buttons — it IS the identity
+    /// surface. Replaces the previous card-stack layout that opened with a padded identity card.
     @ViewBuilder
     private func detailScreen(_ idea: Idea) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Scroll-offset tracker: fires when the idea identity card passes under the toolbar.
-                GeometryReader { geo in
-                    Color.clear.preference(
-                        key: ScrollOffsetKey.self,
-                        value: geo.frame(in: .named("detailScroll")).minY
-                    )
-                }
-                .frame(height: 0)
+            VStack(alignment: .leading, spacing: 0) {
+                // Full-width cover — sits flush to the screen edges, ABOVE the safe-area toolbar.
+                // Scroll-offset tracker uses the cover so the glass toolbar reveals as it scrolls past.
+                ideaCover(idea)
 
-                ideaIdentityCard(idea)
+                // Padded content column below the cover. ardot itemSpacing=14.
+                VStack(alignment: .leading, spacing: 14) {
+                    // Scroll-offset tracker: fires when the cover top passes under the toolbar.
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: ScrollOffsetKey.self,
+                            value: geo.frame(in: .named("detailScroll")).minY
+                        )
+                    }
+                    .frame(height: 0)
 
-                // v2: flowers row sits directly under the identity card so it's discoverable.
-                FlowersPreviewCard(
-                    flowerCount: idea.flowerCount,
-                    donors: viewModel.donors,
-                    onOpen: { Task { await handleFlower() } },
-                    onSendFlower: { Task { await handleFlower() } }
-                )
+                    // ardot S04 `237:230` Meta row: 14pt Regular #8A94A6 "Agent · Author · 时间".
+                    metaRow(idea)
 
-                overviewCard(idea)
-                quickLinksSection(idea)
-                forkLineagePreview(idea)
-                attachmentsCard(idea)
+                    // ardot S04 `237:230` Action Pills: 350×44 #F5F6F7 cr22 container holding 3
+                    // equal-width action pills — 送花 (#F3FFC8) / 评论 (#F5F6F7) / Fork (#D2F522).
+                    actionPillsBar(idea)
 
-                // Secondary artifact material remains below the Product Reality first fold.
-                implProgressCard(idea)
-                mediaGallerySection(idea)
+                    overviewCard(idea)
+                    quickLinksSection(idea)
+                    forkLineagePreview(idea)
+                    attachmentsCard(idea)
 
-                if !idea.tags.isEmpty {
-                    HStack(spacing: 6) {
-                        ForEach(idea.tags.prefix(4), id: \.self) { tag in
-                            TagPill(text: "#\(tag)")
+                    implProgressCard(idea)
+                    mediaGallerySection(idea)
+
+                    if !idea.tags.isEmpty {
+                        HStack(spacing: 6) {
+                            ForEach(idea.tags.prefix(4), id: \.self) { tag in
+                                TagPill(text: "#\(tag)")
+                            }
                         }
                     }
-                }
 
-                if let agent = idea.agent {
-                    ideaChatCTA(idea: idea, agent: agent)
+                    if let agent = idea.agent {
+                        ideaChatCTA(idea: idea, agent: agent)
+                    }
                 }
+                .padding(.horizontal, AtlasMetrics.detailX)
+                .padding(.top, 16)
+                .padding(.bottom, AtlasMetrics.bottomClear)
             }
-            .padding(.horizontal, AtlasMetrics.detailX)
-            .padding(.top, 8)
-            .padding(.bottom, AtlasMetrics.bottomClear)
         }
         .coordinateSpace(name: "detailScroll")
         .onPreferenceChange(ScrollOffsetKey.self) { offset in
@@ -546,6 +561,10 @@ struct IdeaDetailView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             AtlasDetailGlassToolbar(
                 onBack: { dismiss() },
+                onShare: {
+                    sharePayload = "\(idea.title)\n\(ideaShareURL(idea.id))"
+                    showShareSheet = true
+                },
                 onSave: { Task { await handleBookmark() } },
                 onForkLineage: { forkLineageRoute = IdeaRoute(id: idea.id) },
                 onMore: {
@@ -558,95 +577,54 @@ struct IdeaDetailView: View {
         }
     }
 
-    /// Ardot 246:18 + v2 update (S04 `179:3` redesign) — lemonSoft card with the idea identity
-    /// on the LEFT and the author info (avatar + name + agent meta) stacked on the RIGHT.
-    /// This collapses the old `agentOwnershipCard` into the identity card so the author is
-    /// visible alongside the title instead of in a separate muted row below.
-    private func ideaIdentityCard(_ idea: Idea) -> some View {
+    /// ardot S04 (`237:230` Cover): full-width 390×220 #F3FFC8 cover.
+    /// Layout (top→bottom, all left-aligned at 20pt horizontal padding):
+    ///   1. Back circle (44×44 white cr22) at top-left + More circle at top-right
+    ///   2. Idea Status (11pt Semibold #65703A) — "IDEA · ACTIVE · v4"
+    ///   3. Accent Rule (44×3 #BEE90D cr2) — small lemon divider
+    ///   4. Cover Title (24pt Bold #0F1B2D) — the idea title
+    /// Replaces the previous lemonSoft identity card (S04 `179:3` pattern).
+    private func ideaCover(_ idea: Idea) -> some View {
         let version = viewModel.currentVersionNumber
         let category = idea.category.trimmingCharacters(in: .whitespacesAndNewlines)
-        let kicker = category.isEmpty
-            ? "IDEA · v\(version)"
+        let statusText = category.isEmpty
+            ? "IDEA · ACTIVE · v\(version)"
             : "IDEA · \(category.uppercased()) · v\(version)"
-        let primaryName = idea.authorDisplayName
-        let agentName = idea.agent?.name ?? "Agent"
-        let showAgentName = idea.isAuthoredByDistinctAgent
 
-        return HStack(alignment: .top, spacing: 12) {
-            // Left — kicker + title + status row.
-            VStack(alignment: .leading, spacing: 8) {
-                Text(kicker)
-                    .font(AtlasTypography.overline())
-                    .foregroundStyle(AtlasColors.lemonInk)
+        return ZStack(alignment: .top) {
+            // Filled lemon-tinted cover background, full width, 220pt tall.
+            // Uses chatActivityFill (#F3FFC8) per ardot spec — slightly warmer than lemonSoft.
+            Rectangle()
+                .fill(AtlasColors.chatActivityFill)
+                .frame(height: 220)
 
+            // Bottom-anchored stack: Status + Accent Rule + Title.
+            // Status at y=126, Rule at y=146, Title at y=160 per spec (relative to cover top).
+            VStack(alignment: .leading, spacing: 4) {
+                Text(statusText)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AtlasColors.oliveMeta)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                // Accent rule — 44×3 #BEE90D cr2.
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(AtlasColors.lemonStrong)
+                    .frame(width: 44, height: 3)
+                    .padding(.top, 2)
+                    .padding(.bottom, 4)
+                // Cover title — 24pt Bold #0F1B2D.
                 Text(idea.displayTitle)
-                    .font(AtlasTypography.titleLarge())
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(AtlasColors.ink)
-                    .atlasTrackedTitle(25)
-                    .lineLimit(3)
-
-                HStack(spacing: 8) {
-                    Text(implStatusLabel(idea.implStatus ?? "concept"))
-                        .font(AtlasTypography.overline())
-                        .foregroundStyle(AtlasColors.lemonInk)
-                        .padding(.horizontal, 10)
-                        .frame(height: 24)
-                        .background(AtlasColors.lemon)
-                        .clipShape(Capsule())
-                    Text(idea.isBuried ? "已埋没" : "公开 · 可 Fork")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(AtlasColors.inkTertiary)
-                }
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Right — author avatar + name + badges + agent meta, vertically stacked.
-            Button {
-                agentRoute = AgentRoute(id: idea.agentID)
-            } label: {
-                VStack(alignment: .trailing, spacing: 4) {
-                    EntityAvatar.user(
-                        id: idea.agent?.owner?.id ?? idea.agent?.ownerUserID ?? "",
-                        url: idea.authorAvatarLink,
-                        name: primaryName,
-                        size: 40
-                    )
-                    HStack(spacing: 4) {
-                        Text(primaryName)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(AtlasColors.ink)
-                            .lineLimit(1)
-                        if idea.showsAIAgentBadge {
-                            Text("AI")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(AtlasColors.lemonInk)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule(style: .continuous).fill(AtlasColors.lemon))
-                        }
-                        if idea.isFork {
-                            Text("Fork")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(AtlasColors.inkSoft)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule(style: .continuous).fill(AtlasColors.fill))
-                        }
-                    }
-                    Text(showAgentName
-                         ? "\(agentName) · \(idea.updatedAt.relativeShort)更新"
-                         : "\(idea.updatedAt.relativeShort)更新")
-                        .font(.system(size: 11))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                        .lineLimit(1)
-                }
-            }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+            .frame(maxWidth: .infinity, maxHeight: 220, alignment: .bottomLeading)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AtlasColors.lemonSoft)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+        .frame(maxWidth: .infinity)
+        .frame(height: 220)
     }
 
     /// A single 44×44 glass circle control using the shared SVG icon language.
@@ -655,6 +633,65 @@ struct IdeaDetailView: View {
             DeimosIconView(icon: icon, size: 17, color: AtlasColors.ink)
                 .frame(width: AtlasMetrics.coverButtonSize, height: AtlasMetrics.coverButtonSize)
                 .atlasToolbarFloat()
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// ardot S04 `237:230` Meta row — 14pt Regular `#8A94A6`, single line summarizing the
+    /// authoring agent + human author + recency. Reads as a quiet attribution line below the
+    /// cover/identity card.
+    @ViewBuilder
+    private func metaRow(_ idea: Idea) -> some View {
+        let agentName = idea.agent?.name ?? "Agent"
+        let author = idea.authorDisplayName
+        let parts = [agentName, author, idea.updatedAt.relativeShort]
+        Text(parts.joined(separator: " · "))
+            .font(.system(size: 12))
+            .foregroundStyle(AtlasColors.inkSoft)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// ardot S04 (`237:257` Action Pills): 350×40 #F5F6F7 cr20 container, padding 4, itemSpacing 4.
+    /// Each pill 110×32 cr16 with 14pt Semibold label. 送花 #F3FFC8 / 评论 #F5F6F7 / Fork #D2F522.
+    @ViewBuilder
+    private func actionPillsBar(_ idea: Idea) -> some View {
+        HStack(spacing: 4) {
+            actionPill(label: "✿ 送花", fill: AtlasColors.chatActivityFill, textColor: AtlasColors.lemonInk) {
+                Task { await handleFlower() }
+            }
+            actionPill(label: "◇ 评论", fill: AtlasColors.chatAssistantBubble, textColor: AtlasColors.ink) {
+                openComments(idea)
+            }
+            actionPill(label: "⑂ Fork", fill: AtlasColors.lemonCTA, textColor: AtlasColors.lemonInk) {
+                openForkSheet()
+            }
+        }
+        .padding(4)
+        .frame(maxWidth: .infinity)
+        .frame(height: 40)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(AtlasColors.chatAssistantBubble)
+        )
+    }
+
+    private func actionPill(
+        label: String,
+        fill: Color,
+        textColor: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(textColor)
+                .frame(maxWidth: .infinity)
+                .frame(height: 32)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(fill)
+                )
         }
         .buttonStyle(.plain)
     }
@@ -715,100 +752,46 @@ struct IdeaDetailView: View {
     /// the visual overlap the user called out.
     @ViewBuilder
     private func forkLineagePreview(_ idea: Idea) -> some View {
+        // ardot S04 (`237:267` Fork Lineage Card): 350×74, fill #F3FFC8, cr16, itemSpacing 5, padding 14.
+        // Title "Fork 脉络" 15pt Semibold #0F1B2D; body 12pt Regular #5A6472.
         let current = viewModel.currentVersionNumber
         let source = viewModel.lineage?.sourceVersion?.version
-        let branches = viewModel.lineage?.stats.activeBranches ?? idea.forkCount
-        let contributors = viewModel.lineage?.stats.contributors ?? 0
+        let childForks = max(idea.forkCount, 0)
         let summary: String = {
             if let source {
-                return "源自 v\(source) · 当前 v\(current) · \(branches) 个分支 · \(contributors) 位贡献者"
+                return "源想法 v\(source) → 当前 v\(current) · \(childForks) 个子 Fork"
             }
-            return "当前 v\(current) · \(branches) 个分支 · \(contributors) 位贡献者 · \(idea.forkCount) 个 Fork"
+            return "当前 v\(current) · \(childForks) 个子 Fork"
         }()
-        let versions = viewModel.versions.prefix(4)
-
-        VStack(alignment: .leading, spacing: 10) {
-            // Header — title + chevron; tapping the header navigates to the fork lineage.
+        VStack(alignment: .leading, spacing: 5) {
             Button {
                 forkLineageRoute = IdeaRoute(id: idea.id)
             } label: {
                 HStack {
-                    Text("演化脉络")
-                        .font(.system(size: 16, weight: .semibold))
+                    Text("Fork 脉络")
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(AtlasColors.ink)
                     Spacer(minLength: 0)
-                    DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                    DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkSoft)
                 }
             }
             .buttonStyle(.plain)
 
-            // Lineage summary — also navigates to the fork lineage.
             Button {
                 forkLineageRoute = IdeaRoute(id: idea.id)
             } label: {
                 Text(summary)
-                    .font(AtlasTypography.meta())
-                    .foregroundStyle(AtlasColors.inkTertiary)
+                    .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.chatActivityInk)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
 
-            if !versions.isEmpty {
-                Rectangle()
-                    .fill(AtlasColors.rule)
-                    .frame(height: 1)
-
-                // Compact version timeline (max 4 rows). Each row navigates to the version compare.
-                ForEach(Array(versions), id: \.id) { version in
-                    Button {
-                        let currentVersion = viewModel.versions.first(where: \.isCurrent)
-                        if let currentVersion, currentVersion.id != version.id {
-                            versionRoute = VersionCompareRoute(
-                                ideaID: ideaID,
-                                versionID: version.id,
-                                compareVersionID: currentVersion.id
-                            )
-                        } else {
-                            versionRoute = VersionCompareRoute(
-                                ideaID: ideaID,
-                                versionID: version.id,
-                                compareVersionID: nil
-                            )
-                        }
-                    } label: {
-                        HStack(spacing: 8) {
-                            Text("v\(version.version)")
-                                .font(.system(size: 13, weight: version.isCurrent ? .bold : .semibold))
-                                .foregroundStyle(version.isCurrent ? AtlasColors.lemonInk : AtlasColors.ink)
-                                .frame(width: 28, alignment: .leading)
-                            if version.isCurrent {
-                                Text("当前")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(AtlasColors.lemonInk)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Capsule(style: .continuous).fill(AtlasColors.lemon))
-                            }
-                            Text(version.changelog.isEmpty ? "—" : version.changelog)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(AtlasColors.inkTertiary)
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                            Text(version.createdAt.relativeShort)
-                                .font(AtlasTypography.meta())
-                                .foregroundStyle(AtlasColors.inkFaint)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AtlasColors.lemonSoft)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+        .background(AtlasColors.chatActivityFill)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     /// Ardot 246:158 Media & Attachments — summary row from stats / image URLs.
@@ -939,29 +922,35 @@ struct IdeaDetailView: View {
 
     /// Ardot 246:30 Description — "当前版本解决什么" + short version summary.
     private func overviewCard(_ idea: Idea) -> some View {
+        // ardot S04 `237:230` README card: #FBFCFD fill + #E8EBF0 stroke, cr20.
+        // Title "README · 产品说明" 15pt Semibold #0F1B2D; body 15pt Regular #0F1B2D.
+        // Previous version used white surface + AtlasColors.border + 16pt title — under-spec.
         let changelog = viewModel.versions.first(where: \.isCurrent)?.changelog
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let body = changelog.isEmpty
             ? idea.description.plainSummary
             : changelog
 
+        // ardot S04 (`237:264` README): 350×118, fill #F8F9FB, stroke #EEF1F3, cr16, itemSpacing 6, padding 14.
+        // Title "README · 产品说明" 14pt Semibold ink; body 14pt Regular ink.
         return VStack(alignment: .leading, spacing: 6) {
-            Text("当前版本解决什么")
-                .font(.system(size: 16, weight: .semibold))
+            Text("README · 产品说明")
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AtlasColors.ink)
             Text(body)
-                .font(AtlasTypography.bodyMedium())
-                .foregroundStyle(AtlasColors.inkTertiary)
+                .font(.system(size: 14))
+                .foregroundStyle(AtlasColors.ink)
                 .lineLimit(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(16)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AtlasColors.surface)
+        .background(Color(hex: 0xF8F9FB))
         .overlay(
-            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(hex: 0xEEF1F3), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     /// Ardot 246:33 Project Links — equal-width repo / demo slots.

@@ -76,8 +76,16 @@ struct HomeView: View {
     @State private var showPublishIdea = false
     @State private var showAuthSheet = false
     @State private var showSearch = false
+    @State private var debugSearchQuery = ""
     @State private var sortIndex = 0
     @State private var startChat = false
+    @State private var quickActionIdea: Idea?
+    @State private var forkActionIdea: Idea?
+    @State private var shareActionIdea: Idea?
+    @State private var reportActionIdea: Idea?
+    @State private var isForking = false
+    @State private var forkError: String?
+    @State private var suppressNextIdeaTap = false
     @Namespace private var ideaIconNamespace
 
     var body: some View {
@@ -114,7 +122,7 @@ struct HomeView: View {
             PublishIdeaView()
         }
         .navigationDestination(isPresented: $showSearch) {
-            SearchView()
+            SearchView(initialQuery: debugSearchQuery)
         }
         .navigationDestination(isPresented: $startChat) {
             ChatListView()
@@ -122,12 +130,83 @@ struct HomeView: View {
         .sheet(isPresented: $showAuthSheet) {
             AuthRequiredSheet()
         }
+        .sheet(item: $forkActionIdea) { idea in
+            ForkSheet(
+                sourceTitle: idea.title,
+                sourceDescription: idea.description,
+                sourceIdeaID: idea.id,
+                sourceIconURL: idea.iconLink,
+                isSubmitting: isForking,
+                errorMessage: forkError,
+                onSubmit: { title, description, reason in
+                    Task { await submitQuickFork(idea: idea, title: title, description: description, reason: reason) }
+                }
+            )
+        }
+        .sheet(item: $shareActionIdea) { idea in
+            ShareSheet(items: [ideaShareURL(idea)])
+        }
+        .fullScreenCover(item: $reportActionIdea) { idea in
+            ReportContentSheet(
+                targetLabel: idea.title,
+                onSubmit: { reason, detail in
+                    reportActionIdea = nil
+                    Task {
+                        await ModerationActions.submitReport(
+                            targetType: "idea",
+                            targetID: idea.id,
+                            reason: reason,
+                            detail: detail
+                        )
+                    }
+                },
+                onCancel: { reportActionIdea = nil }
+            )
+        }
+        .overlay {
+            if let idea = quickActionIdea {
+                IdeaQuickActionOverlay(
+                    onFork: {
+                        quickActionIdea = nil
+                        if APIClient.shared.authToken == nil {
+                            showAuthSheet = true
+                        } else {
+                            forkError = nil
+                            forkActionIdea = idea
+                        }
+                    },
+                    onShare: {
+                        quickActionIdea = nil
+                        shareActionIdea = idea
+                    },
+                    onReport: {
+                        quickActionIdea = nil
+                        reportActionIdea = idea
+                    },
+                    onDismiss: { quickActionIdea = nil }
+                )
+            }
+        }
         .task {
             await viewModel.loadPlaza()
         }
         .refreshable {
             await viewModel.loadPlaza()
         }
+        #if DEBUG
+        .onAppear {
+            if ProcessInfo.processInfo.arguments.contains("--deimos-goto-search") {
+                showSearch = true
+            }
+            if let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--deimos-search-query=") }) {
+                debugSearchQuery = arg.replacingOccurrences(of: "--deimos-search-query=", with: "")
+                showSearch = true
+            }
+            if ProcessInfo.processInfo.arguments.contains("--deimos-show-auth-sheet") {
+                showAuthSheet = true
+            }
+        }
+        #endif
     }
 
     private var emptyHome: some View {
@@ -174,6 +253,8 @@ struct HomeView: View {
 
     // MARK: - Sort Chips
 
+    /// ardot S02 (`237:137` Sort Chips): each chip 88×36. Active = #BEE90D lemon fill, no
+    /// border; Inactive = white fill + #E8EBF0 hairline border. Label 15pt Semibold.
     private var sortChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
@@ -185,12 +266,11 @@ struct HomeView: View {
                         Text(HomeViewModel.sortOptions[index].label)
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(isSelected ? AtlasColors.lemonInk : AtlasColors.inkSoft)
-                            .padding(.horizontal, 24)
-                            .frame(height: 40)
-                            .background(isSelected ? AtlasColors.primaryAction : AtlasColors.surface)
+                            .frame(width: 88, height: 36)
+                            .background(isSelected ? AtlasColors.lemonStrong : AtlasColors.surface)
                             .overlay(
                                 Capsule()
-                                    .stroke(AtlasColors.border, lineWidth: isSelected ? 0 : 1)
+                                    .stroke(AtlasColors.settingsRowStroke, lineWidth: isSelected ? 0 : 1)
                             )
                             .clipShape(Capsule())
                     }
@@ -215,34 +295,41 @@ struct HomeView: View {
     private var content: some View {
         largeTitleHeader
 
+        // ardot S02 (`237:137` Search Trigger): 342×44 #F5F6F7 fill, cr16, 15pt Regular
+        // #8A94A6 placeholder "搜索想法、Agent…". Previous AtlasColors.fill (#F2F3F7) was
+        // a touch too grey; spec wants the slightly bluer #F5F6F7 chatAssistantBubble token.
         Button { showSearch = true } label: {
             HStack(spacing: 0) {
                 Text("搜索想法、Agent…")
-                    .font(AtlasTypography.subtitle())
+                    .font(.system(size: 15))
                     .foregroundStyle(AtlasColors.inkSoft)
                 Spacer()
             }
             .padding(.horizontal, 16)
-            .frame(height: 48)
-            .background(AtlasColors.fill)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .frame(height: 44)
+            .background(AtlasColors.chatAssistantBubble)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
         .padding(.horizontal, AtlasMetrics.pageX)
-        .padding(.bottom, 20)
+        .padding(.bottom, 16)
 
-        // AI Hero Card — S02 instance (237:146) hides the CTA pill; the whole card is tappable.
+        // AI Hero Card — S02 (`237:146` instance overrides): Title "还没有方向？问万叶" 18pt Bold,
+        // Subtitle "从问题、素材或一个想法开始" 13pt Regular, CTA "开始对话" 14pt Semibold.
+        // Card 342×132 cr22, lemonInk fill, padding 20, itemSpacing 12.
         AIHeroCard(
             title: "还没有方向？问万叶",
-            subtitle: "从问题、素材或一个想法开始"
+            subtitle: "从问题、素材或一个想法开始",
+            sizeVariant: .small
         ) {
             startChat = true
         }
+        .frame(height: 132)
         .padding(.horizontal, AtlasMetrics.pageX)
-        .padding(.bottom, 20)
+        .padding(.bottom, 16)
 
         sortChips
-            .padding(.bottom, 20)
+            .padding(.bottom, 16)
 
         plazaContent
     }
@@ -252,7 +339,7 @@ struct HomeView: View {
         // Section header — design always shows "热门想法" regardless of selected sort chip
         HStack {
             Text("为你挑选 · 公开可 Fork")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(AtlasColors.ink)
             Spacer()
             Button {
@@ -260,7 +347,7 @@ struct HomeView: View {
                 Task { await viewModel.loadPlaza() }
             } label: {
                 Text("筛选 ›")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(AtlasColors.oliveMeta)
             }
             .buttonStyle(.plain)
@@ -280,7 +367,21 @@ struct HomeView: View {
                         idea: idea,
                         coverImageURL: idea.iconLink,
                         iconNamespace: ideaIconNamespace,
-                        onTap: { selectedRoute = IdeaRoute(id: idea.id) }
+                        onTap: {
+                            if suppressNextIdeaTap {
+                                suppressNextIdeaTap = false
+                            } else {
+                                selectedRoute = IdeaRoute(id: idea.id)
+                            }
+                        }
+                    )
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 0.45)
+                            .onEnded { _ in
+                                suppressNextIdeaTap = true
+                                Haptics.medium()
+                                quickActionIdea = idea
+                            }
                     )
                     .onAppear {
                         if index == viewModel.visibleIdeas.count - 1 {
@@ -294,5 +395,110 @@ struct HomeView: View {
             }
             .padding(.horizontal, AtlasMetrics.pageX)
         }
+    }
+
+    private func ideaShareURL(_ idea: Idea) -> String {
+        AppConfig.webBaseURL
+            .appendingPathComponent("ideas")
+            .appendingPathComponent(idea.id)
+            .absoluteString
+    }
+
+    private func submitQuickFork(
+        idea: Idea,
+        title: String,
+        description: String,
+        reason: String
+    ) async {
+        isForking = true
+        forkError = nil
+        defer { isForking = false }
+        do {
+            let forked = try await APIClient.shared.forkIdea(
+                id: idea.id,
+                title: title,
+                description: description,
+                reason: reason
+            )
+            forkActionIdea = nil
+            selectedRoute = IdeaRoute(id: forked.id)
+            ToastCenter.shared.showSuccess("已创建 Fork")
+        } catch {
+            forkError = error.localizedDescription
+        }
+    }
+}
+
+/// Ardot interaction frame `353:42`: a centered 280×216 quick-action menu opened by
+/// long-pressing an Idea card.
+private struct IdeaQuickActionOverlay: View {
+    let onFork: () -> Void
+    let onShare: () -> Void
+    let onReport: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        ZStack {
+            AtlasColors.ink.opacity(0.40)
+                .ignoresSafeArea()
+                .onTapGesture(perform: onDismiss)
+
+            VStack(spacing: 0) {
+                actionRow(
+                    title: "Fork 这个想法",
+                    icon: .fork,
+                    iconFill: AtlasColors.lemonStrong,
+                    iconColor: AtlasColors.lemonInk,
+                    action: onFork
+                )
+                Divider()
+                actionRow(
+                    title: "分享链接",
+                    icon: .share,
+                    iconFill: AtlasColors.surfaceSecondary,
+                    iconColor: AtlasColors.ink,
+                    action: onShare
+                )
+                Divider()
+                actionRow(
+                    title: "举报内容",
+                    icon: .info,
+                    iconFill: AtlasColors.destructiveFill,
+                    iconColor: .white,
+                    titleColor: AtlasColors.destructiveFill,
+                    action: onReport
+                )
+            }
+            .frame(width: 280, height: 216)
+            .background(AtlasColors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: AtlasColors.ink.opacity(0.15), radius: 32, y: 12)
+        }
+        .transition(.opacity)
+    }
+
+    private func actionRow(
+        title: String,
+        icon: DeimosIcon,
+        iconFill: Color,
+        iconColor: Color,
+        titleColor: Color = AtlasColors.ink,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                DeimosIconView(icon: icon, size: 13, color: iconColor)
+                    .frame(width: 22, height: 22)
+                    .background(iconFill, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                Text(title)
+                    .font(.system(size: 16))
+                    .foregroundStyle(titleColor)
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .frame(height: 72)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }

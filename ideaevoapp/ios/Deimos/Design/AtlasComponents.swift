@@ -129,29 +129,39 @@ private let settingsRowBodyTertiary = Color(red: 0.541, green: 0.580, blue: 0.65
 /// softer, more rounded silhouette of the new system style.
 private let settingsGroupRadius: CGFloat = 22
 
-/// ardot S11 (`179:6`) refined for iOS 26 Liquid Glass: group container is a translucent glass
-/// surface (ultraThinMaterial) with a hairline border, a soft drop shadow, and a 22pt continuous
-/// corner — NOT a flat white rectangle. Content rows render directly on the glass. NO section
-/// header label (the row's two-line title carries the context).
+/// ardot S11 (`237:369`) Settings group container. Two modes per the design:
+/// - **Plain mode**: rows render directly on the canvas, each as an independent bordered card
+///   (white fill + #E8EBF0 stroke). Used by the Account and Preferences sections.
+/// - **Grouped mode** (`Agent & Device Settings`): a `#F2F2F7` container (r14, 10pt padding)
+///   holds white r14 rows with 8pt spacing. Used when the spec groups related rows.
+///
+/// The previous iOS 26 Liquid Glass treatment (ultraThinMaterial + shadow + 22pt radius) was
+/// aligned to the obsolete `179:6` design. The current `237:369` spec is flatter: bordered
+/// white rows with hairline `#E8EBF0` strokes, no glass material, no shadow.
 struct AtlasSettingsGroup<Content: View>: View {
+    /// When true, renders the #F2F2F7 grouped container around the rows (used by the Agent &
+    /// Device section). When false, rows render flat on the canvas with their own borders.
+    var grouped: Bool = false
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(spacing: 0) { content() }
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: settingsGroupRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: settingsGroupRadius, style: .continuous)
-                    .stroke(settingsGroupStroke, lineWidth: 1)
-            )
-            .shadow(color: AtlasColors.ink.opacity(0.04), radius: 10, x: 0, y: 4)
+        if grouped {
+            VStack(spacing: 8) { content() }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(AtlasColors.settingsGroupFill)
+                )
+        } else {
+            VStack(spacing: 8) { content() }
+        }
     }
 }
 
-/// ardot S11 row (`195:9`) refined: 56h, HORIZONTAL `SPACE_BETWEEN`, 14pt leading padding, no
-/// leading icon. Title is **17pt Regular** ink (was Semi Bold — too heavy for the iOS 26 system
-/// aesthetic which favors Regular-weight labels); subtitle is 13pt inkFaint for clear hierarchy.
-/// Trailing slot is a chevron (default) or a status pill (notification row).
+/// ardot S11 row (`237:369` C/Settings Row): 56h, white fill, hairline `#E8EBF0` border,
+/// 17pt Semibold ink title + 13pt Regular `#8A94A6` subtitle, trailing chevron slot. Each row
+/// is an **independent bordered card** (not inside a grouped container) per the current design.
+/// Previously the title was Regular weight and the subtitle was inkFaint — both under-spec.
 struct AtlasSettingsNavRow<Trailing: View>: View {
     let title: String
     let subtitle: String
@@ -171,32 +181,90 @@ struct AtlasSettingsNavRow<Trailing: View>: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 17, weight: .regular))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(AtlasColors.ink)
                 if !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.system(size: 13))
-                        .foregroundStyle(AtlasColors.inkFaint)
+                        .foregroundStyle(AtlasColors.inkSoft)
                 }
             }
             Spacer(minLength: 0)
             trailing()
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         .frame(minHeight: 56, alignment: .center)
+        .background(AtlasColors.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AtlasColors.settingsRowStroke, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .contentShape(Rectangle())
     }
 }
 
-/// ardot S11 in-group divider (`195:12`) refined: 1px rule `#F0F2F5` **leading-inset by 14pt**
-/// to align with the row text (Apple convention — in-group separators don't span the full card
-/// width, they start at the text gutter). Trailing edge stays at the card padding edge.
+/// ardot S11 in-group divider — DEPRECATED. The current `237:369` design has no in-group
+/// dividers because rows are independent bordered cards (not inside a shared container).
+/// Kept as an empty View so legacy callers compile while they migrate.
 struct AtlasSettingsGroupDivider: View {
     var body: some View {
-        Rectangle()
-            .fill(AtlasColors.rule)
-            .frame(height: 1)
-            .padding(.leading, 14)
+        EmptyView()
+    }
+}
+
+/// ardot S11 section label (`237:369` Section Account / Section Preferences / Section Title):
+/// 13pt Semibold `#8A94A6`, sits directly on the canvas above its row group.
+struct AtlasSettingsSectionLabel: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(AtlasColors.inkSoft)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// ardot S11 grouped row (`237:369` My Agents Row / Devices Row): 322×56 white cr14, sits inside
+/// the `#F2F2F7` Agent & Device container. Title is 14pt Semibold `#0F1C2E`, subtitle is 13pt
+/// Regular `#8A94A6` (NOT 17pt — denser than `AtlasSettingsNavRow` because these rows live in a
+/// grouped container). Trailing chevron `#8A94A6`. Callers wrap this in a Button.
+struct AtlasSettingsGroupedRow<Trailing: View>: View {
+    let title: String
+    let subtitle: String
+    @ViewBuilder var trailing: () -> Trailing
+
+    init(
+        title: String,
+        subtitle: String,
+        @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.trailing = trailing
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.system(size: 13))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                }
+            }
+            Spacer(minLength: 0)
+            trailing()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(minHeight: 56, alignment: .leading)
+        .background(AtlasColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(Rectangle())
     }
 }
 
@@ -218,8 +286,9 @@ struct AtlasSettingsStatusPill: View {
     }
 }
 
-/// ardot S11 logout button (`195:38`): 350×46, `#F1F3F7` fill, radius 25, 15pt Bold ink text,
-/// centered, NOT destructive. (Destructive-red logout is reserved for Account & Security delete.)
+/// ardot S11 logout button (`237:369` Log Out): 342×46, `#F2F2F7` fill, radius 23, 15pt
+/// Semibold `#0F1C2E` text, centered, NOT destructive. (Destructive-red logout is reserved for
+/// Account & Security delete.) Previously used #F1F3F7 fill + r25 — under/over-spec respectively.
 struct AtlasSettingsLogoutButton: View {
     var isLoading = false
     let action: () -> Void
@@ -229,12 +298,12 @@ struct AtlasSettingsLogoutButton: View {
             HStack(spacing: 8) {
                 if isLoading { ProgressView().tint(AtlasColors.inkSoft) }
                 Text("退出登录")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AtlasColors.ink)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 46)
-            .background(AtlasColors.fill)
+            .background(AtlasColors.settingsGroupFill)
             .clipShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
@@ -388,7 +457,7 @@ enum AtlasToolbarMetrics {
 
 /// `C/Push Nav Bar` (ardot `237:94`) — 48h, back (44×44 floating glass) + centered title
 /// inside a glass capsule (182×44, white/30% fill + white/78% + ink/6% border, r22) + empty
-/// trailing spacer. Title is 14pt SF Pro Display Semibold. Replaces the older 17pt bare-text bar.
+/// trailing spacer. Current Ardot push titles use 16pt SF Pro Text Semibold.
 struct AtlasPushNavBar<Trailing: View>: View {
     var title: String
     var onBack: (() -> Void)?
@@ -413,9 +482,9 @@ struct AtlasPushNavBar<Trailing: View>: View {
             }
             if !title.isEmpty {
                 // Title Glass Capsule (ardot 296:265): scroll-edge material pill holding the
-                // compact 14pt Semibold label, centered over content.
+                // compact 16pt Semibold label, centered over content.
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(AtlasColors.ink.opacity(0.92))
                     .lineLimit(1)
                     .padding(.horizontal, 16)
@@ -458,30 +527,34 @@ struct AtlasPushNavBar<Trailing: View>: View {
     }
 }
 
-/// A translucent push bar for detail covers. It preserves the cover beneath
-/// the controls and takes on the correct blurred state while content scrolls.
-/// Title (when present) sits in the same glass capsule as `AtlasPushNavBar`.
-/// ardot C/Push Toolbar (`237:94`) — Apple Floating Glass Controls (scroll under).
-/// The toolbar is **float-liquid**: two independent floating glass elements (back-button circle
-/// + title capsule) sitting on a TRANSPARENT container — NO full-width material bar, NO bottom
-/// hairline. Content scrolls underneath the floating glass. This matches the ardot spec exactly:
-/// the component frame has no fills/strokes; only the back button (`237:95`, 44×44 circle:
-/// white/36% + white/78% stroke + ink/8% stroke + drop shadow) and the title capsule
-/// (`296:265`, 182×44 r22: white/30% + white/78% + ink/6% + drop shadow) carry glass treatment.
+/// ardot C/Push Nav Bar (`237:369` instance, 390×48) — OPAQUE white bar (component-level fill
+/// `#FFFFFF(1)`) holding the Liquid Glass controls: a 44×44 glass back circle (white/36% fill +
+/// white/78% stroke + ink/8% stroke) on the leading edge, a centered 182×44 glass title capsule
+/// (white/30% + white/78% + ink/6% + drop shadow) when a title is present, and a trailing slot
+/// for additional glass controls. The bar itself is SOLID — only the controls carry the glass
+/// treatment.
 ///
-/// Previously this view wrongly added `.background(.ultraThinMaterial)` + a bottom hairline,
-/// producing a solid bar that didn't match the design's floating-glass intent.
+/// Previously this view omitted the background entirely, producing a "transparent toolbar" bug
+/// where scroll content was visible through the bar. The ardot spec confirms the bar is opaque:
+/// the C/Push Nav Bar component frame has `fill=#FFFFFF(1)`, and only its inner C/Back Button
+/// instance + Title Glass Capsule are translucent glass elements.
 struct AtlasOverlayPushNavBar<Trailing: View>: View {
     var title: String
+    var barBackground: Color
+    var plainTitle: Bool
     let onBack: () -> Void
     @ViewBuilder var trailing: () -> Trailing
 
     init(
         title: String = "",
+        barBackground: Color = AtlasColors.canvas,
+        plainTitle: Bool = false,
         onBack: @escaping () -> Void,
         @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }
     ) {
         self.title = title
+        self.barBackground = barBackground
+        self.plainTitle = plainTitle
         self.onBack = onBack
         self.trailing = trailing
     }
@@ -498,21 +571,86 @@ struct AtlasOverlayPushNavBar<Trailing: View>: View {
                 // ardot `296:265`: title glass capsule — independent floating element with its own
                 // glass fill + dual strokes + drop shadow (NOT inherited from a bar background).
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: plainTitle ? 18 : 16, weight: plainTitle ? .bold : .semibold))
                     .foregroundStyle(AtlasColors.ink.opacity(0.92))
                     .lineLimit(1)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, plainTitle ? 0 : 16)
                     .frame(height: 44)
                     .frame(maxWidth: 220)
-                    .background(Capsule(style: .continuous).fill(Color.white.opacity(0.30)))
-                    .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.78), lineWidth: 1))
-                    .overlay(Capsule(style: .continuous).stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1))
-                    .shadow(color: AtlasColors.ink.opacity(0.08), radius: 18, x: 0, y: 8)
+                    .background(Capsule(style: .continuous).fill(Color.white.opacity(plainTitle ? 0 : 0.30)))
+                    .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(plainTitle ? 0 : 0.78), lineWidth: 1))
+                    .overlay(Capsule(style: .continuous).stroke(AtlasColors.ink.opacity(plainTitle ? 0 : 0.06), lineWidth: 1))
+                    .shadow(color: AtlasColors.ink.opacity(plainTitle ? 0 : 0.08), radius: plainTitle ? 0 : 18, x: 0, y: plainTitle ? 0 : 8)
             }
         }
         .padding(.horizontal, AtlasMetrics.detailX)
         .frame(height: AtlasToolbarMetrics.barHeight)
-        // NO background, NO bottom hairline — float-liquid per ardot `237:94`.
+        // ardot `237:369` C/Push Nav Bar (390×48): component-level fill #FFFFFF(1) — an OPAQUE
+        // white bar, NOT a floating-glass overlay. The previous implementation omitted the
+        // background entirely, making content scroll visibly through the toolbar and producing
+        // the "transparent toolbar" bug. The glass capsule + glass back button still sit ON the
+        // white bar (they're the Liquid Glass controls), but the bar itself is solid.
+        .background(barBackground)
+    }
+}
+
+/// Chat thread toolbar (ardot S07 `237:289` · "Thread Nav" 390×56).
+/// Distinct from the glass-overlay push bars used by settings/detail screens: chat uses a
+/// SOLID white bar + a solid grey 44×44 back circle (#F2F3F5) + LEFT-ALIGNED title +
+/// optional 12pt subtitle. Trailing slot holds the archive circle button. This is the
+/// authoritative chat header per the current ardot design — the previous implementation
+/// wrongly reused `AtlasOverlayPushNavBar` (centered glass capsule, no subtitle) which
+/// was aligned to a different frame family.
+struct ChatThreadNavBar<Trailing: View>: View {
+    var title: String
+    var subtitle: String?
+    let onBack: () -> Void
+    @ViewBuilder var trailing: () -> Trailing
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        onBack: @escaping () -> Void,
+        @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.onBack = onBack
+        self.trailing = trailing
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            // Solid grey back circle (NOT floating glass) — ardot `237:289` C/Back Button instance.
+            Button(action: onBack) {
+                DeimosIconView(icon: .chevronBack, size: 17, color: AtlasColors.ink)
+                    .frame(width: AtlasMetrics.backButtonSize, height: AtlasMetrics.backButtonSize)
+                    .background(AtlasColors.chatNavCircle)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("返回")
+
+            // Left-aligned title + subtitle stack
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .lineLimit(1)
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+            HStack(spacing: AtlasToolbarMetrics.spacing) { trailing() }
+                .frame(minHeight: AtlasToolbarMetrics.hitTarget)
+        }
+        .padding(.horizontal, AtlasMetrics.detailX)
+        .frame(height: 56)
+        .background(AtlasColors.canvas)
     }
 }
 
@@ -573,6 +711,7 @@ struct AtlasToolbarFloatIconButton: View {
 /// Back button on left, action cluster (Save/Fork/More) on right. No background blur, no divider.
 struct AtlasDetailGlassToolbar: View {
     let onBack: () -> Void
+    var onShare: () -> Void = {}
     var onSave: () -> Void = {}
     var onForkLineage: () -> Void = {}
     var onMore: () -> Void = {}
@@ -604,6 +743,7 @@ struct AtlasDetailGlassToolbar: View {
 
             // Right: action cluster (ardot 296:14 — Save Snapshot / Fork Lineage / More)
             HStack(spacing: 4) {
+                AtlasToolbarFloatIconButton(icon: .share, size: 44, iconSize: 18, action: onShare)
                 AtlasToolbarFloatIconButton(icon: .bookmark, size: 44, iconSize: 18, action: onSave)
                 AtlasToolbarFloatIconButton(icon: .fork, size: 44, iconSize: 18, action: onForkLineage)
                 AtlasToolbarFloatIconButton(icon: .more, size: 44, iconSize: 18, action: onMore)
@@ -1104,13 +1244,23 @@ struct FlowerContributorRow: View {
     }
 }
 
-/// Ardot `C/BottomInputBar` · h56 · field h44 + send 40.
+/// Ardot `C/Glass Input Bar` (S07 `237:289`): 390×82 full-width white bar with a #E8EBF0
+/// top hairline, holding a 44h #F2F3F5 input field (r16) + a 52×52 lemon send circle (r26).
+/// NOT a floating glass capsule — the previous implementation inherited the obsolete `179:*`
+/// glass-pill spec. This version matches the current authoritative design.
 struct BottomInputBar: View {
     @Binding var text: String
     let placeholder: String
     var isSending = false
     var canSend: Bool?
+    /// ardot S07b (`351:32` Stop Generation): when true, replaces the send button with a
+    /// 350×44 grey "停止生成" pill. Caller sets this while SSE streaming is active.
+    var isStreaming = false
+    var onStop: (() -> Void)? = nil
     let onSend: () -> Void
+    /// ardot S07c (`351:55` Char Count): show "N / 2000" when text length exceeds threshold.
+    private let charCountThreshold = 50
+    private let maxChars = 2000
 
     private var sendEnabled: Bool {
         if isSending { return false }
@@ -1118,38 +1268,89 @@ struct BottomInputBar: View {
         return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            AtlasMultilineTextField(
-                placeholder: placeholder,
-                text: $text,
-                minHeight: 36,
-                maxHeight: 120,
-                onSubmit: onSend
-            )
-            .padding(.horizontal, 12)
+    private var charCountText: String? {
+        let len = text.count
+        guard len >= charCountThreshold else { return nil }
+        return "\(len) / \(maxChars)"
+    }
 
-            // Send button: 40×40 lemonChat circle r20, ardot S07 send SVG icon.
-            // Uses lemonChat (#CBEA16) per ardot S07 `179:134`, distinct from the primary
-            // button's lemonStrong (#BEE90D) so the chat composer reads as a softer surface.
-            Button(action: onSend) {
-                DeimosIconView(icon: .send, size: 20, color: AtlasColors.lemonInk)
-                    .frame(width: 40, height: 40)
-                    .background(sendEnabled ? AtlasColors.lemonChat : AtlasColors.inkDisabled)
-                    .clipShape(Circle())
+    var body: some View {
+        VStack(spacing: 8) {
+            if isStreaming, let onStop {
+                // ardot S07b (`351:32` Stop Generation): full-width grey pill with red square + text.
+                Button(action: onStop) {
+                    HStack(spacing: 8) {
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(AtlasColors.destructiveFill)
+                            .frame(width: 12, height: 12)
+                        Text("停止生成")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(Capsule().fill(AtlasColors.chatNavCircle))
+                }
+                .buttonStyle(.plain)
+            } else {
+                HStack(alignment: .center, spacing: 12) {
+                    AtlasMultilineTextField(
+                        placeholder: placeholder,
+                        text: $text,
+                        minHeight: 44,
+                        maxHeight: 120,
+                        onSubmit: onSend
+                    )
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .background(
+                        // ardot S07c (`351:55` Field focused): when typing, the field switches
+                        // from #F2F3F5 fill to white + lemon stroke (lemonStrong) to signal focus.
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(AtlasColors.chatNavCircle)
+                    )
+
+                    // Send button: ardot S07c — when isSending, shows a spinner instead of arrow.
+                    Button(action: onSend) {
+                        Group {
+                            if isSending {
+                                // ardot S07c (`351:55` Send loading): spinner inside lemon circle.
+                                ProgressView()
+                                    .tint(AtlasColors.lemonInk)
+                                    .frame(width: 22, height: 22)
+                            } else {
+                                DeimosIconView(icon: .send, size: 22, color: AtlasColors.lemonInk)
+                            }
+                        }
+                        .frame(width: 52, height: 52)
+                        .background(sendEnabled ? AtlasColors.lemonStrong : AtlasColors.inkDisabled)
+                        .clipShape(Circle())
+                    }
+                    .disabled(!sendEnabled || isSending)
+                }
             }
-            .disabled(!sendEnabled)
+
+            // ardot S07c (`351:55` Char Count): right-aligned "N / 2000" hint once the draft
+            // passes the threshold. Hidden below 50 chars to reduce clutter on short messages.
+            if let charCountText {
+                HStack {
+                    Spacer()
+                    Text(charCountText)
+                        .font(.system(size: 11))
+                        .foregroundStyle(text.count > maxChars ? AtlasColors.destructiveFill : AtlasColors.inkSoft)
+                        .monospacedDigit()
+                }
+            }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        // ardot S07 Message Composer: floating glass pill — white/34% + white/80% border + shadow.
-        .background(Capsule(style: .continuous).fill(Color.white.opacity(0.34)))
-        .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.80), lineWidth: 1))
-        .overlay(Capsule(style: .continuous).stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1))
-        .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.11), radius: 28, x: 0, y: 12)
-        .clipShape(Capsule(style: .continuous))
         .padding(.horizontal, AtlasMetrics.detailX)
-        .padding(.bottom, 6)
+        .padding(.vertical, 15)
+        .background(AtlasColors.surface)
+        .overlay(
+            Rectangle()
+                .fill(AtlasColors.chatInputStroke)
+                .frame(height: 1),
+            alignment: .top
+        )
     }
 }
 
@@ -1194,35 +1395,77 @@ struct ChatTypingIndicator: View {
 /// solid green bar. Ardot S07d (`311:110`) — glass fill + spinner + activity text.
 struct ChatToolActivityPill: View {
     let text: String
+    /// ardot S07f (`351:129` Tool Activity done): when true, switches to a green-tinted pill
+    /// with a checkmark + green text (#2E7D32) + #E8F5E9 fill. Used to confirm a tool call
+    /// completed successfully (e.g. "Fork 已创建 · 公寓版 v2").
+    var done: Bool = false
     @State private var rotation: Double = 0
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "arrow.triangle.2.circlepath")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(AtlasColors.lemonInk)
-                .rotationEffect(.degrees(rotation))
-            Text(text)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(AtlasColors.inkTertiary)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(Capsule(style: .continuous).fill(Color.white.opacity(0.50)))
-        .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.78), lineWidth: 1))
-        .overlay(Capsule(style: .continuous).stroke(AtlasColors.ink.opacity(0.06), lineWidth: 1))
-        .shadow(color: AtlasColors.ink.opacity(0.06), radius: 8, x: 0, y: 4)
-        .onAppear {
-            withAnimation(.linear(duration: 1.0).repeatForever(autoreverses: false)) {
-                rotation = 360
+        if done {
+            // Done state — green check + green text + light-green fill (ardot S07f `351:129`).
+            HStack(spacing: 8) {
+                DeimosIconView(icon: .check, size: 13, color: Color(hex: 0x2E7D32))
+                Text(text)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color(hex: 0x2E7D32))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 40, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(hex: 0xE8F5E9))
+            )
+        } else {
+            // In-progress state — ardot S07 `237:289` Tool Activity: 350×40, fill #F3FFC8,
+            // label 13pt Medium #5A6472, corner radius 14, spinner icon.
+            HStack(spacing: 8) {
+                DeimosIconView(icon: .refresh, size: 13, color: AtlasColors.chatActivityInk)
+                    .rotationEffect(.degrees(rotation))
+                Text(text)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(AtlasColors.chatActivityInk)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(minHeight: 40, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(AtlasColors.chatActivityFill)
+            )
+            .onAppear {
+                withAnimation(.linear(duration: 1.0).repeatForever(autoreverses: false)) {
+                    rotation = 360
+                }
             }
         }
     }
 }
 
+/// ardot S07b (`351:32` Blinking Cursor): a 2×18 ink bar that blinks while the AI is streaming.
+/// Sits at the end of the streaming text inside the assistant bubble. The opacity cycles
+/// 1.0 → 0.0 → 1.0 every 0.56s, matching Apple Messages' typing cursor cadence.
+struct ChatStreamingCursor: View {
+    @State private var visible = true
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 1, style: .continuous)
+            .fill(AtlasColors.ink)
+            .frame(width: 2, height: 18)
+            .opacity(visible ? 1 : 0)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.28).repeatForever(autoreverses: true)) {
+                    visible = false
+                }
+            }
+    }
+}
+
 /// Centered date chip that separates message groups by day (今天 / 昨天 / 2026-07-15).
-/// Ardot S07e (`311:114`). Sits inline in the message list, not sticky — matches Apple
+/// Ardot S07f (`351:129` Date Divider): 1px hairline + label + 1px hairline, 12pt Semibold
+/// `#8A94A6` "今天" text. Sits inline in the message list, not sticky — matches Apple
 /// Messages pattern where the chip scrolls with content.
 struct ChatDateDivider: View {
     let date: Date
@@ -1237,22 +1480,25 @@ struct ChatDateDivider: View {
     }
 
     var body: some View {
-        HStack {
-            Rectangle().fill(AtlasColors.rule).frame(height: 1)
+        // ardot S07f (`351:129`): 1px hairline + 12pt Semibold #8A94A6 label + 1px hairline.
+        // No pill background — flatter than the older design.
+        HStack(spacing: 10) {
+            Rectangle().fill(AtlasColors.settingsRowStroke).frame(height: 1)
             Text(label)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AtlasColors.inkFaint)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(Capsule(style: .continuous).fill(AtlasColors.fill))
-            Rectangle().fill(AtlasColors.rule).frame(height: 1)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AtlasColors.inkSoft)
+                .fixedSize()
+            Rectangle().fill(AtlasColors.settingsRowStroke).frame(height: 1)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }
 
 /// Starter prompt card shown when the conversation is empty (no messages yet).
 /// Ardot S07b (`311:97`). lemonSoft fill, taps fill the draft (caller decides send vs edit).
+/// ardot S07e (`351:96` Starter Prompts): white #FBFCFD fill + #E8EBF0 stroke + cr16.
+/// Lemon accent icon + 15pt Regular ink text + chevron. Previously lemonSoft-filled — too
+/// heavy for a list of 3-4 cards. The new flat white lets the cards recede until tapped.
 struct ChatStarterPrompt: View {
     let text: String
     var icon: DeimosIcon = .sparkles
@@ -1260,25 +1506,25 @@ struct ChatStarterPrompt: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.6))
-                        .frame(width: 36, height: 36)
-                    DeimosIconView(icon: icon, size: 16, color: AtlasColors.lemonInk)
-                }
+            HStack(spacing: 10) {
+                DeimosIconView(icon: icon, size: 16, color: AtlasColors.lemonStrong)
                 Text(text)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15))
                     .foregroundStyle(AtlasColors.ink)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                Spacer(minLength: 0)
-                DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.lemonInk.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                DeimosIconView(icon: .chevronRight, size: 18, color: AtlasColors.inkSoft)
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AtlasColors.lemonSoft)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+            .background(Color(hex: 0xFBFCFD))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(AtlasColors.settingsRowStroke, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -1860,25 +2106,33 @@ struct NativeTabBar: View {
     @Binding var selection: MainTab
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(MainTab.allCases, id: \.self) { tab in
-                tabItem(tab)
+        // ardot `237:*` C/Glass Tab Bar (390×83): OPAQUE white edge-to-edge container bar
+        // (fill #FFFFFF(1)) holding an inner glass pill (348×62 #FFFFFF(0.72) + #E8EBF0 stroke,
+        // cr36, shadow). The previous implementation rendered only the floating pill with no
+        // backing bar, leaving content visible through the gaps beside the pill — the
+        // "transparent tabbar" bug. This wraps the pill in a solid-white 83pt bar matching spec.
+        VStack {
+            Spacer()
+            // Inner glass pill — Liquid Glass control sitting on top of the opaque bar.
+            HStack(spacing: 4) {
+                ForEach(MainTab.allCases, id: \.self) { tab in
+                    tabItem(tab)
+                }
             }
+            .padding(4)
+            // ardot 237:81: Glass Pill — white/72% solid fill + #E8EBF0 border + r36 + ink shadow.
+            .background(Capsule().fill(Color.white.opacity(0.72)))
+            .overlay(Capsule().stroke(AtlasColors.settingsRowStroke, lineWidth: 1))
+            .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.14), radius: 18, x: 0, y: 8)
+            .padding(.horizontal, 21)
+            .padding(.top, 10)
+            .padding(.bottom, 9)
         }
-        .padding(4)
-        // ardot 237:81: Glass Pill — white/72% solid fill + #E8EAEC border + r36 + ink shadow.
-        .background(Capsule().fill(Color.white.opacity(0.72)))
-        .overlay(Capsule().stroke(AtlasColors.border, lineWidth: 1))
-        .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.14), radius: 18, x: 0, y: 8)
-        // ardot 237:80: pill sits 21pt from the left/right edges and ~9pt above the true screen
-        // bottom edge (overlapping the home indicator zone). `.ignoresSafeArea(edges: .bottom)`
-        // on this floating view moves its bottom anchor from the safe-area inner edge to the
-        // real screen edge, then `.padding(.bottom, 9)` lifts it just above the home indicator.
-        // The overlay in MainTabView simply provides the alignment slot.
-        .padding(.horizontal, 21)
-        .padding(.bottom, 9)
-        .ignoresSafeArea(edges: .bottom)
+        // OPAQUE bar background — full screen width, 83pt tall, edge-to-edge.
+        .frame(height: 83)
         .frame(maxWidth: .infinity)
+        .background(AtlasColors.canvas)
+        .ignoresSafeArea(edges: .bottom)
     }
 
     private func tabItem(_ tab: MainTab) -> some View {
@@ -2110,34 +2364,44 @@ struct AIHeroCard: View {
     let title: String
     let subtitle: String
     var ctaTitle: String?
+    /// ardot S02 (`237:137` C/AI Hero Card) uses 18pt Bold title + 13pt Regular subtitle.
+    /// S06 (`237:154`) uses 22pt Bold + 14pt Regular. Default to S06 (larger) for backwards
+    /// compatibility; S02 callers pass `.small`.
+    var sizeVariant: AIHeroSize = .large
     let action: () -> Void
 
+    enum AIHeroSize { case large, small }
+
     var body: some View {
+        let titleFont: Font = sizeVariant == .large
+            ? .system(size: 22, weight: .bold)
+            : .system(size: 18, weight: .bold)
+        let subtitleFont: Font = .system(size: sizeVariant == .large ? 14 : 13)
         Button(action: action) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(title)
-                    .font(AtlasTypography.heroTitle())
+                    .font(titleFont)
                     .foregroundStyle(.white)
                     .lineLimit(2)
 
                 Text(subtitle)
-                    .font(.system(size: 14, weight: .regular))
+                    .font(subtitleFont)
                     .foregroundStyle(AtlasColors.lemon)
 
                 if let ctaTitle {
                     HStack(spacing: 6) {
                         Text(ctaTitle)
-                            .font(AtlasTypography.cta())
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(AtlasColors.lemonInk)
                         DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.lemonInk)
                     }
                     .padding(.horizontal, 20)
                     .frame(height: 40)
-                    .background(AtlasColors.primaryAction)
+                    .background(AtlasColors.lemonStrong)
                     .clipShape(Capsule())
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .padding(20)
             .background(AtlasColors.lemonInk)
             .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusHero, style: .continuous))
@@ -2166,9 +2430,9 @@ struct IdeaCoverCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(AtlasColors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(AtlasColors.borderProfile, lineWidth: 1)
             )
             .atlasProfileCard()
@@ -2181,7 +2445,7 @@ struct IdeaCoverCard: View {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("IDEA · \(idea.category.uppercased())")
-                        .font(AtlasTypography.overline())
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(AtlasColors.oliveMeta)
                     RoundedRectangle(cornerRadius: 2, style: .continuous)
                         .fill(AtlasColors.primaryAction)
@@ -2189,70 +2453,94 @@ struct IdeaCoverCard: View {
                 }
                 Spacer()
                 Text(idea.statusLabel)
-                    .font(AtlasTypography.overline())
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(AtlasColors.lemonInk)
-                    .padding(.horizontal, 14)
-                    .frame(height: 26)
+                    .padding(.horizontal, 12)
+                    .frame(height: 24)
                     .background(AtlasColors.lemon)
                     .clipShape(Capsule())
             }
             Text(idea.displaySlug.uppercased())
-                .font(AtlasTypography.overline())
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(AtlasColors.inkTertiary)
                 .lineLimit(1)
-                .padding(.top, 18)
+                .padding(.top, 7)
             Text(idea.displayTitle)
-                .font(AtlasTypography.sectionHeader())
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(AtlasColors.ink)
                 .lineLimit(2)
-                .padding(.top, 8)
+                .padding(.top, 5)
         }
         .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 142, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
         .background(AtlasColors.lemonSoft)
     }
 
     private var provenanceSection: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 1) {
             Text(idea.coverCreatorLine)
                 .lineLimit(1)
                 .truncationMode(.tail)
             Text("公开 · 可 Fork · 更新于 \(idea.updatedAt.relativeShort)")
                 .lineLimit(1)
         }
-        .font(.system(size: 12, weight: .regular))
+        .font(.system(size: 11, weight: .regular))
         .foregroundStyle(AtlasColors.inkSoft)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .frame(height: 36)
     }
 
     private var actionSection: some View {
         HStack(spacing: 8) {
-            HStack(spacing: 4) {
-                Text("送花 \(idea.flowerCount)")
-                    .frame(maxWidth: .infinity)
-                Rectangle().fill(Color(hex: 0xCBD1D8)).frame(width: 1, height: 16)
-                Text("Fork \(idea.forkCount)")
-                    .frame(maxWidth: .infinity)
+            HStack(spacing: 8) {
+                compactAction(
+                    icon: .flower,
+                    count: idea.flowerCount,
+                    foreground: AtlasColors.inkTertiary,
+                    background: AtlasColors.surface
+                )
+                compactAction(
+                    icon: .fork,
+                    count: idea.forkCount,
+                    foreground: AtlasColors.olive,
+                    background: Color(hex: 0xF2F9D8)
+                )
+                Spacer(minLength: 0)
             }
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(AtlasColors.inkTertiary)
             .frame(maxWidth: .infinity)
-            .frame(height: 32)
-            .background(Color(hex: 0xE9EDF1))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-            Text("查看详情")
-                .font(.system(size: 12, weight: .semibold))
+            HStack(spacing: 3) {
+                Text("详情")
+                    .font(.system(size: 11, weight: .semibold))
+                DeimosIconView(icon: .chevronRight, size: 12, color: AtlasColors.lemonInk)
+            }
                 .foregroundStyle(AtlasColors.lemonInk)
-                .padding(.horizontal, 19)
-                .frame(height: 32)
+                .frame(width: 76, height: 28)
                 .background(AtlasColors.lemonCTA)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(Capsule())
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .frame(height: 44)
+        .background(Color(hex: 0xF8F9FB))
+    }
+
+    private func compactAction(
+        icon: DeimosIcon,
+        count: Int,
+        foreground: Color,
+        background: Color
+    ) -> some View {
+        HStack(spacing: 4) {
+            DeimosIconView(icon: icon, size: 14, color: foreground)
+            Text("\(count)")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(foreground)
+        }
+        .frame(width: 64, height: 28)
+        .background(background)
+        .clipShape(Capsule())
     }
 }
 
@@ -2370,37 +2658,31 @@ struct ActivityCell: View {
         HStack(alignment: .center, spacing: 12) {
             actorAvatar
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(activityLine)
-                    .font(AtlasTypography.mobileBody())
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(AtlasColors.ink)
                     .lineLimit(1)
 
                 Text(activitySubtitle ?? activity.createdAt.relativeShort)
-                    .font(AtlasTypography.meta())
+                    .font(.system(size: 10))
                     .foregroundStyle(AtlasColors.inkSoft)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(minHeight: 80)
-        .background(AtlasColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
-        }
+        .frame(minHeight: 72, maxHeight: 72)
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder
     private var actorAvatar: some View {
         let url = activity.actorAvatar.flatMap(URL.init(string:))
         if activity.actorType == "agent" {
-            EntityAvatar.agent(id: activity.actorID, url: url, name: activity.actorName ?? "A", size: 40)
+            EntityAvatar.agent(id: activity.actorID, url: url, name: activity.actorName ?? "A", size: 36)
         } else {
-            EntityAvatar.user(id: activity.actorID, url: url, name: activity.actorName ?? "U", size: 40)
+            EntityAvatar.user(id: activity.actorID, url: url, name: activity.actorName ?? "U", size: 36)
         }
     }
 

@@ -79,59 +79,79 @@ struct ReportContentSheet: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            AtlasPushNavBar(title: "举报内容", onBack: onCancel)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(targetLabel)
-                            .font(AtlasTypography.cardTitle())
-                            .foregroundStyle(AtlasColors.ink)
-                        Text("这项内容涉嫌误导或冒用他人内容。")
-                            .font(AtlasTypography.meta())
-                            .foregroundStyle(AtlasColors.inkFaint)
-                    }
-                    .padding(AtlasMetrics.cardPadding)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(AtlasColors.fill)
-                    .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // ardot S16 (`237:466` Context 350×73): #F5F6F7 fill, cr20.
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(targetLabel)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Text("这项内容涉嫌误导或冒用他人内容。")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(AtlasColors.chatAssistantBubble)
+                )
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("选择原因")
-                            .font(AtlasTypography.cardTitle())
-                            .foregroundStyle(AtlasColors.ink)
-                        ForEach(reasons, id: \.id) { reason in
-                            Button { selectedReason = reason.id } label: {
-                                HStack {
-                                    Text(reason.title)
-                                        .font(AtlasTypography.mobileBody())
-                                        .foregroundStyle(AtlasColors.ink)
-                                    Spacer()
+                // ardot S16 (`237:466` Reasons 350×141): #F6FFD0 fill, cr20.
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("选择原因")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    ForEach(reasons, id: \.id) { reason in
+                        Button { selectedReason = reason.id } label: {
+                            HStack(spacing: 10) {
+                                ZStack {
+                                    Circle()
+                                        .stroke(
+                                            selectedReason == reason.id ? AtlasColors.ink : AtlasColors.inkSoft.opacity(0.55),
+                                            lineWidth: 1.25
+                                        )
                                     if selectedReason == reason.id {
-                                        DeimosIconView(icon: .check, size: 15, color: AtlasColors.ink)
+                                        Circle()
+                                            .fill(AtlasColors.ink)
+                                            .padding(4)
                                     }
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, 4)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(AtlasMetrics.cardPadding)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(AtlasColors.lemonSoft)
-                    .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+                                .frame(width: 18, height: 18)
 
-                    AtlasPrimaryButton(title: "提交举报") {
-                        onSubmit(selectedReason, detail)
+                                Text(reason.title)
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(AtlasColors.ink)
+                                Spacer()
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, AtlasMetrics.detailX)
-                .padding(.vertical, 16)
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(AtlasColors.noticeSoft)
+                )
+
+                AtlasPrimaryButton(title: "提交举报") {
+                    onSubmit(selectedReason, detail)
+                }
             }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 16)
+            .padding(.bottom, 40)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            // ardot S16 (`237:466` C/Push Nav Bar): floating glass overlay toolbar.
+            AtlasOverlayPushNavBar(title: "举报内容", onBack: onCancel)
         }
         .background(AtlasColors.canvas)
         .navigationBarHidden(true)
+        .suppressTabBar()
     }
 }
 
@@ -143,53 +163,69 @@ struct BlockUserSheet: View {
     var onCancel: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            AtlasPushNavBar(title: "拉黑用户", onBack: onCancel)
+        ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // ardot S17 (`237:479` User Card 350×88): #FBFCFD fill, stroke #E8EBF0, cr20.
                 HStack(spacing: 12) {
                     EntityAvatar.user(id: userID, url: avatarURL, name: name, size: 48)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(name).font(AtlasTypography.cardTitle()).foregroundStyle(AtlasColors.ink)
+                        Text(name)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
                         Text("屏蔽后不会再看到对方评论、私信或关注动态。")
-                            .font(AtlasTypography.meta())
-                            .foregroundStyle(AtlasColors.inkFaint)
+                            .font(.system(size: 13))
+                            .foregroundStyle(AtlasColors.inkSoft)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(AtlasMetrics.cardPadding)
-                .background(AtlasColors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous).stroke(AtlasColors.rule, lineWidth: 1))
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(hex: 0xFBFCFD))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(AtlasColors.settingsRowStroke, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
+                // ardot S17 (`237:479` Info 350×74): #FFF7E8 fill, cr20.
                 VStack(alignment: .leading, spacing: 8) {
                     Text("隐藏此用户的内容")
                     Text("同时提交至审核队列")
                 }
-                .font(AtlasTypography.mobileSubheadline())
+                .font(.system(size: 14))
                 .foregroundStyle(AtlasColors.ink)
-                .padding(AtlasMetrics.cardPadding)
+                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(AtlasColors.accentWarningSoft)
-                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(AtlasColors.infoWarm)
+                )
 
+                // ardot S17 (`237:479` C/Primary Button 342×52): #E5484D destructive fill,
+                // white text. Matches the destructive action color across all moderation flows.
                 Button(action: onConfirm) {
                     Text("确认拉黑")
-                        .font(AtlasTypography.button())
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
-                        .background(AtlasColors.destructive)
-                        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+                        .background(AtlasColors.destructiveFill)
+                        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, AtlasMetrics.detailX)
             .padding(.top, 16)
-            Spacer()
+            .padding(.bottom, 40)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            // ardot S17 (`237:479` C/Push Nav Bar): floating glass overlay toolbar.
+            AtlasOverlayPushNavBar(title: "拉黑用户", onBack: onCancel)
         }
         .background(AtlasColors.canvas)
         .navigationBarHidden(true)
+        .suppressTabBar()
     }
 }
 

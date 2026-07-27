@@ -66,11 +66,13 @@ enum AtlasDesignedEmptyStates {
         )
     }
 
-    static func commentsEmpty() -> AtlasDesignedEmptyState {
+    static func commentsEmpty(onWrite: (() -> Void)? = nil) -> AtlasDesignedEmptyState {
         AtlasDesignedEmptyState(
             icon: .comment,
-            title: "暂无评论",
-            subtitle: "成为第一个发表看法的人"
+            title: "还没有评论",
+            subtitle: "成为第一个留下想法的人",
+            ctaTitle: onWrite == nil ? nil : "写第一条评论",
+            ctaAction: onWrite
         )
     }
 
@@ -206,19 +208,33 @@ struct AtlasDesignedEmptyState: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            DeimosIconView(icon: icon, size: 28, color: AtlasColors.inkFaint)
+                .frame(width: 64, height: 64)
+                .background(AtlasColors.lemonSoft, in: Circle())
+                .padding(.bottom, 10)
+
             Text(title)
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(AtlasColors.ink)
             Text(subtitle)
-                .font(.system(size: 14))
+                .font(.system(size: 13))
                 .foregroundStyle(AtlasColors.inkSoft)
                 .multilineTextAlignment(.center)
                 .padding(.top, 6)
 
             if let ctaTitle, let ctaAction {
-                AtlasPrimaryButton(title: ctaTitle, action: ctaAction)
-                    .padding(.horizontal, AtlasMetrics.pageX)
-                    .padding(.top, 12)
+                Button(action: ctaAction) {
+                    Text(ctaTitle)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AtlasColors.lemonInk)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(AtlasColors.primaryAction)
+                        .clipShape(Capsule(style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, AtlasMetrics.pageX)
+                .padding(.top, 12)
             }
         }
         .frame(maxWidth: .infinity)

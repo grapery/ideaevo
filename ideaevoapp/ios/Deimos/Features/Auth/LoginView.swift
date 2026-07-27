@@ -58,20 +58,20 @@ struct LoginView: View {
         // launch motion → Apple → email → legal. A flexible spacer keeps the buttons clear of the
         // bottom safe area on tall devices; the whole stack scrolls on small devices.
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                // Lemon Brand Mark — 76×76 circle, radius 38 (ardot 179:528).
+            VStack(alignment: .leading, spacing: 24) {
+                // ardot S00 (`237:362` Brand Mark): 56×56 circle cr28, lemon fill.
                 Circle()
-                    .fill(AtlasColors.lemon)
-                    .frame(width: 76, height: 76)
+                    .fill(AtlasColors.lemonStrong)
+                    .frame(width: 56, height: 56)
 
-                // Title — "万叶" 40pt SF Pro Display Bold, ink (ardot 179:529).
-                Text("万叶")
-                    .font(.system(size: 40, weight: .heavy))
+                // Ardot S00 (`237:363`): product wordmark “Deimos”, 40pt Bold.
+                Text("Deimos")
+                    .font(.system(size: 40, weight: .bold))
                     .foregroundStyle(AtlasColors.ink)
 
-                // Subtitle — 17pt Medium, #6D7381 (ardot 179:530).
-                Text("发现、登记、Fork Agent 想法")
-                    .font(.system(size: 17, weight: .medium))
+                // Subtitle — 16pt Regular, inkSoft (ardot 179:530).
+                Text("发现、登记、Fork 你的下一个 Agent 想法")
+                    .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(AtlasColors.inkSoft)
 
                 // Sign in with Apple — 54h, ink fill, white label (ardot 179:531).
@@ -87,23 +87,23 @@ struct LoginView: View {
                         }
                     }
                 }
-                .frame(height: 54)
+                .frame(height: 52)
                 .clipShape(Capsule())
                 .overlay(Capsule().stroke(AtlasColors.border, lineWidth: 1))
                 .disabled(isLoading)
 
-                // Email / phone login — 54h, lemon fill, lemonInk label (ardot 179:533).
+                // ardot S00 (`237:359` C/Primary Button 342×52): #BEE90D fill, cr26, 17pt Semibold
+                // #1A2403 label "邮箱或手机号登录". Previous 15pt Semibold was under spec.
                 Button {
                     showCredentials = true
                 } label: {
                     Text("邮箱或手机号登录")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(AtlasColors.lemonInk)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background(AtlasColors.lemon)
+                        .frame(height: 52)
+                        .background(AtlasColors.lemonStrong)
                         .clipShape(Capsule())
-                        .overlay(Capsule().stroke(AtlasColors.border, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
 
@@ -118,6 +118,26 @@ struct LoginView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(AtlasColors.inkSoft)
                     .frame(maxWidth: .infinity, alignment: .center)
+
+                // ardot S00 (`237:359` Privacy Promise 342×76): #F5F6F7 fill, cr20.
+                // Title "安全登录" 14pt #0F1B2D + body "凭证仅用于身份验证，不用于训练 Agent"
+                // 12pt #8A94A6. Reassures the user about credential handling.
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("安全登录")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Text("凭证仅用于身份验证，不用于训练 Agent")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(AtlasColors.chatAssistantBubble)
+                )
+                .padding(.top, 8)
 
                 // "先逛逛" — guest browse affordance (RootView sets allowGuestBrowse via onCancel).
                 if let cancelAction {

@@ -160,7 +160,10 @@ struct IdeaOwnerEditView: View {
         }
         .background(AtlasColors.canvas)
         .safeAreaInset(edge: .top, spacing: 0) {
-            settingsBackHeader(title: "编辑 Idea", dismiss: dismiss)
+            AtlasOverlayPushNavBar(title: "发布新版本", onBack: { dismiss() })
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            publishVersionBar
         }
         .atlasSheetZoomBackground(isPresented: showBuryConfirm)
         .navigationBarHidden(true)
@@ -177,179 +180,159 @@ struct IdeaOwnerEditView: View {
 
     private var editorContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
                 if let idea = viewModel.idea {
-                    // S27 Idea core identity — #F8FAFC card r16 (Ardot 189:70)
-                    HStack(spacing: 12) {
-                        EntityAvatar.idea(id: idea.id, url: idea.iconLink, name: idea.title, size: 44)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("OWNER EDIT")
-                                .font(AtlasTypography.overline())
-                                .foregroundStyle(AtlasColors.inkFaint)
-                            Text(idea.title)
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundStyle(AtlasColors.ink)
-                                .lineLimit(2)
-                        }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("当前 v\(viewModel.versions.first(where: \.isCurrent)?.version ?? 1) · \(idea.displayTitle)")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
+                            .lineLimit(1)
+                        Text("\(idea.agent?.name ?? "Agent") · 公开 · 可 Fork")
+                            .font(.system(size: 11))
+                            .foregroundStyle(AtlasColors.inkSoft)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
-                    .background(Color(hex: 0xF8FAFC))
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .frame(height: 72)
+                    .background(AtlasColors.lemonSoft)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
 
-                settingsGroupedCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("版本身份")
-                            .font(AtlasTypography.cardTitle())
-                            .foregroundStyle(AtlasColors.ink)
-                        metaField("标题", text: $viewModel.titleText)
-                        HStack(alignment: .top, spacing: 10) {
-                            metaField("分类", text: $viewModel.categoryText)
-                            metaField("标签（逗号分隔）", text: $viewModel.tagsText)
-                        }
-                    }
-                    .padding(AtlasMetrics.cardPadding)
+                Text("版本内容")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                    .padding(.top, 4)
+
+                compactField($viewModel.titleText, height: 52)
+
+                HStack(spacing: 8) {
+                    labeledCompactField("分类", text: $viewModel.categoryText)
+                        .frame(width: 112)
+                    labeledCompactField("标签", text: $viewModel.tagsText)
                 }
 
-                settingsGroupedCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("描述")
-                            .font(AtlasTypography.cardTitle())
-                            .foregroundStyle(AtlasColors.ink)
-                            .padding(.horizontal, AtlasMetrics.cardPadding)
-                            .padding(.top, AtlasMetrics.cardPadding)
-                        AtlasTextEditor(text: $viewModel.descriptionText, minHeight: 120, fontSize: 17)
-                            .padding(8)
-                            .background(AtlasColors.fill)
-                            .padding(.horizontal, AtlasMetrics.cardPadding)
-                        AtlasTextField(placeholder: "这一版本改变了什么（必填）", text: $viewModel.changelog, height: AtlasMetrics.inputHeight)
-                            .padding(.horizontal, 4)
-                            .background(AtlasColors.fill)
-                            .padding(.horizontal, AtlasMetrics.cardPadding)
-                            .padding(.bottom, AtlasMetrics.cardPadding)
-                    }
-                }
+                AtlasTextEditor(text: $viewModel.descriptionText, minHeight: 104, fontSize: 14)
+                    .frame(height: 104)
+                    .padding(.horizontal, 10)
+                    .background(AtlasColors.fill)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-                uploadSection
-                iconSection
+                Text("实现与材料")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                    .padding(.top, 4)
 
-                settingsGroupedCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("实现信息")
-                            .font(AtlasTypography.cardTitle())
-                            .foregroundStyle(AtlasColors.ink)
-                            .padding(.horizontal, AtlasMetrics.cardPadding)
-                            .padding(.top, AtlasMetrics.cardPadding)
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("实现状态")
+                            .font(.system(size: 10))
+                            .foregroundStyle(AtlasColors.inkFaint)
                         Picker("实现状态", selection: $viewModel.implStatus) {
                             ForEach(viewModel.implStatuses, id: \.0) { value, label in
                                 Text(label).tag(value)
                             }
                         }
                         .pickerStyle(.menu)
-                        .padding(.horizontal, AtlasMetrics.cardPadding)
-                        VStack(spacing: 8) {
-                            metaField("仓库 URL", text: $viewModel.repoURL)
-                            metaField("演示 URL", text: $viewModel.demoURL)
-                        }
-                        .padding(.horizontal, AtlasMetrics.cardPadding)
-                        .padding(.bottom, AtlasMetrics.cardPadding)
+                        .font(.system(size: 12, weight: .semibold))
                     }
+                    Spacer()
+                    Text(viewModel.implStatuses.first { $0.0 == viewModel.implStatus }?.1 ?? "概念")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(AtlasColors.lemonInk)
+                        .padding(.horizontal, 12)
+                        .frame(height: 28)
+                        .background(AtlasColors.lemonStrong)
+                        .clipShape(Capsule())
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 56)
+                .background(AtlasColors.fill)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                HStack(spacing: 8) {
+                    linkField("GitHub 仓库", text: $viewModel.repoURL)
+                    linkField("体验 Demo", text: $viewModel.demoURL)
                 }
 
-                if !viewModel.versions.isEmpty {
-                    settingsGroupedCard {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("版本预览")
-                                .font(AtlasTypography.cardTitle())
-                                .foregroundStyle(AtlasColors.ink)
-                                .padding(.horizontal, AtlasMetrics.cardPadding)
-                                .padding(.top, AtlasMetrics.cardPadding)
-                            ForEach(viewModel.versions.prefix(3)) { version in
-                                Button {
-                                    if let current = viewModel.versions.first(where: \.isCurrent), current.id != version.id {
-                                        versionRoute = VersionCompareRoute(ideaID: ideaID, versionID: version.id, compareVersionID: current.id)
-                                    } else {
-                                        versionRoute = VersionCompareRoute(ideaID: ideaID, versionID: version.id, compareVersionID: nil)
-                                    }
-                                } label: {
-                                    HStack {
-                                        Text("v\(version.version)")
-                                            .font(AtlasTypography.badge())
-                                            .foregroundStyle(version.isCurrent ? AtlasColors.olive : AtlasColors.ink)
-                                        Text(version.changelog)
-                                            .font(.system(size: 12))
-                                            .foregroundStyle(AtlasColors.inkSoft)
-                                            .lineLimit(1)
-                                        Spacer()
-                                        Text("对比 ›")
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(AtlasColors.olive)
-                                    }
-                                    .padding(.horizontal, AtlasMetrics.cardPadding)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .padding(.bottom, AtlasMetrics.cardPadding)
-                        }
-                    }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("版本变化 · 必填")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Color(hex: 0x8A6400))
+                    TextField("说明本版本的变化", text: $viewModel.changelog)
+                        .font(.system(size: 13))
+                        .foregroundStyle(AtlasColors.ink)
                 }
+                .padding(.horizontal, 14)
+                .frame(height: 72)
+                .background(Color(hex: 0xFFF7E8))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
                 if let message = viewModel.message {
                     Text(message)
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.coral)
-                }
-
-                // S27 Save button — lemonInk bg, white text, 48h, r12 (Ardot 189:72)
-                Button {
-                    Task { await saveAll() }
-                } label: {
-                    HStack(spacing: 8) {
-                        if viewModel.isSaving {
-                            ProgressView().tint(.white)
-                        }
-                        Text("保存并写入新版本")
-                            .font(.system(size: 15, weight: .bold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .foregroundStyle(.white)
-                    .background(AtlasColors.lemonInk)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .disabled(viewModel.isSaving)
-
-                if viewModel.idea?.status == "active" {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("危险操作")
-                            .font(AtlasTypography.cardTitle())
-                            .foregroundStyle(AtlasColors.coral)
-                        Text("埋葬后想法将从搜索与推荐中移除。")
-                            .font(.system(size: 12))
-                            .foregroundStyle(AtlasColors.inkFaint)
-                        Button("埋葬此想法") {
-                            buryReason = ""
-                            showBuryConfirm = true
-                        }
-                        .font(AtlasTypography.caption())
+                        .font(.system(size: 11))
                         .foregroundStyle(AtlasColors.coral)
                     }
-                    .padding(AtlasMetrics.cardPadding)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(AtlasColors.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                            .stroke(AtlasColors.coral.opacity(0.35), lineWidth: 1)
-                    )
-                }
             }
             .padding(.horizontal, AtlasMetrics.detailX)
-            .padding(.bottom, 40)
+            .padding(.bottom, 16)
         }
+    }
+
+    private func compactField(_ text: Binding<String>, height: CGFloat) -> some View {
+        AtlasTextField(placeholder: "标题", text: text, height: height)
+            .padding(.horizontal, 4)
+            .background(AtlasColors.fill)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func labeledCompactField(_ label: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.system(size: 10)).foregroundStyle(AtlasColors.inkFaint)
+            TextField(label, text: text)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+        }
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity)
+        .frame(height: 52)
+        .background(AtlasColors.fill)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func linkField(_ label: String, text: Binding<String>) -> some View {
+        HStack(spacing: 6) {
+            TextField(label, text: text)
+                .font(.system(size: 12, weight: .medium))
+            DeimosIconView(icon: .chevronRight, size: 10, color: AtlasColors.inkSoft)
+        }
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity)
+        .frame(height: 48)
+        .background(AtlasColors.fill)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private var publishVersionBar: some View {
+        Button {
+            Task { await saveAll() }
+        } label: {
+            HStack(spacing: 8) {
+                if viewModel.isSaving { ProgressView().tint(AtlasColors.lemonInk) }
+                DeimosIconView(icon: .share, size: 14, color: AtlasColors.lemonInk)
+                Text("发布新版本")
+                    .font(.system(size: 15, weight: .semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .foregroundStyle(AtlasColors.lemonInk)
+            .background(AtlasColors.lemonStrong)
+            .clipShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.isSaving)
+        .padding(.horizontal, AtlasMetrics.detailX)
+        .padding(.vertical, 8)
+        .background(AtlasColors.canvas)
     }
 
     private var uploadSection: some View {

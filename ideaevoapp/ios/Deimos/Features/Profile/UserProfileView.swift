@@ -136,16 +136,20 @@ struct UserProfileView: View {
                     }
                 } else if let envelope = viewModel.envelope {
                     profileContent(envelope)
+                        .contextMenu {
+                            if !isSelf {
+                                Button("分享主页") {
+                                    sharePayload = profileShareURL(for: envelope.profile.user)
+                                    showShareSheet = true
+                                }
+                                Button("举报用户") { showReportSheet = true }
+                                Button("拉黑用户", role: .destructive) { showBlockDialog = true }
+                            }
+                        }
                 }
             }
 
-            AtlasOverlayPushNavBar(onBack: { dismiss() }) {
-                if !isSelf, viewModel.envelope != nil {
-                    AtlasToolbarFloatIconButton(icon: .more) {
-                        showUserActionMenu = true
-                    }
-                }
-            }
+            AtlasOverlayPushNavBar(title: "用户主页", barBackground: .clear, onBack: { dismiss() })
         }
         .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: isSheetZoomActive)
@@ -217,6 +221,14 @@ struct UserProfileView: View {
         }
         .task(id: userID) {
             await viewModel.load(userID: userID)
+            #if DEBUG
+            let args = ProcessInfo.processInfo.arguments
+            if args.contains("--deimos-show-user-report") {
+                showReportSheet = true
+            } else if args.contains("--deimos-show-user-block") {
+                showBlockDialog = true
+            }
+            #endif
         }
         .onChange(of: viewModel.selectedTab) { _, tab in
             if tab == .agents {
@@ -430,12 +442,13 @@ private struct PublicUserIdentityContent: View {
     let user: User
 
     var body: some View {
+        // ardot S09B (`237:378`): Name 28pt Bold #0F1B2D; Bio 15pt Regular #8A94A6.
         VStack(alignment: .leading, spacing: 8) {
             Text(user.name)
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(AtlasColors.ink)
             Text(user.bio?.isEmpty == false ? (user.bio ?? "") : "AI 想法探索者")
-                .font(AtlasTypography.mobileSubheadline())
+                .font(.system(size: 15))
                 .foregroundStyle(AtlasColors.inkSoft)
                 .lineLimit(2)
         }
@@ -447,22 +460,36 @@ private struct PublicUserStatsBand: View {
     let user: User
 
     var body: some View {
-        HStack(spacing: 0) {
-            statItem(value: "\(stats.ideaCount)", label: "想法")
-            statItem(value: compactCount(user.followerCount), label: "粉丝")
-            statItem(value: compactCount(user.followingCount), label: "关注")
+        // ardot S09B (`237:378` Stats 342×64): #F5F6F7 container cr20 holding 3 stat tiles.
+        // First tile (想法) #F3FFC8 lemon cr16; other two match the container.
+        HStack(spacing: 8) {
+            statTile(value: "\(stats.ideaCount)", label: "想法", highlight: true)
+            statTile(value: compactCount(user.followerCount), label: "粉丝", highlight: false)
+            statTile(value: compactCount(user.followingCount), label: "关注", highlight: false)
         }
-        .padding(.vertical, 12)
-        .background(AtlasColors.fill)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(AtlasColors.chatAssistantBubble)
+        )
     }
 
-    private func statItem(value: String, label: String) -> some View {
-        VStack(spacing: 3) {
-            Text(value).font(.system(size: 16, weight: .bold)).foregroundStyle(AtlasColors.ink)
-            Text(label).font(AtlasTypography.meta()).foregroundStyle(AtlasColors.inkSoft)
+    private func statTile(value: String, label: String, highlight: Bool) -> some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(AtlasColors.inkSoft)
         }
         .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(highlight ? AtlasColors.chatActivityFill : AtlasColors.chatAssistantBubble)
+        )
     }
 
     private func compactCount(_ value: Int) -> String {

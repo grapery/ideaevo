@@ -70,11 +70,24 @@ enum MainTab: CaseIterable {
 struct MainTabView: View {
     @Binding var deepLinkIdeaRoute: IdeaRoute?
 
+    @Environment(AuthSession.self) private var session
     @State private var selection: MainTab = .home
     @State private var tabBarVisibility = TabBarVisibility()
     @State private var showRateSheet = false
+    @State private var debugAgentRoute: AgentRoute?
+    @State private var debugUserRoute: UserRoute?
+    @State private var showGuestLogin = false
 
     private static let launchCountKey = "deimos.launch.count"
+
+    private var isGuestBrowse: Bool {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--deimos-preview-guest") {
+            return true
+        }
+        #endif
+        return !session.isAuthenticated
+    }
 
     /// Device bottom safe-area inset (home indicator zone). Used to position the floating tab
     /// bar pill at the true screen edge — `overlay(alignment: .bottom)` otherwise anchors to the
@@ -117,10 +130,25 @@ struct MainTabView: View {
                 .navigationDestination(item: $deepLinkIdeaRoute) { route in
                     IdeaDetailView(ideaID: route.id)
                 }
+                .navigationDestination(item: $debugAgentRoute) { route in
+                    AgentProfileView(agentID: route.id)
+                }
+                .navigationDestination(item: $debugUserRoute) { route in
+                    UserProfileView(userID: route.id)
+                }
             }
 
             if tabBarVisibility.isVisible {
                 NativeTabBar(selection: $selection)
+            }
+
+            if tabBarVisibility.isVisible, isGuestBrowse, selection == .home {
+                GuestBrowseCTABar {
+                    showGuestLogin = true
+                }
+                // The tab component's 83pt frame contains ~26pt of transparent safe-area
+                // material. Position against its visible pill so the CTA occupies S12G y689–761.
+                .padding(.bottom, 57)
             }
         }
         .environment(\.tabBarVisibility, tabBarVisibility)
@@ -142,6 +170,14 @@ struct MainTabView: View {
                 let id = ideaArg.replacingOccurrences(of: "--deimos-goto-idea=", with: "")
                 if !id.isEmpty { deepLinkIdeaRoute = IdeaRoute(id: id) }
             }
+            if let agentArg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--deimos-goto-agent=") }) {
+                let id = agentArg.replacingOccurrences(of: "--deimos-goto-agent=", with: "")
+                if !id.isEmpty { debugAgentRoute = AgentRoute(id: id) }
+            }
+            if let userArg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--deimos-goto-user=") }) {
+                let id = userArg.replacingOccurrences(of: "--deimos-goto-user=", with: "")
+                if !id.isEmpty { debugUserRoute = UserRoute(id: id) }
+            }
         }
         #endif
         .sheet(isPresented: $showRateSheet) {
@@ -149,6 +185,11 @@ struct MainTabView: View {
                 .presentationDetents([.height(380)])
                 .presentationDragIndicator(.hidden)
                 .presentationCornerRadius(24)
+        }
+        .sheet(isPresented: $showGuestLogin) {
+            NavigationStack {
+                LoginView(initialRegister: false, onCancel: { showGuestLogin = false })
+            }
         }
         .onAppear {
             incrementLaunchCount()
@@ -166,6 +207,35 @@ struct MainTabView: View {
                     showRateSheet = true
                 }
             }
+        }
+    }
+}
+
+/// Ardot S12G (`237:617`): persistent guest affordance immediately above the floating tab bar.
+private struct GuestBrowseCTABar: View {
+    let onLogin: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("登录后可送花、评论和 Fork")
+                .font(.system(size: 14))
+                .foregroundStyle(AtlasColors.inkSoft)
+                .lineLimit(1)
+
+            Spacer(minLength: 4)
+
+            Button("登录", action: onLogin)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AtlasColors.lemonInk)
+                .frame(width: 104, height: 40)
+                .background(AtlasColors.lemonStrong)
+                .clipShape(Capsule())
+        }
+        .padding(.horizontal, AtlasMetrics.pageX)
+        .frame(height: 72)
+        .background(AtlasColors.surface.opacity(0.98))
+        .overlay(alignment: .top) {
+            Rectangle().fill(AtlasColors.rule).frame(height: 0.5)
         }
     }
 }

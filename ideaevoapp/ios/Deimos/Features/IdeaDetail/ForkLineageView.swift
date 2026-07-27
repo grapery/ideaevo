@@ -54,9 +54,16 @@ struct ForkLineageView: View {
                         childForksNode
                         statsBand
 
-                        Text("选择一个节点，查看版本变化与 Fork 数")
-                            .font(AtlasTypography.mobileSubheadline())
-                            .foregroundStyle(AtlasColors.inkSoft)
+                        HStack(spacing: 8) {
+                            Text("按版本查看分支、贡献与后续 Fork")
+                                .font(.system(size: 11))
+                                .foregroundStyle(AtlasColors.ink)
+                            Spacer()
+                            Text("版本对比")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(AtlasColors.ink)
+                            DeimosIconView(icon: .chevronRight, size: 10, color: AtlasColors.ink)
+                        }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 14)
                             .frame(height: 48)
@@ -89,23 +96,23 @@ struct ForkLineageView: View {
         Button {
             ideaRoute = IdeaRoute(id: idea.id)
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(sourceTitle(for: version))
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(AtlasColors.inkTertiary)
                 Text(nonEmpty(version?.title) ?? idea.displayTitle)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color(hex: 0x3E4652))
                     .lineLimit(2)
                 Text("\(idea.forkCount) Fork · \(version?.createdAt.absoluteShort ?? idea.createdAt.absoluteShort)")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 11))
                     .foregroundStyle(AtlasColors.inkSoft)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .frame(height: 74)
             .background(Color(hex: 0xF7F8FA))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -114,23 +121,23 @@ struct ForkLineageView: View {
 
     /// 当前分支 / title · agent (Ardot 189:129 — lemon-soft bg r16).
     private func currentNode(_ idea: Idea, version: IdeaVersionDetail?) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 3) {
             Text("当前 v\(version?.version ?? 1)")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(AtlasColors.olive)
             Text(nonEmpty(version?.title) ?? idea.displayTitle)
-                .font(.system(size: 15))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AtlasColors.lemonInk)
                 .lineLimit(2)
             Text("\(idea.forkCount) Fork · 你正在查看")
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 11))
                 .foregroundStyle(AtlasColors.olive)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .frame(height: 74)
         .background(AtlasColors.lemonSoft)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     // MARK: - Child forks
@@ -144,16 +151,16 @@ struct ForkLineageView: View {
                     Button { ideaRoute = IdeaRoute(id: child.id) } label: {
                         VStack(alignment: .leading, spacing: 5) {
                             Text("子 Fork · \(child.displayTitle)")
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(AtlasColors.ink)
                                 .lineLimit(1)
                             Text("子分支 · \(child.agent?.name ?? "Agent") · \(child.createdAt.relativeShort)")
-                                .font(.system(size: 11, weight: .medium))
+                                .font(.system(size: 11))
                                 .foregroundStyle(AtlasColors.inkSoft)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 16)
-                        .frame(height: 72)
+                        .frame(height: 74)
                         .background(AtlasColors.surface)
                         .overlay(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous).stroke(AtlasColors.border, lineWidth: 1))
                         .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
@@ -171,7 +178,7 @@ struct ForkLineageView: View {
             lineageMetric("\(stats?.activeBranches ?? children.count)", "活跃分支")
             lineageMetric("\(stats?.contributors ?? 0)", "贡献者")
         }
-        .padding(.vertical, 12)
+        .frame(height: 64)
         .background(AtlasColors.fill)
         .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
     }
@@ -196,8 +203,8 @@ struct ForkLineageView: View {
 
     private func lineageMetric(_ value: String, _ label: String) -> some View {
         VStack(spacing: 3) {
-            Text(value).font(.system(size: 16, weight: .bold)).foregroundStyle(AtlasColors.ink)
-            Text(label).font(AtlasTypography.meta()).foregroundStyle(AtlasColors.inkSoft)
+            Text(value).font(.system(size: 16, weight: .semibold)).foregroundStyle(AtlasColors.ink)
+            Text(label).font(.system(size: 11, weight: .semibold)).foregroundStyle(AtlasColors.inkSoft)
         }
         .frame(maxWidth: .infinity)
     }

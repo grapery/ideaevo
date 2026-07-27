@@ -50,6 +50,8 @@ final class ActivityScreenViewModel {
     var rankings: ActivityRankings = ActivityRankings(popular: [], flowers: [], forks: [])
     var activities: [ActivityView] = []
     var isLoading = false
+    var isLoadingMore = false
+    var hasMore = false
     var errorMessage: String?
     var isOffline = false
 
@@ -102,18 +104,21 @@ final class ActivityScreenViewModel {
 
         do {
             if segment == 0 {
-                let feed = try await APIClient.shared.activityFeed()
+                let feed = try await APIClient.shared.activityFeed(limit: 20)
                 stats = feed.stats
                 rankings = feed.rankings
                 activities = feed.activities
+                hasMore = feed.activities.count < feed.total && feed.activities.count < 50
             } else if isAuthenticated {
                 stats = ActivityStats(todayNewIdeas: 0, todayForks: 0, activeAgents: 0, totalActions: 0)
                 rankings = ActivityRankings(popular: [], flowers: [], forks: [])
-                activities = try await APIClient.shared.followingFeed()
+                activities = try await APIClient.shared.followingFeed(limit: 20)
+                hasMore = activities.count == 20
             } else {
                 stats = ActivityStats(todayNewIdeas: 0, todayForks: 0, activeAgents: 0, totalActions: 0)
                 rankings = ActivityRankings(popular: [], flowers: [], forks: [])
                 activities = []
+                hasMore = false
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -121,6 +126,30 @@ final class ActivityScreenViewModel {
             if segment != 0 {
                 activities = []
             }
+        }
+    }
+
+    func loadMore(segment: Int, isAuthenticated: Bool) async {
+        guard hasMore, !isLoadingMore else { return }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+
+        do {
+            if segment == 0 {
+                // `/activity/feed` currently returns the newest prefix rather than accepting an
+                // offset. Increase the requested prefix and retain stable identity ordering.
+                let requested = min(activities.count + 20, 50)
+                let feed = try await APIClient.shared.activityFeed(limit: requested)
+                activities = feed.activities
+                hasMore = activities.count < feed.total && activities.count < 50
+            } else if isAuthenticated {
+                let more = try await APIClient.shared.followingFeed(limit: 20, offset: activities.count)
+                let existing = Set(activities.map(\.id))
+                activities.append(contentsOf: more.filter { !existing.contains($0.id) })
+                hasMore = more.count == 20
+            }
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }
@@ -135,22 +164,16 @@ struct ActivityScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // v6 large title header — stats live in a compact toolbar chip on the right (ardot 311:1).
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("DEIMOS")
-                        .font(AtlasTypography.overline())
-                        .foregroundStyle(AtlasColors.inkSoft)
-                    Text("动态")
-                        .font(AtlasTypography.largeTitle())
-                        .foregroundStyle(AtlasColors.ink)
-                        .atlasTrackedTitle(30)
-                }
-
-                Spacer()
-
-                ActivityToolbarStatsChip(stats: viewModel.stats)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("DEIMOS")
+                    .font(AtlasTypography.overline())
+                    .foregroundStyle(AtlasColors.inkSoft)
+                Text("动态")
+                    .font(AtlasTypography.largeTitle())
+                    .foregroundStyle(AtlasColors.ink)
+                    .atlasTrackedTitle(30)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, AtlasMetrics.pageX)
             .padding(.top, 8)
             .padding(.bottom, 20)
@@ -158,6 +181,13 @@ struct ActivityScreen: View {
             AtlasSegmentedPill(items: ["全局", "关注"], selection: $viewModel.segment)
                 .padding(.horizontal, AtlasMetrics.pageX)
                 .padding(.bottom, 12)
+
+            // ardot S08 (`237:168`): compact 342×80 stats row below the segments.
+            // Left tile #F3FFC8 lemon cr20 (今日新增想法) + Right tile #F2F5F8 stroke #E8EBF0 cr20
+            // (今日 Fork). Each tile: Label 13pt + Value 26pt Bold + Trend 11pt Medium.
+            statsSection
+                .padding(.horizontal, AtlasMetrics.pageX)
+                .padding(.bottom, 16)
 
             content
         }
@@ -217,7 +247,7 @@ struct ActivityScreen: View {
 
     private var feedScroll: some View {
         ScrollView {
-            LazyVStack(spacing: 20) {
+            LazyVStack(spacing: 12) {
                 if viewModel.isOffline, let message = viewModel.errorMessage {
                     AtlasOfflineBanner(message: message) {
                         Task {
@@ -229,7 +259,7 @@ struct ActivityScreen: View {
                 feedSection
             }
             .padding(.horizontal, AtlasMetrics.pageX)
-            .padding(.top, 16)
+            .padding(.top, 4)
             .padding(.bottom, AtlasMetrics.bottomClear)
         }
     }
@@ -283,6 +313,78 @@ struct ActivityScreen: View {
             WireframeStatCircle(value: "\(viewModel.stats.activeAgents)", label: "活跃 Agent")
             WireframeStatCircle(value: "\(viewModel.stats.totalActions)", label: "全站动作")
         }
+    }
+
+    /// ardot S08 (`237:168`): two side-by-side 165×80 stat tiles.
+    /// Left tile #F3FFC8 lemon cr20 ("今日新增想法") + Right tile #F2F5F8 stroke #E8EBF0 cr20
+    /// ("今日 Fork"). Each tile holds Label 13pt + Value 26pt Bold + Trend 11pt Medium.
+    /// Replaces the old compact ActivityToolbarStatsChip for the section below the segments.
+    private var statsSection: some View {
+        HStack(spacing: 12) {
+            activityStatTile(
+                label: "今日新增想法",
+                value: "\(viewModel.stats.todayNewIdeas)",
+                trend: nil,
+                fill: AtlasColors.chatActivityFill,
+                stroke: nil,
+                labelColor: AtlasColors.oliveMeta,
+                trendColor: AtlasColors.oliveMeta
+            )
+            activityStatTile(
+                label: "今日 Fork",
+                value: "\(viewModel.stats.todayForks)",
+                trend: nil,
+                fill: AtlasColors.statTileSecondary,
+                stroke: AtlasColors.settingsRowStroke,
+                labelColor: AtlasColors.statLabelSecondary,
+                trendColor: AtlasColors.inkSoft
+            )
+        }
+    }
+
+    private func activityStatTile(
+        label: String,
+        value: String,
+        trend: String?,
+        fill: Color,
+        stroke: Color?,
+        labelColor: Color,
+        trendColor: Color
+    ) -> some View {
+        // ardot S08 (`237:177` Stats): each tile 166×80 cr16, padding 16, itemSpacing 2.
+        // Label 11pt Semibold, Value 22pt Bold, Trend 10pt Medium.
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(labelColor)
+                .lineLimit(1)
+            Text(value)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+                .monospacedDigit()
+                .lineLimit(1)
+            if let trend {
+                Text(trend)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(trendColor)
+                    .lineLimit(1)
+            } else {
+                Text(" ")
+                    .font(.system(size: 10))
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 80, maxHeight: 80, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(fill)
+        )
+        .overlay(
+            stroke.map {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke($0, lineWidth: 1)
+            }
+        )
     }
 
     private var rankingsCard: some View {
@@ -353,19 +455,55 @@ struct ActivityScreen: View {
             followingEmptyState
                 .padding(.top, 12)
         } else {
-            ForEach(viewModel.filteredActivities, id: \.id) { activity in
-                Group {
-                    if let ideaID = activity.ideaID {
-                        Button {
-                            selectedRoute = IdeaRoute(id: ideaID)
-                        } label: {
+            VStack(spacing: 0) {
+                ForEach(Array(viewModel.filteredActivities.enumerated()), id: \.element.id) { index, activity in
+                    Group {
+                        if let ideaID = activity.ideaID {
+                            Button {
+                                selectedRoute = IdeaRoute(id: ideaID)
+                            } label: {
+                                ActivityCell(activity: activity)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
                             ActivityCell(activity: activity)
                         }
-                        .buttonStyle(.plain)
-                    } else {
-                        ActivityCell(activity: activity)
+                    }
+                    .onAppear {
+                        if index == viewModel.filteredActivities.count - 1 {
+                            Task {
+                                await viewModel.loadMore(
+                                    segment: viewModel.segment,
+                                    isAuthenticated: session.isAuthenticated
+                                )
+                            }
+                        }
+                    }
+
+                    if index < viewModel.filteredActivities.count - 1 {
+                        Divider()
+                            .padding(.leading, 64)
                     }
                 }
+            }
+            .background(AtlasColors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(AtlasColors.border, lineWidth: 1)
+            }
+
+            if viewModel.isLoadingMore {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .tint(AtlasColors.lemonStrong)
+                    Text("加载更多动态…")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 102)
+                .background(AtlasColors.settingsGroupFill)
             }
         }
     }

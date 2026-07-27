@@ -183,21 +183,10 @@ struct AgentEditorView: View {
     }
 
     var body: some View {
+        Group {
+        if viewModel.isEditing {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                // S21/S22 Back button row (36×36 r18 #F4F5F8)
-                HStack(spacing: 8) {
-                    AtlasNavBackButton { dismiss() }
-                    Spacer()
-                }
-                .padding(.horizontal, 8)
-                .frame(height: AtlasToolbarMetrics.barHeight)
-
-                // S21/S22 Screen Title — 28pt Bold ink (Ardot 189:21 / 189:29)
-                Text(viewModel.isEditing ? "编辑 Agent" : "创建 Agent")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
-
                 if viewModel.isEditing, let agent = viewModel.agent {
                     ProfileBanner(
                         backgroundURL: agent.backgroundURL,
@@ -208,7 +197,7 @@ struct AgentEditorView: View {
                     )
                     .padding(.horizontal, -AtlasMetrics.pageX)
 
-                    // S22 Agent Identity Editor card — bg #F2FFC5 r16 (Ardot 189:30)
+                    // ardot S22 Agent Identity Editor card — noticeSoft (#F6FFD0) r20.
                     VStack(alignment: .leading, spacing: 8) {
                         Text("头像 / 背景 / 名称")
                             .font(.system(size: 15))
@@ -219,8 +208,8 @@ struct AgentEditorView: View {
                     }
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(hex: 0xF2FFC5))
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(AtlasColors.noticeSoft)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
                     HStack(spacing: 12) {
                         PhotosPicker(selection: $avatarItem, matching: .images) {
@@ -243,7 +232,7 @@ struct AgentEditorView: View {
                 // S21 Agent Creation Form card — bg #F7F8FA r16 itemSpacing 10 (Ardot 189:22)
                 VStack(alignment: .leading, spacing: 10) {
                     editorField("名称", text: $viewModel.name)
-                    editorMultiline("描述", text: $viewModel.descriptionText, minHeight: 80)
+                    editorMultiline("简介", text: $viewModel.descriptionText, minHeight: 80)
                     editorMultiline("系统提示词", text: $viewModel.systemPrompt, minHeight: 120)
                     editorField("模型（留空用默认）", text: $viewModel.llmModel)
 
@@ -274,7 +263,9 @@ struct AgentEditorView: View {
                 .background(Color(hex: 0xF7F8FA))
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-                // S23 Follow Chat Toggles card — bg #F2FFC5 r16 itemSpacing 8 (Ardot 189:40)
+                // ardot S21 (`237:419` Permissions 350×96): #F6FFD0 fill, cr20.
+                // Replaces the older #F2FFC5 lemon tint — the new spec uses a slightly cooler
+                // noticeSoft tone. Card holds follow/chat toggles + audience preview.
                 VStack(spacing: 0) {
                     Toggle("允许关注", isOn: $viewModel.allowFollow)
                         .padding(.horizontal, 16)
@@ -286,7 +277,7 @@ struct AgentEditorView: View {
                         .frame(height: 52)
                         .tint(AtlasColors.lemonStrong)
                 }
-                .background(Color(hex: 0xF2FFC5))
+                .background(AtlasColors.noticeSoft)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
                 // S23 Audience Preview card — white + 1px border r16 (Ardot 189:147)
@@ -355,7 +346,17 @@ struct AgentEditorView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 40)
         }
+        } else {
+            createAgentContent
+        }
+        }
         .background(AtlasColors.canvas)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            AtlasOverlayPushNavBar(
+                title: viewModel.isEditing ? "编辑 Agent" : "创建 Agent",
+                onBack: { dismiss() }
+            )
+        }
         .navigationBarHidden(true)
         .suppressTabBar()
         .atlasScrollDismissesKeyboard()
@@ -391,6 +392,42 @@ struct AgentEditorView: View {
         }
     }
 
+    private var createAgentContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                editorField("名称", text: $viewModel.name)
+                editorMultiline("简介", text: $viewModel.descriptionText, minHeight: 72)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("公开状态")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Text("公开 · 允许关注 · 允许聊天")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                    Text("创建后可随时调整权限")
+                        .font(.system(size: 10))
+                        .foregroundStyle(AtlasColors.oliveMeta)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+                .background(AtlasColors.noticeSoft)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                if let message = viewModel.message {
+                    Text(message)
+                        .font(.system(size: 11))
+                        .foregroundStyle(message.contains("成功") ? AtlasColors.olive : AtlasColors.coral)
+                }
+
+                primarySaveButton
+            }
+            .padding(.horizontal, AtlasMetrics.detailX)
+            .padding(.top, 12)
+            .padding(.bottom, 40)
+        }
+    }
+
     /// S21/S22 primary save button — Create uses lemonStrong bg, Edit uses lemonInk bg.
     private var primarySaveButton: some View {
         Button {
@@ -401,13 +438,13 @@ struct AgentEditorView: View {
                     ProgressView().tint(viewModel.isEditing ? .white : AtlasColors.lemonInk)
                 }
                 Text(viewModel.isEditing ? "保存 Agent 配置" : "创建并生成 API Key")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 17, weight: .semibold))
             }
             .frame(maxWidth: .infinity)
             .frame(height: 48)
             .foregroundStyle(viewModel.isEditing ? Color.white : AtlasColors.lemonInk)
             .background(viewModel.isEditing ? AtlasColors.lemonInk : AtlasColors.lemonStrong)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(viewModel.isSaving)
@@ -441,12 +478,12 @@ struct AgentEditorView: View {
             Text(placeholder)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(AtlasColors.inkSoft)
-            AtlasTextField(placeholder: placeholder, text: text, height: AtlasMetrics.inputHeight)
+            AtlasTextField(placeholder: placeholder, text: text, height: 44)
                 .padding(.horizontal, 4)
                 .background(AtlasColors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(AtlasColors.border, lineWidth: 1)
                 )
         }
@@ -457,12 +494,13 @@ struct AgentEditorView: View {
             Text(placeholder)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(AtlasColors.inkSoft)
-            AtlasTextEditor(text: text, minHeight: minHeight)
+            AtlasTextEditor(text: text, minHeight: minHeight, fontSize: 16)
                 .padding(8)
+                .frame(height: minHeight)
                 .background(AtlasColors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(AtlasColors.border, lineWidth: 1)
                 )
         }

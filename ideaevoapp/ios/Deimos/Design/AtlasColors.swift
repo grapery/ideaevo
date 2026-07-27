@@ -21,6 +21,27 @@ enum AtlasColors {
     static let surfaceSecondary = Color(hex: 0xF2F3F7)
     /// Input background — `#F2F3F5`. Input fields, clear buttons.
     static let bgInput = Color(hex: 0xF2F3F5)
+    /// `#F2F2F7` — settings group container fill + logout pill background (ardot S11 `237:369`
+    /// Agent & Device Settings container + Log Out pill). System-group-background equivalent.
+    static let settingsGroupFill = Color(hex: 0xF2F2F7)
+    /// `#E8EBF0` — settings row hairline border (ardot S11 `237:369` C/Settings Row stroke).
+    static let settingsRowStroke = Color(hex: 0xE8EBF0)
+    /// `#F2F5F8` — secondary stat tile fill (ardot S08 `237:168` second Stats tile).
+    /// Slightly cooler than #F5F6F7 (chatAssistantBubble).
+    static let statTileSecondary = Color(hex: 0xF2F5F8)
+    /// `#657080` — secondary stat tile label text (ardot S08 `237:168` "今日 Fork" label).
+    static let statLabelSecondary = Color(hex: 0x657080)
+    // MARK: - Privacy / Moderation surface tints (ardot S14/S16/S17/S19/S18)
+    /// `#F6FFD0` — report reasons card fill (ardot S16 `237:466` Reasons) + create-agent
+    /// permissions card (ardot S21 `237:419` Permissions). Slightly cooler than #F3FFC8.
+    static let noticeSoft = Color(hex: 0xF6FFD0)
+    /// `#FFF7E8` — block-user info card fill (ardot S17 `237:479` Info). Warm cream.
+    static let infoWarm = Color(hex: 0xFFF7E8)
+    /// `#FFF1F1` — delete-account warning card fill (ardot S19 `237:492` Warning). Soft red.
+    static let warningSoft = Color(hex: 0xFFF1F1)
+    /// `#E5484D` — destructive action button fill (ardot S17 Block C/Primary, S19 Delete
+    /// C/Destructive). System red, distinct from the older `coral`/`destructive` tokens.
+    static let destructiveFill = Color(hex: 0xE5484D)
     /// AI message bubble background — `#F1F2F4`.
     static let bgBubbleAI = Color(hex: 0xF1F2F4)
     /// Fill — aliased to surfaceSecondary for input/secondary fills.
@@ -54,15 +75,24 @@ enum AtlasColors {
     static let lemonInk = Color(hex: 0x1A2403)
     /// `#BEE90D` — lemon-strong, a distinct token from `lemon` (Deimos iOS26 lemon-strong).
     static let lemonStrong = Color(hex: 0xBEE90D)
-    /// `#CBEA16` — chat-specific lemon fill used by user bubbles + the send button in the
-    /// chat composer (ardot S07 `179:124` user bubble + `179:134` send button). Slightly less
-    /// saturated than `lemonStrong` (#BEE90D) to read as a softer chat surface rather than a
-    /// primary action button. Kept as a separate token so existing `lemonStrong` callers
-    /// (primary buttons, active tabs) are unaffected.
-    static let lemonChat = Color(hex: 0xCBEA16)
-    /// `#EAF1FF` — assistant chat bubble fill (ardot S07 `179:126`). A more saturated blue
-    /// than the older `#F1F5FF` placeholder used previously.
-    static let chatAssistantBubble = Color(hex: 0xEAF1FF)
+    /// `#BEE90D` lemon-strong reused for chat user bubbles + the send button (ardot S07
+    /// `237:289` user bubble + Glass Input Bar Send). The earlier `lemonChat` (#CBEA16)
+    /// + `chatAssistantBubble` (#EAF1FF) tokens were aligned to an OBSOLETE design frame
+    /// (`179:*`); the current authoritative chat design uses lemonStrong for the user
+    /// bubble and a neutral grey for the assistant bubble. Aliases kept so existing call
+    /// sites keep compiling while we migrate.
+    static let lemonChat = lemonStrong
+    /// `#F5F6F7` — assistant chat bubble fill (ardot S07 `237:289` AI Bubble). Neutral grey,
+    /// NOT the previous blue (#EAF1FF) which was aligned to the obsolete `179:*` design.
+    static let chatAssistantBubble = Color(hex: 0xF5F6F7)
+    /// `#F3FFC8` — tool-activity pill background (ardot S07 `237:289` Tool Activity). Lemon-tinted.
+    static let chatActivityFill = Color(hex: 0xF3FFC8)
+    /// `#5A6472` — tool-activity pill label text (ardot S07 `237:289` Tool Activity).
+    static let chatActivityInk = Color(hex: 0x5A6472)
+    /// `#F2F3F5` — chat toolbar back-circle fill (ardot S07 `237:289` C/Back Button instance).
+    static let chatNavCircle = Color(hex: 0xF2F3F5)
+    /// `#E8EBF0` — Glass Input Bar hairline stroke (ardot S07 `237:289` C/Glass Input Bar).
+    static let chatInputStroke = Color(hex: 0xE8EBF0)
     static let olive = Color(hex: 0x627405)
     /// Olive meta text on lemon-tinted surfaces — `#65703A` (ardot 237:662 eyebrow, 237:666 筛选, 237:179 stat label).
     static let oliveMeta = Color(hex: 0x65703A)

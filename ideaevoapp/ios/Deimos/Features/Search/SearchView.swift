@@ -134,6 +134,8 @@ struct SearchView: View {
     @State private var viewModel = SearchViewModel()
     @State private var ideaRoute: IdeaRoute?
     @State private var agentRoute: AgentRoute?
+    @State private var resultScope = "全部想法"
+    @State private var isFilterExpanded = false
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -187,9 +189,8 @@ struct SearchView: View {
 
     private func searchSectionHeader(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 11, weight: .bold))
-            .foregroundStyle(AtlasColors.inkFaint)
-            .tracking(0.6)
+            .font(.system(size: 14))
+            .foregroundStyle(AtlasColors.inkSoft)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 4)
     }
@@ -243,21 +244,72 @@ struct SearchView: View {
 
     private var resultsScroll: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
+            LazyVStack(alignment: .leading, spacing: 12) {
                 if !viewModel.ideaMatches.isEmpty {
                     searchSectionHeader("语义搜索结果 · \(viewModel.ideaMatches.count) 条匹配")
-                        .padding(.horizontal, AtlasMetrics.detailX)
 
-                    ForEach(Array(viewModel.ideaMatches.enumerated()), id: \.element.idea.id) { index, match in
-                        Button { ideaRoute = IdeaRoute(id: match.idea.id) } label: {
-                            searchIdeaCard(match, isTopMatch: index == 0)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            isFilterExpanded.toggle()
                         }
-                        .buttonStyle(.plain)
-                        .onAppear {
-                            if index == viewModel.ideaMatches.count - 1 {
-                                Task { await viewModel.loadMoreIdeas() }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text("筛选条件")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(AtlasColors.ink)
+                            Spacer()
+                            Text(resultScope == "全部想法" ? "想法 · 公开 · 匹配度" : resultScope)
+                                .font(.system(size: 11))
+                                .foregroundStyle(AtlasColors.inkSoft)
+                            DeimosIconView(icon: .chevronRight, size: 10, color: AtlasColors.inkSoft)
+                                .rotationEffect(.degrees(isFilterExpanded ? -90 : 90))
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(height: 40)
+                        .background(AtlasColors.bgInput)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+
+                    if isFilterExpanded {
+                        VStack(spacing: 2) {
+                            filterOption("全部想法", detail: "想法 · 公开 · 匹配度")
+                            filterOption("公开内容", detail: "只看可浏览与 Fork 的内容")
+                            filterOption("按匹配度", detail: "相似度从高到低")
+                        }
+                        .padding(4)
+                        .background(AtlasColors.surface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(AtlasColors.settingsRowStroke, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .shadow(color: AtlasColors.ink.opacity(0.08), radius: 18, y: 8)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+
+                    VStack(spacing: 0) {
+                        ForEach(Array(viewModel.ideaMatches.enumerated()), id: \.element.idea.id) { index, match in
+                            Button { ideaRoute = IdeaRoute(id: match.idea.id) } label: {
+                                searchIdeaRow(match, isTopMatch: index == 0)
+                            }
+                            .buttonStyle(.plain)
+                            .onAppear {
+                                if index == viewModel.ideaMatches.count - 1 {
+                                    Task { await viewModel.loadMoreIdeas() }
+                                }
+                            }
+
+                            if index < viewModel.ideaMatches.count - 1 {
+                                Divider().padding(.leading, 14)
                             }
                         }
+                    }
+                    .background(AtlasColors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(AtlasColors.border, lineWidth: 1)
                     }
 
                     if viewModel.isLoadingMore {
@@ -285,26 +337,62 @@ struct SearchView: View {
         }
     }
 
-    private func searchIdeaCard(_ match: SearchMatch, isTopMatch: Bool) -> some View {
+    private func filterOption(_ title: String, detail: String) -> some View {
+        Button {
+            resultScope = title
+            withAnimation(.easeInOut(duration: 0.18)) {
+                isFilterExpanded = false
+            }
+        } label: {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .stroke(
+                            resultScope == title ? AtlasColors.lemonInk : AtlasColors.settingsRowStroke,
+                            lineWidth: 1.25
+                        )
+                    if resultScope == title {
+                        Circle()
+                            .fill(AtlasColors.lemonStrong)
+                            .padding(4)
+                    }
+                }
+                .frame(width: 18, height: 18)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Text(detail)
+                        .font(.system(size: 10))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 34)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func searchIdeaRow(_ match: SearchMatch, isTopMatch: Bool) -> some View {
         let idea = match.idea
-        return VStack(alignment: .leading, spacing: 6) {
+        return VStack(alignment: .leading, spacing: 3) {
             Text(idea.displayTitle)
-                .font(AtlasTypography.cardTitle())
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AtlasColors.ink)
-                .lineLimit(2)
-            Text("\(Int(match.similarity * 100))% 匹配 · \(idea.agent?.name ?? "Agent") · \(idea.statusLabel)")
-                .font(AtlasTypography.mobileSubheadline())
+                .lineLimit(1)
+            Text("\(Int(match.similarity * 100))% 匹配 · \(idea.agent?.name ?? "Agent") · 公开")
+                .font(.system(size: 11))
                 .foregroundStyle(AtlasColors.inkSoft)
                 .lineLimit(1)
         }
-        .padding(14)
+        .padding(.horizontal, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 68)
         .background(isTopMatch ? AtlasColors.lemonSoft : AtlasColors.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                .stroke(AtlasColors.borderProfile, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
     }
 }
 

@@ -98,8 +98,9 @@ struct NotificationsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                // ardot S37 layout: a horizontal category pill row directly under the floating
-                // glass toolbar, with content scrolling underneath the transparent toolbar.
+                // ardot S08N (`237:446` Filter Chips): #F5F6F7 container cr20 holding 3 chips.
+                // Active chip #BEE90D lemon + lemonInk text; inactive white + #E8EBF0 stroke.
+                // Each chip 88×40. Previously used dark lemonInk active + grey inactive — wrong.
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(NotificationCategory.allCases) { item in
@@ -109,17 +110,27 @@ struct NotificationsView: View {
                                 }
                             } label: {
                                 Text(item.title)
-                                    .font(.system(size: 14, weight: category == item ? .semibold : .regular))
-                                    .foregroundStyle(category == item ? .white : AtlasColors.inkSoft)
-                                    .padding(.horizontal, 14)
-                                    .frame(height: 32)
-                                    .background(category == item ? AtlasColors.primary : AtlasColors.surfaceSecondary)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(category == item ? AtlasColors.lemonInk : AtlasColors.inkSoft)
+                                    .frame(width: 88, height: 40)
+                                    .background(category == item ? AtlasColors.lemonStrong : AtlasColors.surface)
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(AtlasColors.settingsRowStroke, lineWidth: category == item ? 0 : 1)
+                                    )
                                     .clipShape(Capsule())
                             }
                             .buttonStyle(.plain)
                         }
                     }
+                    .padding(4)
                     .padding(.horizontal, AtlasMetrics.detailX)
+                    .background(
+                        // Container behind the chips — ardot spec shows #F5F6F7 cr20 holding them.
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(AtlasColors.chatAssistantBubble)
+                            .padding(.horizontal, AtlasMetrics.detailX)
+                    )
                 }
                 .padding(.top, 8)
                 .padding(.bottom, 12)
@@ -133,10 +144,9 @@ struct NotificationsView: View {
                     }
                     .padding(.top, 40)
                 } else if viewModel.items.isEmpty {
-                    // ardot S11-aligned: when there are no notifications, show just the empty
-                    // state with NO "去探索" CTA (previously passed `dismiss()` which surfaced
-                    // the button).
-                    AtlasDesignedEmptyStates.notificationsEmpty()
+                    AtlasDesignedEmptyStates.notificationsEmpty {
+                        dismiss()
+                    }
                         .padding(.top, 40)
                 } else if filteredItems.isEmpty {
                     AtlasDesignedEmptyStates.notificationsCategoryEmpty()
@@ -144,21 +154,23 @@ struct NotificationsView: View {
                 } else {
                     LazyVStack(spacing: 12) {
                         if unreadCount > 0 {
+                            // ardot S08N Notification Summary (342×52 #F5FFC7): 13pt #1A2403
+                            // summary text + 13pt #0F1C2E "全部已读" action.
                             Button {
                                 Task { await viewModel.markAllRead() }
                             } label: {
                                 HStack(spacing: 8) {
                                     Text("\(unreadCount) 条未读 · 评论、关注和 Agent 更新")
-                                        .font(.system(size: 12, weight: .semibold))
+                                        .font(.system(size: 13, weight: .semibold))
                                         .foregroundStyle(AtlasColors.lemonInk)
                                         .lineLimit(1)
                                     Spacer(minLength: 4)
                                     Text("全部已读")
-                                        .font(.system(size: 12, weight: .bold))
+                                        .font(.system(size: 13, weight: .semibold))
                                         .foregroundStyle(AtlasColors.ink)
                                 }
                                 .padding(.horizontal, 14)
-                                .frame(height: 48)
+                                .frame(height: 52)
                                 .background(AtlasColors.lemonSoft)
                                 .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
                             }

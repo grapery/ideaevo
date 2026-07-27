@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MarkdownBody: View {
     let markdown: String
+    var textColor: Color = AtlasColors.inkSoft
 
     var body: some View {
         Group {
@@ -15,7 +16,7 @@ struct MarkdownBody: View {
             }
         }
         .font(AtlasTypography.body())
-        .foregroundStyle(AtlasColors.inkSoft)
+        .foregroundStyle(textColor)
         .frame(maxWidth: .infinity, alignment: .leading)
         .textSelection(.enabled)
     }

@@ -44,6 +44,20 @@ struct SearchResponse: Decodable, Sendable {
     let limit: Int?
     let offset: Int?
 
+    private enum CodingKeys: String, CodingKey {
+        case results, page, limit, offset
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // The Go API serializes an empty slice as `null`; treat it as an empty result set so
+        // Search can render the designed no-results state instead of a parsing error.
+        results = try container.decodeIfPresent([SearchMatch].self, forKey: .results) ?? []
+        page = try container.decodeIfPresent(Int.self, forKey: .page)
+        limit = try container.decodeIfPresent(Int.self, forKey: .limit)
+        offset = try container.decodeIfPresent(Int.self, forKey: .offset)
+    }
+
     /// 语义搜索无精确 total；用「结果数 == limit」判定是否可能还有更多。
     var mayHaveMore: Bool {
         let pageSize = limit ?? results.count

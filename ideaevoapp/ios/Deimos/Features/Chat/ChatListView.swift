@@ -61,6 +61,11 @@ final class ChatListViewModel {
         await load()
     }
 
+    func archiveSession(id: String) async throws {
+        _ = try await APIClient.shared.archiveSession(id: id)
+        await load()
+    }
+
     func forkSession(id: String) async throws -> ChatSession {
         let forked = try await APIClient.shared.forkSession(id: id)
         await load()
@@ -148,6 +153,12 @@ struct ChatListView: View {
         .task(id: session.isAuthenticated) {
             guard session.isAuthenticated else { return }
             await viewModel.load()
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--deimos-goto-chat-first"),
+               let first = viewModel.filteredSessions.first {
+                selectedSession = ChatSessionRoute(id: first.id, title: first.displayTitle)
+            }
+            #endif
         }
         .sheet(isPresented: $showAuthSheet) {
             AuthRequiredSheet()
@@ -190,12 +201,16 @@ struct ChatListView: View {
 
             Spacer()
 
-            // ardot S06 (237:154): plain text button, 14pt Semibold, ink — no fill, no capsule.
+            // ardot S06 (`237:161` New Chat): 64×36 #BEE90D lemon capsule cr18 + 14pt Semibold
+            // #1A2403 label "新建".
             Button(action: newChatAction) {
                 Text("新建")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AtlasColors.ink)
-                    .frame(height: 40)
+                    .foregroundStyle(AtlasColors.lemonInk)
+                    .padding(.horizontal, 16)
+                    .frame(height: 36)
+                    .background(AtlasColors.lemonStrong)
+                    .clipShape(Capsule(style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -208,10 +223,18 @@ struct ChatListView: View {
         VStack(spacing: 0) {
             chatHeader(newChatAction: { showAgentPicker = true })
 
-            // The assistant is the entry point for the whole conversation space.
-            aiAssistantHero
+            HStack(spacing: 10) {
+                DeimosIconView(icon: .search, size: 16, color: AtlasColors.inkFaint)
+                TextField("搜索会话...", text: $viewModel.searchQuery)
+                    .font(.system(size: 15))
+                    .foregroundStyle(AtlasColors.ink)
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 44)
+            .background(AtlasColors.bgInput)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .padding(.horizontal, AtlasMetrics.pageX)
-                .padding(.bottom, 26)
+                .padding(.bottom, 16)
 
             if viewModel.isLoading && viewModel.sessions.isEmpty {
                 Spacer()
@@ -219,60 +242,37 @@ struct ChatListView: View {
                 Spacer()
             } else if let error = viewModel.errorMessage, viewModel.sessions.isEmpty {
                 errorEmptyState(error)
+            } else if viewModel.filteredSessions.isEmpty && !viewModel.searchQuery.isEmpty {
+                searchEmptyState
             } else if viewModel.sessions.isEmpty {
                 sessionsEmptyState
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         Text("最近会话")
-                            .font(AtlasTypography.sectionHeader())
+                            .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(AtlasColors.ink)
-                            .padding(.bottom, 4)
-                        ForEach(viewModel.sessions, id: \.id) { chatSession in
-                            sessionCard(chatSession)
+
+                        VStack(spacing: 0) {
+                            ForEach(Array(viewModel.filteredSessions.enumerated()), id: \.element.id) { index, chatSession in
+                                sessionCard(chatSession)
+                                if index < viewModel.filteredSessions.count - 1 {
+                                    Divider().padding(.leading, 56)
+                                }
+                            }
+                        }
+                        .background(AtlasColors.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(AtlasColors.border, lineWidth: 1)
                         }
                     }
                     .padding(.horizontal, AtlasMetrics.pageX)
-                    .padding(.top, 4)
                     .padding(.bottom, AtlasMetrics.bottomClear)
                 }
             }
         }
-    }
-
-    /// A compact workspace rather than another list row.
-    private var aiAssistantHero: some View {
-        Button {
-            // Find the pinned assistant session or create one
-            if let assistant = viewModel.sessions.first(where: { ChatListViewModel.isAssistantSession($0) }) {
-                selectedSession = ChatSessionRoute(id: assistant.id, title: assistant.displayTitle)
-            } else {
-                showAgentPicker = true
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("万叶助手")
-                    .font(AtlasTypography.heroTitle())
-                    .foregroundStyle(.white)
-
-                Text("登记想法、语义搜索、Fork 建议")
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(AtlasColors.lemon)
-
-                Text("开始聊天")
-                    .font(AtlasTypography.cta())
-                    .foregroundStyle(AtlasColors.lemonInk)
-                    .padding(.horizontal, 20)
-                    .frame(height: 40)
-                    .background(AtlasColors.primaryAction)
-                    .clipShape(Capsule())
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(20)
-            .background(AtlasColors.lemonInk)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusHero, style: .continuous))
-        }
-        .buttonStyle(.plain)
     }
 
     private var sessionsEmptyState: some View {
@@ -302,56 +302,88 @@ struct ChatListView: View {
         }
     }
 
+    /// ardot S06 (`237:154` C/List Row): 342×56 white row with a 40×40 lemon avatar circle
+    /// (cr20) + 16pt Semibold #0F1B2D title + 13pt Regular #8A94A6 subtitle (single line).
+    /// Trailing menu (rename/fork/delete) is preserved as the row's long-press affordance —
+    /// the design shows no trailing element but the functionality is still needed.
     private func sessionCard(_ chatSession: ChatSession) -> some View {
         let pinned = ChatListViewModel.isAssistantSession(chatSession)
-        return CompactListCard(
-            leading: {
+        return ChatSessionSwipeRow(
+            onArchive: {
+                Task {
+                    do {
+                        try await viewModel.archiveSession(id: chatSession.id)
+                        ToastCenter.shared.showSuccess("对话已归档")
+                    } catch {
+                        ToastCenter.shared.showError("归档失败", message: error.localizedDescription)
+                    }
+                }
+            },
+            onDelete: {
+                sessionToDelete = chatSession
+                showDeleteDialog = true
+            }
+        ) {
+            HStack(alignment: .center, spacing: 12) {
                 EntityAvatar.agent(
                     id: chatSession.agentID,
                     url: chatSession.agent?.avatarLink,
                     name: chatSession.displayTitle,
-                    size: 48
+                    size: 36
                 )
-            },
-            title: chatSession.displayTitle,
-            subtitle: viewModel.previews[chatSession.id] ?? "开始新的讨论",
-            timestamp: chatSession.updatedAt.relativeShort,
-            layoutStyle: .flat,
-            trailing: {
-                HStack(spacing: 6) {
-                    if pinned {
-                        Text("助手")
-                            .font(AtlasTypography.tabBarLabel())
-                            .foregroundStyle(AtlasColors.accentActive)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(AtlasColors.accentActiveSoft)
-                            .clipShape(Capsule())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(chatSession.displayTitle)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
+                            .lineLimit(1)
+                        if pinned {
+                            Text("助手")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(AtlasColors.lemonInk)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule(style: .continuous).fill(AtlasColors.lemon))
+                        }
                     }
-                    Menu {
-                        Button("重命名") {
-                            renameDraft = chatSession.title
-                            sessionToRename = chatSession
-                            showRenameSheet = true
+                    Text(viewModel.previews[chatSession.id] ?? "开始新的讨论")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 56)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                selectedSession = ChatSessionRoute(id: chatSession.id, title: chatSession.displayTitle)
+            }
+            .contextMenu {
+                Button("重命名") {
+                    renameDraft = chatSession.title
+                    sessionToRename = chatSession
+                    showRenameSheet = true
+                }
+                Button("Fork 会话") {
+                    Task { await forkSession(chatSession) }
+                }
+                Button("归档") {
+                    Task {
+                        do {
+                            try await viewModel.archiveSession(id: chatSession.id)
+                            ToastCenter.shared.showSuccess("对话已归档")
+                        } catch {
+                            ToastCenter.shared.showError("归档失败", message: error.localizedDescription)
                         }
-                        Button("Fork 会话") {
-                            Task { await forkSession(chatSession) }
-                        }
-                        Button("删除", role: .destructive) {
-                            sessionToDelete = chatSession
-                            showDeleteDialog = true
-                        }
-                    } label: {
-                        DeimosIconView(icon: .more, size: 16, color: AtlasColors.inkFaint)
-                            .frame(width: 32, height: 32)
                     }
-                    .disabled(isWorking)
+                }
+                Button("删除", role: .destructive) {
+                    sessionToDelete = chatSession
+                    showDeleteDialog = true
                 }
             }
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            selectedSession = ChatSessionRoute(id: chatSession.id, title: chatSession.displayTitle)
         }
     }
 
@@ -438,6 +470,87 @@ struct ChatListView: View {
         } catch {
             ToastCenter.shared.showError("Fork 失败", message: error.localizedDescription)
         }
+    }
+}
+
+/// Ardot S06 (`353:30`) swipe interaction: dragging a chat row left reveals archive and delete
+/// actions behind the row. The row settles at -144pt and snaps closed when the drag is cancelled.
+private struct ChatSessionSwipeRow<Content: View>: View {
+    let onArchive: () -> Void
+    let onDelete: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    @State private var offset: CGFloat = 0
+    @GestureState private var dragOffset: CGFloat = 0
+
+    private let actionWidth: CGFloat = 72
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            HStack(spacing: 0) {
+                swipeAction(
+                    title: "归档",
+                    icon: .archive,
+                    color: AtlasColors.inkSoft,
+                    action: onArchive
+                )
+                swipeAction(
+                    title: "删除",
+                    icon: .trash,
+                    color: AtlasColors.destructiveFill,
+                    action: onDelete
+                )
+            }
+
+            content()
+                .frame(maxWidth: .infinity)
+                .background(AtlasColors.surface)
+                .offset(x: effectiveOffset)
+                .gesture(
+                    DragGesture(minimumDistance: 12)
+                        .updating($dragOffset) { value, state, _ in
+                            let proposed = offset + value.translation.width
+                            state = min(0, max(-actionWidth * 2, proposed)) - offset
+                        }
+                        .onEnded { value in
+                            let proposed = offset + value.translation.width
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                                offset = proposed < -44 ? -actionWidth * 2 : 0
+                            }
+                        }
+                )
+        }
+        .frame(minHeight: 56)
+        .clipped()
+    }
+
+    private var effectiveOffset: CGFloat {
+        min(0, max(-actionWidth * 2, offset + dragOffset))
+    }
+
+    private func swipeAction(
+        title: String,
+        icon: DeimosIcon,
+        color: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                offset = 0
+            }
+            action()
+        } label: {
+            VStack(spacing: 2) {
+                DeimosIconView(icon: icon, size: 16, color: .white)
+                Text(title)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: actionWidth)
+            .frame(maxHeight: .infinity)
+            .background(color)
+        }
+        .buttonStyle(.plain)
     }
 }
 

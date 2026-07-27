@@ -22,7 +22,7 @@ struct ForkSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Fork 这个想法")
-                        .font(AtlasTypography.pageTitle())
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(AtlasColors.ink)
                         .padding(.top, 12)
 
@@ -73,16 +73,13 @@ struct ForkSheet: View {
 
     private var sourceIdeaCard: some View {
         HStack(spacing: 12) {
-            if let sourceIdeaID {
-                EntityAvatar.idea(id: sourceIdeaID, url: sourceIconURL, name: sourceTitle, size: 40)
-            }
             VStack(alignment: .leading, spacing: 4) {
-                Text(sourceTitle)
-                    .font(AtlasTypography.cardTitle())
+                Text("源想法：\(sourceTitle)")
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(AtlasColors.ink)
                     .lineLimit(2)
                 Text("保留谱系与版本历史")
-                    .font(AtlasTypography.meta())
+                    .font(.system(size: 11))
                     .foregroundStyle(AtlasColors.inkFaint)
             }
             Spacer(minLength: 0)
@@ -95,33 +92,33 @@ struct ForkSheet: View {
     private func field(_ label: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
-                .font(AtlasTypography.overline())
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(AtlasColors.inkFaint)
-            AtlasTextField(placeholder: placeholder, text: text, height: AtlasMetrics.inputHeight)
+            AtlasTextField(placeholder: placeholder, text: text, height: 48)
                 .padding(.horizontal, 4)
                 .background(AtlasColors.fill)
-                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
     }
 
     private func multilineField(_ label: String, placeholder: String, text: Binding<String>, minHeight: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
-                .font(AtlasTypography.overline())
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(AtlasColors.inkFaint)
             ZStack(alignment: .topLeading) {
                 if text.wrappedValue.isEmpty {
                     Text(placeholder)
-                        .font(AtlasTypography.mobileSubheadline())
+                        .font(.system(size: 15))
                         .foregroundStyle(AtlasColors.inkFaint)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 14)
                 }
-                AtlasTextEditor(text: text, minHeight: minHeight, fontSize: 17)
+                AtlasTextEditor(text: text, minHeight: minHeight, fontSize: 15)
                     .padding(4)
             }
             .background(AtlasColors.fill)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
     }
 }

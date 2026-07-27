@@ -19,6 +19,10 @@ struct ChatThreadView: View {
     @State private var archiveSummary: String?
     @State private var showArchiveResult = false
     @State private var streamingAssistantID: String?
+    @State private var failedSend: FailedChatSend?
+    @State private var rateLimitMessage: String?
+    /// ardot S07b: holds the streaming Task so it can be cancelled from the Stop button.
+    @State private var streamingTask: Task<Void, Never>?
 
     private var isSheetZoomActive: Bool {
         showArchiveResult
@@ -97,6 +101,16 @@ struct ChatThreadView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.top, 4)
                         }
+
+                        if let failedSend {
+                            ChatSendFailureRow(content: failedSend.content) {
+                                retryFailedSend()
+                            }
+                        }
+
+                        if let rateLimitMessage {
+                            ChatRateLimitBanner(message: rateLimitMessage)
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
@@ -122,20 +136,25 @@ struct ChatThreadView: View {
                 text: $draft,
                 placeholder: session.map { "给 \($0.agent?.name ?? "Agent") 发消息..." } ?? "发送消息...",
                 isSending: isSending,
-                onSend: { Task { await send() } }
-            )
+                isStreaming: streamingAssistantID != nil,
+                onStop: { stopStreaming() }
+            ) {
+                Task { await send() }
+            }
         }
         .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: isSheetZoomActive)
-        // S07 v2 toolbar: float-liquid glass overlay — back circle + centered title in glass
-        // capsule + trailing archive circle. Matches the C/Push Toolbar pattern (ardot 237:94)
-        // used by every other push screen (settings, idea detail, etc.) for visual consistency.
+        // S07 toolbar (ardot `237:289` Thread Nav): solid white bar + solid grey back circle +
+        // LEFT-aligned title + idea-context subtitle + trailing archive circle. This is NOT the
+        // glass-overlay push bar used by settings — chat has its own distinct header per spec.
         .safeAreaInset(edge: .top, spacing: 0) {
-            AtlasOverlayPushNavBar(title: title, onBack: { dismiss() }) {
-                AtlasToolbarFloatIconButton(icon: .document, size: AtlasMetrics.backButtonSize, iconSize: 17) {
-                    Task { await archiveSession() }
-                }
-                .accessibilityLabel("封存对话")
+            ChatThreadNavBar(
+                title: title,
+                subtitle: contextIdea != nil ? "带着 Idea 上下文" : nil,
+                onBack: { dismiss() }
+            ) { EmptyView() }
+            .contextMenu {
+                Button("封存对话") { Task { await archiveSession() } }
             }
         }
         .navigationBarHidden(true)
@@ -149,20 +168,43 @@ struct ChatThreadView: View {
         }
     }
 
-    /// Empty-conversation state: a friendly header + 3 starter prompt chips.
-    /// Tapping a chip fills the draft (doesn't auto-send) so the user can edit before sending.
+    /// ardot S07e (`351:96` Cold Start Empty): dark #1A2403 hero card (22pt Bold white title +
+    /// 14pt lemon subtitle + lemon "开始聊天" CTA pill) above 3 starter prompt cards.
+    /// Tapping a prompt fills the draft (doesn't auto-send) so the user can edit before sending.
     private var chatEmptyState: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("和 \(title) 开启对话")
+            // Dark hero card — agent identity surface, mirrors the AI Hero from the Chat List.
+            VStack(alignment: .leading, spacing: 12) {
+                Text("✦ 欢迎和 \(title) 对话")
                     .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(contextIdea != nil
-                     ? "基于当前 Idea 上下文，选一个建议开始或直接提问"
-                     : "选一个建议开始，或直接输入你的问题")
-                    .font(.system(size: 13))
-                    .foregroundStyle(AtlasColors.inkSoft)
+                     ? "基于当前 Idea 上下文，从下面的建议开始，或直接提问。"
+                     : "登记想法、语义搜索、Fork 建议。从下面的建议开始，或直接提问。")
+                    .font(.system(size: 14))
+                    .foregroundStyle(AtlasColors.lemon)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("开始聊天")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AtlasColors.lemonInk)
+                    .padding(.horizontal, 20)
+                    .frame(height: 40)
+                    .background(Capsule().fill(AtlasColors.lemonStrong))
             }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(AtlasColors.lemonInk)
+            )
+
+            Text("建议从这里开始")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AtlasColors.inkSoft)
+                .padding(.top, 4)
+
             ForEach(starterPrompts, id: \.1) { icon, text in
                 ChatStarterPrompt(text: text, icon: icon) {
                     draft = text
@@ -249,6 +291,51 @@ struct ChatThreadView: View {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--deimos-chat-preview") {
+            title = AppConfig.systemAssistantName
+            let now = Date()
+            messages = [
+                ChatMessage(
+                    id: "preview-assistant-1",
+                    sessionID: sessionID,
+                    role: "assistant",
+                    content: "我已经读取了这个 Idea。你想先 Fork 成公寓版，还是补充储能模块？",
+                    contentType: "markdown",
+                    userFeedback: nil,
+                    createdAt: now.addingTimeInterval(-180)
+                ),
+                ChatMessage(
+                    id: "preview-user-1",
+                    sessionID: sessionID,
+                    role: "user",
+                    content: "先 Fork 成公寓版。",
+                    contentType: "text",
+                    userFeedback: nil,
+                    createdAt: now.addingTimeInterval(-120)
+                ),
+                ChatMessage(
+                    id: "preview-assistant-2",
+                    sessionID: sessionID,
+                    role: "assistant",
+                    content: "可以。我会保留峰谷电价调度，把设备范围收敛到公共照明、电梯与集中空调，并生成一个更轻量的执行清单。",
+                    contentType: "markdown",
+                    userFeedback: nil,
+                    createdAt: now.addingTimeInterval(-60)
+                ),
+            ]
+            activityText = "正在创建 Fork · 步骤 2/3"
+            pendingFeedbackIDs = []
+            if ProcessInfo.processInfo.arguments.contains("--deimos-chat-send-failed") {
+                failedSend = FailedChatSend(content: "展开讲讲公寓版的节能策略")
+                activityText = nil
+            } else if ProcessInfo.processInfo.arguments.contains("--deimos-chat-rate-limit") {
+                rateLimitMessage = "429 · 发送过于频繁，请 30 秒后再试"
+                activityText = nil
+            }
+            return
+        }
+        #endif
         // Load messages first — the chat is unusable without them. Session detail (used for
         // the context banner + agent name) is best-effort enrichment, so a failure there
         // must never block the message list.
@@ -285,6 +372,8 @@ struct ChatThreadView: View {
 
         Haptics.light()
         isSending = true
+        failedSend = nil
+        rateLimitMessage = nil
         draft = ""
         let tempUser = ChatMessage(
             id: UUID().uuidString,
@@ -311,33 +400,89 @@ struct ChatThreadView: View {
 
         defer { isSending = false }
 
-        do {
-            for try await event in streamService.stream(sessionID: sessionID, content: content, token: token) {
-                switch event {
-                case .chunk(let text):
-                    updateAssistant(id: assistantID, content: text)
-                case .activity(let text):
-                    activityText = text
-                case .done(let text):
-                    updateAssistant(id: assistantID, content: text)
-                    activityText = nil
-                    streamingAssistantID = nil
-                case .error(let message):
-                    errorMessage = message
-                    activityText = nil
-                    streamingAssistantID = nil
-                    ToastCenter.shared.showError("发送失败", message: message)
+        // ardot S07b: wrap the streaming loop in a cancellable Task so the Stop button can end it.
+        let task = Task {
+            do {
+                for try await event in streamService.stream(sessionID: sessionID, content: content, token: token) {
+                    switch event {
+                    case .chunk(let text):
+                        updateAssistant(id: assistantID, content: text)
+                    case .activity(let text):
+                        activityText = text
+                    case .done(let text):
+                        updateAssistant(id: assistantID, content: text)
+                        activityText = nil
+                        streamingAssistantID = nil
+                    case .error(let message):
+                        errorMessage = message
+                        activityText = nil
+                        streamingAssistantID = nil
+                        applySendFailure(
+                            message: message,
+                            content: content,
+                            userMessageID: tempUser.id,
+                            assistantMessageID: assistantID
+                        )
+                        ToastCenter.shared.showError("发送失败", message: message)
+                    }
                 }
+                messages = try await APIClient.shared.getMessages(sessionID: sessionID)
+                pendingFeedbackIDs = []
+                streamingAssistantID = nil
+            } catch is CancellationError {
+                // User tapped Stop — keep whatever was streamed so far.
+                activityText = nil
+                streamingAssistantID = nil
+            } catch {
+                errorMessage = error.localizedDescription
+                activityText = nil
+                streamingAssistantID = nil
+                applySendFailure(
+                    message: error.localizedDescription,
+                    content: content,
+                    userMessageID: tempUser.id,
+                    assistantMessageID: assistantID
+                )
+                ToastCenter.shared.showError("发送失败", message: error.localizedDescription)
             }
-            messages = try await APIClient.shared.getMessages(sessionID: sessionID)
-            pendingFeedbackIDs = []
-            streamingAssistantID = nil
-        } catch {
-            errorMessage = error.localizedDescription
-            activityText = nil
-            streamingAssistantID = nil
-            ToastCenter.shared.showError("发送失败", message: error.localizedDescription)
         }
+        streamingTask = task
+        await task.value
+        streamingTask = nil
+    }
+
+    /// ardot S07b (`351:32` Stop Generation): cancel the in-flight streaming Task. The partial
+    /// assistant content already streamed remains visible; we just stop appending more.
+    private func stopStreaming() {
+        streamingTask?.cancel()
+        streamingTask = nil
+        streamingAssistantID = nil
+        activityText = nil
+    }
+
+    private func applySendFailure(
+        message: String,
+        content: String,
+        userMessageID: String,
+        assistantMessageID: String
+    ) {
+        messages.removeAll { $0.id == assistantMessageID }
+        pendingFeedbackIDs.remove(assistantMessageID)
+
+        let normalized = message.lowercased()
+        if normalized.contains("429") || message.contains("频繁") || normalized.contains("rate limit") {
+            rateLimitMessage = "429 · 发送过于频繁，请稍后再试"
+        } else {
+            messages.removeAll { $0.id == userMessageID }
+            failedSend = FailedChatSend(content: content)
+        }
+    }
+
+    private func retryFailedSend() {
+        guard let failedSend else { return }
+        draft = failedSend.content
+        self.failedSend = nil
+        Task { await send() }
     }
 
     private func updateAssistant(id: String, content: String) {
@@ -352,6 +497,60 @@ struct ChatThreadView: View {
             userFeedback: old.userFeedback,
             createdAt: old.createdAt
         )
+    }
+}
+
+private struct FailedChatSend {
+    let content: String
+}
+
+/// Ardot S07d (`351:74`): failed user bubble with a red outline and an inline retry affordance.
+private struct ChatSendFailureRow: View {
+    let content: String
+    let onRetry: () -> Void
+
+    var body: some View {
+        Button(action: onRetry) {
+            VStack(alignment: .trailing, spacing: 6) {
+                Text(content)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(AtlasColors.lemonInk)
+                    .multilineTextAlignment(.leading)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 46)
+                    .background(AtlasColors.warningSoft)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(AtlasColors.destructiveFill, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                HStack(spacing: 5) {
+                    DeimosIconView(icon: .refresh, size: 12, color: AtlasColors.destructiveFill)
+                    Text("发送失败 · 点击重试")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AtlasColors.destructiveFill)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Ardot S07R (`237:608`): rate-limit feedback remains in the conversation, not only in a Toast.
+private struct ChatRateLimitBanner: View {
+    let message: String
+
+    var body: some View {
+        Text(message)
+            .font(.system(size: 14))
+            .foregroundStyle(AtlasColors.destructiveFill)
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 52)
+            .background(AtlasColors.warningSoft)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -385,17 +584,23 @@ struct ChatMessageBubble: View {
 
     var body: some View {
         VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
-            // AI header — agent name above the bubble (user messages have no header).
+            // ardot S07f (`351:129`): AI header is "Agent Name · HH:MM" — 12pt Semibold #0F1B2D.
+            // Previously rendered only the name; the timestamp gives chronological context.
             if message.isAssistant, showsTextBubble || isStreaming || !ideaSuggestions.isEmpty {
-                Text(agentName)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AtlasColors.ink)
-                    .padding(.leading, 4)
+                HStack(spacing: 6) {
+                    Text(agentName)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Text("· \(timestampText)")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                }
+                .padding(.leading, 2)
             }
 
             if isStreaming && message.content.isEmpty {
                 // Typing indicator — three bouncing lemon dots inside the assistant bubble.
-                // Replaces the old empty bubble shown while the first chunk streams in.
+                // Background matches the real assistant bubble (#F5F6F7) per ardot S07.
                 HStack(alignment: .top, spacing: 0) {
                     ChatTypingIndicator()
                         .background(AtlasColors.chatAssistantBubble)
@@ -405,25 +610,40 @@ struct ChatMessageBubble: View {
             } else if showsTextBubble {
                 HStack(alignment: .top, spacing: 0) {
                     if message.isUser { Spacer(minLength: 0) }
-                    // Bubble content — hug text width, cap at 260pt max
+                    // Bubble content — hug text width, cap at 260pt max.
+                    // ardot S07 `237:289`: user bubble 15pt Medium lemonInk on lemonStrong;
+                    // assistant bubble 15pt Regular ink on #F5F6F7. Previous 13pt was under spec.
+                    // ardot S07b (`351:32`): when streaming, append a blinking cursor after text.
                     Group {
                         if message.isAssistant, message.contentType == "markdown" {
-                            MarkdownBody(markdown: message.content)
-                                .frame(maxWidth: 232)
+                            VStack(alignment: .leading, spacing: 0) {
+                                MarkdownBody(markdown: message.content, textColor: AtlasColors.ink)
+                                if isStreaming {
+                                    ChatStreamingCursor()
+                                        .padding(.top, 2)
+                                }
+                            }
+                            .frame(maxWidth: 232, alignment: .leading)
                         } else {
-                            Text(message.content.plainSummary)
+                            (Text(message.content.plainSummary)
                                 .font(message.isUser
-                                      ? .system(size: 13, weight: .semibold)
-                                      : .system(size: 13, weight: .medium))
-                                .foregroundStyle(message.isUser ? AtlasColors.lemonInk : Color(hex: 0x253044))
-                                .fixedSize(horizontal: false, vertical: true)
+                                      ? .system(size: 15, weight: .medium)
+                                      : .system(size: 15, weight: .regular))
+                                .foregroundStyle(message.isUser ? AtlasColors.lemonInk : AtlasColors.ink)
+                            + Text(isStreaming ? "  " : ""))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .overlay(alignment: message.isUser ? .trailing : .leading) {
+                                if isStreaming {
+                                    ChatStreamingCursor()
+                                        .padding(.leading, message.isUser ? 0 : -2)
+                                }
+                            }
                         }
                     }
                     .frame(maxWidth: 260, alignment: message.isUser ? .trailing : .leading)
-                    .fixedSize(horizontal: true, vertical: false)
+                    .fixedSize(horizontal: message.isUser, vertical: true)
                     .padding(.horizontal, 14)
-                    .padding(.top, 12)
-                    .padding(.bottom, 10)
+                    .padding(.vertical, 14)
                     .background(message.isUser ? AtlasColors.lemonChat : AtlasColors.chatAssistantBubble)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     if !message.isUser { Spacer(minLength: 0) }
@@ -442,8 +662,13 @@ struct ChatMessageBubble: View {
 
             // Per-message action row: like / dislike / copy + timestamp (right).
             // Matches ardot S07 message action pattern (AI-chat style).
-            if (showsTextBubble || !ideaSuggestions.isEmpty) && !isStreaming {
+            if message.isAssistant, (showsTextBubble || !ideaSuggestions.isEmpty), !isStreaming {
                 actionBar
+            } else if message.isUser, showsTextBubble, !isStreaming {
+                Text(timestampText)
+                    .font(.system(size: 11))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                    .padding(.trailing, 2)
             }
         }
         .onAppear { feedback = message.userFeedback }
@@ -452,22 +677,34 @@ struct ChatMessageBubble: View {
         }
     }
 
-    /// Like / dislike / copy icon row with a right-aligned timestamp.
+    /// ardot S07a (`351:1` Action Row): pill-style message actions.
+    /// - Like: 56×32 lemon (#F3FFC8) pill with icon + count when active; 32×32 bare icon when idle
+    /// - Dislike: 32×32 bare icon, fills with lemon tint when active
+    /// - Copy: 32×32 bare icon, turns to check when just-copied
+    /// - Timestamp: right-aligned 11pt inkSoft
+    /// Replaces the old bare-icon row — the pill treatment gives users clear feedback state.
     private var actionBar: some View {
-        HStack(spacing: 14) {
-            actionButton(icon: .check, active: feedback == "like", activeColor: AtlasColors.accentActive) {
-                Task { await toggleFeedback(rating: "like") }
-            }
-            .accessibilityLabel("有帮助")
+        HStack(spacing: 4) {
+            // Like — pill with count when active.
+            likePill
+                .accessibilityLabel("有帮助")
 
-            actionButton(icon: .close, active: feedback == "dislike", activeColor: AtlasColors.destructive) {
-                Task { await toggleFeedback(rating: "dislike") }
-            }
+            // Dislike — bare circle icon, lemon tint when active.
+            circleAction(
+                icon: .close,
+                active: feedback == "dislike",
+                action: { Task { await toggleFeedback(rating: "dislike") } }
+            )
             .accessibilityLabel("无帮助")
 
-            actionButton(icon: .document, active: copied, activeColor: AtlasColors.accentActive) {
-                copyMessage()
-            }
+            // Copy — bare circle icon, shows check briefly after copy.
+            circleAction(
+                icon: copied ? .check : .document,
+                active: copied,
+                activeColor: AtlasColors.lemonStrong,
+                iconColorActive: AtlasColors.lemonInk,
+                action: { copyMessage() }
+            )
             .accessibilityLabel(copied ? "已复制" : "复制")
 
             Spacer(minLength: 8)
@@ -479,12 +716,58 @@ struct ChatMessageBubble: View {
         .padding(.horizontal, 2)
     }
 
-    private func actionButton(icon: DeimosIcon, active: Bool, activeColor: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            // ardot S07: idle icons stroked #8C96A8 — closest existing token is inkSoft (#8A94A6).
-            DeimosIconView(icon: icon, size: 15, color: active ? activeColor : AtlasColors.inkSoft)
+    /// Like pill — 56×32 lemon pill (#F3FFC8) with icon + count when active; bare 32×32 icon idle.
+    /// The count is the user's own feedback (1) since the model doesn't expose aggregate counts yet.
+    private var likePill: some View {
+        Button {
+            Task { await toggleFeedback(rating: "like") }
+        } label: {
+            if feedback == "like" {
+                // Active state — lemon pill with icon + "1".
+                HStack(spacing: 4) {
+                    DeimosIconView(icon: .check, size: 13, color: AtlasColors.lemonInk)
+                    Text("1")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AtlasColors.lemonInk)
+                        .monospacedDigit()
+                }
+                .padding(.horizontal, 8)
+                .frame(height: 32)
+                .background(Capsule(style: .continuous).fill(AtlasColors.chatActivityFill))
+            } else {
+                // Idle state — bare icon.
+                DeimosIconView(icon: .check, size: 13, color: AtlasColors.inkSoft)
+                    .frame(width: 32, height: 32)
+            }
         }
         .buttonStyle(.plain)
+        // Smooth transition between idle bare icon and active pill.
+        .animation(.easeInOut(duration: 0.18), value: feedback)
+    }
+
+    /// Bare circle action — 32×32 icon button, optional lemon tint background when active.
+    private func circleAction(
+        icon: DeimosIcon,
+        active: Bool,
+        activeColor: Color = AtlasColors.chatActivityFill,
+        iconColorActive: Color = AtlasColors.lemonInk,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            DeimosIconView(icon: icon, size: 13, color: active ? iconColorActive : AtlasColors.inkSoft)
+                .frame(width: 32, height: 32)
+                .background(
+                    Group {
+                        if active {
+                            Capsule().fill(activeColor)
+                        } else {
+                            Color.clear
+                        }
+                    }
+                )
+        }
+        .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.18), value: active)
     }
 
     private func copyMessage() {

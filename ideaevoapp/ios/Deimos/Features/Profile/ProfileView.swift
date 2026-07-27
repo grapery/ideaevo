@@ -67,6 +67,7 @@ struct ProfileView: View {
         // Settings screen for visual review against the ardot S11 design spec.
         // `--deimos-goto-notifications` deep-links to the Notifications list.
         // `--deimos-goto-myagents` deep-links to the My Agents list.
+        // `--deimos-goto-publish-idea` deep-links to the Create Idea screen (S12).
         .onAppear {
             if ProcessInfo.processInfo.arguments.contains("--deimos-goto-settings") {
                 showSettings = true
@@ -74,6 +75,8 @@ struct ProfileView: View {
                 showNotifications = true
             } else if ProcessInfo.processInfo.arguments.contains("--deimos-goto-myagents") {
                 showMyAgents = true
+            } else if ProcessInfo.processInfo.arguments.contains("--deimos-goto-publish-idea") {
+                showPublishIdea = true
             }
         }
         #endif
@@ -116,16 +119,26 @@ struct ProfileView: View {
 
     private func loggedInProfile(_ user: User) -> some View {
         VStack(spacing: 0) {
-            // S35 Top Actions · Floating Glass (ardot 210:4): right-aligned Bell + Settings gear,
-            // NO large title — the profile header (avatar + name) below is the identity.
-            // primaryAxisAlignItems: MAX, itemSpacing 10.
-            HStack(spacing: 10) {
+            // ardot S09 (`237:187` Header 342×61): large-title "DEIMOS" + "我的" 34pt Bold
+            // on the left + trailing 44×44 grey icon buttons (Bell + Settings) on the right.
+            // The previous S35 design omitted the large title; the new design brings it back.
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("DEIMOS")
+                        .font(AtlasTypography.overline())
+                        .foregroundStyle(AtlasColors.inkSoft)
+                    Text("我的")
+                        .font(AtlasTypography.largeTitle())
+                        .foregroundStyle(AtlasColors.ink)
+                        .atlasTrackedTitle(30)
+                }
                 Spacer()
                 Button { showNotifications = true } label: {
                     ZStack(alignment: .topTrailing) {
                         DeimosIconView(icon: .bell, size: 18, color: AtlasColors.ink)
                             .frame(width: 44, height: 44)
-                            .atlasToolbarFloat()
+                            .background(AtlasColors.chatNavCircle)
+                            .clipShape(Circle())
                         if unreadCount > 0 {
                             Circle()
                                 .fill(AtlasColors.destructive)
@@ -137,13 +150,6 @@ struct ProfileView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(unreadCount > 0 ? "通知, \(unreadCount) 条未读" : "通知")
 
-                Button { showSettings = true } label: {
-                    DeimosIconView(icon: .gear, size: 18, color: AtlasColors.ink)
-                        .frame(width: 44, height: 44)
-                        .atlasToolbarFloat()
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("设置")
             }
             .padding(.horizontal, AtlasMetrics.pageX)
             .padding(.top, 8)
@@ -151,8 +157,9 @@ struct ProfileView: View {
 
             ScrollView {
             VStack(spacing: 16) {
-                // S09 deliberately separates identity, stats, and actions so each
-                // action remains scannable instead of reading as one dashboard card.
+                // ardot S09 (`237:187` Profile Card 342×104): #FBFCFD fill + #EDF0F2 stroke, cr22,
+                // 72×72 lemon avatar (cr36) + name/bio stack. Previously the identity rendered
+                // bare on the canvas (S35 pattern); the new design wraps it in a soft card.
                 OwnerIdentityCard(
                     user: user,
                     profile: profile
@@ -206,38 +213,51 @@ struct ProfileView: View {
     }
 }
 
-// MARK: - Creator Identity Card (Ardot S35 · 210:11)
+// MARK: - Creator Identity Card (Ardot S09 · 237:187)
 
-/// Profile header (ardot S35 210:11): 48×48 lemon circle avatar + name block (Display Name
-/// 20pt Bold + Bio 13pt Regular), itemSpacing 12. Identity is the page title — no eyebrow,
-/// no DEIMOS CREATOR caption, no heavy card chrome.
+/// ardot S09 (`237:187` Profile Card 342×104): #FBFCFD fill + #EDF0F2 stroke, cr22.
+/// 72×72 lemon avatar (cr36) + name (20pt Bold) + bio (13pt Regular) stack.
+/// Previously the S35 design rendered identity bare on canvas — the new design wraps it in a
+/// soft, slightly off-white card so it reads as a distinct identity surface.
 struct OwnerIdentityCard: View {
     let user: User
     let profile: UserProfileData?
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             EntityAvatar.user(
                 id: user.id,
                 url: user.avatarLink,
                 name: user.name,
-                size: 48
+                size: 64
             )
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(user.name)
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(AtlasColors.ink)
                     .lineLimit(2)
 
                 Text(user.bio?.isEmpty == false ? (user.bio ?? "") : "AI 想法探索者")
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(AtlasColors.inkTertiary)
-                    .lineLimit(1)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                    .lineLimit(2)
+
+                // ardot S09 (237:187 Creator Badge): "DEIMOS CREATOR" 10pt Semibold lemonInk.
+                Text("DEIMOS CREATOR")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(AtlasColors.oliveMeta)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 96, maxHeight: 96, alignment: .leading)
+        .background(Color(hex: 0xF8F9FB))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color(hex: 0xEEF1F3), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 
@@ -248,28 +268,37 @@ private struct OwnerStatsBand: View {
     let onMyIdeas: () -> Void
 
     var body: some View {
-        // Ardot S35 210:16 — inline row of three `icon(13) + value(15pt Bold) + label(12pt)`.
-        // itemSpacing 16. Labels: 想法 / 粉丝 / Agent.
-        HStack(spacing: 16) {
-            statGroup(icon: .sparkles, value: ideaCount, label: "想法", action: onMyIdeas)
-            statGroup(icon: .users, value: followerCount, label: "粉丝", action: nil)
-            statGroup(icon: .user, value: followingCount, label: "Agent", action: nil)
-            Spacer(minLength: 0)
+        // ardot S09 (`237:187` Stats 342×64): container cr16, itemSpacing 3, padding 4.
+        // Each tile 106×56 cr13 with padding 8. Value 20pt Bold + Label 10pt Medium.
+        HStack(spacing: 3) {
+            statTile(value: ideaCount, label: "公开想法", highlight: true, action: onMyIdeas)
+            statTile(value: followerCount, label: "粉丝", highlight: false, action: nil)
+            statTile(value: followingCount, label: "关注", highlight: false, action: nil)
         }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(AtlasColors.chatAssistantBubble)
+        )
     }
 
-    private func statGroup(icon: DeimosIcon, value: Int, label: String, action: (() -> Void)?) -> some View {
-        let content = HStack(spacing: 4) {
-            DeimosIconView(icon: icon, size: 13, color: AtlasColors.inkSoft)
+    private func statTile(value: Int, label: String, highlight: Bool, action: (() -> Void)?) -> some View {
+        let content = VStack(spacing: 2) {
             Text("\(value)")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(AtlasColors.ink)
                 .monospacedDigit()
             Text(label)
-                .font(.system(size: 12, weight: .regular))
+                .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(AtlasColors.inkSoft)
         }
-        .fixedSize()
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .fill(highlight ? AtlasColors.chatActivityFill : AtlasColors.chatAssistantBubble)
+        )
 
         return Group {
             if let action {
@@ -286,12 +315,17 @@ private struct OwnerActionBar: View {
     let onMyAgents: () -> Void
 
     var body: some View {
-        // Ardot S35 210:29 — two independent 170×44 r22 pills, itemSpacing 10.
-        // 发布 Idea (lemon-strong fill, lemonInk text) + 管理 Agent (white fill + border, ink text).
-        HStack(spacing: 10) {
-            quickActionButton("发布 Idea", icon: .plus, isPrimary: true, action: onPublish)
-            quickActionButton("管理 Agent", icon: .sliders, isPrimary: false, action: onMyAgents)
+        // ardot S09 (`237:187` Actions 342×48): #F5F6F7 container cr24 holding two 163×40 pills.
+        // Primary (发布想法) #BEE90D lemon + lemonInk text; Secondary (我的 Agent) white + stroke.
+        HStack(spacing: 8) {
+            quickActionButton("发布想法", icon: .plus, isPrimary: true, action: onPublish)
+            quickActionButton("我的 Agent", icon: .sliders, isPrimary: false, action: onMyAgents)
         }
+        .padding(4)
+        .background(
+            Capsule(style: .continuous)
+                .fill(AtlasColors.chatAssistantBubble)
+        )
     }
 
     private func quickActionButton(_ title: String, icon: DeimosIcon, isPrimary: Bool, action: @escaping () -> Void) -> some View {
@@ -299,15 +333,15 @@ private struct OwnerActionBar: View {
             HStack(spacing: 6) {
                 DeimosIconView(icon: icon, size: 15, color: isPrimary ? AtlasColors.lemonInk : AtlasColors.ink)
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(isPrimary ? AtlasColors.lemonInk : AtlasColors.ink)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 44)
-            .background(isPrimary ? AtlasColors.primaryAction : AtlasColors.surface)
+            .frame(height: 40)
+            .background(isPrimary ? AtlasColors.lemonStrong : AtlasColors.surface)
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(isPrimary ? Color.clear : AtlasColors.border, lineWidth: 1)
+                    .stroke(isPrimary ? Color.clear : AtlasColors.settingsRowStroke, lineWidth: 1)
             )
             .clipShape(Capsule(style: .continuous))
         }
