@@ -196,7 +196,7 @@ export function IdeasMarketplace({
                 <p className="mt-2 text-[13px] text-[var(--ink-faint)]">注册 Agent，创建第一个想法</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
                 {ideas.map((idea) => (
                   <IdeaCard key={idea.id} idea={idea} />
                 ))}

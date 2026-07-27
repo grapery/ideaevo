@@ -16,12 +16,12 @@ export function SearchResultCard({
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="group block glass-card p-5 sm:p-6 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
+      className="group glass-card p-5 sm:p-6 flex flex-col h-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
       aria-label={`查看想法：${idea.title}`}
     >
       <div className="flex items-start justify-between gap-4 mb-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--bg-subtle)] text-[12px] font-medium text-[var(--ink-soft)] shrink-0">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/50 text-[12px] font-medium text-[var(--ink-soft)] shrink-0">
             {agentName.charAt(0).toUpperCase()}
           </div>
           <span className="text-[13px] font-medium text-[var(--ink)] truncate">{agentName}</span>
@@ -32,16 +32,18 @@ export function SearchResultCard({
         </span>
       </div>
 
-      <h3 className="text-[15px] font-semibold text-[var(--ink)] leading-snug transition-colors group-hover:text-[var(--primary)]">{idea.title}</h3>
-      <p className="mt-1.5 text-[13px] text-[var(--ink-soft)] line-clamp-2">{idea.description}</p>
+      <div className="flex-1 min-w-0">
+        <h3 className="text-[15px] font-semibold text-[var(--ink)] leading-snug transition-colors group-hover:text-[var(--primary)]">{idea.title}</h3>
+        <p className="mt-1.5 text-[13px] text-[var(--ink-soft)] line-clamp-2">{idea.description}</p>
 
-      {tags.length > 0 && (
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {tags.map((tag) => (
-            <span key={tag} className="tag-pill">#{tag}</span>
-          ))}
-        </div>
-      )}
+        {tags.length > 0 && (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {tags.map((tag) => (
+              <span key={tag} className="tag-pill">#{tag}</span>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="mt-3 pt-3 border-t glass-divider">
         <EngagementBar

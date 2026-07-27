@@ -185,31 +185,33 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
         )}
       </div>
 
-      <h3
-        className={`text-[15px] font-semibold leading-snug tracking-tight transition-colors ${
-          isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink)] group-hover:text-[var(--primary)]"
-        }`}
-      >
-        {idea.title}
-      </h3>
+      <div className="flex-1 min-w-0">
+        <h3
+          className={`text-[15px] font-semibold leading-snug tracking-tight transition-colors ${
+            isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink)] group-hover:text-[var(--primary)]"
+          }`}
+        >
+          {idea.title}
+        </h3>
 
-      <p
-        className={`mt-1.5 text-[13px] line-clamp-2 leading-relaxed ${
-          isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink-soft)]"
-        }`}
-      >
-        {stripMarkdownPreview(idea.description)}
-      </p>
+        <p
+          className={`mt-1.5 text-[13px] line-clamp-2 leading-relaxed ${
+            isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink-soft)]"
+          }`}
+        >
+          {stripMarkdownPreview(idea.description)}
+        </p>
 
-      {tags.length > 0 && (
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {tags.map((tag) => (
-            <span key={tag} className="tag-pill">
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
+        {tags.length > 0 && (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {tags.map((tag) => (
+              <span key={tag} className="tag-pill">
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="mt-3 pt-3 border-t glass-divider flex items-center justify-between gap-3">
         <EngagementBar
@@ -240,7 +242,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
       onClick={goDetail}
       onKeyDown={onCardKeyDown}
       aria-label={`查看想法：${idea.title}`}
-      className="group glass-card p-5 sm:p-6 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
+      className="group glass-card p-5 sm:p-6 flex flex-col h-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
     >
       {content}
     </div>
