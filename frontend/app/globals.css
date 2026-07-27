@@ -119,6 +119,21 @@
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-fast: 120ms;
   --dur-base: 200ms;
+
+  /* ============ Glass system — float-liquid 流体玻璃 ============ */
+  /* 叠加在 ardot token 之上, 不替换。卡片半透明, 透出彩色光斑背景。 */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --glass-bg-subtle: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-border-strong: rgba(255, 255, 255, 0.9);
+  --glass-divider: rgba(255, 255, 255, 0.4);
+  --glass-blur: 12px;
+  --glass-blur-hover: 16px;
+  --glass-saturate: 180%;
+  --shadow-glass: 0 8px 32px rgba(31, 35, 41, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow-glass-hover: 0 16px 40px rgba(31, 35, 41, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --radius-glass: 16px;
 }
 
 @theme inline {
@@ -296,6 +311,112 @@ a {
 .card-stack-item:hover {
   border-color: var(--rule-strong);
   box-shadow: var(--shadow-md);
+}
+
+/* ============ float-liquid 流体玻璃层 ============ */
+
+/*
+ * 背景光斑层 (orbs) — 固定定位, z-index: -1, 不随滚动重算。
+ * 用预模糊的彩色光斑 (filter: blur) 而非 backdrop-filter, 性能稳定。
+ * 颜色取自 ardot 主题色 (橙/蓝/绿) 的柔和版本, 与品牌一致。
+ */
+.liquid-orbs {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--bg-canvas);
+}
+.liquid-orbs::before,
+.liquid-orbs::after,
+.liquid-orb-extra {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  will-change: transform;
+}
+.liquid-orbs::before {
+  width: 520px;
+  height: 520px;
+  top: -8%;
+  left: -6%;
+  background: radial-gradient(circle, rgba(255, 138, 0, 0.35), transparent 70%);
+}
+.liquid-orbs::after {
+  width: 480px;
+  height: 480px;
+  top: 5%;
+  right: -8%;
+  background: radial-gradient(circle, rgba(51, 112, 255, 0.32), transparent 70%);
+}
+.liquid-orb-extra {
+  width: 560px;
+  height: 560px;
+  bottom: -12%;
+  left: 35%;
+  background: radial-gradient(circle, rgba(52, 199, 89, 0.26), transparent 70%);
+}
+
+/*
+ * 玻璃卡片基类 — 半透明白底 + backdrop-blur + 边缘高光 + 内阴影。
+ * hover 上浮 4px + 阴影增强 (不用 scale, 避免模糊边界锯齿)。
+ * active 下沉 1px 做点击反馈。
+ * 与 .surface-card 并存, 逐组件迁移, 不一刀切回归。
+ */
+.glass-card {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-glass);
+  box-shadow: var(--shadow-glass);
+  transition: transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    backdrop-filter var(--dur-base) var(--ease-out);
+}
+.glass-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--glass-border-strong);
+  box-shadow: var(--shadow-glass-hover);
+}
+.glass-card:active {
+  transform: translateY(-1px);
+}
+
+/* 强玻璃变体 — 浮层/弹窗/详情卡用 */
+.glass-card-strong {
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border-strong);
+}
+
+/* 玻璃内分隔线 (替代 border-t rule) */
+.glass-divider {
+  border-color: var(--glass-divider) !important;
+}
+
+/* 渐进增强: 不支持 backdrop-filter 的浏览器回退实色 */
+@supports not (backdrop-filter: blur(10px)) {
+  .glass-card,
+  .glass-card-strong {
+    background: var(--bg-surface);
+  }
+}
+
+/* 降级: 用户偏好减少动画时, 关闭 transform 和 blur */
+@media (prefers-reduced-motion: reduce) {
+  .glass-card,
+  .glass-card:hover,
+  .glass-card:active {
+    transform: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--bg-surface);
+  }
 }
 
 /* ============ Chip / Badge (ardot 风格) ============ */
@@ -499,15 +620,18 @@ a {
   color: var(--title);
 }
 
-/* Legend bar */
+/* Legend bar — 玻璃化统计条 */
 .legend-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-card);
-  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-glass);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--shadow-glass);
   font-family: var(--font-sans);
   font-size: 12px;
   letter-spacing: 0;
@@ -518,7 +642,7 @@ a {
   align-items: center;
   gap: 6px;
   padding: 10px 16px;
-  border-right: 1px solid var(--rule);
+  border-right: 1px solid var(--glass-divider);
   color: var(--ink-faint);
 }
 .legend-bar-item:last-child {
@@ -897,14 +1021,16 @@ input[type="search"]::-webkit-search-decoration {
   background: var(--bg-subtle);
 }
 
-/* Count button — ardot 数据展示按钮 */
+/* Count button — 玻璃化数据展示按钮 */
 .btn-count {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   color: var(--ink-soft);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-pill);
   padding: 0.1875rem 0.625rem;
   font-size: 12px;
@@ -922,8 +1048,8 @@ input[type="search"]::-webkit-search-decoration {
   transform: scale(0.95);
 }
 .btn-count:hover {
-  background: var(--bg-subtle);
-  border-color: var(--rule-strong);
+  background: rgba(255, 255, 255, 0.75);
+  border-color: var(--glass-border-strong);
   color: var(--ink);
 }
 .btn-count:disabled {

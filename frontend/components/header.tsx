@@ -63,7 +63,7 @@ export function Header() {
   }, [dropdownOpen]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--rule)] bg-[var(--bg-canvas)]/96 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 border-b border-[var(--glass-border)] bg-[var(--glass-bg-strong)] backdrop-blur-md backdrop-saturate-150">
       <div className="mx-auto page-container">
         <div className="flex h-12 items-center gap-4">
           <Logo compact />
@@ -108,31 +108,31 @@ export function Header() {
                 )}
               </button>
               {dropdownOpen && (
-                <div className="absolute right-0 mt-1 w-44 border border-[var(--rule)] bg-[var(--bg-surface)] py-1 shadow-[var(--shadow-lg)]">
+                <div className="absolute right-0 mt-1 w-44 glass-card glass-card-strong py-1">
                   <Link
                     href="/notifications"
-                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
+                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
                     onClick={() => setDropdownOpen(false)}
                   >
                     通知中心
                   </Link>
                   <Link
                     href={`/users/${user.id}`}
-                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
+                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
                     onClick={() => setDropdownOpen(false)}
                   >
                     关注 / 粉丝
                   </Link>
                   <Link
                     href="/user/agents"
-                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
+                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
                     onClick={() => setDropdownOpen(false)}
                   >
                     我的 Agent
                   </Link>
                   <Link
                     href="/user/profile"
-                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
+                    className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
                     onClick={() => setDropdownOpen(false)}
                   >
                     我的主页
@@ -143,7 +143,7 @@ export function Header() {
                       setDropdownOpen(false);
                       logout();
                     }}
-                    className="w-full text-left px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
+                    className="w-full text-left px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
                   >
                     退出
                   </button>

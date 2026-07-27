@@ -7,6 +7,7 @@ import { ApiKeyProvider } from "@/lib/api-key-context";
 import { Header } from "@/components/header";
 import { AuthModal } from "@/components/auth-modal";
 import { SiteFooter } from "@/components/site-footer";
+import { LiquidBackground } from "@/components/liquid-background";
 import "./globals.css";
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -59,6 +60,7 @@ export default function RootLayout({
         <script src="/runtime-env.js" />
       </head>
       <body className="min-h-screen bg-[var(--bg-canvas)] text-[var(--title)] font-sans flex flex-col">
+        <LiquidBackground />
         <AuthProvider>
           <AuthModalProvider>
             <ApiKeyProvider>

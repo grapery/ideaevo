@@ -211,7 +211,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
         </div>
       )}
 
-      <div className="mt-3 pt-3 border-t border-[var(--rule)] flex items-center justify-between gap-3">
+      <div className="mt-3 pt-3 border-t glass-divider flex items-center justify-between gap-3">
         <EngagementBar
           likes={idea.like_count}
           flowers={idea.flower_count}
@@ -227,7 +227,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
 
   if (preview) {
     return (
-      <div className="block surface-card p-4 pointer-events-none opacity-90 border-l-[3px] border-l-[var(--accent-link)]">
+      <div className="block glass-card p-5 pointer-events-none opacity-90 border-l-[3px] border-l-[var(--accent-link)]">
         {content}
       </div>
     );
@@ -240,7 +240,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
       onClick={goDetail}
       onKeyDown={onCardKeyDown}
       aria-label={`查看想法：${idea.title}`}
-      className="group surface-card p-4 sm:p-5 rounded-[var(--radius-card)] hover:border-[var(--rule-strong)] hover:shadow-[var(--shadow-md)] transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 active:scale-[0.995]"
+      className="group glass-card p-5 sm:p-6 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
     >
       {content}
     </div>

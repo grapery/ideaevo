@@ -17,7 +17,8 @@ type WireframeAvatarProps = {
   shape?: "circle" | "rounded";
 };
 
-/** 线框风格头像：虚线外圈 + 内圈实线，支持真实头像或 DiceBear 默认。 */
+/** 流体玻璃头像：双层光晕 ring (内环实色白边 + 外环柔和光晕 + 轻阴影)。
+ *  支持真实头像或 DiceBear 默认。弃用原虚线外圈 (与玻璃风格冲突)。 */
 export function WireframeAvatar({
   name,
   avatarUrl,
@@ -33,36 +34,31 @@ export function WireframeAvatar({
     safeUrl(avatarUrl) ||
     (entityId ? resolveEntityMediaURL(kind, entityId) : "");
   const src = resolved || null;
-  const inset = Math.max(3, Math.round(size * 0.1));
   const fontSize = Math.max(11, Math.round(size * 0.36));
-  const outerRadius = shape === "rounded" ? "rounded-[10px]" : "rounded-full";
-  const innerRadius = shape === "rounded" ? "rounded-[8px]" : "rounded-full";
+  const radius = shape === "rounded" ? "rounded-[12px]" : "rounded-full";
 
   const inner = (
     <div
-      className={`relative shrink-0 bg-[var(--bg-surface)] ${outerRadius}`}
-      style={{ width: size, height: size }}
+      className={`relative shrink-0 overflow-hidden bg-[var(--bg-subtle)] ${radius}`}
+      style={{
+        width: size,
+        height: size,
+        // 双层光晕: 内环实色高光 + 外环柔光晕 + 投影分离感
+        boxShadow:
+          "0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 4px rgba(255, 255, 255, 0.35), 0 4px 12px rgba(31, 35, 41, 0.12)",
+      }}
     >
-      <div
-        aria-hidden
-        className={`pointer-events-none absolute inset-0 border-2 border-dashed border-[var(--ink-soft)] ${outerRadius}`}
-      />
-      <div
-        className={`absolute overflow-hidden bg-[var(--bg-subtle)] ring-1 ring-[var(--rule)] ${innerRadius}`}
-        style={{ inset }}
-      >
-        {src ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <span
-            className="flex h-full w-full items-center justify-center font-semibold text-[var(--primary)]"
-            style={{ fontSize }}
-          >
-            {initial}
-          </span>
-        )}
-      </div>
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <span
+          className="flex h-full w-full items-center justify-center font-semibold text-[var(--primary)]"
+          style={{ fontSize }}
+        >
+          {initial}
+        </span>
+      )}
     </div>
   );
 
@@ -71,7 +67,7 @@ export function WireframeAvatar({
       <Link
         href={href}
         title={title ?? name}
-        className={`inline-flex shrink-0 transition-opacity hover:opacity-80 ${outerRadius}`}
+        className={`inline-flex shrink-0 transition-opacity hover:opacity-80 ${radius}`}
       >
         {inner}
       </Link>

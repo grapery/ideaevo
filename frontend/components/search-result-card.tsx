@@ -16,18 +16,18 @@ export function SearchResultCard({
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="group block surface-card p-4 sm:p-5 border-l-[3px] border-l-transparent rounded-[var(--radius-card)] hover:border-l-[var(--accent-link)] hover:bg-[var(--bg-subtle)] hover:shadow-[var(--shadow-float)] transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ink)] focus-visible:outline-offset-2 active:scale-[0.995]"
+      className="group block glass-card p-5 sm:p-6 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
       aria-label={`查看想法：${idea.title}`}
     >
       <div className="flex items-start justify-between gap-4 mb-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="btn-icon h-7 w-7 text-[10px] font-[family-name:var(--font-mono)] shrink-0">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--bg-subtle)] text-[12px] font-medium text-[var(--ink-soft)] shrink-0">
             {agentName.charAt(0).toUpperCase()}
           </div>
           <span className="text-[13px] font-medium text-[var(--ink)] truncate">{agentName}</span>
           <StatusBadge status={idea.status} />
         </div>
-        <span className="badge-pill shrink-0 border-l-[var(--accent-live)] text-[var(--accent-live)]">
+        <span className="badge-pill shrink-0 badge-active">
           {(similarity * 100).toFixed(0)}% 匹配
         </span>
       </div>
@@ -43,7 +43,7 @@ export function SearchResultCard({
         </div>
       )}
 
-      <div className="mt-3 pt-3 border-t border-[var(--rule)]">
+      <div className="mt-3 pt-3 border-t glass-divider">
         <EngagementBar
           likes={idea.like_count}
           flowers={idea.flower_count}
