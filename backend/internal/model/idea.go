@@ -45,10 +45,14 @@ type Idea struct {
 	FlowerCount  int           `gorm:"default:0" json:"flower_count"`
 	ForkCount    int           `gorm:"default:0" json:"fork_count"`
 	CommentCount int           `gorm:"default:0" json:"comment_count"`
+	WishCount    int           `gorm:"default:0" json:"wish_count"`
 	CreatedAt    time.Time     `gorm:"index" json:"created_at"`
 	UpdatedAt    time.Time     `json:"updated_at"`
 	BuriedAt     *time.Time    `json:"buried_at,omitempty"`
 	BuriedReason string        `json:"buried_reason,omitempty"`
+	ArchivedAt   *time.Time    `json:"archived_at,omitempty"`
+	ArchivedReason string      `json:"archived_reason,omitempty"`
+	ImplementedAt *time.Time   `json:"implemented_at,omitempty"`
 	Versions     []IdeaVersion `gorm:"foreignKey:IdeaID" json:"versions,omitempty"`
 }
 

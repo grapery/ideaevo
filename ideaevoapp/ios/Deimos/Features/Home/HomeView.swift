@@ -10,6 +10,8 @@ final class HomeViewModel {
     var hasMoreIdeas = true
     var errorMessage: String?
     var currentSort: String = "popular"
+    /// nil = 全部状态;非空时按 status 过滤广场流。
+    var currentStatus: String? = nil
 
     private let pageSize = 20
     private var ideasOffset = 0
@@ -19,6 +21,15 @@ final class HomeViewModel {
         ("热门", "popular"),
         ("最新", "newest"),
         ("实现中", "most_forked"),
+    ]
+
+    /// 状态筛选选项:label 展示用,value 为 nil 时表示「全部」。
+    static let statusOptions: [(label: String, value: String?)] = [
+        ("全部", nil),
+        ("活跃", "active"),
+        ("已落地", "implemented"),
+        ("已归档", "archived"),
+        ("已埋没", "buried"),
     ]
 
     var visibleIdeas: [Idea] {
@@ -35,7 +46,7 @@ final class HomeViewModel {
         defer { isLoading = false }
 
         do {
-            let fresh = try await APIClient.shared.queryIdeas(sort: currentSort)
+            let fresh = try await APIClient.shared.queryIdeas(sort: currentSort, status: currentStatus)
             ideas = fresh.ideas.filter(BlocklistFiltering.idea)
             ideasOffset = fresh.ideas.count
             hasMoreIdeas = Pagination.hasMore(offset: ideasOffset, loaded: fresh.ideas.count, total: fresh.total)
@@ -57,7 +68,7 @@ final class HomeViewModel {
         defer { isLoadingMore = false }
 
         do {
-            let next = try await APIClient.shared.queryIdeas(offset: ideasOffset, sort: currentSort)
+            let next = try await APIClient.shared.queryIdeas(offset: ideasOffset, sort: currentSort, status: currentStatus)
             let filtered = next.ideas.filter(BlocklistFiltering.idea)
             ideas.append(contentsOf: filtered)
             ideasOffset = ideas.count
@@ -78,6 +89,7 @@ struct HomeView: View {
     @State private var showSearch = false
     @State private var debugSearchQuery = ""
     @State private var sortIndex = 0
+    @State private var statusIndex = 0
     @State private var startChat = false
     @State private var quickActionIdea: Idea?
     @State private var forkActionIdea: Idea?
@@ -291,6 +303,44 @@ struct HomeView: View {
         }
     }
 
+    /// 状态筛选 chips(与 sortChips 同形,略小)。让用户按生命周期状态分桶浏览。
+    private var statusChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(HomeViewModel.statusOptions.indices, id: \.self) { index in
+                    let isSelected = statusIndex == index
+                    Button {
+                        selectStatus(index)
+                    } label: {
+                        Text(HomeViewModel.statusOptions[index].label)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(isSelected ? AtlasColors.ink : AtlasColors.inkFaint)
+                            .padding(.horizontal, 14)
+                            .frame(height: 30)
+                            .background(isSelected ? AtlasColors.ink.opacity(0.06) : AtlasColors.surface)
+                            .overlay(
+                                Capsule()
+                                    .stroke(AtlasColors.settingsRowStroke, lineWidth: isSelected ? 0 : 1)
+                            )
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, AtlasMetrics.pageX)
+        }
+    }
+
+    private func selectStatus(_ index: Int) {
+        let needsReload = statusIndex != index
+        statusIndex = index
+        viewModel.currentStatus = HomeViewModel.statusOptions[index].value
+        if needsReload {
+            viewModel.ideas = []
+            Task { await viewModel.loadPlaza() }
+        }
+    }
+
     @ViewBuilder
     private var content: some View {
         largeTitleHeader
@@ -329,6 +379,9 @@ struct HomeView: View {
         .padding(.bottom, 16)
 
         sortChips
+            .padding(.bottom, 12)
+
+        statusChips
             .padding(.bottom, 16)
 
         plazaContent

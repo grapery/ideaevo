@@ -207,6 +207,71 @@ func (h *IdeaHandler) Bury(c *gin.Context) {
 	c.JSON(http.StatusOK, idea)
 }
 
+// Archive 标记想法为已归档（暂时搁置）。仅创建者可操作。
+func (h *IdeaHandler) Archive(c *gin.Context) {
+	idea, err := h.ideaSvc.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+	if !h.canManageIdea(c, idea) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法的创建者才能归档"})
+		return
+	}
+
+	var input struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&input) // reason 可选，body 可为空
+
+	idea, err = h.ideaSvc.Archive(idea.ID, idea.AgentID, input.Reason)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, idea)
+}
+
+// MarkImplemented 标记想法为已落地（已实现）。仅创建者可操作。
+func (h *IdeaHandler) MarkImplemented(c *gin.Context) {
+	idea, err := h.ideaSvc.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+	if !h.canManageIdea(c, idea) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法的创建者才能标记已落地"})
+		return
+	}
+
+	idea, err = h.ideaSvc.MarkImplemented(idea.ID, idea.AgentID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, idea)
+}
+
+// Reactivate 把非 active 的想法重新激活。仅创建者可操作。
+func (h *IdeaHandler) Reactivate(c *gin.Context) {
+	idea, err := h.ideaSvc.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+	if !h.canManageIdea(c, idea) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有想法的创建者才能重新激活"})
+		return
+	}
+
+	idea, err = h.ideaSvc.Reactivate(idea.ID, idea.AgentID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, idea)
+}
+
 // Create 注册新想法（JWT 用户或 Agent API Key）。
 func (h *IdeaHandler) Create(c *gin.Context) {
 	var input struct {
@@ -614,6 +679,60 @@ func (h *IdeaHandler) Unlike(c *gin.Context) {
 
 	h.socialSvc.UnlikeIdea(ideaID, userID, agentIDStr)
 	c.JSON(http.StatusOK, gin.H{"message": "unliked"})
+}
+
+// Wish 表达「期待」这个 idea（轻量排序信号）。
+func (h *IdeaHandler) Wish(c *gin.Context) {
+	ideaID := c.Param("id")
+	if _, err := h.ideaSvc.GetByID(ideaID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+
+	agentIDStr := c.GetString("agent_id")
+	userID := extractUserID(c)
+	if userID == "" && agentIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
+		return
+	}
+
+	if err := h.socialSvc.WishIdea(ideaID, userID, agentIDStr); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "wished"})
+}
+
+func (h *IdeaHandler) GetWishStatus(c *gin.Context) {
+	ideaID := c.Param("id")
+	if _, err := h.ideaSvc.GetByID(ideaID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+
+	agentIDStr := c.GetString("agent_id")
+	userID := extractUserID(c)
+	if userID == "" && agentIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
+		return
+	}
+
+	wished := h.socialSvc.HasWishedIdea(ideaID, userID, agentIDStr)
+	c.JSON(http.StatusOK, gin.H{"wished": wished})
+}
+
+func (h *IdeaHandler) Unwish(c *gin.Context) {
+	ideaID := c.Param("id")
+	if _, err := h.ideaSvc.GetByID(ideaID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+
+	agentIDStr := c.GetString("agent_id")
+	userID := extractUserID(c)
+
+	h.socialSvc.UnwishIdea(ideaID, userID, agentIDStr)
+	c.JSON(http.StatusOK, gin.H{"message": "unwished"})
 }
 
 func (h *IdeaHandler) SendFlowers(c *gin.Context) {

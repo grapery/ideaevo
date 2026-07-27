@@ -14,6 +14,7 @@ final class IdeaDetailViewModel {
     var mineReaction = ""
     var isLiked = false
     var isBookmarked = false
+    var isWished = false
     var isLoading = true
     var errorMessage: String?
     var actionMessage: String?
@@ -55,9 +56,11 @@ final class IdeaDetailViewModel {
             if isAuthenticated {
                 isLiked = (try? await APIClient.shared.getLikeStatus(id: id)) ?? false
                 isBookmarked = (try? await APIClient.shared.getBookmarkStatus(id: id)) ?? false
+                isWished = (try? await APIClient.shared.getWishStatus(id: id)) ?? false
             } else {
                 isLiked = false
                 isBookmarked = false
+                isWished = false
             }
             try? await APIClient.shared.recordIdeaView(ideaID: id)
         } catch {
@@ -88,6 +91,20 @@ final class IdeaDetailViewModel {
         do {
             try await APIClient.shared.toggleLike(id: id, currentlyLiked: wasLiked)
             isLiked = !wasLiked
+            idea = try await APIClient.shared.getIdea(id: id)
+            return true
+        } catch {
+            actionMessage = error.localizedDescription
+            return true
+        }
+    }
+
+    func toggleWish(isAuthenticated: Bool) async -> Bool {
+        guard isAuthenticated, let id = idea?.id else { return false }
+        let wasWished = isWished
+        do {
+            try await APIClient.shared.toggleWish(id: id, currentlyWished: wasWished)
+            isWished = !wasWished
             idea = try await APIClient.shared.getIdea(id: id)
             return true
         } catch {
@@ -146,6 +163,24 @@ final class IdeaDetailViewModel {
         idea = updated
     }
 
+    func archive(reason: String?) async throws {
+        guard let id = idea?.id else { throw APIError.server("想法不存在") }
+        let updated = try await APIClient.shared.archiveIdea(id: id, reason: reason)
+        idea = updated
+    }
+
+    func markImplemented() async throws {
+        guard let id = idea?.id else { throw APIError.server("想法不存在") }
+        let updated = try await APIClient.shared.markIdeaImplemented(id: id)
+        idea = updated
+    }
+
+    func reactivate() async throws {
+        guard let id = idea?.id else { throw APIError.server("想法不存在") }
+        let updated = try await APIClient.shared.reactivateIdea(id: id)
+        idea = updated
+    }
+
     private func refreshReactions(ideaID: String) async {
         if let reactions = try? await APIClient.shared.getReactions(ideaID: ideaID) {
             reactionCounts = reactions.counts
@@ -165,16 +200,21 @@ private struct IdeaEvolutionActionBar: View {
     let flowerCount: Int
     let commentCount: Int
     let forkCount: Int
+    let wishCount: Int
     let isLiked: Bool
+    let isWished: Bool
     let onLike: () -> Void
     let onFlower: () -> Void
     let onComment: () -> Void
     let onFork: () -> Void
+    let onWish: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
             metricButton(icon: .heart, count: likeCount, isActive: isLiked, action: onLike)
                 .accessibilityLabel("喜欢，\(likeCount) 次")
+            metricButton(icon: .star, count: wishCount, isActive: isWished, action: onWish)
+                .accessibilityLabel("期待，\(wishCount) 次")
             metricButton(icon: .flower, count: flowerCount, isActive: false, action: onFlower)
                 .accessibilityLabel("送花，\(flowerCount) 朵")
             metricButton(icon: .fork, count: forkCount, isActive: false, action: onFork)
@@ -251,6 +291,10 @@ struct IdeaDetailView: View {
     @State private var showBuryConfirm = false
     @State private var buryReason = ""
     @State private var isBurying = false
+    @State private var showArchiveConfirm = false
+    @State private var archiveReason = ""
+    @State private var isArchiving = false
+    @State private var showImplementConfirm = false
     @State private var userRoute: UserRoute?
     @State private var showActionMenu = false
     @State private var showReportSheet = false
@@ -310,11 +354,14 @@ struct IdeaDetailView: View {
                     flowerCount: idea.flowerCount,
                     commentCount: idea.commentCount,
                     forkCount: idea.forkCount,
+                    wishCount: idea.wishCount,
                     isLiked: viewModel.isLiked,
+                    isWished: viewModel.isWished,
                     onLike: { Task { await handleLike() } },
                     onFlower: { Task { await handleFlower() } },
                     onComment: { openComments(idea) },
-                    onFork: { openForkSheet() }
+                    onFork: { openForkSheet() },
+                    onWish: { Task { await handleWish() } }
                 )
             }
         }
@@ -373,12 +420,18 @@ struct IdeaDetailView: View {
         .sheet(isPresented: $showBuryConfirm) {
             buryReasonSheet
         }
+        .sheet(isPresented: $showArchiveConfirm) {
+            archiveReasonSheet
+        }
+        .sheet(isPresented: $showImplementConfirm) {
+            implementConfirmSheet
+        }
         .sheet(isPresented: $showActionMenu) {
             if let idea = viewModel.idea {
                 AtlasActionMenuSheet(actions: ideaMenuActions(idea: idea)) {
                     showActionMenu = false
                 }
-                .presentationDetents([.height(canEdit(idea: idea) ? 280 : 220)])
+                .presentationDetents([.height(canEdit(idea: idea) ? 400 : 220)])
                 .presentationDragIndicator(.hidden)
             }
         }
@@ -495,6 +548,63 @@ struct IdeaDetailView: View {
         .presentationCornerRadius(AtlasMetrics.radiusSheet)
     }
 
+    private var archiveReasonSheet: some View {
+        VStack(spacing: 16) {
+            AtlasSheetGrabber()
+                .padding(.top, 8)
+
+            AtlasSheetTitleRow(title: "归档想法", onClose: { showArchiveConfirm = false })
+
+            Text("归档表示暂时搁置，区别于彻底放弃的埋葬。归档后从搜索与推荐中移除。")
+                .font(AtlasTypography.mobileBody())
+                .foregroundStyle(AtlasColors.inkSoft)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            AtlasTextField(placeholder: "原因（可选）", text: $archiveReason, height: AtlasMetrics.inputHeight)
+                .padding(.horizontal, 4)
+                .background(AtlasColors.fill)
+                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+
+            AtlasPrimaryButton(title: "确认归档", isLoading: isArchiving) {
+                Task { await archiveIdea() }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, AtlasMetrics.detailX)
+        .padding(.bottom, 24)
+        .background(AtlasColors.surface)
+        .presentationDetents([.height(320)])
+        .presentationDragIndicator(.hidden)
+        .presentationCornerRadius(AtlasMetrics.radiusSheet)
+    }
+
+    private var implementConfirmSheet: some View {
+        VStack(spacing: 16) {
+            AtlasSheetGrabber()
+                .padding(.top, 8)
+
+            AtlasSheetTitleRow(title: "标记已落地", onClose: { showImplementConfirm = false })
+
+            Text("标记为「已落地」表示这个想法已经实现、可复用。其他探索者能快速识别，避免重复造轮子。")
+                .font(AtlasTypography.mobileBody())
+                .foregroundStyle(AtlasColors.inkSoft)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            AtlasPrimaryButton(title: "确认已落地", isLoading: false) {
+                Task { await implementIdea() }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, AtlasMetrics.detailX)
+        .padding(.bottom, 24)
+        .background(AtlasColors.surface)
+        .presentationDetents([.height(260)])
+        .presentationDragIndicator(.hidden)
+        .presentationCornerRadius(AtlasMetrics.radiusSheet)
+    }
+
     // MARK: - S04 Cover Page (Ardot `237:230`)
 
     /// ardot S04 (`237:230`) layout: full-width 390×220 #F3FFC8 cover sits at the top (no
@@ -587,9 +697,16 @@ struct IdeaDetailView: View {
     private func ideaCover(_ idea: Idea) -> some View {
         let version = viewModel.currentVersionNumber
         let category = idea.category.trimmingCharacters(in: .whitespacesAndNewlines)
-        let statusText = category.isEmpty
-            ? "IDEA · ACTIVE · v\(version)"
-            : "IDEA · \(category.uppercased()) · v\(version)"
+        // 反映真实生命周期状态；非 active 时用 statusLabel，否则回退到分类（保持原有视觉）
+        let statusPart: String
+        if idea.status != "active" {
+            statusPart = idea.statusLabel.uppercased()
+        } else if category.isEmpty {
+            statusPart = "ACTIVE"
+        } else {
+            statusPart = category.uppercased()
+        }
+        let statusText = "IDEA · \(statusPart) · v\(version)"
 
         return ZStack(alignment: .top) {
             // Filled lemon-tinted cover background, full width, 220pt tall.
@@ -1194,9 +1311,20 @@ struct IdeaDetailView: View {
                 ownerEditRoute = IdeaRoute(id: idea.id)
             })
             if idea.status == "active" {
+                actions.append(AtlasMenuAction(title: "标记已落地") {
+                    showImplementConfirm = true
+                })
+                actions.append(AtlasMenuAction(title: "归档") {
+                    archiveReason = ""
+                    showArchiveConfirm = true
+                })
                 actions.append(AtlasMenuAction(title: "埋葬", destructive: true) {
                     buryReason = ""
                     showBuryConfirm = true
+                })
+            } else if idea.status != "active" {
+                actions.append(AtlasMenuAction(title: "重新激活") {
+                    Task { await reactivateIdea() }
                 })
             }
         }
@@ -1437,6 +1565,38 @@ struct IdeaDetailView: View {
         }
     }
 
+    private func archiveIdea() async {
+        let reason = archiveReason.trimmingCharacters(in: .whitespacesAndNewlines)
+        isArchiving = true
+        defer { isArchiving = false }
+        do {
+            try await viewModel.archive(reason: reason.isEmpty ? nil : reason)
+            ToastCenter.shared.showSuccess("想法已归档")
+            showArchiveConfirm = false
+        } catch {
+            ToastCenter.shared.showError(error.localizedDescription)
+        }
+    }
+
+    private func implementIdea() async {
+        do {
+            try await viewModel.markImplemented()
+            ToastCenter.shared.showSuccess("已标记为落地")
+            showImplementConfirm = false
+        } catch {
+            ToastCenter.shared.showError(error.localizedDescription)
+        }
+    }
+
+    private func reactivateIdea() async {
+        do {
+            try await viewModel.reactivate()
+            ToastCenter.shared.showSuccess("想法已重新激活")
+        } catch {
+            ToastCenter.shared.showError(error.localizedDescription)
+        }
+    }
+
     private func handleFlower() async {
         if !session.isAuthenticated {
             showAuthSheet = true
@@ -1462,6 +1622,20 @@ struct IdeaDetailView: View {
         if let msg = viewModel.actionMessage {
             ToastCenter.shared.showError(msg)
             viewModel.actionMessage = nil
+        }
+    }
+
+    private func handleWish() async {
+        guard session.isAuthenticated else {
+            showAuthSheet = true
+            return
+        }
+        _ = await viewModel.toggleWish(isAuthenticated: true)
+        if let msg = viewModel.actionMessage {
+            ToastCenter.shared.showError(msg)
+            viewModel.actionMessage = nil
+        } else {
+            ToastCenter.shared.showSuccess(viewModel.isWished ? "已表达期待" : "已取消期待")
         }
     }
 

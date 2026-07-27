@@ -1838,10 +1838,10 @@ struct IdeaCell: View {
                         if idea.showsFeedStatus {
                             Text(idea.statusLabel)
                                 .font(AtlasTypography.caption())
-                                .foregroundStyle(AtlasColors.inkSoft)
+                                .foregroundStyle(idea.statusColor)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
-                                .background(AtlasColors.surfaceSecondary)
+                                .background(idea.statusBadgeBackground)
                                 .clipShape(Capsule())
                         }
                         if let category = idea.feedCategoryLabel {
@@ -2454,10 +2454,10 @@ struct IdeaCoverCard: View {
                 Spacer()
                 Text(idea.statusLabel)
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(AtlasColors.lemonInk)
+                    .foregroundStyle(idea.statusColor)
                     .padding(.horizontal, 12)
                     .frame(height: 24)
-                    .background(AtlasColors.lemon)
+                    .background(idea.statusBadgeBackground)
                     .clipShape(Capsule())
             }
             Text(idea.displaySlug.uppercased())
@@ -2821,5 +2821,26 @@ extension Date {
         }
         formatter.dateFormat = "yyyy/M/d HH:mm"
         return formatter.string(from: self)
+    }
+}
+
+// MARK: - Idea status color
+
+extension Idea {
+    /// 状态语义色:active=柠檬黄、implemented=绿、archived=灰、buried=红。
+    /// 用于卡片徽章、详情页 Cover 等处,让生命周期状态一目了然。
+    var statusColor: Color {
+        switch status {
+        case "active":      return AtlasColors.lemonStrong
+        case "implemented": return AtlasColors.accentFork
+        case "archived":    return AtlasColors.inkSoft
+        case "buried":      return AtlasColors.destructiveFill
+        default:            return AtlasColors.inkSoft
+        }
+    }
+
+    /// 徽章背景色:状态色的低透明度版本,保证文字可读。
+    var statusBadgeBackground: Color {
+        statusColor.opacity(0.16)
     }
 }

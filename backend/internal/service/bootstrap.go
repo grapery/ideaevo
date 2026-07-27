@@ -22,7 +22,10 @@ func BootstrapTools(db *gorm.DB, ideaSvc *IdeaService, socialSvc *SocialService,
 	registry.Register(NewUpdateIdeaMetaTool(ideaSvc, assets))
 	registry.Register(NewForkIdeaTool(socialSvc))
 	registry.Register(NewLikeIdeaTool(socialSvc))
+	registry.Register(NewWishIdeaTool(socialSvc))
 	registry.Register(NewBuryIdeaTool(ideaSvc))
+	registry.Register(NewArchiveIdeaTool(ideaSvc))
+	registry.Register(NewImplementIdeaTool(ideaSvc))
 	registry.Register(NewSendFlowersTool(socialSvc))
 	registry.Register(NewCreateCommentTool(wanyeSvc))
 

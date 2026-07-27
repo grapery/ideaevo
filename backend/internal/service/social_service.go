@@ -99,6 +99,50 @@ func (s *SocialService) HasLikedIdea(ideaID, userID, agentID string) bool {
 	return count > 0
 }
 
+// WishIdea 表达「期待」（与 LikeIdea 同构）。作为轻量排序信号，不进 Feed、不推送。
+func (s *SocialService) WishIdea(ideaID, userID, agentID string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		wish := model.Wish{
+			IdeaID:  ideaID,
+			UserID:  userID,
+			AgentID: agentID,
+		}
+		if err := tx.Create(&wish).Error; err != nil {
+			return fmt.Errorf("already wished or error: %w", err)
+		}
+		if err := tx.Model(&model.Idea{}).Where("id = ?", ideaID).UpdateColumn("wish_count", gorm.Expr("wish_count + 1")).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (s *SocialService) UnwishIdea(ideaID, userID, agentID string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		result := tx.Where("idea_id = ? AND (user_id = ? OR agent_id = ?)", ideaID, userID, agentID).Delete(&model.Wish{})
+		if result.RowsAffected > 0 {
+			if err := tx.Model(&model.Idea{}).Where("id = ?", ideaID).UpdateColumn("wish_count", gorm.Expr("GREATEST(wish_count - 1, 0)")).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (s *SocialService) HasWishedIdea(ideaID, userID, agentID string) bool {
+	var count int64
+	q := s.db.Model(&model.Wish{}).Where("idea_id = ?", ideaID)
+	if userID != "" {
+		q = q.Where("user_id = ?", userID)
+	} else if agentID != "" {
+		q = q.Where("agent_id = ?", agentID)
+	} else {
+		return false
+	}
+	q.Count(&count)
+	return count > 0
+}
+
 type SendFlowersInput struct {
 	IdeaID  string `json:"idea_id"`
 	UserID  string `json:"user_id"`

@@ -499,6 +499,29 @@ final class APIClient {
         }
     }
 
+    // MARK: - Wish (期待)
+
+    func wishIdea(id: String) async throws {
+        _ = try await request(path: "/ideas/\(id)/wish", method: "POST", auth: .user) as MessageResponse
+    }
+
+    func unwishIdea(id: String) async throws {
+        _ = try await request(path: "/ideas/\(id)/wish", method: "DELETE", auth: .user) as MessageResponse
+    }
+
+    func getWishStatus(id: String) async throws -> Bool {
+        let response: WishStatusResponse = try await request(path: "/ideas/\(id)/wish", auth: .user)
+        return response.wished
+    }
+
+    func toggleWish(id: String, currentlyWished: Bool) async throws {
+        if currentlyWished {
+            try await unwishIdea(id: id)
+        } else {
+            try await wishIdea(id: id)
+        }
+    }
+
     func getBookmarkStatus(id: String) async throws -> Bool {
         let response: BookmarkStatusResponse = try await request(path: "/ideas/\(id)/bookmark", auth: .user)
         return response.bookmarked
@@ -574,6 +597,34 @@ final class APIClient {
             path: "/ideas/\(id)/bury",
             method: "POST",
             encodableBody: body,
+            auth: .user
+        )
+    }
+
+    // MARK: - Idea lifecycle (archive / implement / reactivate)
+
+    func archiveIdea(id: String, reason: String?) async throws -> Idea {
+        let body = ArchiveIdeaBody(reason: reason)
+        return try await request(
+            path: "/ideas/\(id)/archive",
+            method: "POST",
+            encodableBody: body,
+            auth: .user
+        )
+    }
+
+    func markIdeaImplemented(id: String) async throws -> Idea {
+        return try await request(
+            path: "/ideas/\(id)/implement",
+            method: "POST",
+            auth: .user
+        )
+    }
+
+    func reactivateIdea(id: String) async throws -> Idea {
+        return try await request(
+            path: "/ideas/\(id)/reactivate",
+            method: "POST",
             auth: .user
         )
     }

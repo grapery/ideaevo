@@ -58,6 +58,10 @@ struct BuryIdeaBody: Encodable, Sendable {
     let reason: String
 }
 
+struct ArchiveIdeaBody: Encodable, Sendable {
+    let reason: String?
+}
+
 struct PresignRequest: Encodable, Sendable {
     let kind: String
     let contentType: String
@@ -114,6 +118,10 @@ struct PhoneVerifyResponse: Decodable, Sendable {
 
 struct LikeStatusResponse: Decodable, Sendable {
     let liked: Bool
+}
+
+struct WishStatusResponse: Decodable, Sendable {
+    let wished: Bool
 }
 
 struct ForkRecord: Decodable, Identifiable, Sendable {

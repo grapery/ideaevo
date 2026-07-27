@@ -176,7 +176,7 @@ type QueryFilter struct {
 	Category    string `form:"category"`
 	AgentID     string `form:"agent_id"`
 	OwnerUserID string `form:"owner_user_id"` // 跨该用户拥有的所有 agent 聚合 idea（user profile 用）
-	Sort        string `form:"sort" binding:"omitempty,oneof=newest popular most_forked most_liked most_flowers"`
+	Sort        string `form:"sort" binding:"omitempty,oneof=newest popular most_forked most_liked most_flowers most_wished"`
 	Limit       int    `form:"limit" binding:"omitempty,min=1,max=100"`
 	Offset      int    `form:"offset" binding:"omitempty,min=0"`
 }
@@ -215,6 +215,8 @@ func (s *IdeaService) Query(filter QueryFilter) ([]model.Idea, int64, error) {
 		query = query.Order("like_count DESC, created_at DESC")
 	case "most_flowers":
 		query = query.Order("flower_count DESC, created_at DESC")
+	case "most_wished":
+		query = query.Order("wish_count DESC, created_at DESC")
 	default:
 		query = query.Order("created_at DESC")
 	}
@@ -284,6 +286,81 @@ func (s *IdeaService) Bury(ideaID, agentID, reason string) (*model.Idea, error) 
 	}
 
 	logActivity(s.db, "agent", agentID, "bury", "idea", ideaID, map[string]string{"reason": reason})
+	return &idea, nil
+}
+
+// Archive 标记 idea 为已归档（暂时搁置，区别于彻底放弃的 bury）。仅作者可操作。
+func (s *IdeaService) Archive(ideaID, agentID, reason string) (*model.Idea, error) {
+	var idea model.Idea
+	if err := s.db.First(&idea, "id = ? AND agent_id = ?", ideaID, agentID).Error; err != nil {
+		return nil, fmt.Errorf("idea not found or not owned by agent: %w", err)
+	}
+
+	now := time.Now()
+	idea.Status = model.IdeaStatusArchived
+	idea.ArchivedAt = &now
+	idea.ArchivedReason = reason
+
+	if err := s.db.Save(&idea).Error; err != nil {
+		return nil, err
+	}
+
+	// 归档后从向量索引移除，避免在搜索/推荐中出现
+	if s.indexer != nil {
+		s.indexer.RemoveIdea(idea.ID)
+	}
+
+	meta := map[string]string{}
+	if reason != "" {
+		meta["reason"] = reason
+	}
+	logActivity(s.db, "agent", agentID, "archive", "idea", ideaID, meta)
+	return &idea, nil
+}
+
+// MarkImplemented 标记 idea 为已落地（已实现，可复用）。仅作者可操作。
+func (s *IdeaService) MarkImplemented(ideaID, agentID string) (*model.Idea, error) {
+	var idea model.Idea
+	if err := s.db.First(&idea, "id = ? AND agent_id = ?", ideaID, agentID).Error; err != nil {
+		return nil, fmt.Errorf("idea not found or not owned by agent: %w", err)
+	}
+
+	now := time.Now()
+	idea.Status = model.IdeaStatusImplemented
+	idea.ImplementedAt = &now
+
+	if err := s.db.Save(&idea).Error; err != nil {
+		return nil, err
+	}
+
+	// 已落地的 idea 不再出现在搜索/推荐中（避免重复造轮子由状态徽章体现）
+	if s.indexer != nil {
+		s.indexer.RemoveIdea(idea.ID)
+	}
+
+	logActivity(s.db, "agent", agentID, "implement", "idea", ideaID, nil)
+	return &idea, nil
+}
+
+// Reactivate 把非 active 的 idea 重新激活（恢复到广场/搜索可见）。仅作者可操作。
+func (s *IdeaService) Reactivate(ideaID, agentID string) (*model.Idea, error) {
+	var idea model.Idea
+	if err := s.db.First(&idea, "id = ? AND agent_id = ?", ideaID, agentID).Error; err != nil {
+		return nil, fmt.Errorf("idea not found or not owned by agent: %w", err)
+	}
+
+	idea.Status = model.IdeaStatusActive
+
+	if err := s.db.Save(&idea).Error; err != nil {
+		return nil, err
+	}
+
+	// 重新激活后写回向量索引
+	if s.indexer != nil {
+		s.indexer.IndexIdea(&idea)
+	}
+
+	logActivity(s.db, "agent", agentID, "reactivate", "idea", ideaID, nil)
 	return &idea, nil
 }
 

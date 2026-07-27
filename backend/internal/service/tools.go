@@ -415,7 +415,40 @@ func (t *LikeIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (
 	return &ToolResult{OK: true, Data: map[string]any{"idea_id": ideaID, "liked": true}}, nil
 }
 
-// BuryIdeaTool 埋葬（仅作者可调用）。
+// WishIdeaTool 表达「期待」这个 idea（轻量排序信号，不进 Feed、不推送）。
+type WishIdeaTool struct {
+	socialSvc *SocialService
+}
+
+func NewWishIdeaTool(socialSvc *SocialService) *WishIdeaTool {
+	return &WishIdeaTool{socialSvc: socialSvc}
+}
+
+func (t *WishIdeaTool) Name() string { return "wish_idea" }
+func (t *WishIdeaTool) Description() string {
+	return "Express interest / wish for an idea (signals 'I want to see this built'). Use when user says '期待', '关注这个想法', 'wish'. " +
+		"WRITE operation: requires confirmation (call once without `confirm`, then again with the token)."
+}
+func (t *WishIdeaTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id": stringProp("ID of the idea to wish"),
+		},
+		"required": []string{"idea_id"},
+	})
+}
+func (t *WishIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	authorID, err := requireAuthor(p)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	ideaID := ToolStr(in, "idea_id")
+	if err := t.socialSvc.WishIdea(ideaID, p.UserID, authorID); err != nil {
+		return nil, fmt.Errorf("wish_idea failed: %w", err)
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"idea_id": ideaID, "wished": true}}, nil
+}
 type BuryIdeaTool struct {
 	ideaSvc *IdeaService
 }
@@ -449,6 +482,77 @@ func (t *BuryIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
 	return &ToolResult{OK: true, Data: map[string]any{"buried": true}}, nil
+}
+
+// ArchiveIdeaTool 归档（仅作者可调用）。归档表示暂时搁置，区别于彻底放弃的 bury。
+type ArchiveIdeaTool struct {
+	ideaSvc *IdeaService
+}
+
+func NewArchiveIdeaTool(ideaSvc *IdeaService) *ArchiveIdeaTool {
+	return &ArchiveIdeaTool{ideaSvc: ideaSvc}
+}
+
+func (t *ArchiveIdeaTool) Name() string { return "archive_idea" }
+func (t *ArchiveIdeaTool) Description() string {
+	return "Mark one of YOUR OWN ideas as archived (shelved for now, not abandoned). Only the author can archive. " +
+		"WRITE operation: requires confirmation (call once without `confirm`, then again with the token)."
+}
+func (t *ArchiveIdeaTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id": stringProp("ID of your idea to archive"),
+			"reason":  stringProp("Why you are archiving it (optional)"),
+		},
+		"required": []string{"idea_id"},
+	})
+}
+func (t *ArchiveIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	authorID, err := requireAuthor(p)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	_, err = t.ideaSvc.Archive(ToolStr(in, "idea_id"), authorID, ToolStr(in, "reason"))
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"archived": true}}, nil
+}
+
+// ImplementIdeaTool 标记已落地（仅作者可调用）。表示 idea 已实现，可复用。
+type ImplementIdeaTool struct {
+	ideaSvc *IdeaService
+}
+
+func NewImplementIdeaTool(ideaSvc *IdeaService) *ImplementIdeaTool {
+	return &ImplementIdeaTool{ideaSvc: ideaSvc}
+}
+
+func (t *ImplementIdeaTool) Name() string { return "implement_idea" }
+func (t *ImplementIdeaTool) Description() string {
+	return "Mark one of YOUR OWN ideas as implemented (already built, reusable). Only the author can mark implemented. " +
+		"WRITE operation: requires confirmation (call once without `confirm`, then again with the token)."
+}
+func (t *ImplementIdeaTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id": stringProp("ID of your idea to mark as implemented"),
+		},
+		"required": []string{"idea_id"},
+	})
+}
+func (t *ImplementIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	authorID, err := requireAuthor(p)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	_, err = t.ideaSvc.MarkImplemented(ToolStr(in, "idea_id"), authorID)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"implemented": true}}, nil
 }
 
 // UpdateIdeaMetaTool 更新想法附加信息（实现状态、仓库、演示、图标）。

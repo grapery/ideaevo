@@ -20,6 +20,7 @@ struct Idea: Codable, Identifiable, Sendable {
     let flowerCount: Int
     let forkCount: Int
     let commentCount: Int
+    let wishCount: Int
     let viewCount: Int
     let referenceCount: Int
     let createdAt: Date
@@ -39,6 +40,7 @@ struct Idea: Codable, Identifiable, Sendable {
         case flowerCount = "flower_count"
         case forkCount = "fork_count"
         case commentCount = "comment_count"
+        case wishCount = "wish_count"
         case viewCount = "view_count"
         case referenceCount = "reference_count"
         case createdAt = "created_at"
@@ -65,6 +67,7 @@ struct Idea: Codable, Identifiable, Sendable {
         flowerCount = try container.decodeIfPresent(Int.self, forKey: .flowerCount) ?? 0
         forkCount = try container.decodeIfPresent(Int.self, forKey: .forkCount) ?? 0
         commentCount = try container.decodeIfPresent(Int.self, forKey: .commentCount) ?? 0
+        wishCount = try container.decodeIfPresent(Int.self, forKey: .wishCount) ?? 0
         viewCount = try container.decodeIfPresent(Int.self, forKey: .viewCount) ?? 0
         referenceCount = try container.decodeIfPresent(Int.self, forKey: .referenceCount) ?? 0
         createdAt = try container.decode(Date.self, forKey: .createdAt)

@@ -13,6 +13,8 @@ final class SearchViewModel {
     var hasMoreIdeas = false
     var errorMessage: String?
     var hasSearched = false
+    /// 状态筛选:nil = 不过滤(全部状态);非空按 status 过滤。
+    var statusFilter: String? = nil
 
     private let pageSize = 20
     private var currentPage = 1
@@ -47,7 +49,7 @@ final class SearchViewModel {
         defer { isSearching = false }
 
         do {
-            async let ideasTask = APIClient.shared.searchIdeas(query: trimmed, page: 1)
+            async let ideasTask = APIClient.shared.searchIdeas(query: trimmed, page: 1, status: statusFilter ?? "")
             async let agentsTask = matchingAgents(for: trimmed)
             let resp = try await ideasTask
             let agents = await agentsTask
@@ -76,7 +78,7 @@ final class SearchViewModel {
 
         do {
             let nextPage = currentPage + 1
-            let resp = try await APIClient.shared.searchIdeas(query: trimmedQuery, page: nextPage)
+            let resp = try await APIClient.shared.searchIdeas(query: trimmedQuery, page: nextPage, status: statusFilter ?? "")
             ideaMatches.append(contentsOf: resp.results.filter { BlocklistFiltering.idea($0.idea) })
             currentPage = nextPage
             hasMoreIdeas = resp.mayHaveMore
@@ -134,7 +136,7 @@ struct SearchView: View {
     @State private var viewModel = SearchViewModel()
     @State private var ideaRoute: IdeaRoute?
     @State private var agentRoute: AgentRoute?
-    @State private var resultScope = "全部想法"
+    @State private var resultScope = "全部状态"
     @State private var isFilterExpanded = false
     @FocusState private var searchFocused: Bool
 
@@ -258,7 +260,7 @@ struct SearchView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(AtlasColors.ink)
                             Spacer()
-                            Text(resultScope == "全部想法" ? "想法 · 公开 · 匹配度" : resultScope)
+                            Text(resultScope)
                                 .font(.system(size: 11))
                                 .foregroundStyle(AtlasColors.inkSoft)
                             DeimosIconView(icon: .chevronRight, size: 10, color: AtlasColors.inkSoft)
@@ -273,9 +275,11 @@ struct SearchView: View {
 
                     if isFilterExpanded {
                         VStack(spacing: 2) {
-                            filterOption("全部想法", detail: "想法 · 公开 · 匹配度")
-                            filterOption("公开内容", detail: "只看可浏览与 Fork 的内容")
-                            filterOption("按匹配度", detail: "相似度从高到低")
+                            filterOption("全部状态", detail: "所有生命周期阶段的想法", status: nil)
+                            filterOption("活跃", detail: "值得跟进,正在探索中", status: "active")
+                            filterOption("已落地", detail: "已实现,可复用", status: "implemented")
+                            filterOption("已归档", detail: "暂时搁置", status: "archived")
+                            filterOption("已埋没", detail: "已证伪,避免重复", status: "buried")
                         }
                         .padding(4)
                         .background(AtlasColors.surface)
@@ -337,12 +341,14 @@ struct SearchView: View {
         }
     }
 
-    private func filterOption(_ title: String, detail: String) -> some View {
+    private func filterOption(_ title: String, detail: String, status: String?) -> some View {
         Button {
             resultScope = title
+            viewModel.statusFilter = status
             withAnimation(.easeInOut(duration: 0.18)) {
                 isFilterExpanded = false
             }
+            Task { await viewModel.search() }
         } label: {
             HStack(spacing: 10) {
                 ZStack {
