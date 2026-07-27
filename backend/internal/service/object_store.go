@@ -18,9 +18,29 @@ var allowedContentTypes = map[string]string{
 	"image/jpeg": ".jpg",
 	"image/png":  ".png",
 	"image/webp": ".webp",
+	"video/mp4":  ".mp4",
 }
 
-const MaxAssetBytes int64 = 5 * 1024 * 1024
+const (
+	MaxImageBytes int64 = 5 * 1024 * 1024  // 图片上限 5MB
+	MaxVideoBytes int64 = 50 * 1024 * 1024 // 视频上限 50MB
+)
+
+// MaxAssetBytes 是旧符号的别名,保持向后兼容(= 图片上限)。
+const MaxAssetBytes int64 = MaxImageBytes
+
+// isVideoContentType 判断 content type 是否为视频。
+func isVideoContentType(ct string) bool {
+	return strings.HasPrefix(ct, "video/")
+}
+
+// maxBytesFor 按内容类型返回大小上限(图片 5MB / 视频 50MB)。
+func maxBytesFor(contentType string) int64 {
+	if isVideoContentType(contentType) {
+		return MaxVideoBytes
+	}
+	return MaxImageBytes
+}
 
 type ObjectStore struct {
 	client    *oss.Client
@@ -72,11 +92,11 @@ func (s *ObjectStore) PresignPut(scope, id, kind, contentType string) (*PresignR
 	if scope != "users" && scope != "agents" && scope != "ideas" {
 		return nil, errors.New("上传范围无效")
 	}
-	if kind != "avatar" && kind != "background" && kind != "icon" && kind != "content" {
+	if kind != "avatar" && kind != "background" && kind != "icon" && kind != "content" && kind != "cover" && kind != "video" {
 		return nil, errors.New("上传类型无效")
 	}
-	if scope == "ideas" && kind != "icon" && kind != "content" {
-		return nil, errors.New("想法仅支持 icon 或 content 上传")
+	if scope == "ideas" && kind != "icon" && kind != "content" && kind != "cover" && kind != "video" {
+		return nil, errors.New("想法仅支持 icon / content / cover / video 上传")
 	}
 	if (scope == "users" || scope == "agents") && (kind == "icon" || kind == "content") {
 		return nil, errors.New("上传类型无效")
@@ -167,15 +187,23 @@ func (s *ObjectStore) ValidateUploadedObject(key, scope, id string) error {
 	if err != nil {
 		return fmt.Errorf("上传的文件不存在，请重新上传")
 	}
-	if result.ContentLength > MaxAssetBytes {
+	ct := ""
+	if result.ContentType != nil {
+		ct = *result.ContentType
+	}
+	maxBytes := maxBytesFor(ct)
+	if result.ContentLength > maxBytes {
 		_, _ = s.client.DeleteObject(context.Background(), &oss.DeleteObjectRequest{
 			Bucket: oss.Ptr(s.bucket),
 			Key:    oss.Ptr(key),
 		})
-		return errors.New("文件不能超过 5MB")
+		if isVideoContentType(ct) {
+			return errors.New("视频不能超过 50MB")
+		}
+		return errors.New("图片不能超过 5MB")
 	}
-	if result.ContentType != nil {
-		if _, ok := allowedContentTypes[*result.ContentType]; !ok {
+	if ct != "" {
+		if _, ok := allowedContentTypes[ct]; !ok {
 			return errors.New("文件类型无效")
 		}
 	}

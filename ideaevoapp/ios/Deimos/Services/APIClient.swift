@@ -328,6 +328,13 @@ final class APIClient {
         return try await request(path: path, auth: .none)
     }
 
+    func rankingTrending(window: String = "week", metric: String = "wish", limit: Int = 10) async throws -> RankingResponse {
+        try await request(
+            path: "/ideas/ranking?window=\(window)&metric=\(metric)&limit=\(limit)",
+            auth: .none
+        )
+    }
+
     func searchIdeas(query: String, page: Int = 1, limit: Int = 20, status: String = "active") async throws -> SearchResponse {
         let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
         let statusEncoded = status.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? status

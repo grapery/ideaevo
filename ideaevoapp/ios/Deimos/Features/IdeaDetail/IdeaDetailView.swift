@@ -709,11 +709,9 @@ struct IdeaDetailView: View {
         let statusText = "IDEA · \(statusPart) · v\(version)"
 
         return ZStack(alignment: .top) {
-            // Filled lemon-tinted cover background, full width, 220pt tall.
-            // Uses chatActivityFill (#F3FFC8) per ardot spec — slightly warmer than lemonSoft.
-            Rectangle()
-                .fill(AtlasColors.chatActivityFill)
-                .frame(height: 220)
+            // 封面背景层:优先封面图,无图时回退柠檬色块(保持原视觉)。
+            // 有视频时,在封面图右上叠加一个播放按钮入口。
+            coverBackgroundLayer(idea)
 
             // Bottom-anchored stack: Status + Accent Rule + Title.
             // Status at y=126, Rule at y=146, Title at y=160 per spec (relative to cover top).
@@ -741,6 +739,56 @@ struct IdeaDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: 220, alignment: .bottomLeading)
         }
         .frame(maxWidth: .infinity)
+        .frame(height: 220)
+    }
+
+    /// 封面背景层:有封面图时用 AsyncImage + 底部渐变遮罩(保证文字可读);
+    /// 无图时回退柠檬色块(保持原有视觉)。有视频时叠加播放入口。
+    @ViewBuilder
+    private func coverBackgroundLayer(_ idea: Idea) -> some View {
+        ZStack(alignment: .topTrailing) {
+            if let coverURL = idea.coverLink, coverURL != idea.iconLink {
+                // 有真实封面图(非 icon 回退):AsyncImage + 渐变遮罩
+                AsyncImage(url: coverURL) { phase in
+                    switch phase {
+                    case .success(let image):
+                        ZStack(alignment: .bottom) {
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(height: 220)
+                                .clipped()
+                            // 底部渐变,让 status/title 文字在任意背景上都可读
+                            LinearGradient(
+                                colors: [.clear, .black.opacity(0.45)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 120)
+                            .allowsHitTesting(false)
+                        }
+                    default:
+                        Rectangle().fill(AtlasColors.chatActivityFill).frame(height: 220)
+                    }
+                }
+            } else {
+                // 无封面图:保持柠檬色块
+                Rectangle().fill(AtlasColors.chatActivityFill).frame(height: 220)
+            }
+
+            // 视频入口:有宣传视频时,右上角放一个播放按钮
+            if let videoURL = idea.videoLink {
+                VideoCoverButton(url: videoURL)
+                    .frame(width: 72, height: 48)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(.white.opacity(0.4), lineWidth: 1)
+                    )
+                    .padding(.top, 56)
+                    .padding(.trailing, 16)
+            }
+        }
         .frame(height: 220)
     }
 
@@ -1049,16 +1097,19 @@ struct IdeaDetailView: View {
             : changelog
 
         // ardot S04 (`237:264` README): 350×118, fill #F8F9FB, stroke #EEF1F3, cr16, itemSpacing 6, padding 14.
-        // Title "README · 产品说明" 14pt Semibold ink; body 14pt Regular ink.
+        // Title "README · 产品说明" 14pt Semibold ink; body 按 is_markdown 决定渲染方式。
         return VStack(alignment: .leading, spacing: 6) {
             Text("README · 产品说明")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AtlasColors.ink)
-            Text(body)
-                .font(.system(size: 14))
-                .foregroundStyle(AtlasColors.ink)
-                .lineLimit(4)
-                .fixedSize(horizontal: false, vertical: true)
+            if idea.isMarkdown {
+                MarkdownBody(markdown: body, textColor: AtlasColors.ink)
+            } else {
+                Text(body)
+                    .font(.system(size: 14))
+                    .foregroundStyle(AtlasColors.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1508,13 +1559,20 @@ struct IdeaDetailView: View {
 
     @ViewBuilder
     private func mediaGallerySection(_ idea: Idea) -> some View {
-        if !idea.imageURLs.isEmpty {
+        let hasVideo = idea.videoLink != nil
+        if hasVideo || !idea.imageURLs.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("图片")
+                Text("媒体")
                     .font(AtlasTypography.cardTitle())
                     .foregroundStyle(AtlasColors.ink)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
+                        // 视频项放最前(若有)
+                        if let videoURL = idea.videoLink {
+                            VideoCoverButton(url: videoURL)
+                                .frame(width: 168, height: 112)
+                                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
+                        }
                         ForEach(idea.imageURLs, id: \.self) { raw in
                             if let url = URL(string: raw) {
                                 AsyncImage(url: url) { phase in

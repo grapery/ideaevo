@@ -47,8 +47,102 @@ func (s *SocialService) notifyIdeaOwner(tx *gorm.DB, ideaID, actorType, actorID,
 	_ = s.notif.Create(ownerUserID, actorType, actorID, actorName, action, "idea", ideaID, summary)
 }
 
+// resolveVotingOwnerID 解析投票者的「去重主体」ownerUserID。
+//   - user 直接投票 → ownerUserID = userID
+//   - agent 投票 → ownerUserID = agent.owner_user_id(空则回退 agentID,即系统 agent 各自独立)
+//
+// 用于防刷:同一 user 拥有的所有 agent + 该 user 本人,对一个 idea 的投票合并为一个有效主体。
+func (s *SocialService) resolveVotingOwnerID(tx *gorm.DB, userID, agentID string) string {
+	if userID != "" {
+		return userID
+	}
+	if agentID == "" {
+		return ""
+	}
+	var ownerID string
+	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("owner_user_id", &ownerID).Error; err != nil {
+		return agentID
+	}
+	if ownerID == "" {
+		return agentID // 系统 agent(无 owner):各自独立,不参与同 owner 去重
+	}
+	return ownerID
+}
+
+// hasOwnerVoted 检查该 ownerUserID(及其拥有的所有 agent)是否已对某 idea 投过票。
+// table 为 "likes" / "wishes"。ownerID 为去重主体。
+func (s *SocialService) hasOwnerVoted(tx *gorm.DB, table, ideaID, ownerID string) (bool, error) {
+	if ownerID == "" {
+		return false, nil
+	}
+	// 该 owner 本人投的票
+	var ownCount int64
+	if err := tx.Table(table).Where("idea_id = ? AND user_id = ?", ideaID, ownerID).Count(&ownCount).Error; err != nil {
+		return false, err
+	}
+	if ownCount > 0 {
+		return true, nil
+	}
+	// 该 owner 名下所有 agent 投的票
+	var agentIDs []string
+	if err := tx.Model(&model.Agent{}).Where("owner_user_id = ?", ownerID).Pluck("id", &agentIDs).Error; err != nil {
+		return false, err
+	}
+	if len(agentIDs) > 0 {
+		var agentCount int64
+		if err := tx.Table(table).Where("idea_id = ? AND agent_id IN ?", ideaID, agentIDs).Count(&agentCount).Error; err != nil {
+			return false, err
+		}
+		if agentCount > 0 {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// addWeightedScore 按投票者信誉分累加 idea 的加权分。
+// 在投票成功后调用,reputation 由调用方解析。
+func (s *SocialService) addWeightedScore(tx *gorm.DB, ideaID string, reputation float64) error {
+	return tx.Model(&model.Idea{}).Where("id = ?", ideaID).
+		UpdateColumn("weighted_score", gorm.Expr("weighted_score + ?", reputation)).Error
+}
+
+// resolveVoterReputation 解析投票者的信誉分(用于加权)。
+func (s *SocialService) resolveVoterReputation(tx *gorm.DB, userID, agentID string) float64 {
+	if userID != "" {
+		var user model.User
+		if err := tx.First(&user, "id = ?", userID).Error; err != nil {
+			return 0.3
+		}
+		return UserReputation(&user)
+	}
+	if agentID != "" {
+		var agent model.Agent
+		if err := tx.First(&agent, "id = ?", agentID).Error; err != nil {
+			return 0.3
+		}
+		var owner model.User
+		if agent.OwnerUserID != "" {
+			if err := tx.First(&owner, "id = ?", agent.OwnerUserID).Error; err != nil {
+				return 0.5
+			}
+			return AgentReputation(&agent, &owner)
+		}
+		return AgentReputation(&agent, nil)
+	}
+	return 0.3
+}
+
 func (s *SocialService) LikeIdea(ideaID, userID, agentID string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 防刷:同一 owner(user 本人 + 其所有 agent)对一个 idea 只能投一票
+		ownerID := s.resolveVotingOwnerID(tx, userID, agentID)
+		if voted, err := s.hasOwnerVoted(tx, "likes", ideaID, ownerID); err != nil {
+			return err
+		} else if voted {
+			return fmt.Errorf("已经点赞过这个想法")
+		}
+
 		like := model.Like{
 			IdeaID:  ideaID,
 			UserID:  userID,
@@ -58,6 +152,11 @@ func (s *SocialService) LikeIdea(ideaID, userID, agentID string) error {
 			return fmt.Errorf("already liked or error: %w", err)
 		}
 		if err := tx.Model(&model.Idea{}).Where("id = ?", ideaID).UpdateColumn("like_count", gorm.Expr("like_count + 1")).Error; err != nil {
+			return err
+		}
+		// 加权:按投票者信誉分累加 weighted_score
+		reputation := s.resolveVoterReputation(tx, userID, agentID)
+		if err := s.addWeightedScore(tx, ideaID, reputation); err != nil {
 			return err
 		}
 
@@ -100,8 +199,17 @@ func (s *SocialService) HasLikedIdea(ideaID, userID, agentID string) bool {
 }
 
 // WishIdea 表达「期待」（与 LikeIdea 同构）。作为轻量排序信号，不进 Feed、不推送。
+// 同样有防刷:同一 owner 只能投一次。
 func (s *SocialService) WishIdea(ideaID, userID, agentID string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 防刷:同一 owner(user 本人 + 其所有 agent)对一个 idea 只能投一票
+		ownerID := s.resolveVotingOwnerID(tx, userID, agentID)
+		if voted, err := s.hasOwnerVoted(tx, "wishes", ideaID, ownerID); err != nil {
+			return err
+		} else if voted {
+			return fmt.Errorf("已经期待过这个想法")
+		}
+
 		wish := model.Wish{
 			IdeaID:  ideaID,
 			UserID:  userID,
@@ -111,6 +219,11 @@ func (s *SocialService) WishIdea(ideaID, userID, agentID string) error {
 			return fmt.Errorf("already wished or error: %w", err)
 		}
 		if err := tx.Model(&model.Idea{}).Where("id = ?", ideaID).UpdateColumn("wish_count", gorm.Expr("wish_count + 1")).Error; err != nil {
+			return err
+		}
+		// 加权:按投票者信誉分累加 weighted_score(wish 是热榜主指标,加权尤其重要)
+		reputation := s.resolveVoterReputation(tx, userID, agentID)
+		if err := s.addWeightedScore(tx, ideaID, reputation); err != nil {
 			return err
 		}
 		return nil

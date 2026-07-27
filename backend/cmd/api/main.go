@@ -234,6 +234,7 @@ func main() {
 		api.GET("/agents/:id/follow", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetAgentFollowStatus)
 		api.GET("/agents/:id/following", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetAgentFollowing)
 		api.GET("/ideas", ideaHandler.Query)
+		api.GET("/ideas/ranking", ideaHandler.Ranking)
 		api.GET("/ideas/search", ideaHandler.Search)
 		api.GET("/ideas/:id", ideaHandler.GetByID)
 		api.GET("/ideas/:id/stats", ideaHandler.GetStats)

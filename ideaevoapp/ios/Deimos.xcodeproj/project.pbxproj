@@ -35,6 +35,7 @@
 		B7006E0FD8DD4966B7349253 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17853EA0F18B4EAA9E67D5B3 /* KeychainStore.swift */; };
 		F1A2B3C4D5E6478990ABCDEF1 /* Comment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6478990ABCDEF1 /* Comment.swift */; };
 		F2A2B3C4D5E6478990ABCDEF2 /* MarkdownBody.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B2C3D4E5F6478990ABCDEF2 /* MarkdownBody.swift */; };
+		F2A2B3C4D5E6478990ABVID01 /* VideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B2C3D4E5F6478990ABVID02 /* VideoPlayerView.swift */; };
 		F3A2B3C4D5E6478990ABCDEF3 /* CommentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B2C3D4E5F6478990ABCDEF3 /* CommentsView.swift */; };
 		F4A2B3C4D5E6478990ABCDEF4 /* SettingsSubviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B2C3D4E5F6478990ABCDEF4 /* SettingsSubviews.swift */; };
 		F5A2B3C4D5E6478990ABCDEF5 /* AppPreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B2C3D4E5F6478990ABCDEF5 /* AppPreferencesStore.swift */; };
@@ -114,6 +115,7 @@
 		17853EA0F18B4EAA9E67D5B3 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6478990ABCDEF1 /* Comment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Comment.swift; sourceTree = "<group>"; };
 		A2B2C3D4E5F6478990ABCDEF2 /* MarkdownBody.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownBody.swift; sourceTree = "<group>"; };
+		A2B2C3D4E5F6478990ABVID02 /* VideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayerView.swift; sourceTree = "<group>"; };
 		A3B2C3D4E5F6478990ABCDEF3 /* CommentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentsView.swift; sourceTree = "<group>"; };
 		A4B2C3D4E5F6478990ABCDEF4 /* SettingsSubviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSubviews.swift; sourceTree = "<group>"; };
 		A5B2C3D4E5F6478990ABCDEF5 /* AppPreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferencesStore.swift; sourceTree = "<group>"; };
@@ -183,6 +185,7 @@
 				DD28930AA16049E9804E260C /* AtlasTypography.swift */,
 				4186736E17DA4B58AD5F3592 /* AuthComponents.swift */,
 				A2B2C3D4E5F6478990ABCDEF2 /* MarkdownBody.swift */,
+				A2B2C3D4E5F6478990ABVID02 /* VideoPlayerView.swift */,
 				A8B2C3D4E5F6478990ABCDEF8 /* ReactionStrip.swift */,
 				AC2B3C4D5E6478990ABCDEFC /* ProfileBanner.swift */,
 				AC2B3C4D5E6478990ABCDEFD /* AtlasPopupComponents.swift */,
@@ -313,6 +316,7 @@
 				B7006E0FD8DD4966B7349253 /* KeychainStore.swift in Sources */,
 				F1A2B3C4D5E6478990ABCDEF1 /* Comment.swift in Sources */,
 				F2A2B3C4D5E6478990ABCDEF2 /* MarkdownBody.swift in Sources */,
+				F2A2B3C4D5E6478990ABVID01 /* VideoPlayerView.swift in Sources */,
 				F3A2B3C4D5E6478990ABCDEF3 /* CommentsView.swift in Sources */,
 				F4A2B3C4D5E6478990ABCDEF4 /* SettingsSubviews.swift in Sources */,
 				F5A2B3C4D5E6478990ABCDEF5 /* AppPreferencesStore.swift in Sources */,

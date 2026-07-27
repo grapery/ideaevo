@@ -2473,7 +2473,31 @@ struct IdeaCoverCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
-        .background(AtlasColors.lemonSoft)
+        .background(
+            // 封面图优先;无图回退柠檬色块。有封面时叠加渐变保证文字可读。
+            Group {
+                if let coverURL = coverImageURL, coverURL != idea.iconLink {
+                    ZStack(alignment: .bottom) {
+                        AsyncImage(url: coverURL) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable().scaledToFill()
+                            default:
+                                AtlasColors.lemonSoft
+                            }
+                        }
+                        LinearGradient(
+                            colors: [.clear, .white.opacity(0.85)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .allowsHitTesting(false)
+                    }
+                } else {
+                    AtlasColors.lemonSoft
+                }
+            }
+        )
     }
 
     private var provenanceSection: some View {

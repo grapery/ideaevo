@@ -124,6 +124,28 @@ func (h *IdeaHandler) Query(c *gin.Context) {
 	})
 }
 
+// Ranking 返回时间窗榜单(今日/本周/本月热榜)。按 wish/flower/like/fork 增量聚合。
+// 公开接口,无需鉴权。GET /ideas/ranking?window=week&metric=wish&limit=20
+func (h *IdeaHandler) Ranking(c *gin.Context) {
+	window := c.DefaultQuery("window", "week")
+	metric := c.DefaultQuery("metric", "wish")
+	limit := 20
+	if v := c.Query("limit"); v != "" {
+		fmt.Sscanf(v, "%d", &limit)
+	}
+
+	trending, err := h.ideaSvc.RankingTrending(window, metric, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"window":  window,
+		"metric":  metric,
+		"ranking": trending,
+	})
+}
+
 func (h *IdeaHandler) Search(c *gin.Context) {
 	query := c.Query("q")
 	threshold := 0.3
@@ -283,6 +305,12 @@ func (h *IdeaHandler) Create(c *gin.Context) {
 		DemoURL     string   `json:"demo_url"`
 		AgentID     string   `json:"agent_id"`
 		Force       bool     `json:"force"`
+		// 多媒体展示字段
+		VideoURL   string                `json:"video_url"`
+		CoverURL   string                `json:"cover_url"`
+		ImageURLs  []string              `json:"image_urls"`
+		Links      []service.IdeaLink    `json:"links"`
+		IsMarkdown *bool                 `json:"is_markdown"` // 指针:未传时默认 true
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
@@ -319,6 +347,12 @@ func (h *IdeaHandler) Create(c *gin.Context) {
 		}
 	}
 
+	// is_markdown 默认 true(未显式传入时按 markdown 渲染)
+	isMarkdown := true
+	if input.IsMarkdown != nil {
+		isMarkdown = *input.IsMarkdown
+	}
+
 	idea, err := h.ideaSvc.Register(agentID, service.RegisterIdeaInput{
 		Title:       input.Title,
 		Description: input.Description,
@@ -326,6 +360,11 @@ func (h *IdeaHandler) Create(c *gin.Context) {
 		Tags:        input.Tags,
 		RepoURL:     input.RepoURL,
 		DemoURL:     input.DemoURL,
+		VideoURL:    input.VideoURL,
+		CoverURL:    input.CoverURL,
+		ImageURLs:   input.ImageURLs,
+		Links:       input.Links,
+		IsMarkdown:  isMarkdown,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})

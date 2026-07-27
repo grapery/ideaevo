@@ -5,6 +5,7 @@ import Observation
 @Observable
 final class HomeViewModel {
     var ideas: [Idea] = []
+    var trendingIdeas: [TrendingIdea] = []
     var isLoading = true
     var isLoadingMore = false
     var hasMoreIdeas = true
@@ -46,11 +47,17 @@ final class HomeViewModel {
         defer { isLoading = false }
 
         do {
-            let fresh = try await APIClient.shared.queryIdeas(sort: currentSort, status: currentStatus)
+            async let freshTask = APIClient.shared.queryIdeas(sort: currentSort, status: currentStatus)
+            async let trendingTask = APIClient.shared.rankingTrending(window: "week", metric: "weighted", limit: 10)
+            let fresh = try await freshTask
             ideas = fresh.ideas.filter(BlocklistFiltering.idea)
             ideasOffset = fresh.ideas.count
             hasMoreIdeas = Pagination.hasMore(offset: ideasOffset, loaded: fresh.ideas.count, total: fresh.total)
             FeedCache.savePlaza(fresh.ideas)
+            // 热榜失败不影响主 feed
+            if let trending = try? await trendingTask {
+                trendingIdeas = trending.ranking
+            }
         } catch {
             if ideas.isEmpty, let cached = FeedCache.loadPlazaStale() {
                 ideas = cached.filter(BlocklistFiltering.idea)
@@ -341,6 +348,84 @@ struct HomeView: View {
         }
     }
 
+    /// 本周热榜 banner:横向滚动的 top idea 列表(按 wish 增量排序)。
+    /// 让近期值得关注的 idea 集中曝光,对标 Product Hunt 的榜单机制。
+    private var trendingBanner: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                DeimosIconView(icon: .star, size: 14, color: AtlasColors.lemonInk)
+                Text("本周热榜 · 值得关注")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+            }
+            .padding(.horizontal, AtlasMetrics.pageX)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(Array(viewModel.trendingIdeas.prefix(10).enumerated()), id: \.element.id) { index, item in
+                        Button {
+                            selectedRoute = IdeaRoute(id: item.id)
+                        } label: {
+                            trendingCard(item, rank: index + 1)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, AtlasMetrics.pageX)
+            }
+        }
+    }
+
+    private func trendingCard(_ item: TrendingIdea, rank: Int) -> some View {
+        HStack(spacing: 10) {
+            // 排名
+            Text("\(rank)")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(rank <= 3 ? AtlasColors.lemonInk : AtlasColors.inkFaint)
+                .frame(width: 24)
+
+            // 缩略图
+            if let thumb = item.thumbLink {
+                AsyncImage(url: thumb) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        Rectangle().fill(AtlasColors.lemonSoft)
+                    }
+                }
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            } else {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(AtlasColors.lemonSoft)
+                    .frame(width: 40, height: 40)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    DeimosIconView(icon: .star, size: 10, color: AtlasColors.inkFaint)
+                    Text("\(Int(item.score)) 关注度")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(width: 240, alignment: .leading)
+        .background(AtlasColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AtlasColors.settingsRowStroke, lineWidth: 1)
+        )
+    }
+
     @ViewBuilder
     private var content: some View {
         largeTitleHeader
@@ -384,6 +469,11 @@ struct HomeView: View {
         statusChips
             .padding(.bottom, 16)
 
+        if !viewModel.trendingIdeas.isEmpty {
+            trendingBanner
+                .padding(.bottom, 20)
+        }
+
         plazaContent
     }
 
@@ -418,7 +508,7 @@ struct HomeView: View {
                 ForEach(Array(viewModel.visibleIdeas.enumerated()), id: \.element.id) { index, idea in
                     IdeaCoverCard(
                         idea: idea,
-                        coverImageURL: idea.iconLink,
+                        coverImageURL: idea.coverLink,
                         iconNamespace: ideaIconNamespace,
                         onTap: {
                             if suppressNextIdeaTap {

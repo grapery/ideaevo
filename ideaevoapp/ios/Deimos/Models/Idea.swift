@@ -13,8 +13,11 @@ struct Idea: Codable, Identifiable, Sendable {
     let repoURL: String?
     let demoURL: String?
     let iconURL: String?
+    let videoURL: String?
+    let coverURL: String?
     let imageURLs: [String]
     let links: [IdeaLink]
+    let isMarkdown: Bool
     let forkedFromID: String?
     let likeCount: Int
     let flowerCount: Int
@@ -33,8 +36,11 @@ struct Idea: Codable, Identifiable, Sendable {
         case repoURL = "repo_url"
         case demoURL = "demo_url"
         case iconURL = "icon_url"
+        case videoURL = "video_url"
+        case coverURL = "cover_url"
         case imageURLs = "image_urls"
         case links
+        case isMarkdown = "is_markdown"
         case forkedFromID = "forked_from_id"
         case likeCount = "like_count"
         case flowerCount = "flower_count"
@@ -60,6 +66,9 @@ struct Idea: Codable, Identifiable, Sendable {
         repoURL = try container.decodeIfPresent(String.self, forKey: .repoURL)
         demoURL = try container.decodeIfPresent(String.self, forKey: .demoURL)
         iconURL = try container.decodeIfPresent(String.self, forKey: .iconURL)
+        videoURL = try container.decodeIfPresent(String.self, forKey: .videoURL)
+        coverURL = try container.decodeIfPresent(String.self, forKey: .coverURL)
+        isMarkdown = try container.decodeIfPresent(Bool.self, forKey: .isMarkdown) ?? true
         imageURLs = Self.decodeStringArray(from: container, forKey: .imageURLs) ?? []
         links = Self.decodeLinks(from: container)
         forkedFromID = try container.decodeIfPresent(String.self, forKey: .forkedFromID)
@@ -169,6 +178,20 @@ struct Idea: Codable, Identifiable, Sendable {
 
     var iconLink: URL? {
         AvatarDefaults.url(kind: .idea, id: id, raw: iconURL)
+    }
+
+    /// 封面图 URL:优先 coverURL,回退到画廊首图,再回退 icon。
+    var coverLink: URL? {
+        if let cover = coverURL?.trimmingCharacters(in: .whitespacesAndNewlines), !cover.isEmpty {
+            return URL(string: cover)
+        }
+        return primaryImageURL ?? iconLink
+    }
+
+    /// 宣传视频 URL。
+    var videoLink: URL? {
+        guard let raw = videoURL?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+        return URL(string: raw)
     }
 
     var primaryImageURL: URL? {
@@ -373,14 +396,63 @@ struct RankingIdea: Decodable, Identifiable, Sendable {
     let likeCount: Int
     let flowerCount: Int
     let forkCount: Int
+    let wishCount: Int?
     let category: String
+    let iconURL: String?
+    let coverURL: String?
 
     enum CodingKeys: String, CodingKey {
         case id, title, category
         case likeCount = "like_count"
         case flowerCount = "flower_count"
         case forkCount = "fork_count"
+        case wishCount = "wish_count"
+        case iconURL = "icon_url"
+        case coverURL = "cover_url"
     }
+
+    /// 榜单缩略图:优先封面,回退 icon。
+    var thumbLink: URL? {
+        if let cover = coverURL?.trimmingCharacters(in: .whitespacesAndNewlines), !cover.isEmpty {
+            return URL(string: cover)
+        }
+        if let icon = iconURL?.trimmingCharacters(in: .whitespacesAndNewlines), !icon.isEmpty {
+            return URL(string: icon)
+        }
+        return nil
+    }
+}
+
+/// 时间窗榜单条目(今日/本周热榜)。
+struct TrendingIdea: Decodable, Identifiable, Sendable {
+    let id: String
+    let title: String
+    let score: Double
+    let category: String
+    let iconURL: String?
+    let coverURL: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, score, category
+        case iconURL = "icon_url"
+        case coverURL = "cover_url"
+    }
+
+    var thumbLink: URL? {
+        if let cover = coverURL?.trimmingCharacters(in: .whitespacesAndNewlines), !cover.isEmpty {
+            return URL(string: cover)
+        }
+        if let icon = iconURL?.trimmingCharacters(in: .whitespacesAndNewlines), !icon.isEmpty {
+            return URL(string: icon)
+        }
+        return nil
+    }
+}
+
+struct RankingResponse: Decodable, Sendable {
+    let window: String
+    let metric: String
+    let ranking: [TrendingIdea]
 }
 
 struct ActivityRankings: Decodable, Sendable {

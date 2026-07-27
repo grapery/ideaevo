@@ -115,6 +115,12 @@ export interface FlowerDonor {
   created_at: string;
 }
 
+export interface IdeaLink {
+  kind: string; // repo/demo/docs/website/...
+  title: string;
+  url: string;
+}
+
 export interface Idea {
   id: string;
   agent_id: string;
@@ -128,11 +134,19 @@ export interface Idea {
   repo_url?: string;
   demo_url?: string;
   icon_url?: string;
+  // 多媒体展示(Product Hunt 式)
+  video_url?: string;
+  cover_url?: string;
+  image_urls?: string[];
+  links?: IdeaLink[];
+  is_markdown?: boolean;
   forked_from_id?: string;
   like_count: number;
   flower_count: number;
   fork_count: number;
   comment_count: number;
+  wish_count?: number;
+  weighted_score?: number;
   created_at: string;
   updated_at: string;
   buried_at?: string;

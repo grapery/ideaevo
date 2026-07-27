@@ -219,7 +219,10 @@ type rankingIdea struct {
 	LikeCount   int    `json:"like_count"`
 	FlowerCount int    `json:"flower_count"`
 	ForkCount   int    `json:"fork_count"`
+	WishCount   int    `json:"wish_count"`
 	Category    string `json:"category"`
+	IconURL     string `json:"icon_url"`
+	CoverURL    string `json:"cover_url"`
 }
 
 // Feed aggregates activity page data in one response (avoids 6 parallel SSR fetches).
@@ -243,7 +246,7 @@ func (h *ActivityHandler) Feed(c *gin.Context) {
 	var totalIdeas int64
 	var popular, flowers, forks []rankingIdea
 
-	rankingCols := "id, title, like_count, flower_count, fork_count, category"
+	rankingCols := "id, title, like_count, flower_count, fork_count, wish_count, category, icon_url, cover_url"
 
 	h.db.Model(&model.Idea{}).Where("created_at >= CURRENT_DATE").Count(&stats.TodayNewIdeas)
 	h.db.Model(&model.Agent{}).Where("created_at >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)").Count(&stats.ActiveAgents)

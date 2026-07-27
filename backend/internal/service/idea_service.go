@@ -45,6 +45,19 @@ type RegisterIdeaInput struct {
 	Tags        []string `json:"tags"`
 	RepoURL     string   `json:"repo_url"`
 	DemoURL     string   `json:"demo_url"`
+	// 多媒体展示字段
+	VideoURL   string      `json:"video_url"`
+	CoverURL   string      `json:"cover_url"`
+	ImageURLs  []string    `json:"image_urls"`
+	Links      []IdeaLink `json:"links"`
+	IsMarkdown bool        `json:"is_markdown"`
+}
+
+// IdeaLink 是 idea 的通用链接项(超越 repo/demo 的固定两栏)。
+type IdeaLink struct {
+	Kind  string `json:"kind"`  // repo/demo/docs/website/...
+	Title string `json:"title"`
+	URL   string `json:"url"`
 }
 
 type IdeaMatch struct {
@@ -133,6 +146,14 @@ func (s *IdeaService) Register(agentID string, input RegisterIdeaInput) (*model.
 	}
 
 	tagsJSON, _ := json.Marshal(input.Tags)
+	imageURLsJSON, _ := json.Marshal(input.ImageURLs)
+	linksJSON, _ := json.Marshal(input.Links)
+	if string(imageURLsJSON) == "null" {
+		imageURLsJSON = []byte("[]")
+	}
+	if string(linksJSON) == "null" {
+		linksJSON = []byte("[]")
+	}
 
 	idea := &model.Idea{
 		AgentID:     agentID,
@@ -143,6 +164,11 @@ func (s *IdeaService) Register(agentID string, input RegisterIdeaInput) (*model.
 		Tags:        string(tagsJSON),
 		RepoURL:     repoURL,
 		DemoURL:     demoURL,
+		VideoURL:    strings.TrimSpace(input.VideoURL),
+		CoverURL:    strings.TrimSpace(input.CoverURL),
+		ImageURLs:   string(imageURLsJSON),
+		Links:       string(linksJSON),
+		IsMarkdown:  input.IsMarkdown,
 	}
 
 	if err := s.db.Create(idea).Error; err != nil {
@@ -405,6 +431,12 @@ type UpdateIdeaMetaInput struct {
 	RepoURL    *string `json:"repo_url"`
 	DemoURL    *string `json:"demo_url"`
 	IconURL    *string `json:"icon_url"`
+	// 多媒体展示字段(指针:未提供=nil 跳过,空串=清空)
+	VideoURL   *string      `json:"video_url"`
+	CoverURL   *string      `json:"cover_url"`
+	ImageURLs  *[]string    `json:"image_urls"`
+	Links      *[]IdeaLink  `json:"links"`
+	IsMarkdown *bool        `json:"is_markdown"`
 }
 
 func validateHTTPURL(raw string) error {
@@ -468,6 +500,37 @@ func (s *IdeaService) UpdateMeta(ideaID string, input UpdateIdeaMetaInput, asset
 			}
 		}
 		idea.IconURL = v
+	}
+	if input.VideoURL != nil {
+		v := strings.TrimSpace(*input.VideoURL)
+		if err := validateHTTPURL(v); err != nil {
+			return nil, err
+		}
+		idea.VideoURL = v
+	}
+	if input.CoverURL != nil {
+		v := strings.TrimSpace(*input.CoverURL)
+		if err := validateHTTPURL(v); err != nil {
+			return nil, err
+		}
+		idea.CoverURL = v
+	}
+	if input.ImageURLs != nil {
+		jsonBytes, _ := json.Marshal(*input.ImageURLs)
+		if string(jsonBytes) == "null" {
+			jsonBytes = []byte("[]")
+		}
+		idea.ImageURLs = string(jsonBytes)
+	}
+	if input.Links != nil {
+		jsonBytes, _ := json.Marshal(*input.Links)
+		if string(jsonBytes) == "null" {
+			jsonBytes = []byte("[]")
+		}
+		idea.Links = string(jsonBytes)
+	}
+	if input.IsMarkdown != nil {
+		idea.IsMarkdown = *input.IsMarkdown
 	}
 
 	if err := s.db.Save(&idea).Error; err != nil {
@@ -632,6 +695,97 @@ func (s *IdeaService) ListVersions(ideaID string) ([]IdeaVersionSummary, error) 
 		}
 	}
 	return out, nil
+}
+
+// TrendingIdea 是时间窗榜单的一个条目。
+type TrendingIdea struct {
+	ID          string  `json:"id"`
+	Title       string  `json:"title"`
+	Score       float64 `json:"score"`        // 时间窗内该指标的增量(weighted 模式为加权综合分)
+	LikeCount   int     `json:"like_count"`
+	FlowerCount int     `json:"flower_count"`
+	ForkCount   int     `json:"fork_count"`
+	WishCount   int     `json:"wish_count"`
+	Category    string  `json:"category"`
+	IconURL     string  `json:"icon_url"`
+	CoverURL    string  `json:"cover_url"`
+}
+
+// RankingTrending 按时间窗(day/week/month)聚合某指标的增量,返回最热的 idea 列表。
+// 实时查明细表(wishes/flowers/likes/forks)WHERE created_at >= NOW()-INTERVAL N,
+// 用于「今日热榜 / 本周值得关注」类榜单。防刷由 weighted_score 排序兜底(见 reputation)。
+func (s *IdeaService) RankingTrending(window, metric string, limit int) ([]TrendingIdea, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	// window → 天数
+	var days int
+	switch window {
+	case "day":
+		days = 1
+	case "week":
+		days = 7
+	case "month":
+		days = 30
+	default:
+		days = 7
+	}
+	// metric → 明细表 + 计数列
+	var table string
+	switch metric {
+	case "wish":
+		table = "wishes"
+	case "flower":
+		table = "flowers"
+	case "like":
+		table = "likes"
+	case "fork":
+		table = "forks"
+	case "weighted":
+		table = "" // 特殊:直接按 idea.weighted_score 排序,不查明细表
+	default:
+		table = "wishes"
+	}
+
+	// weighted 模式:直接读冗余字段,不查明细(最防刷的排序)
+	if table == "" {
+		var trending []TrendingIdea
+		err := s.db.Model(&model.Idea{}).
+			Select("id, title, like_count, flower_count, fork_count, wish_count, category, icon_url, cover_url, weighted_score as score").
+			Where("status = ? AND weighted_score > 0", model.IdeaStatusActive).
+			Order("weighted_score DESC, created_at DESC").
+			Limit(limit).
+			Scan(&trending).Error
+		if err != nil {
+			return nil, err
+		}
+		return trending, nil
+	}
+
+	// 子查询:时间窗内按 idea_id 计数,取 top N 的 idea_id + score
+	// 然后回查 ideas 表补展示字段(只取 active,避免已埋掉/归档的上榜)
+	// tiebreaker:同分时按最新互动时间排序(让近期活跃的优先)
+	var trending []TrendingIdea
+	err := s.db.Raw(`
+		SELECT i.id, i.title, i.like_count, i.flower_count, i.fork_count, i.wish_count,
+		       i.category, i.icon_url, i.cover_url,
+		       COALESCE(t.score, 0) AS score
+		FROM ideas i
+		INNER JOIN (
+			SELECT idea_id, COUNT(*) AS score, MAX(created_at) AS last_active
+			FROM `+table+`
+			WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+			GROUP BY idea_id
+			ORDER BY score DESC, last_active DESC
+			LIMIT ?
+		) t ON t.idea_id = i.id
+		WHERE i.status = 'active'
+		ORDER BY t.score DESC, t.last_active DESC
+	`, days, limit).Scan(&trending).Error
+	if err != nil {
+		return nil, err
+	}
+	return trending, nil
 }
 
 // Stats exposes every counter the mobile detail screen renders in one stable
