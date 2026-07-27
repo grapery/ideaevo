@@ -290,7 +290,7 @@ export default function SearchPage() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
+              <div className="space-y-4">
                 {filtered.map((r) => (
                   <SearchResultCard key={r.idea.id} idea={r.idea} similarity={r.similarity} />
                 ))}
