@@ -2,12 +2,13 @@
 
 import { AppLink as Link } from "./app-link";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { Idea, Agent, TrendingIdea } from "@/lib/types";
 import { IdeaCard } from "./idea-card";
 import { TrendingCard } from "./trending-card";
 import { IconDeimos } from "./icons";
+import { AvatarStack, type AvatarStackItem } from "./avatar-stack";
 
-const categories = ["全部", "生产力", "开发工具", "知识管理", "协作", "自动化", "其他"];
 const statusFilters = [
   { value: "", label: "全部" },
   { value: "active", label: "活跃" },
@@ -48,6 +49,37 @@ export function IdeasMarketplace({
   defaultSort = "popular",
 }: MarketplaceProps) {
   const router = useRouter();
+
+  // 按当前页 ideas 的 category 聚合：每类下发布过想法的 Agent 头像（去重，按出现顺序）。
+  // category 实际值可能为中英文混存（seed 中文 / 表单英文 value），用实际数据最准确。
+  const categoryGroups = useMemo(() => {
+    const map = new Map<string, { agents: AvatarStackItem[]; agentIds: Set<string> }>();
+    for (const idea of ideas) {
+      const cat = idea.category?.trim();
+      if (!cat) continue;
+      let group = map.get(cat);
+      if (!group) {
+        group = { agents: [], agentIds: new Set<string>() };
+        map.set(cat, group);
+      }
+      const agentId = idea.agent_id;
+      if (agentId && !group.agentIds.has(agentId)) {
+        group.agentIds.add(agentId);
+        group.agents.push({
+          id: agentId,
+          name: idea.agent?.name || agentId.slice(0, 6),
+          avatarUrl: idea.agent?.avatar_url,
+          entityId: agentId,
+          kind: "agent",
+          href: `/agents/${agentId}`,
+        });
+      }
+    }
+    // 按该分类下 Agent 数降序，让活跃分类靠前
+    return [...map.entries()]
+      .sort((a, b) => b[1].agents.length - a[1].agents.length)
+      .map(([category, g]) => ({ category, ...g }));
+  }, [ideas]);
 
   function updateParams(status: string, sort: string) {
     const params = new URLSearchParams();
@@ -102,19 +134,22 @@ export function IdeasMarketplace({
 
       <div className="mx-auto page-container py-6">
         <div className="flex gap-8">
-          <aside className="hidden lg:block w-[200px] shrink-0">
-            <p className="meta-label mb-3">分类</p>
+          <aside className="hidden lg:block w-[220px] shrink-0">
             <div className="glass-card overflow-hidden divide-y divide-[var(--glass-divider)]">
-              {categories.map((cat) => (
+              {categoryGroups.map(({ category, agents }) => (
                 <button
-                  key={cat}
+                  key={category}
                   type="button"
-                  onClick={() => cat !== "全部" && router.push(`/search?q=${encodeURIComponent(cat)}`)}
-                  className="block w-full text-left text-[13px] text-[var(--ink-soft)] hover:bg-white/40 hover:text-[var(--ink)] py-2 px-3"
+                  onClick={() => router.push(`/search?q=${encodeURIComponent(category)}`)}
+                  className="flex w-full items-center justify-between gap-2 py-2 px-3 text-left"
                 >
-                  {cat}
+                  <span className="truncate text-[13px] text-[var(--ink-soft)]">{category}</span>
+                  <AvatarStack items={agents} size={20} overlap={-7} />
                 </button>
               ))}
+              {categoryGroups.length === 0 && (
+                <p className="px-3 py-3 text-[12px] text-[var(--ink-faint)]">暂无分类数据</p>
+              )}
             </div>
           </aside>
 
