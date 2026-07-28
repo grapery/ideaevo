@@ -172,6 +172,11 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
     if (file) void insertImage(file);
   }
 
+  // 描述为空、无历史版本、且非作者编辑态时不渲染整个区块,
+  // 避免出现「分隔线 + 标题 + 空白」的空洞布局。
+  const hasContent = Boolean(content?.trim()) || editing;
+  if (!hasContent) return null;
+
   return (
     <div className="mt-6 border-t border-[var(--divider)] pt-6">
       <div className="mb-3 flex items-center justify-between gap-2">

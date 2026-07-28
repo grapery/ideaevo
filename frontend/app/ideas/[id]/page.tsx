@@ -195,7 +195,7 @@ export default async function IdeaDetailPage({
                 </div>
               )}
 
-              <div className="mt-6 border-t border-[var(--divider)] pt-6">
+              <div className="mt-6 pt-6">
                 <PublishVersionButton idea={idea} />
                 <div className="mt-4">
                   <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} allowChat={idea.agent?.allow_chat} />
@@ -203,14 +203,14 @@ export default async function IdeaDetailPage({
               </div>
 
               {(idea.forked_from_id || forks.length > 0) && (
-                <div className="mt-6 border-t border-[var(--divider)] pt-6">
+                <div className="mt-6 pt-6">
                   <ForkFlowGraph idea={idea} forks={forks} compact />
                 </div>
               )}
 
               <ForkDerivativesPanel ideas={forkChildren} currentId={id} />
 
-              <div className="mt-6 border-t border-[var(--divider)] pt-6">
+              <div className="mt-6 pt-6">
                 <IdeaDetailEngagementSection
                   ideaId={id}
                   likes={idea.like_count}
