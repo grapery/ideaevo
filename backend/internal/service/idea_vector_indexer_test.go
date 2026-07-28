@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,43 +12,79 @@ import (
 )
 
 type mockVectorBackend struct {
-	putMeta   map[string]any
-	putCalled bool
-	delCalled bool
-	delKeys   []string
+	mu       sync.Mutex
+	putMeta  map[string]any
+	putDone  chan struct{}
+	delDone  chan struct{}
+	delKeys  []string
+}
+
+func newMockVectorBackend() *mockVectorBackend {
+	return &mockVectorBackend{
+		putDone: make(chan struct{}, 1),
+		delDone: make(chan struct{}, 1),
+	}
 }
 
 func (m *mockVectorBackend) Enabled() bool { return true }
 func (m *mockVectorBackend) PutVector(_ context.Context, _, _ string, _ []float32, metadata map[string]any) error {
-	m.putCalled = true
+	m.mu.Lock()
 	m.putMeta = metadata
+	m.mu.Unlock()
+	select {
+	case m.putDone <- struct{}{}:
+	default:
+	}
 	return nil
 }
 func (m *mockVectorBackend) QueryByVector(_ context.Context, _ string, _ []float32, _ int, _ map[string]any) ([]VectorRecord, error) {
 	return nil, nil
 }
 func (m *mockVectorBackend) DeleteVectors(_ context.Context, _ string, keys []string) error {
-	m.delCalled = true
+	m.mu.Lock()
 	m.delKeys = keys
+	m.mu.Unlock()
+	select {
+	case m.delDone <- struct{}{}:
+	default:
+	}
 	return nil
 }
 func (m *mockVectorBackend) AsyncPut(_, _ string, _ []float32, metadata map[string]any) {
-	m.putCalled = true
+	m.mu.Lock()
 	m.putMeta = metadata
+	m.mu.Unlock()
 }
 func (m *mockVectorBackend) AsyncDelete(_ string, keys []string) {
-	m.delCalled = true
+	m.mu.Lock()
 	m.delKeys = keys
+	m.mu.Unlock()
+}
+
+// waitDel blocks until DeleteVectors has been called by the async indexer goroutine.
+func (m *mockVectorBackend) waitDel(t *testing.T) {
+	select {
+	case <-m.delDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for async delete")
+	}
+}
+
+func (m *mockVectorBackend) DeletedKeys() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.delKeys
 }
 
 func TestIndexIdea_NonActiveTriggersDelete(t *testing.T) {
-	store := &mockVectorBackend{}
+	store := newMockVectorBackend()
 	embed := NewEmbeddingService("sk-test", "", "text-embedding-v4", 1536)
 	indexer := NewIdeaVectorIndexer(nil, embed, store, "ideas")
 	indexer.IndexIdea(&model.Idea{ID: "idea-1", Status: model.IdeaStatusBuried})
-	time.Sleep(50 * time.Millisecond)
-	assert.True(t, store.delCalled)
-	assert.Equal(t, []string{"idea-1"}, store.delKeys)
+	// 等待异步删除 goroutine 完成后再断言，避免数据竞争（asyncDeleteWithRetry 起的 goroutine
+	// 写 mock 状态，主 goroutine 读 —— 用 channel 同步而非脆弱的 time.Sleep）。
+	store.waitDel(t)
+	assert.Equal(t, []string{"idea-1"}, store.DeletedKeys())
 }
 
 func TestBuildIdeaEmbeddingText(t *testing.T) {
