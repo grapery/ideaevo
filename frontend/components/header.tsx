@@ -165,10 +165,6 @@ export function Header() {
             <DeimosIcon name="plus" className="h-3.5 w-3.5" />
             发布想法
           </Link>
-          <Link href="/chat" className="hidden sm:inline-flex btn-outline btn-sm">
-            <DeimosIcon name="chat" className="h-3.5 w-3.5" />
-            对话
-          </Link>
 
           <button
             type="button"

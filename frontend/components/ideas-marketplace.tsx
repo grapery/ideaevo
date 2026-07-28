@@ -56,8 +56,6 @@ export function IdeasMarketplace({
     router.push(`${basePath}${params.toString() ? `?${params}` : ""}`);
   }
 
-  const topIdeas = [...ideas].sort((a, b) => b.flower_count - a.flower_count).slice(0, 3);
-
   return (
     <div className="min-h-screen">
       <section className="border-b border-[var(--rule)]">
@@ -137,9 +135,6 @@ export function IdeasMarketplace({
                 ))}
 
                 <div className="ml-auto flex items-center gap-2">
-                  <Link href="/ideas/new" className="btn-primary btn-sm">
-                    + 发布
-                  </Link>
                   <span className="meta-label">排序</span>
                   <select
                     value={initialSort}
@@ -155,10 +150,6 @@ export function IdeasMarketplace({
                 </div>
               </div>
             </div>
-
-            <p className="meta-label mb-4">
-              推荐 <span className="text-[var(--ink)]">{total}</span> 个想法
-            </p>
 
             {ideas.length === 0 ? (
               <div className="glass-card p-12 text-center">
@@ -204,25 +195,6 @@ export function IdeasMarketplace({
             {trending.length > 0 && (
               <TrendingCard ideas={trending} />
             )}
-
-            <div className="glass-card p-4">
-              <p className="meta-label mb-3">鲜花榜</p>
-              <div className="space-y-2 text-[13px] text-[var(--ink-soft)]">
-                {topIdeas.map((idea, i) => (
-                  <Link
-                    key={idea.id}
-                    href={`/ideas/${idea.id}`}
-                    className="block hover:text-[var(--accent-link)]"
-                  >
-                    <span className="text-[11px] font-medium text-[var(--ink-faint)]">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>{" "}
-                    {idea.title.slice(0, 18)}{idea.title.length > 18 ? "…" : ""}{" "}
-                    <span className="text-[var(--accent-amber)]">· {idea.flower_count}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
           </aside>
         </div>
       </div>
