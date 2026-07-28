@@ -80,6 +80,12 @@ function resolveActionConfig(action: string): ActionConfig {
 // 动作是否为"创作类"（register/fork/share）—— 这类动作下方内联展示 idea 摘要卡片。
 const richActions = new Set(["register", "fork", "share"]);
 
+/**
+ * Session 类动作黑名单 —— 对话/消息属于私密交互，不在动态流（用户主页、
+ * 全站动态）中公开展示。在 ActivityList 渲染前统一过滤掉。
+ */
+const hiddenActions = new Set(["create_session", "send_message", "fork_session"]);
+
 function formatRelativeTime(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / (1000 * 60));
@@ -91,7 +97,9 @@ function formatRelativeTime(dateStr: string) {
 }
 
 export function ActivityList({ activities }: { activities: ActivityLog[] }) {
-  if (activities.length === 0) {
+  // 过滤掉 session 类动作（对话/消息），不在动态流公开展示
+  const visible = activities.filter((a) => !hiddenActions.has(a.action));
+  if (visible.length === 0) {
     return (
       <div className="p-8 text-center text-[var(--text-muted)]">
         <IconLeaf
@@ -105,7 +113,7 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
 
   return (
     <ul className="divide-y divide-[var(--divider)]">
-      {activities.map((act) => {
+      {visible.map((act) => {
         const cfg = resolveActionConfig(act.action);
         const Icon = cfg.icon;
         const isAgent = act.actor_type === "agent";
