@@ -112,7 +112,10 @@ export function Header() {
                 )}
               </button>
               {dropdownOpen && (
-                <div className="absolute right-0 mt-1 w-44 glass-card glass-card-strong py-1">
+                <div
+                  className="right-0 mt-1 w-44 glass-card glass-card-strong py-1"
+                  style={{ position: "absolute" }}
+                >
                   <Link
                     href="/notifications"
                     className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
@@ -183,7 +186,10 @@ export function Header() {
               </svg>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-1 w-52 glass-card glass-card-strong py-1">
+              <div
+                className="right-0 mt-1 w-52 glass-card glass-card-strong py-1"
+                style={{ position: "absolute" }}
+              >
                 <Link
                   href="/ideas"
                   className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
