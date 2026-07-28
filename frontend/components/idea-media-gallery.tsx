@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Idea } from "@/lib/types";
 import { normalizeStringArray } from "@/lib/types";
 import { VideoCoverButton } from "./video-player";
+import { DeimosIcon } from "./deimos-icon";
 
 /**
  * Idea 媒体画廊:宣传视频(若有)+ 截图列表。
@@ -15,7 +16,25 @@ export function IdeaMediaGallery({ idea }: { idea: Idea }) {
   const images = normalizeStringArray(idea.image_urls);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
-  if (!hasVideo && images.length === 0) return null;
+  if (!hasVideo && images.length === 0) {
+    return (
+      <section className="space-y-3">
+        <h3 className="meta-label">媒体</h3>
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          <div className="flex h-[140px] w-full items-center justify-center rounded-xl border border-dashed border-[var(--rule)] bg-[var(--bg-subtle)] text-center">
+            <div className="px-4">
+              <span className="mb-1.5 block text-[var(--ink-faint)]" aria-hidden>
+                <DeimosIcon name="sparkles" className="mx-auto h-5 w-5" />
+              </span>
+              <p className="text-[12px] text-[var(--ink-faint)]">
+                暂无封面图、视频或截图
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-3">

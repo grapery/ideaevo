@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { FlowerDonor, Idea, IdeaLineage, IdeaStats, WanyeComment, normalizeTags } from "@/lib/types";
 import { CommentList } from "@/components/comment-list";
-import { ForkFlowGraph } from "@/components/fork-flow-graph";
 import { StatusBadge } from "@/components/status-badge";
 import { IdeaActionBar } from "@/components/idea-action-bar";
 import { IdeaDetailEngagementSection } from "@/components/idea-detail-engagement-section";
@@ -171,6 +170,7 @@ export default async function IdeaDetailPage({
               <div className="flex items-start gap-3 mb-4">
                 <IdeaIcon idea={idea} />
                 <h1 className="page-title leading-tight min-w-0 flex-1">{idea.title}</h1>
+                <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} allowChat={idea.agent?.allow_chat} />
               </div>
 
               {/* 封面 hero:有 cover_url 时显示大图 + 底部渐变;有 video_url 时叠加播放入口 */}
@@ -197,16 +197,7 @@ export default async function IdeaDetailPage({
 
               <div className="mt-6 pt-6">
                 <PublishVersionButton idea={idea} />
-                <div className="mt-4">
-                  <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} allowChat={idea.agent?.allow_chat} />
-                </div>
               </div>
-
-              {(idea.forked_from_id || forks.length > 0) && (
-                <div className="mt-6 pt-6">
-                  <ForkFlowGraph idea={idea} forks={forks} compact />
-                </div>
-              )}
 
               <ForkDerivativesPanel ideas={forkChildren} currentId={id} />
 

@@ -51,30 +51,27 @@ export function IdeaActionBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 py-3">
-      {/* 左侧：idea 信息（Fork 计数） */}
-      <span className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
-        <DeimosIcon name="fork" className="h-3.5 w-3.5" />
-        {forkCount} 次 Fork
-      </span>
-      <div className="flex-1" />
-      {/* 右侧：操作按钮 */}
+    <div className="flex shrink-0 items-center gap-2">
       <Button
         variant="ghost"
-        size="md"
+        size="sm"
         onClick={openChat}
         className={allowChat === false ? "hidden" : ""}
         icon={<DeimosIcon name="chat" className="h-3.5 w-3.5" />}
+        ariaLabel="与 Agent 对话"
       >
-        与 Agent 对话
+        对话
       </Button>
       <Button
         variant="primary"
+        size="sm"
         onClick={openFork}
         disabled={loading}
-        icon={<DeimosIcon name="fork" className="h-4 w-4" />}
+        icon={<DeimosIcon name="fork" className="h-3.5 w-3.5" />}
+        ariaLabel={`Fork 这个想法（已有 ${forkCount} 个 Fork）`}
+        title={`已有 ${forkCount} 个 Fork`}
       >
-        Fork 这个想法
+        Fork
       </Button>
       <ForkIdeaDialog
         open={forkOpen}

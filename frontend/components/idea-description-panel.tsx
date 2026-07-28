@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { MarkdownContent } from "@/components/markdown-content";
+import { DeimosIcon } from "@/components/deimos-icon";
 import {
   imageFileFromClipboard,
   imageFileFromDataTransfer,
@@ -172,10 +173,9 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
     if (file) void insertImage(file);
   }
 
-  // 描述为空、无历史版本、且非作者编辑态时不渲染整个区块,
-  // 避免出现「分隔线 + 标题 + 空白」的空洞布局。
+  // 描述为空时仍渲染区块,显示占位(保持页面结构,避免空洞)。
+  // 作者可见「编辑」按钮;访客见「暂无描述」。
   const hasContent = Boolean(content?.trim()) || editing;
-  if (!hasContent) return null;
 
   return (
     <div className="mt-6 border-t border-[var(--divider)] pt-6">
@@ -343,6 +343,15 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
             </div>
           ) : loadingVersion ? (
             <p className="text-[13px] text-[var(--ink-faint)]">加载版本中…</p>
+          ) : !hasContent ? (
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-[var(--rule)] bg-[var(--bg-subtle)] px-4 py-8 text-center">
+              <span className="mb-2 text-[var(--ink-faint)]" aria-hidden>
+                <DeimosIcon name="document" className="h-6 w-6" />
+              </span>
+              <p className="text-[13px] text-[var(--ink-faint)]">
+                {canEdit ? "暂无描述，点击「编辑」补充这个想法的详细内容" : "作者还没有补充描述"}
+              </p>
+            </div>
           ) : (
             <>
               {selectedSummary && !isViewingCurrent && (

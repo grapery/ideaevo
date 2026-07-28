@@ -56,7 +56,8 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
   const hasDisplay =
     !!idea.impl_status || !!repo || !!demo;
 
-  if (!hasDisplay && !canEdit) return null;
+  // 即使无实现信息也渲染区块(显示占位 chip),保持页面结构完整。
+  // 仅在访客模式 + 完全无数据时保持轻量占位。
 
   async function handleSave() {
     setSaving(true);
@@ -228,26 +229,34 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
       ) : hasDisplay ? (
         <div className="min-w-0 flex-1 space-y-2">
           {idea.impl_status && <ImplStatusBadge status={idea.impl_status} />}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-            {repo && (
+          <div className="flex flex-wrap gap-2 text-[13px]">
+            {repo ? (
               <a
                 href={repo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--accent-link)] hover:underline"
+                className="inline-flex items-center gap-1 text-[var(--accent-link)] hover:underline"
               >
                 {formatRepoLabel(repo)}
               </a>
+            ) : (
+              <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
+                无仓库
+              </span>
             )}
-            {demo && (
+            {demo ? (
               <a
                 href={demo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--accent-link)] hover:underline"
+                className="inline-flex items-center gap-1 text-[var(--accent-link)] hover:underline"
               >
                 {demo.replace(/^https?:\/\//, "")}
               </a>
+            ) : (
+              <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
+                无演示
+              </span>
             )}
             {links.filter((l) => safeUrl(l.url)).map((link, i) => {
               const url = safeUrl(link.url)!;
@@ -259,7 +268,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[var(--accent-link)] hover:underline"
+                  className="inline-flex items-center gap-1 text-[var(--accent-link)] hover:underline"
                 >
                   {link.title || link.kind || url.replace(/^https?:\/\//, "")}
                 </a>
@@ -274,9 +283,22 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-[12px] text-[var(--ink-faint)]">
-            可补充实现状态、仓库、演示链接与图标（均为可选）
-          </p>
+          <div className="flex flex-wrap gap-2 text-[13px]">
+            <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
+              未设置实现状态
+            </span>
+            <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
+              无仓库
+            </span>
+            <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
+              无演示
+            </span>
+          </div>
+          {canEdit && (
+            <p className="text-[12px] text-[var(--ink-faint)]">
+              可补充实现状态、仓库、演示链接与图标（均为可选）
+            </p>
+          )}
           {canEdit && idea.status === "active" && <IdeaBuryButton idea={idea} />}
         </div>
       )}
