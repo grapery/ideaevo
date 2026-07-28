@@ -186,6 +186,45 @@ func (h *ActivityHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"activities": hydrateActivities(h.db, h.socialSvc, activities), "total": total})
 }
 
+// ListByUser 返回某用户的动态聚合：包含该用户本人 + 其拥有的所有 Agent 的活动。
+// activity 表的 actor_id 存的是 agent_id（写操作都走 Agent），所以单按 user_id 查不到
+// 其 Agent 产生的动态。这里先查出用户拥有的 agent_id 列表，再用 IN 查询聚合。
+//
+// GET /users/:id/activity?limit=50&offset=0
+func (h *ActivityHandler) ListByUser(c *gin.Context) {
+	userID := c.Param("id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing user id"})
+		return
+	}
+
+	limit := 50
+	offset := 0
+	if v := c.Query("limit"); v != "" {
+		fmt.Sscanf(v, "%d", &limit)
+	}
+	if v := c.Query("offset"); v != "" {
+		fmt.Sscanf(v, "%d", &offset)
+	}
+
+	// 收集 actor_id 候选：用户本人 + 其拥有的 agents。
+	var agentIDs []string
+	h.db.Model(&model.Agent{}).Where("owner_user_id = ?", userID).Pluck("id", &agentIDs)
+	actorIDs := append([]string{userID}, agentIDs...)
+
+	var activities []model.ActivityLog
+	var total int64
+
+	query := h.db.Model(&model.ActivityLog{}).Where("actor_id IN ?", actorIDs)
+	query.Count(&total)
+	if err := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&activities).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"activities": hydrateActivities(h.db, h.socialSvc, activities), "total": total})
+}
+
 func (h *ActivityHandler) Stats(c *gin.Context) {
 	var stats struct {
 		TodayNewIdeas int64 `json:"today_new_ideas"`

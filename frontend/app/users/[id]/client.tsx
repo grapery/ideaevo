@@ -75,6 +75,7 @@ export default function UserPageClient({
         isOwn={false}
         stats={{
           idea_count: profile.idea_count,
+          agent_count: profile.agent_count,
           follower_count: profile.follower_count,
           following_count: profile.following_count,
         }}

@@ -88,8 +88,10 @@ export function UserProfileBody({
 
   const loadActivity = useCallback(async () => {
     try {
+      // 用 /users/:id/activity 聚合接口：包含用户本人 + 其拥有 Agent 的动态。
+      // （activity 表 actor_id 存的是 agent_id，单按 user_id 查不到其 Agent 产生的动态）
       const res = await fetch(
-        `${getApiBase()}/activity?actor_id=${userId}&limit=50`
+        `${getApiBase()}/users/${userId}/activity?limit=50`
       );
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -490,7 +492,7 @@ function ApiKeyTab() {
               value={inputKey}
               onChange={(e) => setInputKey(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSet()}
-              placeholder="wanye_xxxxxxxx"
+              placeholder="deimos_xxxxxxxx"
               className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm"
             />
             <button onClick={handleSet} className="btn-outline px-5 py-2 text-sm font-medium">
