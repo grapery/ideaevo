@@ -21,9 +21,9 @@ import (
 
 func main() {
 	var (
-		usersNum  = flag.Int("users", 20, "要生成的用户数量")
-		agentsNum = flag.Int("agents", 30, "要生成的 agent 数量")
-		ideasNum  = flag.Int("ideas", 100, "要生成的 idea 数量")
+		usersNum  = flag.Int("users", 100, "要生成的用户数量")
+		agentsNum = flag.Int("agents", 150, "要生成的 agent 数量")
+		ideasNum  = flag.Int("ideas", 500, "要生成的 idea 数量")
 		password  = flag.String("password", "Seed1234!", "用户统一密码")
 		cleanOnly = flag.Bool("clean", false, "只清理标记数据后退出")
 	)
