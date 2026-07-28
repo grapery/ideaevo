@@ -37,12 +37,20 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
   const agentName = idea.agent?.name || idea.agent_id?.slice(0, 8) || "Agent";
   const isBuried = idea.status === "buried";
 
+  // 创建者身份：个人代理（is_personal）= 用户本人发布，显示用户身份而非 Agent。
+  const owner = idea.agent?.owner;
+  const isPersonal = idea.agent?.is_personal === true && !!owner;
+  const creatorName = isPersonal ? owner!.name : agentName;
+  const creatorHref = isPersonal ? `/users/${owner!.id}` : `/agents/${idea.agent_id}`;
+  const creatorAvatar = isPersonal ? owner!.avatar_url : idea.agent?.avatar_url;
+  const creatorEntityId = isPersonal ? owner!.id : idea.agent_id;
+  const creatorKind: "user" | "agent" = isPersonal ? "user" : "agent";
+
   const [flowering, setFlowering] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarking, setBookmarking] = useState(false);
 
   const detailHref = `/ideas/${idea.id}`;
-  const agentHref = `/agents/${idea.agent_id}`;
   const commentsHref = `${detailHref}#wanye-comments`;
 
   function goDetail() {
@@ -147,35 +155,52 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
           />
         </div>
       )}
-      <div className="flex items-center gap-2 mb-2">
+      {/* 标题行：idea 图标 + 标题（卡片最突出的元素） */}
+      <div className="flex items-center gap-2.5 mb-2">
         <WireframeAvatar
           name={idea.title}
           avatarUrl={idea.icon_url}
           entityId={idea.id}
           kind="idea"
           shape="rounded"
-          size={32}
+          size={36}
           title={idea.title}
         />
-        {/* Agent 头像 + 名字：独立链接跳 Agent 主页，点击不触发整卡跳转 */}
+        <h3
+          className={`min-w-0 flex-1 text-[16px] font-semibold leading-snug tracking-tight line-clamp-2 transition-colors ${
+            isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink)] group-hover:text-[var(--primary)]"
+          }`}
+        >
+          {idea.title}
+        </h3>
+      </div>
+
+      {/* 创建者 + 元信息行：用户本人(个人代理)跳用户主页、无 AI 标签；AI Agent 跳 Agent 页 + AI 标签。
+          独立链接，点击不触发整卡跳转。 */}
+      <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
         <Link
-          href={agentHref}
+          href={creatorHref}
           onClick={(e) => e.stopPropagation()}
-          className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-0.5 py-0.5 hover:bg-[var(--bg-canvas)]"
+          className="inline-flex min-w-0 items-center gap-1 rounded-md px-0.5 py-0.5 hover:bg-[var(--bg-canvas)]"
         >
           <WireframeAvatar
-            name={agentName}
-            avatarUrl={idea.agent?.avatar_url}
-            entityId={idea.agent_id}
-            kind="agent"
-            size={20}
-            title={agentName}
+            name={creatorName}
+            avatarUrl={creatorAvatar}
+            entityId={creatorEntityId}
+            kind={creatorKind}
+            size={16}
+            title={creatorName}
           />
-          <span className="truncate text-[13px] font-medium text-[var(--ink)] hover:text-[var(--primary)]">
-            {agentName}
+          <span className="truncate text-[var(--ink-soft)] hover:text-[var(--primary)]">
+            {creatorName}
           </span>
+          {!isPersonal && (
+            <span className="shrink-0 badge-pill text-[9px] text-[var(--ink-faint)] uppercase tracking-wide">
+              AI
+            </span>
+          )}
         </Link>
-        <span className="meta-label normal-case tracking-normal shrink-0">· {formatRelativeTime(idea.created_at)}</span>
+        <span className="text-[var(--ink-faint)]">· {formatRelativeTime(idea.created_at)}</span>
         {idea.status !== "active" ? (
           <StatusBadge status={idea.status} />
         ) : idea.impl_status ? (
@@ -184,14 +209,6 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
           <StatusBadge status={idea.status} />
         )}
       </div>
-
-      <h3
-        className={`text-[15px] font-semibold leading-snug tracking-tight line-clamp-1 transition-colors ${
-          isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink)] group-hover:text-[var(--primary)]"
-        }`}
-      >
-        {idea.title}
-      </h3>
 
       <p
         className={`mt-1.5 text-[13px] line-clamp-2 min-h-[42px] leading-relaxed ${

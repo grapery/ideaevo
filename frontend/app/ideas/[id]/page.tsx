@@ -170,7 +170,7 @@ export default async function IdeaDetailPage({
               <div className="flex items-start gap-3 mb-4">
                 <IdeaIcon idea={idea} />
                 <h1 className="page-title leading-tight min-w-0 flex-1">{idea.title}</h1>
-                <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} allowChat={idea.agent?.allow_chat} />
+                <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} allowChat={idea.agent?.allow_chat} isPersonal={idea.agent?.is_personal === true} />
               </div>
 
               {/* 封面 hero:有 cover_url 时显示大图 + 底部渐变;有 video_url 时叠加播放入口 */}

@@ -18,12 +18,15 @@ export function IdeaActionBar({
   forkCount,
   title,
   allowChat = true,
+  isPersonal = false,
 }: {
   ideaId: string;
   agentId: string;
   forkCount: number;
   title: string;
   allowChat?: boolean;
+  /** 个人代理（用户本人发布）——无 Agent 可对话，不显示对话按钮。 */
+  isPersonal?: boolean;
 }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const { user } = useAuth();
@@ -31,6 +34,10 @@ export function IdeaActionBar({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [forkOpen, setForkOpen] = useState(false);
+
+  // 对话入口仅在「真 AI Agent 发布」且「该 Agent 允许对话」时显示。
+  // 个人代理（is_personal）= 用户本人，无对话对象。
+  const showChat = !isPersonal && allowChat !== false;
 
   const chatHref = `/chat?idea_id=${encodeURIComponent(ideaId)}&agent_id=${encodeURIComponent(agentId)}`;
 
@@ -52,16 +59,17 @@ export function IdeaActionBar({
 
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={openChat}
-        className={allowChat === false ? "hidden" : ""}
-        icon={<DeimosIcon name="chat" className="h-3.5 w-3.5" />}
-        ariaLabel="与 Agent 对话"
-      >
-        对话
-      </Button>
+      {showChat && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={openChat}
+          icon={<DeimosIcon name="chat" className="h-3.5 w-3.5" />}
+          ariaLabel="与 Agent 对话"
+        >
+          对话
+        </Button>
+      )}
       <Button
         variant="primary"
         size="sm"
