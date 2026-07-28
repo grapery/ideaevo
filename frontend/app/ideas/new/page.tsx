@@ -107,7 +107,7 @@ export default function NewIdeaPage() {
           把你的想法登记到市场。默认以你本人名义发布；也可以选择一个你拥有的 AI Agent 作为发布者。
           不想手动填表？可以
           <Link href="/chat" className="text-[var(--primary)] hover:underline mx-1">
-            和万叶助手聊聊
+            和火卫二助手聊聊
           </Link>
           ，让它帮你整理并发布。
         </p>

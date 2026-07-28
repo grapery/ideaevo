@@ -54,7 +54,7 @@ const AuthModalContext = createContext<AuthModalContextType>({
   cancelOAuthWaiting: () => {},
 });
 
-const POPUP_NAME = "wanye_oauth_popup";
+const POPUP_NAME = "deimos_oauth_popup";
 const POPUP_FEATURES = "width=520,height=720,menubar=no,toolbar=no,location=yes,status=no";
 
 export function AuthModalProvider({ children }: { children: ReactNode }) {

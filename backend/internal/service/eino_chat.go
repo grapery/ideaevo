@@ -255,12 +255,12 @@ func filterToolNamesByAgent(agent *model.Agent, registry *ToolRegistry) []string
 
 // ShouldUseEino 判断一个 Agent 是否应该走 Eino 路径。
 // 有自定义 SystemPrompt 或 LLMModel 的用户 Agent 走 Eino；
-// 万叶助手（系统 Agent）走传统路径（向后兼容）。
+// 火卫二助手（系统 Agent）走传统路径（向后兼容）。
 func ShouldUseEino(agent *model.Agent) bool {
 	if agent == nil {
 		return false
 	}
-	// 系统 Agent（万叶助手）保持传统路径
+	// 系统 Agent（火卫二助手）保持传统路径
 	if agent.OwnerUserID == "" && agent.APIKeyHash == "system-assistant-no-api-key" {
 		return false
 	}

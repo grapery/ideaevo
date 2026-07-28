@@ -161,7 +161,7 @@ export function IdeaDetailEngagement({
   }
 
   function scrollToComments() {
-    document.getElementById("wanye-comments")?.scrollIntoView({ behavior: "smooth" });
+    document.getElementById("comments")?.scrollIntoView({ behavior: "smooth" });
   }
 
   async function shareIdea() {

@@ -9,12 +9,15 @@ import (
 	"gorm.io/gorm"
 )
 
-// SystemAssistantName 是内置万叶助手的固定名字（启动时按这个名字查找/创建）。
-const SystemAssistantName = "万叶助手"
+// SystemAssistantName 是内置火卫二助手的固定名字（启动时按这个名字查找/创建）。
+const SystemAssistantName = "火卫二助手"
+
+// legacySystemAssistantName 是旧品牌名，仅用于 EnsureSystemAssistant 自动迁移旧记录。
+const legacySystemAssistantName = "火卫二助手"
 
 // SystemAssistantDescription 是内置助手的人设描述。
 // 这个描述会进入 system prompt，决定助手如何与用户对话。
-const SystemAssistantDescription = `你是「万叶助手」，万叶想法市场的内置 AI 助手。
+const SystemAssistantDescription = `你是「火卫二助手」，火卫二想法市场的内置 AI 助手。
 
 你的职责：
 - 帮用户发现有意思、相关、已经做出来或正在做的 idea
@@ -54,9 +57,11 @@ var SystemCapabilities = []string{
 	"get_comments",
 }
 
-// EnsureSystemAssistant 确保「万叶助手」agent 存在。
+// EnsureSystemAssistant 确保「火卫二助手」agent 存在。
 // 如果 SYSTEM_AGENT_ID 配置了：按 ID 查找，找不到则按 ID 创建。
 // 如果未配置：按固定名字查找，找到就用它的 ID；找不到则创建一个。
+// 品牌改名兼容：若新名不存在但旧名「火卫二助手」存在，自动 UPDATE 改为新名并复用，
+// 避免产生孤儿记录（旧的系统 agent 带着历史对话被遗弃）。
 // 返回该 agent 的 ID（供 main.go 用于过滤工具白名单等场景）。
 func EnsureSystemAssistant(db *gorm.DB, configuredID string) (string, error) {
 	// 1. 显式配置优先
@@ -73,7 +78,7 @@ func EnsureSystemAssistant(db *gorm.DB, configuredID string) (string, error) {
 		return createSystemAgent(db, configuredID)
 	}
 
-	// 2. 按名字查找
+	// 2. 按新名字查找
 	var agent model.Agent
 	err := db.First(&agent, "name = ?", SystemAssistantName).Error
 	if err == nil {
@@ -83,7 +88,16 @@ func EnsureSystemAssistant(db *gorm.DB, configuredID string) (string, error) {
 		return "", fmt.Errorf("query system agent by name: %w", err)
 	}
 
-	// 3. 不存在则创建
+	// 3. 品牌改名迁移：新名不存在时，查旧名「火卫二助手」，找到则改名复用
+	var legacy model.Agent
+	if e := db.First(&legacy, "name = ?", legacySystemAssistantName).Error; e == nil {
+		if uerr := db.Model(&model.Agent{}).Where("id = ?", legacy.ID).Update("name", SystemAssistantName).Error; uerr != nil {
+			return "", fmt.Errorf("migrate legacy system assistant name: %w", uerr)
+		}
+		return legacy.ID, nil
+	}
+
+	// 4. 新旧名都不存在则创建
 	return createSystemAgent(db, "")
 }
 

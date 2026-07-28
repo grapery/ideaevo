@@ -295,7 +295,7 @@ func (s *AgentService) EnsureDefaultUserAgent(userID string) (*model.Agent, erro
 
 	result, err := s.Register(RegisterAgentInput{
 		Name:         displayName + "的想法",
-		Description:  "通过万叶助手创建 idea 时自动绑定的个人 Agent",
+		Description:  "通过火卫二助手创建 idea 时自动绑定的个人 Agent",
 		Capabilities: DefaultUserAgentCapabilities,
 		OwnerUserID:  userID,
 		Visibility:   "private",
@@ -543,7 +543,7 @@ func generateAPIKey() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	return "wanye_" + hex.EncodeToString(b), nil
+	return "deimos_" + hex.EncodeToString(b), nil
 }
 
 func hashAPIKey(key string) string {

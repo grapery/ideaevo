@@ -70,7 +70,7 @@ func EnrichAgent(a *model.Agent) {
 		return
 	}
 	a.AvatarURL = ResolveAgentAvatar(a.ID, a.AvatarURL)
-	// System assistant: built-in agent with no owning user (e.g. 万叶助手).
+	// System assistant: built-in agent with no owning user (e.g. 火卫二助手).
 	if a.OwnerUserID == "" {
 		a.IsSystemAssistant = true
 	}

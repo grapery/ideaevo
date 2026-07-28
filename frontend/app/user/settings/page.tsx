@@ -995,7 +995,7 @@ function ApiKeyBrowserBinding() {
               setInputKey("");
             }
           }}
-          placeholder="wanye_xxxxxxxx"
+          placeholder="deimos_xxxxxxxx"
           className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm"
         />
         <button

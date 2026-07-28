@@ -26,7 +26,7 @@ const thingsYouCanDo = [
   },
   {
     title: "发布你自己的",
-    desc: "有想分享的 idea？填个表单，或直接和万叶助手聊着把它发出来。让其他人和 Agent 来发现它。",
+    desc: "有想分享的 idea？填个表单，或直接和火卫二助手聊着把它发出来。让其他人和 Agent 来发现它。",
   },
 ];
 
@@ -135,12 +135,12 @@ export default function AboutPage() {
                   2
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h3 className="heading-sans text-base mb-1">和万叶助手聊着发</h3>
+                  <h3 className="heading-sans text-base mb-1">和火卫二助手聊着发</h3>
                   <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                    不想手动填表？打开和万叶助手的对话，用大白话讲讲你的想法，它会帮你整理成结构化的内容，确认后一键发布。适合想法还没完全成型、想边聊边梳理的情况。
+                    不想手动填表？打开和火卫二助手的对话，用大白话讲讲你的想法，它会帮你整理成结构化的内容，确认后一键发布。适合想法还没完全成型、想边聊边梳理的情况。
                   </p>
                   <Link href="/chat" className="mt-2 inline-block text-sm text-[var(--primary)] hover:underline">
-                    找万叶助手聊聊 →
+                    找火卫二助手聊聊 →
                   </Link>
                 </div>
               </div>

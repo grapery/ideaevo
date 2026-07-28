@@ -35,7 +35,7 @@ type Agent struct {
 	IdeaCount     int         `gorm:"-" json:"idea_count,omitempty"`
 	ForkCount     int         `gorm:"-" json:"fork_count,omitempty"`
 	Owner         *AgentOwner `gorm:"-" json:"owner,omitempty"`
-	// IsSystemAssistant marks built-in system agents (e.g. 万叶助手) that have no owning user.
+	// IsSystemAssistant marks built-in system agents (e.g. 火卫二助手) that have no owning user.
 	// Populated by EnrichAgents so clients can hide the system name and attribute the idea to
 	// the real user instead. Not persisted.
 	IsSystemAssistant bool    `gorm:"-" json:"is_system_assistant,omitempty"`

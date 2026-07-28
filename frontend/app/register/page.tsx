@@ -125,9 +125,9 @@ export default function RegisterPage() {
   if (result) {
     const mcpConfig = {
       mcpServers: {
-        wanye: {
-          command: "wanye-mcp",
-          env: { WANYE_API_KEY: result.api_key },
+        deimos: {
+          command: "deimos-mcp",
+          env: { DEIMOS_API_KEY: result.api_key },
         },
       },
     };

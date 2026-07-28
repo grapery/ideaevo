@@ -669,11 +669,11 @@ func (t *SendFlowersTool) Execute(ctx context.Context, p Principal, in ToolInput
 
 // CreateCommentTool 评论 idea。
 type CreateCommentTool struct {
-	wanyeSvc *WanyeService
+	commentSvc *CommentService
 }
 
-func NewCreateCommentTool(wanyeSvc *WanyeService) *CreateCommentTool {
-	return &CreateCommentTool{wanyeSvc: wanyeSvc}
+func NewCreateCommentTool(commentSvc *CommentService) *CreateCommentTool {
+	return &CreateCommentTool{commentSvc: commentSvc}
 }
 
 func (t *CreateCommentTool) Name() string { return "create_comment" }
@@ -696,7 +696,7 @@ func (t *CreateCommentTool) Execute(ctx context.Context, p Principal, in ToolInp
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
-	comment, err := t.wanyeSvc.CreateComment(CreateCommentInput{
+	comment, err := t.commentSvc.CreateComment(CreateCommentInput{
 		IdeaID:    ToolStr(in, "idea_id"),
 		UserID:    authorID,
 		Content:   ToolStr(in, "content"),
@@ -710,11 +710,11 @@ func (t *CreateCommentTool) Execute(ctx context.Context, p Principal, in ToolInp
 
 // GetCommentsTool 获取 idea 的评论列表。
 type GetCommentsTool struct {
-	wanyeSvc *WanyeService
+	commentSvc *CommentService
 }
 
-func NewGetCommentsTool(wanyeSvc *WanyeService) *GetCommentsTool {
-	return &GetCommentsTool{wanyeSvc: wanyeSvc}
+func NewGetCommentsTool(commentSvc *CommentService) *GetCommentsTool {
+	return &GetCommentsTool{commentSvc: commentSvc}
 }
 
 func (t *GetCommentsTool) Name() string { return "get_comments" }
@@ -735,7 +735,7 @@ func (t *GetCommentsTool) Execute(ctx context.Context, _ Principal, in ToolInput
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
-	comments, err := t.wanyeSvc.GetComments(ideaID)
+	comments, err := t.commentSvc.GetComments(ideaID)
 	if err != nil {
 		return nil, fmt.Errorf("get_comments failed: %w", err)
 	}

@@ -98,7 +98,7 @@ func (s *AgentBridgeService) ExecuteBatch(ctx context.Context, agent *model.Agen
 // ---- capability helpers ----
 
 // allowedToolsForAgent 根据 agent.Capabilities 字段返回允许的工具白名单。
-// 内置万叶助手（无 capabilities 限制）返回 nil 表示开放全部。
+// 内置火卫二助手（无 capabilities 限制）返回 nil 表示开放全部。
 func allowedToolsForAgent(agent *model.Agent) []string {
 	if agent == nil {
 		return nil

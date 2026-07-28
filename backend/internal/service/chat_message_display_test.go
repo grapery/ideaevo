@@ -51,7 +51,7 @@ func TestMergeActivityMaps(t *testing.T) {
 	existing := map[string]any{
 		"type":              "tool_call",
 		"is_a2a":            true,
-		"target_agent_name": "万叶助手",
+		"target_agent_name": "火卫二助手",
 		"task":              "summarize",
 	}
 	update := map[string]any{
@@ -62,7 +62,7 @@ func TestMergeActivityMaps(t *testing.T) {
 	assert.Equal(t, "tool_result", merged["type"])
 	assert.Equal(t, false, merged["ok"])
 	assert.Equal(t, true, merged["is_a2a"])
-	assert.Equal(t, "万叶助手", merged["target_agent_name"])
+	assert.Equal(t, "火卫二助手", merged["target_agent_name"])
 	assert.Equal(t, "summarize", merged["task"])
 }
 
@@ -81,7 +81,7 @@ func TestFilterVisibleMessages(t *testing.T) {
 
 func TestBuildToolCallActivityContent(t *testing.T) {
 	assert.Equal(t, "正在调用工具：search_ideas…", buildToolCallActivityContent("search_ideas", ""))
-	assert.Equal(t, "🔗 正在与 万叶助手 通信…", buildToolCallActivityContent("delegate_to_agent", "万叶助手"))
+	assert.Equal(t, "🔗 正在与 火卫二助手 通信…", buildToolCallActivityContent("delegate_to_agent", "火卫二助手"))
 }
 
 func TestChatMessageToLLMMessage_RestoresToolCalls(t *testing.T) {

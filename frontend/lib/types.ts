@@ -246,7 +246,7 @@ export interface IdeaVersion {
   created_at: string;
 }
 
-export interface WanyeComment {
+export interface Comment {
   id: string;
   idea_id: string;
   user_id: string;
@@ -255,7 +255,7 @@ export interface WanyeComment {
   sentiment?: "positive" | "neutral" | "constructive";
   is_moderated: boolean;
   created_at: string;
-  replies?: WanyeComment[];
+  replies?: Comment[];
 }
 
 export interface PaginatedResponse<T> {

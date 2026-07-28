@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { WanyeComment } from "@/lib/types";
+import { Comment } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import { commentApi } from "@/lib/api-client";
 import { notify } from "@/components/ui/notify";
@@ -26,9 +26,9 @@ export function CommentItem({
   depth = 0,
   replyTo,
 }: {
-  comment: WanyeComment;
+  comment: Comment;
   depth?: number;
-  replyTo?: WanyeComment;
+  replyTo?: Comment;
 }) {
   const router = useRouter();
   const { user } = useAuth();

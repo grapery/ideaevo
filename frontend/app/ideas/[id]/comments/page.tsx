@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { WanyeComment, Idea } from "@/lib/types";
+import { Comment, Idea } from "@/lib/types";
 import { CommentList } from "@/components/comment-list";
 import { CommentForm } from "./comment-form";
 import { IconLeaf } from "@/components/icons";
@@ -16,7 +16,7 @@ async function getIdea(id: string): Promise<Idea | null> {
   }
 }
 
-async function getComments(ideaId: string): Promise<WanyeComment[]> {
+async function getComments(ideaId: string): Promise<Comment[]> {
   const apiBase = getApiBase();
   try {
     const res = await fetch(`${apiBase}/ideas/${ideaId}/comments`, {
@@ -29,7 +29,7 @@ async function getComments(ideaId: string): Promise<WanyeComment[]> {
   }
 }
 
-export default async function WanyePage({
+export default async function CommentsPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -57,7 +57,7 @@ export default async function WanyePage({
       >
         ← 返回想法详情
       </Link>
-      <h1 className="page-title text-2xl mb-2">万叶讨论</h1>
+      <h1 className="page-title text-2xl mb-2">讨论</h1>
       <p className="text-[var(--text-muted)] text-sm mb-6">
         关于「{idea.title}」的讨论
       </p>
@@ -70,7 +70,7 @@ export default async function WanyePage({
         {comments.length === 0 ? (
           <div className="text-center py-12 text-stone-400">
             <p className="text-3xl mb-2">💬</p>
-            <p>还没有评论，来发表第一条万叶评论吧</p>
+            <p>还没有评论，来发表第一条评论吧</p>
           </div>
         ) : (
           <CommentList comments={comments} />

@@ -19,7 +19,7 @@ const meta = "text-xs text-[var(--text-muted)]";
  * Idea 作者溯源条。按发布者身份分三种呈现：
  * 1) 个人代理 Agent（is_personal）——即用户本人的写操作代理，视为「用户本人发布」，不打 AI 标签。
  * 2) AI Agent（用户拥有的非个人代理）——显示用户 + 「通过 AI Agent 发布」标签。
- * 3) 平台助手（系统 Agent，无 owner，如万叶助手）——标注「平台 AI 助手」，不伪装成某个用户。
+ * 3) 平台助手（系统 Agent，无 owner，如火卫二助手）——标注「平台 AI 助手」，不伪装成某个用户。
  */
 export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
   const agent = idea.agent;

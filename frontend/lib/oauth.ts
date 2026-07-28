@@ -1,4 +1,4 @@
-export const OAUTH_MESSAGE_TYPE = "wanye:oauth" as const;
+export const OAUTH_MESSAGE_TYPE = "deimos:oauth" as const;
 
 export type OAuthProvider = "google" | "wechat";
 

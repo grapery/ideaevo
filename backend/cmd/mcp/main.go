@@ -19,7 +19,7 @@ func main() {
 	agentSvc := service.NewAgentService(db)
 	ideaSvc := service.NewIdeaService(db)
 	socialSvc := service.NewSocialService(db)
-	wanyeSvc := service.NewWanyeService(db)
+	commentSvc := service.NewCommentService(db)
 	emailSvc := service.NewEmailService(cfg)
 	assets, _ := service.NewObjectStore(cfg)
 	userSvc := service.NewUserService(db, emailSvc, cfg.FrontendURL, assets)
@@ -28,7 +28,7 @@ func main() {
 
 	// 共享 ToolRegistry：MCP 工具与 REST chat / agent-bridge 使用同一份实现
 	// MCP 不注册 delegate_to_agent（A2A 委派仅在 REST chat 中可用）
-	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc, agentSvc, assets, nil)
+	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agentSvc, assets, nil)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 
 	mcpServer := mcphandler.NewServer(agentSvc, socialSvc, chatSvc, userSvc, db).
@@ -41,13 +41,13 @@ func main() {
 			port = "9090"
 		}
 		sseServer := mcpgolang.NewSSEServer(mcpServer.GetServer())
-		fmt.Printf("Starting Wanye MCP Server (SSE) on :%s\n", port)
+		fmt.Printf("Starting Deimos MCP Server (SSE) on :%s\n", port)
 		if err := sseServer.Start(":" + port); err != nil {
 			fmt.Fprintf(os.Stderr, "SSE server error: %v\n", err)
 			os.Exit(1)
 		}
 	default:
-		fmt.Println("Starting Wanye MCP Server (stdio)")
+		fmt.Println("Starting Deimos MCP Server (stdio)")
 		if err := mcpgolang.NewStdioServer(mcpServer.GetServer()).Listen(context.Background(), os.Stdin, os.Stdout); err != nil {
 			fmt.Fprintf(os.Stderr, "stdio server error: %v\n", err)
 			os.Exit(1)

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FlowerDonor, Idea, IdeaLineage, IdeaStats, WanyeComment, normalizeTags } from "@/lib/types";
+import { FlowerDonor, Idea, IdeaLineage, IdeaStats, Comment, normalizeTags } from "@/lib/types";
 import { CommentList } from "@/components/comment-list";
 import { StatusBadge } from "@/components/status-badge";
 import { IdeaActionBar } from "@/components/idea-action-bar";
@@ -15,7 +15,7 @@ import {
   FlowersPanel,
   IdeaStatsPanel,
 } from "@/components/idea-detail-sidebar";
-import { CommentForm } from "./wanye/comment-form";
+import { CommentForm } from "./comments/comment-form";
 import { getApiBase } from "@/lib/api-base";
 import { IconLeaf, IconGitFork } from "@/components/icons";
 import { IdeaViewReporter } from "@/components/idea-view-reporter";
@@ -33,7 +33,7 @@ async function getIdea(id: string): Promise<Idea | null> {
   }
 }
 
-async function getComments(ideaId: string): Promise<WanyeComment[]> {
+async function getComments(ideaId: string): Promise<Comment[]> {
   try {
     const res = await fetch(`${apiBase}/ideas/${ideaId}/comments`, { cache: "no-store" });
     if (!res.ok) return [];
@@ -141,7 +141,7 @@ export default async function IdeaDetailPage({
         <div className="profile-tabs -mx-4 sm:-mx-6 mb-0 px-4 sm:px-6">
           <div className="flex gap-0 overflow-x-auto">
             <a href="#" className="profile-tab" data-active="true">想法正文</a>
-            <a href="#wanye-comments" className="profile-tab">
+            <a href="#comments" className="profile-tab">
               评论
               {comments.length > 0 && <span className="count-badge">{comments.length}</span>}
             </a>
@@ -222,7 +222,7 @@ export default async function IdeaDetailPage({
             <IdeaStatsPanel idea={idea} stats={stats} />
           </aside>
 
-          <div className="surface-card p-6" id="wanye-comments">
+          <div className="surface-card p-6" id="comments">
               <div className="flex items-center gap-2 mb-4">
                 <h2 className="heading-sans text-lg">Deimos 评论</h2>
                 <span className="text-sm text-[var(--text-muted)]">({comments.length})</span>
@@ -240,7 +240,7 @@ export default async function IdeaDetailPage({
 
               {comments.length > 5 && (
                 <Link
-                  href={`/ideas/${id}/wanye`}
+                  href={`/ideas/${id}/comments`}
                   className="mt-4 block text-center text-sm text-[var(--primary)] hover:underline"
                 >
                   查看全部 {comments.length} 条评论 →

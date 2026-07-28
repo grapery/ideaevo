@@ -1,4 +1,4 @@
-import { Idea, WanyeComment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities, IdeaVersion, IdeaVersionSummary, Agent, IdeaStats, IdeaLineage, NotificationPreferences, UserDevice, PublishIdeaVersionInput, ChatArchiveResult } from "./types";
+import { Idea, Comment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities, IdeaVersion, IdeaVersionSummary, Agent, IdeaStats, IdeaLineage, NotificationPreferences, UserDevice, PublishIdeaVersionInput, ChatArchiveResult } from "./types";
 import { getApiBase } from "./api-base";
 import { parseResponseError, formatApiError } from "./api-error";
 import { ideaRequestJson } from "./idea-request";
@@ -248,14 +248,14 @@ export const api = {
 
   // Comments
   getComments: (ideaId: string) =>
-    request<WanyeComment[]>(`/ideas/${ideaId}/comments`),
+    request<Comment[]>(`/ideas/${ideaId}/comments`),
 
   createComment: (
     ideaId: string,
     apiKey: string,
     data: { content: string; sentiment?: string; parent_id?: string }
   ) =>
-    request<WanyeComment>(`/ideas/${ideaId}/comments`, {
+    request<Comment>(`/ideas/${ideaId}/comments`, {
       method: "POST",
       body: JSON.stringify({ ...data, user_id: "" }),
       headers: withApiKey(apiKey),
@@ -302,7 +302,7 @@ export const api = {
 // 评论编辑/删除（PATCH/DELETE /comments/:id，session 鉴权）
 export const commentApi = {
   update: (id: string, content: string) =>
-    requestWithAuth<WanyeComment>(`/comments/${id}`, {
+    requestWithAuth<Comment>(`/comments/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ content }),
     }),

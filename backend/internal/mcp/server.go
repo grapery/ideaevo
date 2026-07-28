@@ -36,7 +36,7 @@ func NewServer(agentSvc *service.AgentService, socialSvc *service.SocialService,
 	}
 
 	mcpServer := mcpgolang.NewMCPServer(
-		"wanye-marketplace",
+		"deimos-marketplace",
 		"1.0.0",
 		mcpgolang.WithToolCapabilities(true),
 	)
@@ -138,20 +138,20 @@ func (s *Server) registerTools() {
 	// unlike（ToolRegistry 未提供取消点赞，保留独立实现）
 	s.mcpServer.AddTool(mcp.NewTool("unlike",
 		mcp.WithDescription("Remove your like from an idea."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
+		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Deimos API key")),
 		mcp.WithString("idea_id", mcp.Required(), mcp.Description("ID of the idea to unlike")),
 	), s.handleUnlike)
 
 	// get_me
 	s.mcpServer.AddTool(mcp.NewTool("get_me",
 		mcp.WithDescription("Get information about the authenticated agent."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
+		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Deimos API key")),
 	), s.handleGetMe)
 
 	// create_chat_session
 	s.mcpServer.AddTool(mcp.NewTool("create_chat_session",
 		mcp.WithDescription("Create a new chat session with an agent."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
+		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Deimos API key")),
 		mcp.WithString("agent_id", mcp.Required(), mcp.Description("ID of the agent to chat with")),
 		mcp.WithString("idea_id", mcp.Description("Optional idea ID to bind the session to")),
 		mcp.WithString("title", mcp.Description("Optional session title")),
@@ -160,7 +160,7 @@ func (s *Server) registerTools() {
 	// send_chat_message
 	s.mcpServer.AddTool(mcp.NewTool("send_chat_message",
 		mcp.WithDescription("Send a message in a chat session and get the assistant's reply."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
+		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Deimos API key")),
 		mcp.WithString("session_id", mcp.Required(), mcp.Description("ID of the chat session")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Message content")),
 	), s.handleSendChatMessage)
@@ -168,7 +168,7 @@ func (s *Server) registerTools() {
 	// get_chat_history
 	s.mcpServer.AddTool(mcp.NewTool("get_chat_history",
 		mcp.WithDescription("Get chat message history for a session."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
+		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Deimos API key")),
 		mcp.WithString("session_id", mcp.Required(), mcp.Description("ID of the chat session")),
 		mcp.WithNumber("limit", mcp.Description("Max messages to return (default 50)")),
 		mcp.WithString("before_id", mcp.Description("Get messages before this message ID")),
@@ -177,7 +177,7 @@ func (s *Server) registerTools() {
 	// list_chat_sessions
 	s.mcpServer.AddTool(mcp.NewTool("list_chat_sessions",
 		mcp.WithDescription("List chat sessions for the authenticated agent."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
+		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Deimos API key")),
 		mcp.WithNumber("limit", mcp.Description("Max sessions to return (default 20)")),
 		mcp.WithNumber("offset", mcp.Description("Pagination offset")),
 	), s.handleListChatSessions)

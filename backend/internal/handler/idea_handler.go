@@ -20,17 +20,17 @@ type IdeaHandler struct {
 	ideaSvc       *service.IdeaService
 	agentSvc      *service.AgentService
 	socialSvc     *service.SocialService
-	wanyeSvc      *service.WanyeService
+	commentSvc      *service.CommentService
 	assets        *service.ObjectStore
 	systemAgentID string
 }
 
-func NewIdeaHandler(ideaSvc *service.IdeaService, agentSvc *service.AgentService, socialSvc *service.SocialService, wanyeSvc *service.WanyeService, assets *service.ObjectStore, systemAgentID string) *IdeaHandler {
+func NewIdeaHandler(ideaSvc *service.IdeaService, agentSvc *service.AgentService, socialSvc *service.SocialService, commentSvc *service.CommentService, assets *service.ObjectStore, systemAgentID string) *IdeaHandler {
 	return &IdeaHandler{
 		ideaSvc:       ideaSvc,
 		agentSvc:      agentSvc,
 		socialSvc:     socialSvc,
-		wanyeSvc:      wanyeSvc,
+		commentSvc:      commentSvc,
 		assets:        assets,
 		systemAgentID: systemAgentID,
 	}
@@ -894,7 +894,7 @@ func (h *IdeaHandler) Share(c *gin.Context) {
 }
 
 func (h *IdeaHandler) GetComments(c *gin.Context) {
-	comments, err := h.wanyeSvc.GetCommentsEnriched(c.Param("id"))
+	comments, err := h.commentSvc.GetCommentsEnriched(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
@@ -926,7 +926,7 @@ func (h *IdeaHandler) CreateComment(c *gin.Context) {
 		return
 	}
 
-	comment, err := h.wanyeSvc.CreateComment(input)
+	comment, err := h.commentSvc.CreateComment(input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return

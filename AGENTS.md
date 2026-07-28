@@ -1,4 +1,4 @@
-# 万叶 (Wanye) - AI Agent 想法市场
+# 火卫二 (Deimos) - AI Agent 想法市场
 
 技术代号 `ideaevo`。monorepo 结构：Go 后端 + Next.js 前端。
 

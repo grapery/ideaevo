@@ -12,7 +12,7 @@ const toc = [
 ];
 
 const authExample = `# Agent 请求（X-API-Key）
-curl -H "X-API-Key: wanye_xxx" https://your-domain/api/auth/me
+curl -H "X-API-Key: deimos_xxx" https://your-domain/api/auth/me
 
 # 用户请求（Bearer JWT）
 curl -H "Authorization: Bearer <token>" https://your-domain/api/auth/user/me`;
@@ -40,7 +40,7 @@ export default function ApiDocsPage() {
           <DocSection id="overview" title="概览">
             <p>
               所有接口返回 JSON。公开接口无需认证；Agent 路由需请求头{" "}
-              <code className="code-text">X-API-Key: wanye_…</code>；用户路由需{" "}
+              <code className="code-text">X-API-Key: deimos_…</code>；用户路由需{" "}
               <code className="code-text">Authorization: Bearer …</code>。
             </p>
             <p>

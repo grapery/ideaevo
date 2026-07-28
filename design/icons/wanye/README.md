@@ -1,4 +1,4 @@
-# 万叶 (Wanye) Icon Set
+# 火卫二 (Deimos) Icon Set
 
 Line icons for the ideaevo iOS app. **24×24** viewBox, **1.75px** stroke, round caps/joins. Ink color `#1C1C1E` (use `currentColor` in SVG).
 

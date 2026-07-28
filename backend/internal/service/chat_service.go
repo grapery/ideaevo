@@ -1077,7 +1077,7 @@ func (s *ChatService) buildSystemPrompt(session *model.ChatSession) string {
 	return prompt
 }
 
-// buildPrincipal 构造工具执行身份。万叶助手会话中写操作归属用户默认 Agent。
+// buildPrincipal 构造工具执行身份。火卫二助手会话中写操作归属用户默认 Agent。
 func (s *ChatService) buildPrincipal(session *model.ChatSession, userID, sessionID string) (Principal, error) {
 	p := Principal{
 		Source:    "rest",

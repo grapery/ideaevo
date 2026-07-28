@@ -35,7 +35,7 @@ func main() {
 	agentSvc := service.NewAgentService(db)
 	ideaSvc := service.NewIdeaService(db)
 	socialSvc := service.NewSocialService(db)
-	wanyeSvc := service.NewWanyeService(db)
+	commentSvc := service.NewCommentService(db)
 	emailSvc := service.NewEmailService(cfg)
 	assets, assetsErr := service.NewObjectStore(cfg)
 	if assetsErr != nil {
@@ -67,7 +67,7 @@ func main() {
 	followSvc := service.NewFollowService(db, notifSvc)
 	modSvc := service.NewModerationService(db)
 	socialSvc.SetNotificationService(notifSvc)
-	wanyeSvc.SetNotificationService(notifSvc)
+	commentSvc.SetNotificationService(notifSvc)
 
 	// —— 向量检索（可选启用：DashVector 或 OSS 向量 Bucket）——
 	likeSearcher := service.NewLikeSimilaritySearcher(db)
@@ -124,7 +124,7 @@ func main() {
 	// —— 工具系统（MCP / REST chat / agent-bridge 三入口共享）——
 	// 先创建不含 delegate 的 registry，后面注入 delegate 函数。
 	var delegateFn service.DelegateFunc // 延迟设置
-	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, wanyeSvc, agentSvc, assets, nil)
+	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agentSvc, assets, nil)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 	chatSvc.SetTools(toolExecutor, nil) // 内置助手暴露全部工具
 
@@ -157,7 +157,7 @@ func main() {
 
 	log.Printf("[tools] registered %d tools: %v", len(toolRegistry.Names()), toolRegistry.Names())
 
-	// —— 内置万叶助手 agent（页面聊天默认对话对象）——
+	// —— 内置火卫二助手 agent（页面聊天默认对话对象）——
 	systemAgentID, err := service.EnsureSystemAssistant(db, cfg.SystemAgentID)
 	if err != nil {
 		log.Printf("[bootstrap] WARN: failed to ensure system assistant: %v (chat with default agent will still work)", err)
@@ -168,11 +168,11 @@ func main() {
 	// —— agent-bridge（外部 AI agent 通过 REST 调用工具）——
 	bridgeSvc := service.NewAgentBridgeService(db, agentSvc, toolExecutor)
 
-	ideaHandler := handler.NewIdeaHandler(ideaSvc, agentSvc, socialSvc, wanyeSvc, assets, systemAgentID)
+	ideaHandler := handler.NewIdeaHandler(ideaSvc, agentSvc, socialSvc, commentSvc, assets, systemAgentID)
 	agentSvc.SetObjectStore(assets)
 	agentHandler := handler.NewAgentHandler(agentSvc, ideaSvc, assets, followSvc)
 	authHandler := handler.NewAuthHandler(agentSvc)
-	commentHandler := handler.NewCommentHandler(wanyeSvc)
+	commentHandler := handler.NewCommentHandler(commentSvc)
 	activityHandler := handler.NewActivityHandler(db, followSvc, socialSvc)
 	userAuthHandler := handler.NewUserAuthHandler(userSvc, authSvc)
 	chatHandler := handler.NewChatHandler(chatSvc)
@@ -355,6 +355,7 @@ func main() {
 		api.GET("/users/:id/profile", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetProfile)
 		api.GET("/users/:id/agents", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.ListUserAgents)
 		api.GET("/users/:id/ideas", ideaHandler.GetUserIdeas)
+		api.GET("/users/:id/activity", activityHandler.ListByUser)
 		api.GET("/users/:id/followers", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetFollowers)
 		api.GET("/users/:id/following", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetFollowing)
 
@@ -429,7 +430,7 @@ func main() {
 	a2aAuth.POST("/agents/:agentId", a2aHandler.HandleJSONRPC)
 	log.Printf("[a2a] endpoints registered at /a2a (discovery=public, tasks=auth)")
 
-	log.Printf("Starting Wanye API server on :%s", cfg.Port)
+	log.Printf("Starting Deimos API server on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

@@ -9,11 +9,11 @@ import (
 )
 
 type CommentHandler struct {
-	wanyeSvc *service.WanyeService
+	commentSvc *service.CommentService
 }
 
-func NewCommentHandler(wanyeSvc *service.WanyeService) *CommentHandler {
-	return &CommentHandler{wanyeSvc: wanyeSvc}
+func NewCommentHandler(commentSvc *service.CommentService) *CommentHandler {
+	return &CommentHandler{commentSvc: commentSvc}
 }
 
 func (h *CommentHandler) Update(c *gin.Context) {
@@ -26,7 +26,7 @@ func (h *CommentHandler) Update(c *gin.Context) {
 	}
 
 	userID := extractActorID(c)
-	comment, err := h.wanyeSvc.UpdateComment(c.Param("id"), userID, input.Content)
+	comment, err := h.commentSvc.UpdateComment(c.Param("id"), userID, input.Content)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
@@ -36,7 +36,7 @@ func (h *CommentHandler) Update(c *gin.Context) {
 
 func (h *CommentHandler) Delete(c *gin.Context) {
 	userID := extractActorID(c)
-	if err := h.wanyeSvc.DeleteComment(c.Param("id"), userID); err != nil {
+	if err := h.commentSvc.DeleteComment(c.Param("id"), userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
@@ -62,7 +62,7 @@ func (h *CommentHandler) ListAdmin(c *gin.Context) {
 		}
 	}
 
-	comments, total, err := h.wanyeSvc.ListCommentsAdmin(filter)
+	comments, total, err := h.commentSvc.ListCommentsAdmin(filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
@@ -84,7 +84,7 @@ func (h *CommentHandler) Moderate(c *gin.Context) {
 		return
 	}
 
-	if err := h.wanyeSvc.ModerateComment(c.Param("id"), input.Moderated); err != nil {
+	if err := h.commentSvc.ModerateComment(c.Param("id"), input.Moderated); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}

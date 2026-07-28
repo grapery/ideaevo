@@ -51,7 +51,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
   const [bookmarking, setBookmarking] = useState(false);
 
   const detailHref = `/ideas/${idea.id}`;
-  const commentsHref = `${detailHref}#wanye-comments`;
+  const commentsHref = `${detailHref}#comments`;
 
   function goDetail() {
     router.push(detailHref);

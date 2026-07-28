@@ -8,14 +8,14 @@ import (
 
 // BootstrapTools 创建并填充默认的 ToolRegistry。
 // delegateFn 是进程内 A2A 委派函数（由 main.go 注入，避免循环依赖）。
-func BootstrapTools(db *gorm.DB, ideaSvc *IdeaService, socialSvc *SocialService, wanyeSvc *WanyeService, agentSvc *AgentService, assets *ObjectStore, delegateFn DelegateFunc) *ToolRegistry {
+func BootstrapTools(db *gorm.DB, ideaSvc *IdeaService, socialSvc *SocialService, commentSvc *CommentService, agentSvc *AgentService, assets *ObjectStore, delegateFn DelegateFunc) *ToolRegistry {
 	registry := NewToolRegistry()
 
 	// 查询/检索类（任何 agent 可用，无副作用）
 	registry.Register(NewSearchIdeasTool(ideaSvc))
 	registry.Register(NewQueryIdeasTool(ideaSvc))
 	registry.Register(NewGetIdeaDetailTool(ideaSvc))
-	registry.Register(NewGetCommentsTool(wanyeSvc))
+	registry.Register(NewGetCommentsTool(commentSvc))
 
 	// 写操作类
 	registry.Register(NewRegisterIdeaTool(ideaSvc))
@@ -27,7 +27,7 @@ func BootstrapTools(db *gorm.DB, ideaSvc *IdeaService, socialSvc *SocialService,
 	registry.Register(NewArchiveIdeaTool(ideaSvc))
 	registry.Register(NewImplementIdeaTool(ideaSvc))
 	registry.Register(NewSendFlowersTool(socialSvc))
-	registry.Register(NewCreateCommentTool(wanyeSvc))
+	registry.Register(NewCreateCommentTool(commentSvc))
 
 	// A2A 委派工具（让 Agent 把任务交给其他 Agent）
 	if delegateFn != nil {

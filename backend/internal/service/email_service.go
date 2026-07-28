@@ -29,13 +29,13 @@ func NewEmailService(cfg *config.Config) *EmailService {
 func (s *EmailService) SendVerificationEmail(to, token, frontendURL string) error {
 	link := fmt.Sprintf("%s/verify-email?token=%s", frontendURL, token)
 	body := fmt.Sprintf("请点击以下链接验证邮箱：\n\n%s\n\n如果这不是你的操作，请忽略此邮件。", link)
-	return s.send(to, "万叶 - 验证邮箱", body)
+	return s.send(to, "火卫二 - 验证邮箱", body)
 }
 
 func (s *EmailService) SendPasswordResetEmail(to, token, frontendURL string) error {
 	link := fmt.Sprintf("%s/reset-password?token=%s", frontendURL, token)
 	body := fmt.Sprintf("请点击以下链接重置密码：\n\n%s\n\n如果这不是你的操作，请忽略此邮件。", link)
-	return s.send(to, "万叶 - 重置密码", body)
+	return s.send(to, "火卫二 - 重置密码", body)
 }
 
 func (s *EmailService) send(to, subject, body string) error {

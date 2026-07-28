@@ -15,7 +15,7 @@ func extractBearerValue(c *gin.Context) string {
 }
 
 func looksLikeJWT(value string) bool {
-	return strings.Count(value, ".") == 2 && !strings.HasPrefix(value, "wanye_")
+	return strings.Count(value, ".") == 2 && !strings.HasPrefix(value, "deimos_")
 }
 
 // extractUserSessionToken reads full user JWT from cookie or Bearer header.
@@ -33,7 +33,7 @@ func extractAgentAPIKey(c *gin.Context) string {
 	if key := c.GetHeader("X-API-Key"); key != "" {
 		return key
 	}
-	if bearer := extractBearerValue(c); bearer != "" && strings.HasPrefix(bearer, "wanye_") {
+	if bearer := extractBearerValue(c); bearer != "" && strings.HasPrefix(bearer, "deimos_") {
 		return bearer
 	}
 	if key := c.Query("api_key"); key != "" {

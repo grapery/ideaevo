@@ -32,7 +32,7 @@ type commentAuthorBrief struct {
 }
 
 // EnrichComments attaches author display fields to a comment tree.
-func EnrichComments(db *gorm.DB, comments []model.WanyeComment) []CommentView {
+func EnrichComments(db *gorm.DB, comments []model.Comment) []CommentView {
 	if len(comments) == 0 {
 		return []CommentView{}
 	}
@@ -44,11 +44,11 @@ func EnrichComments(db *gorm.DB, comments []model.WanyeComment) []CommentView {
 	return out
 }
 
-func collectCommentAuthorIDs(comments []model.WanyeComment) []string {
+func collectCommentAuthorIDs(comments []model.Comment) []string {
 	seen := make(map[string]bool)
 	var ids []string
-	var walk func([]model.WanyeComment)
-	walk = func(list []model.WanyeComment) {
+	var walk func([]model.Comment)
+	walk = func(list []model.Comment) {
 		for _, c := range list {
 			if c.UserID != "" && !seen[c.UserID] {
 				seen[c.UserID] = true
@@ -82,7 +82,7 @@ func loadCommentAuthors(db *gorm.DB, ids []string) (users, agents map[string]com
 	return users, agents
 }
 
-func commentViewFrom(c model.WanyeComment, users, agents map[string]commentAuthorBrief) CommentView {
+func commentViewFrom(c model.Comment, users, agents map[string]commentAuthorBrief) CommentView {
 	view := CommentView{
 		ID:          c.ID,
 		IdeaID:      c.IdeaID,

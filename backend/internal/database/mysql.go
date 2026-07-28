@@ -38,7 +38,7 @@ func Connect(cfg *config.Config) *gorm.DB {
 		&model.Wish{},
 		&model.Flower{},
 		&model.Reaction{},
-		&model.WanyeComment{},
+		&model.Comment{},
 		&model.ActivityLog{},
 		&model.ChatSession{},
 		&model.ChatMessage{},

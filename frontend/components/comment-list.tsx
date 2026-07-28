@@ -1,14 +1,14 @@
-import { WanyeComment } from "@/lib/types";
+import { Comment } from "@/lib/types";
 import { CommentItem } from "./comment-item";
 
 export interface FlatComment {
-  comment: WanyeComment;
+  comment: Comment;
   depth: number;
-  replyTo?: WanyeComment;
+  replyTo?: Comment;
 }
 
 /** 将嵌套回复平铺为一维列表，回复以缩进展示 */
-export function flattenComments(comments: WanyeComment[]): FlatComment[] {
+export function flattenComments(comments: Comment[]): FlatComment[] {
   const result: FlatComment[] = [];
 
   for (const comment of comments) {
@@ -23,7 +23,7 @@ export function flattenComments(comments: WanyeComment[]): FlatComment[] {
   return result;
 }
 
-export function CommentList({ comments }: { comments: WanyeComment[] }) {
+export function CommentList({ comments }: { comments: Comment[] }) {
   if (comments.length === 0) return null;
 
   const flat = flattenComments(comments);
