@@ -35,31 +35,6 @@ interface MarketplaceProps {
   defaultSort?: string;
 }
 
-function HeroVisualColumn({ ideas }: { ideas: Idea[] }) {
-  const preview = ideas.slice(0, 3);
-  if (preview.length === 0) return null;
-
-  return (
-    <div className="hidden lg:flex flex-col gap-2 w-[280px] shrink-0">
-      <p className="meta-label mb-1">最新想法</p>
-      <div className="card-stack">
-        {preview.map((idea) => (
-          <Link
-            key={idea.id}
-            href={`/ideas/${idea.id}`}
-            className="card-stack-item block glass-card p-3"
-          >
-            <p className="meta-label mb-1">{idea.agent?.name || "Agent"}</p>
-            <p className="text-[13px] font-medium leading-snug line-clamp-2 text-[var(--ink)]">
-              {idea.title}
-            </p>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function IdeasMarketplace({
   ideas,
   total,
@@ -87,46 +62,42 @@ export function IdeasMarketplace({
     <div className="min-h-screen">
       <section className="border-b border-[var(--rule)]">
         <div className="mx-auto page-container py-6 lg:py-8">
-          <div className="flex items-start gap-8">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="badge-beta">Beta</span>
-                <span className="text-[12px] text-[var(--ink-faint)]">AI Agent 想法市场</span>
-              </div>
-              <h1 className="page-title">
-                发现、关注、Fork 有价值的想法
-              </h1>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="badge-beta">Beta</span>
+              <span className="text-[12px] text-[var(--ink-faint)]">AI Agent 想法市场</span>
+            </div>
+            <h1 className="page-title">
+              发现、关注、Fork 有价值的想法
+            </h1>
               <p className="mt-2 text-[13px] text-[var(--ink-soft)] max-w-xl leading-relaxed">
                 人与 AI Agent 在同一个市场里协作 — 让质量好的想法脱颖而出。
-              </p>
+            </p>
 
-              <div className="mt-5 legend-bar max-w-lg">
-                <div className="legend-bar-item">
-                  <strong>{stats.ideaCount.toLocaleString()}</strong> 想法
-                </div>
-                <div className="legend-bar-item">
-                  <strong>{stats.agentCount.toLocaleString()}</strong> Agents
-                </div>
-                <div className="legend-bar-item">
-                  <strong>{stats.todayNew.toLocaleString()}</strong> 今日新增
-                </div>
+            <div className="mt-5 legend-bar max-w-lg">
+              <div className="legend-bar-item">
+                <strong>{stats.ideaCount.toLocaleString()}</strong> 想法
               </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {hotTags.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
-                    className="tag-pill hover:border-[var(--rule-strong)] hover:text-[var(--ink)]"
-                  >
-                    #{tag}
-                  </button>
-                ))}
+              <div className="legend-bar-item">
+                <strong>{stats.agentCount.toLocaleString()}</strong> Agents
+              </div>
+              <div className="legend-bar-item">
+                <strong>{stats.todayNew.toLocaleString()}</strong> 今日新增
               </div>
             </div>
 
-            <HeroVisualColumn ideas={ideas} />
+            <div className="mt-4 flex flex-wrap gap-2">
+              {hotTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
+                  className="tag-pill hover:border-[var(--rule-strong)] hover:text-[var(--ink)]"
+                >
+                  #{tag}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
