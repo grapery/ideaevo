@@ -155,59 +155,61 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
           />
         </div>
       )}
-      {/* 标题行：idea 图标 + 标题（卡片最突出的元素） */}
-      <div className="flex items-center gap-2.5 mb-2">
+      {/* 头部两栏布局：左侧 idea 大图标，右侧上方标题、下方创建者+元信息 */}
+      <div className="mb-2 flex items-start gap-3">
         <WireframeAvatar
           name={idea.title}
           avatarUrl={idea.icon_url}
           entityId={idea.id}
           kind="idea"
           shape="rounded"
-          size={36}
+          size={44}
           title={idea.title}
         />
-        <h3
-          className={`min-w-0 flex-1 text-[16px] font-semibold leading-snug tracking-tight line-clamp-2 transition-colors ${
-            isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink)] group-hover:text-[var(--primary)]"
-          }`}
-        >
-          {idea.title}
-        </h3>
-      </div>
-
-      {/* 创建者 + 元信息行：用户本人(个人代理)跳用户主页、无 AI 标签；AI Agent 跳 Agent 页 + AI 标签。
-          独立链接，点击不触发整卡跳转。 */}
-      <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
-        <Link
-          href={creatorHref}
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex min-w-0 items-center gap-1 rounded-md px-0.5 py-0.5 hover:bg-[var(--bg-canvas)]"
-        >
-          <WireframeAvatar
-            name={creatorName}
-            avatarUrl={creatorAvatar}
-            entityId={creatorEntityId}
-            kind={creatorKind}
-            size={16}
-            title={creatorName}
-          />
-          <span className="truncate text-[var(--ink-soft)] hover:text-[var(--primary)]">
-            {creatorName}
-          </span>
-          {!isPersonal && (
-            <span className="shrink-0 badge-pill text-[9px] text-[var(--ink-faint)] uppercase tracking-wide">
-              AI
-            </span>
-          )}
-        </Link>
-        <span className="text-[var(--ink-faint)]">· {formatRelativeTime(idea.created_at)}</span>
-        {idea.status !== "active" ? (
-          <StatusBadge status={idea.status} />
-        ) : idea.impl_status ? (
-          <ImplStatusBadge status={idea.impl_status} />
-        ) : (
-          <StatusBadge status={idea.status} />
-        )}
+        <div className="min-w-0 flex-1">
+          {/* 标题（卡片最突出的元素） */}
+          <h3
+            className={`text-[16px] font-semibold leading-snug tracking-tight line-clamp-2 transition-colors ${
+              isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink)] group-hover:text-[var(--primary)]"
+            }`}
+          >
+            {idea.title}
+          </h3>
+          {/* 创建者 + 元信息：用户本人(个人代理)跳用户主页、无 AI 标签；
+              AI Agent 跳 Agent 页 + AI 标签。独立链接，点击不触发整卡跳转。 */}
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
+            <Link
+              href={creatorHref}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex min-w-0 items-center gap-1 rounded-md px-0.5 py-0.5 hover:bg-[var(--bg-canvas)]"
+            >
+              <WireframeAvatar
+                name={creatorName}
+                avatarUrl={creatorAvatar}
+                entityId={creatorEntityId}
+                kind={creatorKind}
+                size={16}
+                title={creatorName}
+              />
+              <span className="truncate text-[var(--ink-soft)] hover:text-[var(--primary)]">
+                {creatorName}
+              </span>
+              {!isPersonal && (
+                <span className="shrink-0 badge-pill text-[9px] text-[var(--ink-faint)] uppercase tracking-wide">
+                  AI
+                </span>
+              )}
+            </Link>
+            <span className="text-[var(--ink-faint)]">· {formatRelativeTime(idea.created_at)}</span>
+            {idea.status !== "active" ? (
+              <StatusBadge status={idea.status} />
+            ) : idea.impl_status ? (
+              <ImplStatusBadge status={idea.impl_status} />
+            ) : (
+              <StatusBadge status={idea.status} />
+            )}
+          </div>
+        </div>
       </div>
 
       <p
