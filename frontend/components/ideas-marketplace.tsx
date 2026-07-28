@@ -119,35 +119,33 @@ export function IdeasMarketplace({
           </aside>
 
           <main className="flex-1 min-w-0">
-            <div className="glass-card mb-5 px-3 py-2.5">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <span className="meta-label">状态</span>
-                {statusFilters.map((f) => (
-                  <button
-                    key={f.value}
-                    type="button"
-                    onClick={() => updateParams(f.value, initialSort)}
-                    className="filter-chip"
-                    data-active={initialStatus === f.value ? "true" : undefined}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+            <div className="tabbar mb-5 flex-wrap">
+              {statusFilters.map((f) => (
+                <button
+                  key={f.value}
+                  type="button"
+                  onClick={() => updateParams(f.value, initialSort)}
+                  className="tabbar-tab"
+                  data-active={initialStatus === f.value ? "true" : undefined}
+                  aria-pressed={initialStatus === f.value}
+                >
+                  {f.label}
+                </button>
+              ))}
 
-                <div className="ml-auto flex items-center gap-2">
-                  <span className="meta-label">排序</span>
-                  <select
-                    value={initialSort}
-                    onChange={(e) => updateParams(initialStatus, e.target.value)}
-                    className="input-field py-1 px-2 text-[12px] w-auto"
-                  >
-                    {sortOptions.map((s) => (
-                      <option key={s.value} value={s.value}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="ml-auto flex items-center gap-1.5 py-1.5">
+                <span className="meta-label">排序</span>
+                <select
+                  value={initialSort}
+                  onChange={(e) => updateParams(initialStatus, e.target.value)}
+                  className="tabbar-control"
+                >
+                  {sortOptions.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

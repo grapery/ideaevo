@@ -20,6 +20,7 @@ export function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const fetchUnread = useCallback(async () => {
     if (!user) {
@@ -55,12 +56,15 @@ export function Header() {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
     }
-    if (dropdownOpen) {
+    if (dropdownOpen || menuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [dropdownOpen]);
+  }, [dropdownOpen, menuOpen]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--glass-border)] bg-[var(--glass-bg-strong)] backdrop-blur-md backdrop-saturate-150">
@@ -166,55 +170,104 @@ export function Header() {
             发布想法
           </Link>
 
-          <button
-            type="button"
-            className="btn-icon sm:hidden"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="菜单"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              className="btn-icon"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="菜单"
+              aria-expanded={menuOpen}
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 mt-1 w-52 glass-card glass-card-strong py-1">
+                <Link
+                  href="/ideas"
+                  className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  浏览想法
+                </Link>
+                <Link
+                  href="/chat"
+                  className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  对话
+                </Link>
+                <Link
+                  href="/activity"
+                  className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  动态
+                </Link>
+                <Link
+                  href="/ideas/new"
+                  className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  发布想法
+                </Link>
+                <Link
+                  href="/about"
+                  className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  关于
+                </Link>
+                <div className="my-1 border-t border-[var(--rule)]" />
+                {user ? (
+                  <>
+                    <Link
+                      href="/notifications"
+                      className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      通知中心
+                      {unread > 0 && (
+                        <span className="ml-2 inline-flex items-center justify-center rounded-full bg-[var(--accent-warning)] px-1.5 text-[10px] font-medium text-white">
+                          {unread > 99 ? "99+" : unread}
+                        </span>
+                      )}
+                    </Link>
+                    <Link
+                      href={`/users/${user.id}`}
+                      className="block px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      我的主页
+                    </Link>
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-1.5 text-[13px] text-[var(--ink-soft)] hover:bg-white/50 hover:text-[var(--ink)]"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        logout();
+                      }}
+                    >
+                      退出
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-1.5 text-[13px] text-[var(--accent-link)] hover:bg-white/50"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      openAuthModal();
+                    }}
+                  >
+                    登录 / 注册
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-
-        {menuOpen && (
-          <nav className="sm:hidden pb-3 border-t border-[var(--rule)] pt-3 space-y-2">
-            <SearchInput variant="editorial" />
-            <Link href="/ideas" className="block text-[13px] text-[var(--ink-soft)] py-1" onClick={() => setMenuOpen(false)}>
-              浏览想法
-            </Link>
-            <Link href="/activity" className="block text-[13px] text-[var(--ink-soft)] py-1" onClick={() => setMenuOpen(false)}>
-              动态
-            </Link>
-            <Link href="/docs/mcp" className="block text-[13px] text-[var(--ink-soft)] py-1" onClick={() => setMenuOpen(false)}>
-              MCP 文档
-            </Link>
-            <Link href="/chat" className="block text-[13px] text-[var(--ink-soft)] py-1" onClick={() => setMenuOpen(false)}>
-              对话
-            </Link>
-            {user && (
-              <Link href="/notifications" className="block text-[13px] text-[var(--ink-soft)] py-1" onClick={() => setMenuOpen(false)}>
-                通知
-              </Link>
-            )}
-            <Link href="/chat" className="inline-flex btn-outline btn-sm mt-1" onClick={() => setMenuOpen(false)}>
-              + 对话创建
-            </Link>
-            {!user && (
-              <button
-                type="button"
-                className="block text-left w-full text-[13px] text-[var(--accent-link)] py-1"
-                onClick={() => {
-                  setMenuOpen(false);
-                  openAuthModal();
-                }}
-              >
-                登录
-              </button>
-            )}
-          </nav>
-        )}
       </div>
     </header>
   );
