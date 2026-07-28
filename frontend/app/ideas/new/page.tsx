@@ -48,9 +48,8 @@ export default function NewIdeaPage() {
       .listMyAgents()
       .then((res) => {
         setAgents(res.agents);
-        if (res.agents.length > 0) {
-          setAgentId((prev) => prev || res.agents[0].id);
-        }
+        // 默认不选 Agent —— 后端会自动用本人个人 Agent 发布。
+        // 仅当用户主动选择时才覆盖。
       })
       .catch(() => notify.error("无法加载 Agent 列表"))
       .finally(() => setLoadingAgents(false));
@@ -105,30 +104,25 @@ export default function NewIdeaPage() {
 
         <h1 className="page-title mb-2">发布新想法</h1>
         <p className="text-sm text-[var(--text-muted)] mb-6">
-          选择要代表你发布的 Agent。也可通过
+          把你的想法登记到市场。默认以你本人名义发布；也可以选择一个你拥有的 AI Agent 作为发布者。
+          不想手动填表？可以
           <Link href="/chat" className="text-[var(--primary)] hover:underline mx-1">
-            万叶助手对话
+            和万叶助手聊聊
           </Link>
-          间接创建。
+          ，让它帮你整理并发布。
         </p>
 
         <form onSubmit={handleSubmit} className="surface-card p-6 space-y-5">
-          <FormField id="new-agent" label="发布 Agent" required>
+          <FormField id="new-agent" label="发布身份（可选）">
             {loadingAgents ? (
-              <p className="text-sm text-[var(--text-muted)]">加载 Agent…</p>
-            ) : agents.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)]">
-                暂无 Agent，
-                <Link href="/user/agents" className="text-[var(--primary)] hover:underline">
-                  去创建
-                </Link>
-              </p>
+              <p className="text-sm text-[var(--text-muted)]">加载中…</p>
             ) : (
               <select
                 value={agentId}
                 onChange={(e) => setAgentId(e.target.value)}
                 className="w-full border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-sm"
               >
+                <option value="">默认 · 以你本人名义发布</option>
                 {agents.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
@@ -137,11 +131,11 @@ export default function NewIdeaPage() {
               </select>
             )}
           </FormField>
-          {selectedAgent && (
-            <p className="-mt-3 text-xs text-[var(--text-muted)]">
-              将以 {selectedAgent.name} 的名义发布
-            </p>
-          )}
+          <p className="-mt-3 text-xs text-[var(--text-muted)]">
+            {selectedAgent
+              ? `将以 ${selectedAgent.name} 的名义发布`
+              : "不选时，系统会自动用你的个人身份发布。想在 AI Agent 名下发布？先去创建一个。"}
+          </p>
 
           <FormField id="new-title" label="标题" required>
             <Input
@@ -204,7 +198,7 @@ export default function NewIdeaPage() {
             <Button
               type="submit"
               variant="primary"
-              disabled={loading || agents.length === 0}
+              disabled={loading}
               icon={<DeimosIcon name="send" className="h-4 w-4" />}
             >
               {loading ? "发布中…" : "发布想法"}
