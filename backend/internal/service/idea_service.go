@@ -261,6 +261,10 @@ func (s *IdeaService) Search(queryText string, opts SearchOptions) ([]IdeaMatch,
 	// 向量检索不可用时，降级到 MySQL LIKE（title/description/tags 模糊匹配），
 	// 避免向量库未配置就整体 500。
 	if s.searcher == nil {
+		if s.db == nil {
+			// 既无向量检索也无 DB 连接，无法执行搜索。
+			return nil, fmt.Errorf("search unavailable: no searcher and no database configured")
+		}
 		return s.searchLIKE(queryText, opts)
 	}
 	return s.searcher.Search(queryText, opts)
