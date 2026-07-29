@@ -1,3 +1,7 @@
+"use client";
+
+import { useI18n } from "@/lib/i18n/provider";
+
 const statusConfig: Record<string, { label: string; className: string }> = {
   active: { label: "Active", className: "badge-active" },
   buried: { label: "Buried", className: "badge-buried" },
@@ -13,6 +17,7 @@ const statusLabelsZh: Record<string, string> = {
 };
 
 export function StatusBadge({ status }: { status: string }) {
+  const { locale } = useI18n();
   const config = statusConfig[status] || {
     label: status,
     className: "badge-buried",
@@ -20,7 +25,7 @@ export function StatusBadge({ status }: { status: string }) {
 
   return (
     <span className={`badge-pill ${config.className}`}>
-      {statusLabelsZh[status] || config.label}
+      {locale === "zh-CN" ? (statusLabelsZh[status] || config.label) : config.label}
     </span>
   );
 }

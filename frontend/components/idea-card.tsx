@@ -17,15 +17,17 @@ import { api } from "@/lib/api-client";
 import { IDEA_AUTH_REQUIRED_MSG, ideaRequestJson } from "@/lib/idea-request";
 import { notify } from "./ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
+import { useI18n } from "@/lib/i18n/provider";
+import type { Locale } from "@/lib/i18n/messages";
 
-function formatRelativeTime(dateStr: string) {
+function formatRelativeTime(dateStr: string, locale: Locale) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (hours < 1) return "刚刚";
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 1) return locale === "zh-CN" ? "刚刚" : "Just now";
+  if (hours < 24) return locale === "zh-CN" ? `${hours} 小时前` : `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
-  return new Date(dateStr).toLocaleDateString("zh-CN");
+  if (days < 30) return locale === "zh-CN" ? `${days} 天前` : `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString(locale);
 }
 
 type IdeaCardProps = {
@@ -45,6 +47,7 @@ export function IdeaCard({
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const { user } = useAuth();
   const { openAuthModal } = useAuthModal();
+  const { locale, t } = useI18n();
   const tags = normalizeTags(idea.tags).slice(0, 3);
   const agentName = idea.agent?.name || idea.agent_id?.slice(0, 8) || "Agent";
   const isBuried = idea.status === "buried";
@@ -157,13 +160,19 @@ export function IdeaCard({
   if (variant === "market") {
     const lifecycleLabel =
       idea.status === "implemented"
-        ? "IMPLEMENTED"
+        ? t("idea.implemented")
         : idea.status === "archived"
-          ? "ARCHIVED"
+          ? t("market.archived")
           : idea.status === "buried"
-            ? "BURIED"
-            : "ACTIVE";
-    const implementationLabel = (idea.impl_status || "concept").toUpperCase();
+            ? t("market.buried")
+            : t("market.active");
+    const implementationLabel = idea.impl_status === "implemented"
+      ? t("idea.implemented")
+      : idea.impl_status === "in_progress"
+        ? t("idea.inProgress")
+        : idea.impl_status === "paused"
+          ? t("idea.paused")
+          : t("idea.concept");
 
     return (
       <article
@@ -171,7 +180,7 @@ export function IdeaCard({
         tabIndex={0}
         onClick={goDetail}
         onKeyDown={onCardKeyDown}
-        aria-label={`查看想法：${idea.title}`}
+        aria-label={locale === "zh-CN" ? `查看想法：${idea.title}` : `View idea: ${idea.title}`}
         className={`group relative min-h-[170px] cursor-pointer overflow-hidden rounded-[8px] border bg-white px-5 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
           highlighted
             ? "min-h-[190px] border-[var(--rule-strong)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--accent-link)]"
@@ -184,7 +193,7 @@ export function IdeaCard({
             onClick={(event) => event.stopPropagation()}
             className={isPersonal ? "text-[#b75b00] hover:underline" : "text-[var(--accent-link)] hover:underline"}
           >
-            {isPersonal ? "HUMAN" : "AGENT"} · {creatorName}
+            {isPersonal ? (locale === "zh-CN" ? "用户" : "HUMAN") : "AGENT"} · {creatorName}
           </Link>
           <span className={isPersonal ? "text-[#b75b00]" : "text-[var(--accent-link)]"}>
             {lifecycleLabel} / {implementationLabel}
@@ -221,7 +230,7 @@ export function IdeaCard({
             }}
             className="hover:text-[var(--accent-link)]"
           >
-            LIKE {idea.like_count}
+            {locale === "zh-CN" ? "点赞" : "LIKE"} {idea.like_count}
           </button>
           <button
             type="button"
@@ -229,7 +238,7 @@ export function IdeaCard({
             disabled={flowering}
             className="hover:text-[var(--primary)] disabled:opacity-50"
           >
-            WISH {idea.wish_count ?? idea.flower_count}
+            {locale === "zh-CN" ? "期待" : "WISH"} {idea.wish_count ?? idea.flower_count}
           </button>
           <button
             type="button"
@@ -250,10 +259,10 @@ export function IdeaCard({
               }}
               className="hover:text-[var(--accent-link)]"
             >
-              COMMENTS {idea.comment_count}
+              {locale === "zh-CN" ? "评论" : "COMMENTS"} {idea.comment_count}
             </button>
           )}
-          <span className="ml-auto text-[var(--ink-faint)]">{formatRelativeTime(idea.created_at)}</span>
+          <span className="ml-auto text-[var(--ink-faint)]">{formatRelativeTime(idea.created_at, locale)}</span>
         </div>
       </article>
     );
@@ -317,7 +326,7 @@ export function IdeaCard({
                 </span>
               )}
             </Link>
-            <span className="text-[var(--ink-faint)]">· {formatRelativeTime(idea.created_at)}</span>
+            <span className="text-[var(--ink-faint)]">· {formatRelativeTime(idea.created_at, locale)}</span>
             {idea.status !== "active" ? (
               <StatusBadge status={idea.status} />
             ) : idea.impl_status ? (

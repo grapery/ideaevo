@@ -16,10 +16,12 @@ import {
   markdownImageSnippet,
   uploadIdeaDescriptionImage,
 } from "@/lib/idea-image-upload";
+import { useI18n } from "@/lib/i18n/provider";
+import type { Locale } from "@/lib/i18n/messages";
 
-function formatVersionTime(dateStr: string) {
+function formatVersionTime(dateStr: string, locale: Locale) {
   const d = new Date(dateStr);
-  return d.toLocaleString("zh-CN", {
+  return d.toLocaleString(locale, {
     year: "numeric",
     month: "numeric",
     day: "numeric",
@@ -29,6 +31,8 @@ function formatVersionTime(dateStr: string) {
 }
 
 export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
+  const { locale } = useI18n();
+  const zh = locale === "zh-CN";
   const { user } = useAuth();
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -83,25 +87,25 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
   );
 
   useEffect(() => {
-    void loadVersions();
+    const task = window.setTimeout(() => void loadVersions(), 0);
+    return () => window.clearTimeout(task);
   }, [loadVersions]);
 
   useEffect(() => {
-    if (!selectedId) {
-      setContent(idea.description);
-      return;
-    }
-    if (selectedId === currentVersion?.id) {
-      setContent(idea.description);
-      return;
-    }
-    void loadVersionContent(selectedId);
+    const task = window.setTimeout(() => {
+      if (!selectedId || selectedId === currentVersion?.id) {
+        setContent(idea.description);
+        return;
+      }
+      void loadVersionContent(selectedId);
+    }, 0);
+    return () => window.clearTimeout(task);
   }, [selectedId, currentVersion?.id, idea.description, loadVersionContent]);
 
   useEffect(() => {
-    if (editing && isViewingCurrent) {
-      setDraft(idea.description);
-    }
+    if (!editing || !isViewingCurrent) return;
+    const task = window.setTimeout(() => setDraft(idea.description), 0);
+    return () => window.clearTimeout(task);
   }, [editing, isViewingCurrent, idea.description]);
 
   async function handleSave() {
@@ -180,10 +184,10 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
   return (
     <div className="mt-6 border-t border-[var(--divider)] pt-6">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-[13px] font-semibold text-[var(--ink)]">想法描述</h2>
+        <h2 className="text-[13px] font-semibold text-[var(--ink)]">{zh ? "想法描述" : "Idea description"}</h2>
         {canEdit && isViewingCurrent && !editing && (
           <button type="button" className="btn-outline btn-sm" onClick={() => setEditing(true)}>
-            编辑
+            {zh ? "编辑" : "Edit"}
           </button>
         )}
         {editing && (
@@ -197,7 +201,7 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
                 setChangelog("");
               }}
             >
-              取消
+              {zh ? "取消" : "Cancel"}
             </button>
             <button
               type="button"
@@ -205,7 +209,7 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
               disabled={saving}
               onClick={() => void handleSave()}
             >
-              {saving ? "保存中…" : "保存新版本"}
+              {saving ? (zh ? "保存中…" : "Saving…") : (zh ? "保存新版本" : "Save new version")}
             </button>
           </div>
         )}
@@ -213,7 +217,7 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
 
       <div className="flex flex-col gap-6 lg:flex-row">
         {versions.length > 0 && (
-          <nav className="lg:w-48 shrink-0" aria-label="描述版本时间线">
+          <nav className="lg:w-48 shrink-0" aria-label={zh ? "描述版本时间线" : "Description version timeline"}>
             <div className="relative pl-3">
               <div
                 className="absolute left-[5px] top-1 bottom-1 w-px bg-[var(--rule)]"
@@ -246,15 +250,15 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
                           v{v.version}
                           {v.is_current && (
                             <span className="ml-1.5 font-[family-name:var(--font-mono)] text-[9px] font-normal uppercase tracking-wider text-[var(--accent-link)]">
-                              当前
+                              {zh ? "当前" : "Current"}
                             </span>
                           )}
                         </span>
                         <span className="mt-0.5 line-clamp-1 text-[12px] leading-snug text-[var(--ink-faint)]">
-                          {v.changelog || `版本 ${v.version}`}
+                          {v.changelog || (zh ? `版本 ${v.version}` : `Version ${v.version}`)}
                         </span>
                         <span className="mt-0.5 font-[family-name:var(--font-mono)] text-[10px] tabular-nums text-[var(--ink-faint)]">
-                          {formatVersionTime(v.created_at)}
+                          {formatVersionTime(v.created_at, locale)}
                         </span>
                       </button>
                     </li>
@@ -275,8 +279,8 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
               >
                 <div className="min-w-0">
                   <div className="mb-1.5 flex items-center justify-between">
-                    <span className="meta-label">Markdown 源码</span>
-                    <span className="text-[10px] text-[var(--ink-faint)]">可拖拽或粘贴图片</span>
+                    <span className="meta-label">{zh ? "Markdown 源码" : "Markdown source"}</span>
+                    <span className="text-[10px] text-[var(--ink-faint)]">{zh ? "可拖拽或粘贴图片" : "Drop or paste images"}</span>
                   </div>
                   <textarea
                     ref={textareaRef}
@@ -285,16 +289,16 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
                     onPaste={handlePaste}
                     rows={16}
                     className="w-full resize-y border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2.5 text-[13px] leading-relaxed font-[family-name:var(--font-mono)] text-[var(--ink)]"
-                    placeholder="支持 Markdown 文本与图片：![说明](url)"
+                    placeholder={zh ? "支持 Markdown 文本与图片：![说明](url)" : "Markdown text and images are supported: ![alt](url)"}
                   />
                 </div>
                 {previewOpen && (
                   <div className="min-w-0 border border-[var(--rule)] bg-[var(--bg-subtle)] p-4">
-                    <div className="mb-2 meta-label">预览</div>
+                    <div className="mb-2 meta-label">{zh ? "预览" : "Preview"}</div>
                     {draft.trim() ? (
                       <MarkdownContent content={draft} />
                     ) : (
-                      <p className="text-[12px] text-[var(--ink-faint)]">输入 Markdown 后在此预览图文效果</p>
+                      <p className="text-[12px] text-[var(--ink-faint)]">{zh ? "输入 Markdown 后在此预览图文效果" : "Enter Markdown to preview it here."}</p>
                     )}
                   </div>
                 )}
@@ -317,46 +321,48 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
                   disabled={uploading}
                   onClick={() => imageInputRef.current?.click()}
                 >
-                  {uploading ? "上传中…" : "插入图片"}
+                  {uploading ? (zh ? "上传中…" : "Uploading…") : (zh ? "插入图片" : "Insert image")}
                 </button>
                 <button
                   type="button"
                   className="btn-outline btn-sm lg:hidden"
                   onClick={() => setPreviewOpen((v) => !v)}
                 >
-                  {previewOpen ? "隐藏预览" : "显示预览"}
+                  {previewOpen ? (zh ? "隐藏预览" : "Hide preview") : (zh ? "显示预览" : "Show preview")}
                 </button>
                 <span className="text-[11px] text-[var(--ink-faint)]">
-                  图片上传至 OSS 后以 Markdown 插图保存
+                  {zh ? "图片上传至 OSS 后以 Markdown 插图保存" : "Images are uploaded to OSS and saved as Markdown."}
                 </span>
               </div>
               <label className="block">
-                <span className="meta-label mb-1 block">版本说明（可选）</span>
+                <span className="meta-label mb-1 block">{zh ? "版本说明（可选）" : "Version note (optional)"}</span>
                 <input
                   type="text"
                   value={changelog}
                   onChange={(e) => setChangelog(e.target.value)}
                   className="w-full border border-[var(--rule)] bg-[var(--bg-surface)] px-2 py-1.5 text-[13px]"
-                  placeholder="例如：补充实现细节、更新配图"
+                  placeholder={zh ? "例如：补充实现细节、更新配图" : "For example: add implementation details"}
                 />
               </label>
             </div>
           ) : loadingVersion ? (
-            <p className="text-[13px] text-[var(--ink-faint)]">加载版本中…</p>
+            <p className="text-[13px] text-[var(--ink-faint)]">{zh ? "加载版本中…" : "Loading version…"}</p>
           ) : !hasContent ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-[var(--rule)] bg-[var(--bg-subtle)] px-4 py-8 text-center">
               <span className="mb-2 text-[var(--ink-faint)]" aria-hidden>
                 <DeimosIcon name="document" className="h-6 w-6" />
               </span>
               <p className="text-[13px] text-[var(--ink-faint)]">
-                {canEdit ? "暂无描述，点击「编辑」补充这个想法的详细内容" : "作者还没有补充描述"}
+                {canEdit
+                  ? (zh ? "暂无描述，点击「编辑」补充这个想法的详细内容" : "No description yet. Select Edit to add details.")
+                  : (zh ? "作者还没有补充描述" : "The author has not added a description yet.")}
               </p>
             </div>
           ) : (
             <>
               {selectedSummary && !isViewingCurrent && (
                 <p className="mb-3 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
-                  查看历史版本 · v{selectedSummary.version} · {formatVersionTime(selectedSummary.created_at)}
+                  {zh ? "查看历史版本" : "Viewing historical version"} · v{selectedSummary.version} · {formatVersionTime(selectedSummary.created_at, locale)}
                 </p>
               )}
               {idea.is_markdown === false ? (

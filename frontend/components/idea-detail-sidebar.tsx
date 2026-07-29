@@ -10,6 +10,7 @@ import { Modal } from "./ui/modal";
 import { getApiBase } from "@/lib/api-base";
 import { IconGitFork, IconMessage } from "./icons";
 import { DeimosIcon } from "./deimos-icon";
+import { useI18n } from "@/lib/i18n/provider";
 
 const sidebarCardClass = "surface-card p-5";
 const sidebarTitleClass = "heading-sans text-sm pb-2 mb-3 border-b border-[var(--divider)]";
@@ -83,6 +84,8 @@ export function FlowersPanel({
   flowerCount: number;
   initialDonors?: FlowerDonor[];
 }) {
+  const { locale } = useI18n();
+  const zh = locale === "zh-CN";
   const [donors, setDonors] = useState<FlowerDonor[]>(initialDonors);
   const [loaded, setLoaded] = useState(initialDonors.length > 0 || flowerCount === 0);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -121,17 +124,17 @@ export function FlowersPanel({
     <div className="rounded-lg border border-[#ffb45a] bg-[#fff4e6] p-5 text-[#914700]">
       <h3 className="mb-3 border-b border-[#ffcf93] pb-2 font-code text-[10px] font-semibold uppercase">
         <DeimosIcon name="wish" className="mr-1 inline-block h-3.5 w-3.5 text-[#ff8a00]" />
-        Wish signal / {flowerCount} wishes
+        {zh ? "期待信号" : "Wish signal"} / {flowerCount} {zh ? "份期待" : "wishes"}
       </h3>
       {!loaded ? (
-        <p className="mb-2.5 text-sm text-[var(--text-muted)]">加载中…</p>
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">{zh ? "加载中…" : "Loading…"}</p>
       ) : displayDonors.length > 0 ? (
         <button
           type="button"
           onClick={() => setListOpen(true)}
           className="mb-2.5 flex flex-wrap items-center gap-2 rounded-md p-1 -m-1 text-left transition-colors hover:bg-[var(--bg-subtle)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ink-faint)] cursor-pointer"
-          aria-label={`查看全部 ${donors.length} 位期待者`}
-          title="点击查看全部期待者"
+          aria-label={zh ? `查看全部 ${donors.length} 位期待者` : `View all ${donors.length} supporters`}
+          title={zh ? "点击查看全部期待者" : "View all supporters"}
         >
           {displayDonors.map((donor) => (
             <WireframeAvatar
@@ -152,7 +155,7 @@ export function FlowersPanel({
         </button>
       ) : loadFailed ? (
         <div className="mb-2.5">
-          <p className="text-sm text-[var(--text-muted)]">期待者信息加载失败</p>
+          <p className="text-sm text-[var(--text-muted)]">{zh ? "期待者信息加载失败" : "Failed to load supporters"}</p>
           <button
             type="button"
             onClick={() => {
@@ -162,23 +165,23 @@ export function FlowersPanel({
             }}
             className="mt-1 text-xs text-[var(--primary)] hover:underline"
           >
-            重新加载
+            {zh ? "重新加载" : "Retry"}
           </button>
         </div>
       ) : flowerCount > 0 ? (
-        <p className="mb-2.5 text-sm text-[var(--text-muted)]">期待者详情暂不可用</p>
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">{zh ? "期待者详情暂不可用" : "Supporter details are unavailable"}</p>
       ) : (
-        <p className="mb-2.5 text-sm text-[var(--text-muted)]">还没有人表达期待</p>
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">{zh ? "还没有人表达期待" : "No wishes yet"}</p>
       )}
       <p className="mb-3 font-code text-[10px] tabular-nums text-[#914700]/70">
-        High expectation · 累计 {flowerCount} 份期待
+        {zh ? `高期待度 · 累计 ${flowerCount} 份期待` : `High expectation · ${flowerCount} wishes`}
         {canExpand && (
           <button
             type="button"
             onClick={() => setListOpen(true)}
             className="ml-2 text-[var(--accent-link)] hover:underline"
           >
-            查看全部 →
+            {zh ? "查看全部" : "View all"} →
           </button>
         )}
       </p>
@@ -188,8 +191,8 @@ export function FlowersPanel({
         <Modal
           open={listOpen}
           onClose={() => setListOpen(false)}
-          title={`期待者（${donors.length}）`}
-          description="对这个想法表达过期待的用户与 Agent"
+          title={zh ? `期待者（${donors.length}）` : `Supporters (${donors.length})`}
+          description={zh ? "对这个想法表达过期待的用户与 Agent" : "Users and Agents who wished for this idea"}
         >
           <ul className="-mx-1 max-h-[60vh] space-y-1 overflow-y-auto">
             {donors.map((donor) => {
@@ -273,29 +276,33 @@ export function RelatedIdeasPanel({ ideas, currentId }: { ideas: Idea[]; current
 }
 
 export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats | null }) {
+  const { locale } = useI18n();
+  const zh = locale === "zh-CN";
   const rows: [string, number][] = stats
     ? [
-        ["点赞", stats.like_count],
-        ["期待", stats.flower_count],
+        [zh ? "点赞" : "Likes", stats.like_count],
+        [zh ? "期待" : "Wishes", stats.flower_count],
         ["Fork", stats.fork_count],
-        ["评论", stats.comment_count],
-        ["浏览", stats.view_count],
-        ["引用", stats.reference_count],
-        ["表情反应", stats.reaction_count],
-        ["版本", stats.version_count],
-        ["图片", stats.image_count],
-        ["链接", stats.link_count],
+        [zh ? "评论" : "Comments", stats.comment_count],
+        [zh ? "浏览" : "Views", stats.view_count],
+        [zh ? "引用" : "References", stats.reference_count],
+        [zh ? "表情反应" : "Reactions", stats.reaction_count],
+        [zh ? "版本" : "Versions", stats.version_count],
+        [zh ? "图片" : "Images", stats.image_count],
+        [zh ? "链接" : "Links", stats.link_count],
       ]
     : [
-        ["点赞", idea.like_count],
-        ["期待", idea.flower_count],
+        [zh ? "点赞" : "Likes", idea.like_count],
+        [zh ? "期待" : "Wishes", idea.flower_count],
         ["Fork", idea.fork_count],
-        ["评论", idea.comment_count],
+        [zh ? "评论" : "Comments", idea.comment_count],
       ];
 
   return (
     <div className="rounded-lg border border-[var(--rule)] bg-white p-5">
-      <h3 className="mb-4 border-b border-[var(--divider)] pb-3 font-code text-[10px] font-semibold uppercase">Idea statistics</h3>
+      <h3 className="mb-4 border-b border-[var(--divider)] pb-3 font-code text-[10px] font-semibold uppercase">
+        {zh ? "Idea 统计" : "Idea statistics"}
+      </h3>
       <div className="space-y-2 font-code text-[10px]">
         {rows.map(([label, count]) => (
           <div key={label} className="flex items-center justify-between gap-4">
@@ -306,7 +313,9 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
       </div>
       {stats && stats.version_stats.length > 1 && (
         <div className="mt-4 border-t border-[var(--divider)] pt-3">
-          <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">各版本互动</p>
+          <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">
+            {zh ? "各版本互动" : "Engagement by version"}
+          </p>
           <div className="space-y-1.5">
             {stats.version_stats.map((row) => (
               <div
@@ -315,8 +324,8 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
               >
                 <span>v{row.version}</span>
                 <span className="tabular-nums">
-                  Fork {row.stats.fork_count} · 评论 {row.stats.comment_count} · 花{" "}
-                  {row.stats.flower_count} · 反应 {row.stats.reaction_count}
+                  Fork {row.stats.fork_count} · {zh ? "评论" : "Comments"} {row.stats.comment_count} · {zh ? "期待" : "Wishes"}{" "}
+                  {row.stats.flower_count} · {zh ? "反应" : "Reactions"} {row.stats.reaction_count}
                 </span>
               </div>
             ))}

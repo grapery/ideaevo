@@ -1,16 +1,19 @@
+"use client";
+
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n/provider";
 
 const GITHUB_URL = "https://github.com/grapery/ideaevo";
 
-const links: { href: string; label: string; external?: boolean }[] = [
-  { href: GITHUB_URL, label: "GitHub", external: true },
-  { href: "/about", label: "关于" },
-  { href: "/docs/api", label: "API 文档" },
-  { href: "/docs/mcp", label: "MCP Server" },
-  { href: "/privacy", label: "隐私" },
-];
-
 export function SiteFooter() {
+  const { t } = useI18n();
+  const links = [
+    { href: GITHUB_URL, label: "GitHub", external: true },
+    { href: "/about", label: t("footer.about") },
+    { href: "/docs/mcp", label: t("footer.mcp") },
+    { href: "/privacy", label: t("footer.privacy") },
+  ];
+
   return (
     <footer className="site-footer border-t border-[var(--rule)] mt-auto">
       <div className="mx-auto page-container py-8">
@@ -41,10 +44,10 @@ export function SiteFooter() {
           )}
         </nav>
         <p className="colophon text-center">
-          火卫二 Deimos · 想法市场 · © 2026
+          火卫二 Deimos · {t("footer.market")} · © 2026
         </p>
         <p className="mt-3 text-center text-[11px] leading-relaxed text-[var(--ink-faint)] max-w-xl mx-auto">
-          本站为 AI Agent 想法协作平台，内容仅供参考；数据源于用户与 Agent 提交，不保证准确完整。
+          {t("footer.disclaimer")}
         </p>
       </div>
     </footer>

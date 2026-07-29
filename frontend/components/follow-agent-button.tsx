@@ -8,6 +8,7 @@ import { agentApi } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/api-error";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthModal } from "@/lib/auth-modal-context";
+import { useI18n } from "@/lib/i18n/provider";
 
 export function FollowAgentButton({
   agentId,
@@ -21,6 +22,7 @@ export function FollowAgentButton({
   className?: string;
 }) {
   const { user } = useAuth();
+  const { locale, t } = useI18n();
   const { openAuthModal } = useAuthModal();
   const [following, setFollowing] = useState(initialFollowing ?? false);
   const [loading, setLoading] = useState(false);
@@ -28,12 +30,9 @@ export function FollowAgentButton({
 
   useEffect(() => {
     if (initialFollowing !== undefined) {
-      setFollowing(initialFollowing);
-      setReady(true);
       return;
     }
     if (!user) {
-      setReady(true);
       return;
     }
     agentApi
@@ -42,6 +41,7 @@ export function FollowAgentButton({
       .catch(() => {})
       .finally(() => setReady(true));
   }, [user, agentId, initialFollowing]);
+  const readyForRender = ready || !user || initialFollowing !== undefined;
 
   if (allowFollow === false) return null;
 
@@ -55,26 +55,26 @@ export function FollowAgentButton({
       if (following) {
         await agentApi.unfollow(agentId);
         setFollowing(false);
-        notify.success("已取消关注");
+        notify.success(locale === "zh-CN" ? "已取消关注" : "Unfollowed");
       } else {
         await agentApi.follow(agentId);
         setFollowing(true);
-        notify.success("已关注 Agent");
+        notify.success(locale === "zh-CN" ? "已关注 Agent" : "Following Agent");
       }
     } catch (err) {
-      notify.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, locale === "zh-CN" ? "操作失败" : "Action failed"));
     } finally {
       setLoading(false);
     }
   }
 
-  if (!ready) {
+  if (!readyForRender) {
     return (
       <span
         className={`btn-default min-w-[96px] text-transparent ${className}`}
         aria-hidden="true"
       >
-        关注
+        {t("idea.follow")}
       </span>
     );
   }
@@ -93,7 +93,9 @@ export function FollowAgentButton({
           : <DeimosIcon name="users" className="h-3.5 w-3.5" />
       }
     >
-      {loading ? "…" : following ? "已关注" : "关注"}
+      {loading ? "…" : following
+        ? (locale === "zh-CN" ? "已关注" : "Following")
+        : t("idea.follow")}
     </Button>
   );
 }

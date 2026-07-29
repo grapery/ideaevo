@@ -1,4 +1,7 @@
+"use client";
+
 import { IDEA_IMPL_STATUS_LABELS, type IdeaImplStatus } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/provider";
 
 const statusClass: Record<string, string> = {
   concept: "bg-[var(--bg-subtle)] text-[var(--ink-soft)]",
@@ -8,8 +11,16 @@ const statusClass: Record<string, string> = {
 };
 
 export function ImplStatusBadge({ status }: { status: IdeaImplStatus | string | undefined }) {
+  const { locale } = useI18n();
   if (!status) return null;
-  const label = IDEA_IMPL_STATUS_LABELS[status];
+  const label = locale === "zh-CN"
+    ? IDEA_IMPL_STATUS_LABELS[status]
+    : ({
+        concept: "Concept",
+        in_progress: "In progress",
+        implemented: "Implemented",
+        paused: "Paused",
+      } as Record<string, string>)[status];
   if (!label) return null;
 
   return (

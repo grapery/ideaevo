@@ -8,6 +8,8 @@ import { AppLink as Link } from "./app-link";
 import { DeimosIcon } from "./deimos-icon";
 import { Logo } from "./logo";
 import { SearchInput } from "./search-input";
+import { LanguageSwitcher } from "./language-switcher";
+import { useI18n } from "@/lib/i18n/provider";
 
 const navLinkClass =
   "inline-flex h-12 items-center text-[13px] text-[var(--ink-soft)] hover:text-[var(--ink)]";
@@ -16,6 +18,7 @@ const menuLinkClass =
   "flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-hover)] hover:text-[var(--ink)]";
 
 export function Header() {
+  const { t } = useI18n();
   const { user, logout } = useAuth();
   const { openAuthModal } = useAuthModal();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -61,7 +64,7 @@ export function Header() {
     <>
       <Link href="/notifications" className={menuLinkClass} onClick={() => setAccountOpen(false)}>
         <DeimosIcon name="decision" className="h-3.5 w-3.5" />
-        决策收件箱
+        {t("header.inbox")}
         {unread > 0 && (
           <span className="ml-auto rounded bg-[var(--accent-warning)] px-1.5 font-code text-[9px] text-white">
             {unread > 99 ? "99+" : unread}
@@ -70,20 +73,20 @@ export function Header() {
       </Link>
       <Link href="/dashboard" className={menuLinkClass} onClick={() => setAccountOpen(false)}>
         <DeimosIcon name="home" className="h-3.5 w-3.5" />
-        我的工作区
+        {t("header.workspace")}
       </Link>
       <Link href="/user/agents" className={menuLinkClass} onClick={() => setAccountOpen(false)}>
         <DeimosIcon name="agent" className="h-3.5 w-3.5" />
-        Agent Fleet
+        {t("header.fleet")}
       </Link>
       <Link href="/user/settings" className={menuLinkClass} onClick={() => setAccountOpen(false)}>
         <DeimosIcon name="gear" className="h-3.5 w-3.5" />
-        设置与账单
+        {t("header.settings")}
       </Link>
       {user?.role === "admin" && (
         <Link href="/admin" className={menuLinkClass} onClick={() => setAccountOpen(false)}>
           <DeimosIcon name="evidence" className="h-3.5 w-3.5" />
-          管理后台
+          {t("header.admin")}
         </Link>
       )}
       <div className="my-1 border-t border-[var(--rule)]" />
@@ -95,7 +98,7 @@ export function Header() {
           logout();
         }}
       >
-        退出
+        {t("header.logout")}
       </button>
     </>
   );
@@ -106,15 +109,15 @@ export function Header() {
         <Logo compact />
 
         <nav className="hidden items-center gap-7 md:flex">
-          <Link href="/ideas" className={navLinkClass}>发现</Link>
-          <Link href="/activity" className={navLinkClass}>动态</Link>
-          <Link href="/user/agents" className={navLinkClass}>Agents</Link>
+          <Link href="/ideas" className={navLinkClass}>{t("header.discover")}</Link>
+          <Link href="/activity" className={navLinkClass}>{t("header.activity")}</Link>
+          <Link href="/user/agents" className={navLinkClass}>{t("header.agents")}</Link>
         </nav>
 
         <SearchInput
           className="hidden w-full max-w-[460px] md:block"
           variant="editorial"
-          placeholder="搜索 idea、问题、MCP 能力…"
+          placeholder={t("header.search")}
         />
 
         <div className="flex-1" />
@@ -123,14 +126,18 @@ export function Header() {
           href="/chat"
           className="hidden h-8 items-center gap-2 rounded-[6px] bg-[#0a0a0a] px-4 text-[12px] font-semibold text-white hover:bg-[#202020] lg:inline-flex"
         >
-          Ask Deimos
+          {t("header.ask")}
           <span className="font-code text-[10px] text-white/60">⌘K</span>
         </Link>
 
         <Link href="/ideas/new" className="btn-primary h-8 px-4 text-[12px]">
           <span aria-hidden="true">+</span>
-          发布 idea
+          {t("header.publish")}
         </Link>
+
+        <div className="hidden md:block">
+          <LanguageSwitcher />
+        </div>
 
         {user && (
           <div ref={accountRef} className="relative hidden md:block">
@@ -138,7 +145,7 @@ export function Header() {
               type="button"
               onClick={() => setAccountOpen((open) => !open)}
               className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-[6px] border border-[var(--rule)] bg-[var(--bg-subtle)] font-code text-[10px] text-[var(--ink)] hover:border-[var(--rule-strong)]"
-              aria-label="账户菜单"
+              aria-label={t("header.accountMenu")}
             >
               {user.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -161,7 +168,7 @@ export function Header() {
             onClick={() => openAuthModal()}
             className="hidden font-code text-[10px] text-[var(--ink-soft)] hover:text-[var(--ink)] md:block"
           >
-            SIGN IN
+            {t("header.signIn")}
           </button>
         )}
 
@@ -170,7 +177,7 @@ export function Header() {
             type="button"
             className="btn-icon"
             onClick={() => setMenuOpen((open) => !open)}
-            aria-label="菜单"
+            aria-label={t("header.menu")}
             aria-expanded={menuOpen}
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -179,9 +186,10 @@ export function Header() {
           </button>
           {menuOpen && (
             <div className="fixed inset-x-3 top-14 overflow-hidden rounded-[6px] border border-[var(--rule)] bg-white py-1 shadow-[var(--shadow-float)]">
-              <Link href="/ideas" className={menuLinkClass} onClick={() => setMenuOpen(false)}>发现</Link>
-              <Link href="/chat" className={menuLinkClass} onClick={() => setMenuOpen(false)}>Ask Deimos</Link>
-              <Link href="/activity" className={menuLinkClass} onClick={() => setMenuOpen(false)}>动态</Link>
+              <LanguageSwitcher mobile />
+              <Link href="/ideas" className={menuLinkClass} onClick={() => setMenuOpen(false)}>{t("header.discover")}</Link>
+              <Link href="/chat" className={menuLinkClass} onClick={() => setMenuOpen(false)}>{t("header.ask")}</Link>
+              <Link href="/activity" className={menuLinkClass} onClick={() => setMenuOpen(false)}>{t("header.activity")}</Link>
               {user ? accountLinks : (
                 <button
                   type="button"
@@ -191,7 +199,7 @@ export function Header() {
                     openAuthModal();
                   }}
                 >
-                  登录 / 注册
+                  {t("header.loginOrRegister")}
                 </button>
               )}
             </div>

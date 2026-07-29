@@ -16,6 +16,7 @@ import { getErrorMessage } from "@/lib/api-error";
 import { ImplStatusBadge } from "@/components/impl-status-badge";
 import { IdeaBuryButton } from "@/components/idea-bury-button";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
+import { useI18n } from "@/lib/i18n/provider";
 
 function formatRepoLabel(url: string) {
   try {
@@ -29,6 +30,8 @@ function formatRepoLabel(url: string) {
 }
 
 export function IdeaMetaPanel({ idea }: { idea: Idea }) {
+  const { locale } = useI18n();
+  const zh = locale === "zh-CN";
   const { user } = useAuth();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -113,7 +116,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
   return (
     <div className="mt-6 border-t border-[var(--divider)] pt-6">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-[13px] font-semibold text-[var(--ink)]">实现信息</h3>
+        <h3 className="text-[13px] font-semibold text-[var(--ink)]">{zh ? "实现信息" : "Implementation"}</h3>
         {canEdit && (
           <button
             type="button"
@@ -128,7 +131,11 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
               setEditing((v) => !v);
             }}
           >
-            {editing ? "取消" : hasDisplay ? "编辑" : "添加"}
+            {editing
+              ? (zh ? "取消" : "Cancel")
+              : hasDisplay
+                ? (zh ? "编辑" : "Edit")
+                : (zh ? "添加" : "Add")}
           </button>
         )}
       </div>
@@ -136,23 +143,28 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
       {editing ? (
         <div className="space-y-3">
           <label className="block">
-            <span className="meta-label mb-1 block">实现状态</span>
+            <span className="meta-label mb-1 block">{zh ? "实现状态" : "Implementation status"}</span>
             <select
               className="w-full border border-[var(--rule)] bg-[var(--bg-surface)] px-2 py-1.5 text-[13px]"
               value={implStatus}
               onChange={(e) => setImplStatus(e.target.value as IdeaImplStatus)}
             >
-              <option value="">未设置</option>
+              <option value="">{zh ? "未设置" : "Not set"}</option>
               {Object.entries(IDEA_IMPL_STATUS_LABELS).map(([k, label]) => (
                 <option key={k} value={k}>
-                  {label}
+                  {zh ? label : ({
+                    concept: "Concept",
+                    in_progress: "In progress",
+                    implemented: "Implemented",
+                    paused: "Paused",
+                  } as Record<string, string>)[k]}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="block">
-            <span className="meta-label mb-1 block">GitHub / 仓库地址</span>
+            <span className="meta-label mb-1 block">{zh ? "GitHub / 仓库地址" : "GitHub / Repository URL"}</span>
             <input
               type="url"
               className="w-full border border-[var(--rule)] bg-[var(--bg-surface)] px-2 py-1.5 text-[13px]"
@@ -163,7 +175,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
           </label>
 
           <label className="block">
-            <span className="meta-label mb-1 block">演示 / 产品网址</span>
+            <span className="meta-label mb-1 block">{zh ? "演示 / 产品网址" : "Demo / Product URL"}</span>
             <input
               type="url"
               className="w-full border border-[var(--rule)] bg-[var(--bg-surface)] px-2 py-1.5 text-[13px]"
@@ -174,7 +186,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
           </label>
 
           <div>
-            <span className="meta-label mb-1 block">想法图标</span>
+            <span className="meta-label mb-1 block">{zh ? "想法图标" : "Idea icon"}</span>
             <div className="flex flex-wrap items-center gap-3">
               <WireframeAvatar
                 name={idea.title}
@@ -200,7 +212,11 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                 disabled={uploading}
                 onClick={() => fileRef.current?.click()}
               >
-                {uploading ? "上传中…" : iconUrl ? "更换图标" : "上传图标"}
+                {uploading
+                  ? (zh ? "上传中…" : "Uploading…")
+                  : iconUrl
+                    ? (zh ? "更换图标" : "Change icon")
+                    : (zh ? "上传图标" : "Upload icon")}
               </button>
               <button
                 type="button"
@@ -208,7 +224,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                 disabled={uploading}
                 onClick={() => void handleIconReset()}
               >
-                恢复默认
+                {zh ? "恢复默认" : "Restore default"}
               </button>
             </div>
           </div>
@@ -219,7 +235,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
             disabled={saving}
             onClick={() => void handleSave()}
           >
-            {saving ? "保存中…" : "保存"}
+            {saving ? (zh ? "保存中…" : "Saving…") : (zh ? "保存" : "Save")}
           </button>
 
           {idea.status === "active" && (
@@ -243,7 +259,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
               </a>
             ) : (
               <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
-                无仓库
+                {zh ? "无仓库" : "No repository"}
               </span>
             )}
             {demo ? (
@@ -257,7 +273,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
               </a>
             ) : (
               <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
-                无演示
+                {zh ? "无演示" : "No demo"}
               </span>
             )}
             {links.filter((l) => safeUrl(l.url)).map((link, i) => {
@@ -287,18 +303,20 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2 text-[13px]">
             <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
-              未设置实现状态
+              {zh ? "未设置实现状态" : "Implementation status not set"}
             </span>
             <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
-              无仓库
+              {zh ? "无仓库" : "No repository"}
             </span>
             <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
-              无演示
+              {zh ? "无演示" : "No demo"}
             </span>
           </div>
           {canEdit && (
             <p className="text-[12px] text-[var(--ink-faint)]">
-              可补充实现状态、仓库、演示链接与图标（均为可选）
+              {zh
+                ? "可补充实现状态、仓库、演示链接与图标（均为可选）"
+                : "You can add an implementation status, repository, demo, and icon."}
             </p>
           )}
           {canEdit && idea.status === "active" && <IdeaBuryButton idea={idea} />}
@@ -309,14 +327,14 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
 }
 
 /** 标题旁的小图标 */
-export function IdeaIcon({ idea }: { idea: Idea }) {
+export function IdeaIcon({ idea, size = 36 }: { idea: Idea; size?: number }) {
   return (
     <WireframeAvatar
       name={idea.title}
       avatarUrl={idea.icon_url}
       entityId={idea.id}
       kind="idea"
-      size={36}
+      size={size}
     />
   );
 }

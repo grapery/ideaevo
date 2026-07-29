@@ -8,6 +8,14 @@ import { ChatMessage as ChatMessageType, ChatMessageMetadata, MessageContentType
 import { normalizeMessageMetadata } from "@/lib/chat-messages";
 import { IconGitFork } from "./icons";
 import { DeimosIcon } from "./deimos-icon";
+import { WireframeAvatar } from "./wireframe-avatar";
+import { useI18n } from "@/lib/i18n/provider";
+
+type ChatIdentity = {
+  id?: string;
+  name: string;
+  avatarUrl?: string;
+};
 
 function resolveContentType(message: ChatMessageType): MessageContentType {
   if (message.content_type) return message.content_type;
@@ -185,6 +193,7 @@ function MessageActions({
   onFeedback?: (messageId: string, rating: "like" | "dislike" | null) => void;
   onFork?: (messageId: string) => void;
 }) {
+  const { locale, t } = useI18n();
   const [copied, setCopied] = useState(false);
   const persisted = isPersistedMessage(message.id);
   const feedback = message.user_feedback;
@@ -193,10 +202,10 @@ function MessageActions({
     try {
       await navigator.clipboard.writeText(message.content);
       setCopied(true);
-      notify.success("已复制");
+      notify.success(t("chat.copied"));
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      notify.error("复制失败");
+      notify.error(locale === "zh-CN" ? "复制失败" : "Copy failed");
     }
   };
 
@@ -221,7 +230,7 @@ function MessageActions({
       {persisted && onFeedback && (
         <>
           <ActionButton
-            label="点赞"
+            label={t("chat.like")}
             active={feedback === "like"}
             onClick={handleLike}
             isUser={isUser}
@@ -242,7 +251,7 @@ function MessageActions({
             </svg>
           </ActionButton>
           <ActionButton
-            label="点踩"
+            label={t("chat.dislike")}
             active={feedback === "dislike"}
             onClick={handleDislike}
             isUser={isUser}
@@ -264,7 +273,7 @@ function MessageActions({
           </ActionButton>
         </>
       )}
-      <ActionButton label={copied ? "已复制" : "复制"} onClick={handleCopy} isUser={isUser}>
+      <ActionButton label={copied ? t("chat.copied") : t("chat.copy")} onClick={handleCopy} isUser={isUser}>
         {copied ? (
           <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -281,7 +290,7 @@ function MessageActions({
         )}
       </ActionButton>
       {canFork && persisted && onFork && (
-        <ActionButton label="从此处分支" onClick={() => onFork(message.id)} isUser={isUser}>
+        <ActionButton label={t("chat.forkHere")} onClick={() => onFork(message.id)} isUser={isUser}>
           <IconGitFork className={iconClass} />
         </ActionButton>
       )}
@@ -291,6 +300,8 @@ function MessageActions({
 
 export type ChatMessageProps = {
   message: ChatMessageType;
+  userIdentity?: ChatIdentity;
+  agentIdentity?: ChatIdentity;
   canFork?: boolean;
   onFeedback?: (messageId: string, rating: "like" | "dislike" | null) => void;
   onFork?: (messageId: string) => void;
@@ -298,10 +309,13 @@ export type ChatMessageProps = {
 
 export default function ChatMessage({
   message,
+  userIdentity,
+  agentIdentity,
   canFork = false,
   onFeedback,
   onFork,
 }: ChatMessageProps) {
+  const { t } = useI18n();
   const isUser = message.role === "user";
   const activity = resolveActivityMeta(message.metadata);
   const isActivity = isActivityMessage(message);
@@ -311,6 +325,7 @@ export default function ChatMessage({
   const contentType = resolveContentType(message);
 
   if (isA2ADelegation) {
+    const targetAgentName = activity?.target_agent_name ?? "Agent";
     return (
       <div className="mb-4">
         <div className={`inline-flex flex-col gap-1.5 rounded-xl border px-4 py-3 max-w-[85%] ${
@@ -325,15 +340,18 @@ export default function ChatMessage({
               <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
             )}
             <span className={a2aCompleted ? "text-[var(--teal)]" : "text-[var(--primary)]"}>
-              {a2aCompleted ? "Agent 回复" : "正在与 Agent 通信"}
+              {a2aCompleted ? t("chat.agentReply") : t("chat.communicating")}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--primary)] text-white text-[10px] font-semibold">
-              {(activity?.target_agent_name ?? "A").charAt(0).toUpperCase()}
-            </div>
+            <WireframeAvatar
+              kind="agent"
+              entityId={activity?.target_agent_id ?? targetAgentName}
+              name={targetAgentName}
+              size={28}
+            />
             <span className="text-sm font-medium text-[var(--title)]">
-              {activity?.target_agent_name ?? "Agent"}
+              {targetAgentName}
             </span>
           </div>
           {activity?.task && (
@@ -375,18 +393,29 @@ export default function ChatMessage({
     return null;
   }
 
+  const identity = isUser
+    ? {
+        id: message.actor_id || userIdentity?.id || "current-user",
+        name: userIdentity?.name || t("chat.me"),
+        avatarUrl: userIdentity?.avatarUrl,
+      }
+    : {
+        id: message.actor_id || agentIdentity?.id || "deimos-agent",
+        name: agentIdentity?.name || "Agent",
+        avatarUrl: agentIdentity?.avatarUrl,
+      };
+
   return (
     <div className={`group flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
       <div className={`flex gap-2 max-w-[85%] ${isUser ? "flex-row-reverse" : "flex-row"}`}>
-        <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 self-start ${
-            isUser
-              ? "bg-[var(--primary)] text-white"
-              : "bg-[var(--primary-soft)] text-[var(--primary)]"
-          }`}
-        >
-          {isUser ? "我" : "A"}
-        </div>
+        <WireframeAvatar
+          kind={isUser ? "user" : "agent"}
+          entityId={identity.id}
+          avatarUrl={identity.avatarUrl}
+          name={identity.name}
+          size={34}
+          className="self-start"
+        />
         <div className={`min-w-0 ${isUser ? "items-end" : "items-start"} flex flex-col`}>
           <div
           className={`rounded-md border px-4 py-2.5 text-sm leading-relaxed ${

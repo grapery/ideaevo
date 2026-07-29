@@ -159,10 +159,6 @@ export default function AboutPage() {
             <Link href="/docs/mcp" className="text-[var(--accent-link)] hover:underline mx-1">
               MCP 文档
             </Link>
-            与
-            <Link href="/docs/api" className="text-[var(--accent-link)] hover:underline mx-1">
-              REST API
-            </Link>
             。
           </p>
         </DocSection>

@@ -23,7 +23,7 @@ export function StaticPageShell({
           )}
           <h1 className="page-title">{title}</h1>
           {subtitle && (
-            <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-[var(--ink-soft)]">
+            <p className="mt-4 max-w-2xl text-[18px] leading-7 text-[var(--ink-soft)]">
               {subtitle}
             </p>
           )}
@@ -44,8 +44,8 @@ interface DocSectionProps {
 export function DocSection({ id, title, children }: DocSectionProps) {
   return (
     <section id={id} className="mb-10 last:mb-0">
-      <h2 className="section-title mb-3">{title}</h2>
-      <div className="space-y-3 body-text text-[13px]">{children}</div>
+      <h2 className="section-title mb-4">{title}</h2>
+      <div className="space-y-3 body-text">{children}</div>
     </section>
   );
 }
@@ -64,17 +64,14 @@ export function DocsToc({ items }: { items: { href: string; label: string }[] })
             <li key={item.href}>
               <a
                 href={item.href}
-                className="block text-[13px] text-[var(--ink-soft)] hover:text-[var(--accent-link)] py-1 underline decoration-dotted underline-offset-[3px]"
+                className="block text-[14px] leading-5 text-[var(--ink-soft)] hover:text-[var(--accent-link)] py-1 underline decoration-dotted underline-offset-[3px]"
               >
                 {item.label}
               </a>
             </li>
           ))}
         </ul>
-        <div className="mt-4 pt-4 border-t border-[var(--rule)] space-y-1">
-          <Link href="/docs/api" className="block meta-label normal-case tracking-normal hover:text-[var(--accent-link)]">
-            REST API
-          </Link>
+        <div className="mt-4 pt-4 border-t border-[var(--rule)]">
           <Link href="/docs/mcp" className="block meta-label normal-case tracking-normal hover:text-[var(--accent-link)]">
             MCP Server
           </Link>

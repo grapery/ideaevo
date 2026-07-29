@@ -1,16 +1,20 @@
+"use client";
+
 import Link from "next/link";
 import { Idea } from "@/lib/types";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { FollowAgentButton } from "@/components/follow-agent-button";
+import { useI18n } from "@/lib/i18n/provider";
+import type { Locale } from "@/lib/i18n/messages";
 
-function formatRelativeTime(dateStr: string) {
+function formatRelativeTime(dateStr: string, locale: Locale) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (hours < 1) return "刚刚";
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 1) return locale === "zh-CN" ? "刚刚" : "Just now";
+  if (hours < 24) return locale === "zh-CN" ? `${hours} 小时前` : `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
-  return new Date(dateStr).toLocaleDateString("zh-CN");
+  if (days < 30) return locale === "zh-CN" ? `${days} 天前` : `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString(locale);
 }
 
 const meta = "text-xs text-[var(--text-muted)]";
@@ -22,6 +26,7 @@ const meta = "text-xs text-[var(--text-muted)]";
  * 3) 平台助手（系统 Agent，无 owner，如火卫二助手）——标注「平台 AI 助手」，不伪装成某个用户。
  */
 export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
+  const { locale, t } = useI18n();
   const agent = idea.agent;
   const owner = agent?.owner;
   const isPersonal = agent?.is_personal === true;
@@ -30,30 +35,28 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
   // ① 个人代理 = 用户本人发布
   if (isPersonal && owner) {
     return (
-      <div className="rounded-md border border-[var(--rule)] bg-[#fafafa] p-4">
-        <div className="flex items-center gap-3">
-          <Link href={`/users/${owner.id}`} className="shrink-0">
-            <WireframeAvatar
-              name={owner.name}
-              avatarUrl={owner.avatar_url}
-              entityId={owner.id}
-              kind="user"
-              size={36}
-            />
+      <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+        <WireframeAvatar
+          name={owner.name}
+          avatarUrl={owner.avatar_url}
+          entityId={owner.id}
+          kind="user"
+          size={30}
+          href={`/users/${owner.id}`}
+        />
+        <div className="min-w-0">
+          <p className="font-code text-[9px] uppercase text-[var(--ink-faint)]">{t("idea.publisher")}</p>
+          <Link
+            href={`/users/${owner.id}`}
+            className="block truncate text-[13px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
+          >
+            {owner.name}
           </Link>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-[var(--ink-faint)] uppercase tracking-wide">发布者</p>
-            <Link
-              href={`/users/${owner.id}`}
-              className="text-sm font-medium text-[var(--ink)] hover:text-[var(--primary)]"
-            >
-              {owner.name}
-            </Link>
-            <p className={meta}>
-              {formatRelativeTime(idea.created_at)} · {idea.category}
-            </p>
-          </div>
         </div>
+        <span className="h-3 w-px bg-[var(--rule)]" />
+        <p className={`${meta} whitespace-nowrap`}>
+          {formatRelativeTime(idea.created_at, locale)} · {idea.category}
+        </p>
       </div>
     );
   }
@@ -61,88 +64,78 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
   // ② 用户拥有的 AI Agent
   if (owner) {
     return (
-      <div className="grid min-h-[92px] items-center gap-3 rounded-md border border-[var(--rule)] bg-[#fafafa] p-4 sm:grid-cols-[minmax(0,1fr)_96px_minmax(0,1fr)]">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href={`/users/${owner.id}`} className="shrink-0">
-            <WireframeAvatar
-              name={owner.name}
-              avatarUrl={owner.avatar_url}
-              entityId={owner.id}
-              kind="user"
-              size={32}
-            />
+      <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+        <WireframeAvatar
+          name={owner.name}
+          avatarUrl={owner.avatar_url}
+          entityId={owner.id}
+          kind="user"
+          size={28}
+          href={`/users/${owner.id}`}
+        />
+        <div className="min-w-0">
+          <p className="font-code text-[9px] uppercase text-[var(--ink-faint)]">{t("idea.creator")}</p>
+          <Link
+            href={`/users/${owner.id}`}
+            className="block max-w-[160px] truncate text-[13px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
+          >
+            {owner.name}
           </Link>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-[var(--ink-faint)] uppercase tracking-wide">拥有者</p>
-            <Link
-              href={`/users/${owner.id}`}
-              className="block truncate text-sm font-medium text-[var(--ink)] hover:text-[var(--primary)]"
-            >
-              {owner.name}
-            </Link>
-          </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2 font-code text-[10px] text-[var(--ink-faint)]">
-          <span className="hidden h-px flex-1 bg-[var(--rule)] sm:block" />
-          <span className="whitespace-nowrap">— through AI Agent →</span>
-        </div>
+        <span className="rounded-full border border-[var(--rule)] px-2 py-1 font-code text-[9px] uppercase text-[var(--ink-faint)]">
+          {t("idea.delegated")} →
+        </span>
 
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href={`/agents/${idea.agent_id}`} className="shrink-0">
-            <WireframeAvatar
-              name={agentName}
-              avatarUrl={agent?.avatar_url}
-              entityId={idea.agent_id}
-              kind="agent"
-              size={36}
-            />
+        <WireframeAvatar
+          name={agentName}
+          avatarUrl={agent?.avatar_url}
+          entityId={idea.agent_id}
+          kind="agent"
+          size={30}
+          href={`/agents/${idea.agent_id}`}
+        />
+        <div className="min-w-0">
+          <p className="font-code text-[9px] uppercase text-[var(--ink-faint)]">{t("idea.publishingAgent")}</p>
+          <Link
+            href={`/agents/${idea.agent_id}`}
+            className="block max-w-[180px] truncate text-[13px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
+          >
+            {agentName}
           </Link>
-          <div className="min-w-0 flex-1">
-            <Link
-              href={`/agents/${idea.agent_id}`}
-              className="block truncate text-sm font-medium text-[var(--ink)] hover:text-[var(--primary)]"
-            >
-              {agentName}
-            </Link>
-            <p className={`${meta} font-code text-[10px]`}>
-              published {formatRelativeTime(idea.created_at)} · public
-            </p>
-          </div>
-          <FollowAgentButton agentId={idea.agent_id} />
         </div>
+        <span className={`${meta} whitespace-nowrap`}>{formatRelativeTime(idea.created_at, locale)}</span>
+        <FollowAgentButton agentId={idea.agent_id} />
       </div>
     );
   }
 
   // ③ 平台助手（系统 Agent，无 owner）——如实标注，不伪装成用户
   return (
-      <div className="rounded-md border border-[var(--rule)] bg-[#fafafa] p-4">
-      <div className="flex items-center gap-3">
-        <Link href={`/agents/${idea.agent_id}`} className="shrink-0">
-          <WireframeAvatar
-            name={agentName}
-            avatarUrl={agent?.avatar_url}
-            entityId={idea.agent_id}
-            kind="agent"
-            size={36}
-          />
+    <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+      <WireframeAvatar
+        name={agentName}
+        avatarUrl={agent?.avatar_url}
+        entityId={idea.agent_id}
+        kind="agent"
+        size={30}
+        href={`/agents/${idea.agent_id}`}
+      />
+      <div className="min-w-0">
+        <p className="font-code text-[9px] uppercase text-[var(--ink-faint)]">{t("idea.publishingAgent")}</p>
+        <Link
+          href={`/agents/${idea.agent_id}`}
+          className="block max-w-[190px] truncate text-[13px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
+        >
+          {agentName}
         </Link>
-        <div className="min-w-0 flex-1">
-          <Link
-            href={`/agents/${idea.agent_id}`}
-            className="text-sm font-medium text-[var(--ink)] hover:text-[var(--primary)]"
-          >
-            {agentName}
-          </Link>
-          <p className={meta}>
-            {formatRelativeTime(idea.created_at)} · {idea.category}
-          </p>
-        </div>
-        <span className="badge-pill shrink-0 inline-flex items-center gap-1 text-[10px] text-[var(--ink-faint)]">
-          平台 AI 助手
-        </span>
       </div>
+      <span className="rounded-full border border-[var(--rule)] px-2 py-1 font-code text-[9px] text-[var(--ink-faint)]">
+        {t("idea.platformAssistant")}
+      </span>
+      <span className={`${meta} whitespace-nowrap`}>
+        {formatRelativeTime(idea.created_at, locale)} · {idea.category}
+      </span>
     </div>
   );
 }

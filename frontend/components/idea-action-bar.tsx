@@ -11,6 +11,7 @@ import { getErrorMessage } from "@/lib/api-error";
 import { ForkIdeaDialog } from "./fork-idea-dialog";
 import { DeimosIcon } from "./deimos-icon";
 import { Button } from "./ui/button";
+import { useI18n } from "@/lib/i18n/provider";
 
 export function IdeaActionBar({
   ideaId,
@@ -28,11 +29,11 @@ export function IdeaActionBar({
   /** 个人代理（用户本人发布）——无 Agent 可对话，不显示对话按钮。 */
   isPersonal?: boolean;
 }) {
-  const { apiKey, canAct, useSession } = useIdeaActionAuth();
+  const { canAct } = useIdeaActionAuth();
+  const { locale, t } = useI18n();
   const { user } = useAuth();
   const { openAuthModal } = useAuthModal();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const [forkOpen, setForkOpen] = useState(false);
 
   // 对话入口仅在「真 AI Agent 发布」且「该 Agent 允许对话」时显示。
@@ -65,16 +66,15 @@ export function IdeaActionBar({
           size="sm"
           onClick={openChat}
           icon={<DeimosIcon name="chat" className="h-3.5 w-3.5" />}
-          ariaLabel="与 Agent 对话"
+          ariaLabel={locale === "zh-CN" ? "与 Agent 对话" : "Chat with Agent"}
         >
-          对话
+          {t("idea.chat")}
         </Button>
       )}
       <Button
         variant="primary"
         size="sm"
         onClick={openFork}
-        disabled={loading}
         icon={<DeimosIcon name="fork" className="h-3.5 w-3.5" />}
         ariaLabel={`Fork 这个想法（已有 ${forkCount} 个 Fork）`}
         title={`已有 ${forkCount} 个 Fork`}
@@ -93,6 +93,7 @@ export function IdeaActionBar({
 
 export function SendFlowerButton({ ideaId }: { ideaId: string }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
+  const { locale } = useI18n();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -108,11 +109,11 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
-      notify.success("已表达期待");
+      notify.success(locale === "zh-CN" ? "已表达期待" : "Wish recorded");
       // 刷新服务端数据，让「收到的花」头像列表与累计数同步更新
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, "表达期待失败"));
+      notify.error(getErrorMessage(err, locale === "zh-CN" ? "表达期待失败" : "Failed to record wish"));
     } finally {
       setLoading(false);
     }
@@ -126,7 +127,9 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
       disabled={loading}
       icon={<DeimosIcon name="wish" className="h-4 w-4" />}
     >
-      {loading ? "记录中…" : "表达期待"}
+      {loading
+        ? (locale === "zh-CN" ? "记录中…" : "Recording…")
+        : (locale === "zh-CN" ? "表达期待" : "Wish for this")}
     </Button>
   );
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { IBM_Plex_Mono, Inter, Inter_Tight, Noto_Sans_SC } from "next/font/google";
+import { IBM_Plex_Mono, Inter, Noto_Sans_SC } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth-context";
 import { AuthModalProvider } from "@/lib/auth-modal-context";
@@ -8,19 +8,14 @@ import { ApiKeyProvider } from "@/lib/api-key-context";
 import { Header } from "@/components/header";
 import { AuthModal } from "@/components/auth-modal";
 import { SiteFooter } from "@/components/site-footer";
+import { I18nProvider } from "@/lib/i18n/provider";
+import { getServerI18n } from "@/lib/i18n/server";
 import "./globals.css";
 
 const inter = Inter({
   weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
   variable: "--font-inter",
-  display: "swap",
-});
-
-const interTight = Inter_Tight({
-  weight: ["500", "600", "700"],
-  subsets: ["latin"],
-  variable: "--font-inter-tight",
   display: "swap",
 });
 
@@ -47,30 +42,34 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { locale } = await getServerI18n();
+
   return (
     <html
-      lang="zh-CN"
-      className={`${inter.variable} ${interTight.variable} ${ibmPlexMono.variable} ${notoSans.variable} antialiased`}
+      lang={locale}
+      className={`${inter.variable} ${ibmPlexMono.variable} ${notoSans.variable} antialiased`}
     >
       <head>
         <Script src="/runtime-env.js" strategy="beforeInteractive" />
       </head>
       <body className="min-h-screen bg-[var(--bg-canvas)] text-[var(--title)] font-sans flex flex-col">
-        <AuthProvider>
-          <AuthModalProvider>
-            <ApiKeyProvider>
-              <Header />
-              <main className="flex-1">{children}</main>
-              <SiteFooter />
-            </ApiKeyProvider>
-            <AuthModal />
-          </AuthModalProvider>
-        </AuthProvider>
+        <I18nProvider initialLocale={locale}>
+          <AuthProvider>
+            <AuthModalProvider>
+              <ApiKeyProvider>
+                <Header />
+                <main className="flex-1">{children}</main>
+                <SiteFooter />
+              </ApiKeyProvider>
+              <AuthModal />
+            </AuthModalProvider>
+          </AuthProvider>
+        </I18nProvider>
         <Toaster
           position="top-center"
           richColors

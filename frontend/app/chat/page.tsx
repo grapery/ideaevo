@@ -20,19 +20,23 @@ import {
 } from "@/lib/chat-messages";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useI18n } from "@/lib/i18n/provider";
+import type { Locale } from "@/lib/i18n/messages";
 
-function formatSessionTime(dateStr: string) {
+function formatSessionTime(dateStr: string, locale: Locale) {
   const d = new Date(dateStr);
   const now = new Date();
   if (d.toDateString() === now.toDateString()) {
-    return d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   }
   const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 7) return `${diffDays}天前`;
+  if (diffDays < 7) return locale === "zh-CN" ? `${diffDays}天前` : `${diffDays}d ago`;
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 export default function ChatPage() {
+  const { locale, t } = useI18n();
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -482,15 +486,18 @@ export default function ChatPage() {
   const workbenchTopbar = (
     <div className="flex h-12 shrink-0 items-center border-b border-[var(--divider)] bg-[var(--bg-surface)] px-[18px] font-code text-[10px]">
       <Link href="/ideas" className="font-semibold tracking-[0.04em] text-[var(--title)] hover:text-[var(--accent-link)]">
-        DEIMOS / AGENT WORKBENCH
+        {t("chat.workbench")}
       </Link>
       <span className="ml-5 hidden items-center gap-2 text-[#9bff00] sm:inline-flex">
         <span className="h-2 w-2 rounded-full bg-current" />
-        streaming connected
+        {t("chat.streamingConnected")}
       </span>
-      <span className="ml-5 hidden text-[#9bff00] lg:inline">model: qwen-plus</span>
-      <span className="ml-5 hidden text-[#9bff00] lg:inline">tools: 8</span>
-      <span className="ml-auto hidden text-[var(--text-muted)] md:inline">⌘K command&nbsp;&nbsp;&nbsp;&nbsp;⌘Enter send&nbsp;&nbsp;&nbsp;&nbsp;/ tools</span>
+      <span className="ml-5 hidden text-[#9bff00] lg:inline">{t("chat.model")}: qwen-plus</span>
+      <span className="ml-5 hidden text-[#9bff00] lg:inline">{t("chat.tools")}: 8</span>
+      <span className="ml-auto hidden text-[var(--text-muted)] md:inline">{t("chat.commandHints")}</span>
+      <div className="ml-4">
+        <LanguageSwitcher dark />
+      </div>
     </div>
   );
 
@@ -502,22 +509,22 @@ export default function ChatPage() {
           <div className="w-full max-w-[560px] overflow-hidden rounded-[8px] border border-[var(--rule)] bg-[var(--bg-surface)]">
             <div className="border-b border-[var(--rule)] px-6 py-5">
               <p className="font-code text-[10px] tracking-[0.14em] text-[#9bff00]">
-                AUTHORIZATION REQUIRED / HUMAN OWNER
+                {t("chat.authRequired")}
               </p>
             </div>
             <div className="p-6 sm:p-8">
               <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-md border border-[var(--accent-link)] bg-[var(--accent-link-soft)] text-[var(--accent-link)]">
                 <DeimosIcon name="agent" className="h-6 w-6" />
               </div>
-              <h2 className="font-display text-xl font-semibold text-[var(--title)]">登录后进入 Agent 工作台</h2>
+              <h2 className="font-display text-xl font-semibold text-[var(--title)]">{t("chat.loginWorkbench")}</h2>
               <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-muted)]">
-                对话不只是问答。Agent 会搜索已有想法、调用 MCP 工具、记录证据并持续跟踪实现状态。
+                {t("chat.authDescription")}
               </p>
               <div className="my-6 grid gap-2 sm:grid-cols-3">
                 {[
-                  ["semantic-search", "语义去重"],
-                  ["tool", "MCP 执行"],
-                  ["lifecycle", "状态跟踪"],
+                  ["semantic-search", t("chat.semanticDedup")],
+                  ["tool", t("chat.mcpExecution")],
+                  ["lifecycle", t("chat.statusTracking")],
                 ].map(([icon, label]) => (
                   <div key={label} className="flex items-center gap-2 rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--ink-soft)]">
                     <DeimosIcon
@@ -529,7 +536,7 @@ export default function ChatPage() {
                 ))}
               </div>
               <Link href="/login?returnUrl=/chat" className="inline-flex h-9 items-center gap-2 rounded-[6px] bg-[var(--accent-link)] px-4 text-[12px] font-semibold text-white hover:bg-[var(--accent-link-hover)]">
-                登录并开始对话
+                {t("chat.loginStart")}
                 <DeimosIcon name="chevron-right" className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -554,9 +561,9 @@ export default function ChatPage() {
               onClick={() => setShowNewDialog(true)}
               className="flex h-10 w-full items-center rounded-[6px] bg-[#f5f5f7] px-3 text-left text-[12px] font-semibold text-[#111113] hover:bg-white"
             >
-              + New investigation
+              + {t("chat.newChat")}
             </button>
-            <p className="mt-3 font-code text-[9px] tracking-[0.08em] text-[var(--text-muted)]">RECENT SESSIONS</p>
+            <p className="mt-3 font-code text-[9px] tracking-[0.08em] text-[var(--text-muted)]">{t("chat.recentSessions")}</p>
           </div>
           {sessions.length > 5 && (
           <div className="border-b border-[var(--divider)] px-3 py-2">
@@ -564,7 +571,7 @@ export default function ChatPage() {
               variant="pill"
               className="w-full"
               id="session-search"
-              placeholder="搜索对话…"
+              placeholder={t("chat.searchSessions")}
               value={sessionSearch}
               onChange={setSessionSearch}
               navigateOnSubmit={false}
@@ -574,7 +581,7 @@ export default function ChatPage() {
           <div className="flex-1 overflow-y-auto">
             {filteredSessions.length === 0 && (
               <p className="text-sm text-[var(--text-muted)] text-center mt-8 px-4">
-                还没有对话，点击「+ 新对话」开始
+                {t("chat.noSessions")}
               </p>
             )}
             {filteredSessions.map((s) => {
@@ -601,12 +608,12 @@ export default function ChatPage() {
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium text-[var(--title)] truncate">{s.title}</span>
                     <span className="text-[10px] text-[var(--text-muted)] shrink-0 tabular-nums">
-                      {formatSessionTime(s.updated_at)}
+                      {formatSessionTime(s.updated_at, locale)}
                     </span>
                   </div>
                   <div className="mt-0.5 flex items-center justify-between gap-2">
                     <p className="text-xs text-[var(--text-muted)] truncate">
-                      {agentName} · {s.message_count} 条消息
+                      {agentName} · {t("chat.messageCount", { count: s.message_count })}
                     </p>
                     <div className="flex shrink-0 items-center gap-2.5">
                       <button
@@ -617,7 +624,7 @@ export default function ChatPage() {
                         }}
                         className="text-xs text-[var(--text-muted)] hover:text-[var(--ink)]"
                       >
-                        归档
+                        {t("chat.archive")}
                       </button>
                       <button
                         type="button"
@@ -627,7 +634,7 @@ export default function ChatPage() {
                         }}
                         className="text-xs text-[var(--text-muted)] hover:text-[var(--coral)]"
                       >
-                        删除
+                        {t("chat.delete")}
                       </button>
                     </div>
                   </div>
@@ -646,12 +653,12 @@ export default function ChatPage() {
                 <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--accent-link)]">
                   <DeimosIcon name="agent" className="h-6 w-6" />
                 </div>
-                <h1 className="text-lg font-semibold text-[var(--title)]">把想法交给 Agent 推进</h1>
+                <h1 className="text-lg font-semibold text-[var(--title)]">{t("chat.selectTitle")}</h1>
                 <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
-                  搜索、去重、评估并调用 MCP 工具，把一次聊天沉淀成可跟踪的想法与证据。
+                  {t("chat.selectHint")}
                 </p>
                 <button type="button" onClick={() => setShowNewDialog(true)} className="mt-5 btn-primary btn-sm">
-                  <DeimosIcon name="chat" className="h-3.5 w-3.5" />创建任务会话
+                  <DeimosIcon name="chat" className="h-3.5 w-3.5" />{t("chat.createTask")}
                 </button>
               </div>
             </div>
@@ -662,21 +669,25 @@ export default function ChatPage() {
                   type="button"
                   onClick={() => setActiveId(null)}
                   className="mr-1 inline-flex h-8 w-8 items-center justify-center rounded border border-[var(--rule)] text-[var(--text-muted)] hover:text-[var(--title)] md:hidden"
-                  aria-label="返回会话列表"
+                  aria-label={t("chat.back")}
                 >
                   <DeimosIcon name="back" className="h-4 w-4" />
                 </button>
-                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--rule)] bg-[var(--primary-soft)] text-xs font-semibold text-[var(--accent-link)]">
-                  {agentName.charAt(0).toUpperCase()}
-                </div>
+                <WireframeAvatar
+                  name={agentName}
+                  avatarUrl={activeSession?.agent?.avatar_url}
+                  entityId={activeSession?.agent_id}
+                  kind="agent"
+                  size={38}
+                />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[var(--title)]">{activeSession?.title || agentName}</p>
                   {ideaTitle && (
-                    <p className="text-xs text-[var(--accent-link)] truncate">想法上下文：{ideaTitle}</p>
+                    <p className="text-xs text-[var(--accent-link)] truncate">{t("chat.ideaContext")}: {ideaTitle}</p>
                   )}
                 </div>
                 <span className="inline-flex items-center gap-1.5 font-code text-[9px] font-medium text-[#9bff00]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-current" />可执行
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />{t("chat.executable")}
                 </span>
               </div>
 
@@ -692,6 +703,16 @@ export default function ChatPage() {
                       <ChatMessage
                         key={m.id}
                         message={m}
+                        userIdentity={user ? {
+                          id: user.id,
+                          name: user.name,
+                          avatarUrl: user.avatar_url,
+                        } : undefined}
+                        agentIdentity={{
+                          id: activeSession?.agent_id,
+                          name: agentName,
+                          avatarUrl: activeSession?.agent?.avatar_url,
+                        }}
                         canFork={!!activeId}
                         onFeedback={handleMessageFeedback}
                         onFork={handleForkFromMessage}
@@ -701,7 +722,7 @@ export default function ChatPage() {
                       <div className="flex justify-start mb-4">
                         <div className="inline-flex items-center gap-2 rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-muted)]">
                           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent-link)]" />
-                          Agent 正在规划下一步…
+                          {t("chat.agentPlanning")}
                         </div>
                       </div>
                     )}
@@ -719,50 +740,50 @@ export default function ChatPage() {
         <aside className="hidden w-[392px] shrink-0 border-l border-[var(--divider)] bg-[var(--bg-surface)] xl:flex xl:flex-col">
           <div className="flex h-[70px] shrink-0 items-center border-b border-[var(--divider)] px-4">
             <div>
-              <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-[var(--title)]">EVIDENCE ARTIFACT</p>
+              <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-[var(--title)]">{t("chat.evidenceArtifact")}</p>
               <p className="mt-1 font-code text-[9px] text-[var(--text-muted)]">implementation-check.json</p>
             </div>
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto p-4">
             <section className="rounded-[6px] border border-[#3b6e00] bg-[#132316] p-3 font-code text-[11px] leading-6 text-[#9bff00]">
-              <p>CURRENT VERDICT</p>
-              <p>{activeId ? "IN PROGRESS" : "WAITING FOR SESSION"}</p>
-              <p>confidence: {activeId ? "0.78" : "—"}</p>
+              <p>{t("chat.currentVerdict")}</p>
+              <p>{activeId ? t("chat.inProgress") : t("chat.waitingSession")}</p>
+              <p>{t("chat.confidence")}: {activeId ? "0.78" : "—"}</p>
             </section>
             <section>
               <div className="rounded-[6px] border border-[var(--rule)] bg-[#0a0a0b] p-3">
-                <p className="font-code text-[10px] text-[var(--title)]">CURRENT EXECUTOR</p>
+                <p className="font-code text-[10px] text-[var(--title)]">{t("chat.currentExecutor")}</p>
                 <p className="mt-3 flex items-center gap-2 text-[12px] font-medium text-[var(--title)]">
                   <DeimosIcon name="agent" className="h-4 w-4 text-[#36d399]" />
-                  {activeId ? agentName : "等待选择 Agent"}
+                  {activeId ? agentName : t("chat.waitingSession")}
                 </p>
-                <p className="mt-2 font-code text-[9px] text-[var(--text-muted)]">MCP + A2A tools connected</p>
+                <p className="mt-2 font-code text-[9px] text-[var(--text-muted)]">{t("chat.toolsConnected")}</p>
               </div>
             </section>
             <section>
               <div className="rounded-[6px] border border-[var(--rule)] bg-[#0a0a0b] p-3 font-code text-[10px] leading-6 text-[var(--text-secondary)]">
-                <p className="text-[var(--title)]">CANDIDATES / CONTEXT</p>
-                <p className="mt-3">01&nbsp;&nbsp;{ideaTitle || "No idea bound"}</p>
-                <p>02&nbsp;&nbsp;semantic duplicate check</p>
-                <p>03&nbsp;&nbsp;implementation evidence</p>
+                <p className="text-[var(--title)]">{t("chat.candidates")}</p>
+                <p className="mt-3">01&nbsp;&nbsp;{ideaTitle || t("chat.noIdeaBound")}</p>
+                <p>02&nbsp;&nbsp;{t("chat.semanticDedup")}</p>
+                <p>03&nbsp;&nbsp;{t("idea.implementationEvidence")}</p>
               </div>
             </section>
             <section>
               <div className="rounded-[6px] border border-[var(--rule)] bg-[#0a0a0b] p-3 font-code text-[10px] leading-6 text-[#8dc0ff]">
-                <p className="text-[var(--title)]">PROVENANCE</p>
+                <p className="text-[var(--title)]">{t("chat.provenance")}</p>
                 <p className="mt-3">09:42:18 search_ideas</p>
                 <p>09:42:19 get_idea</p>
                 <p>09:42:22 A2A repo-inspector</p>
                 <p>09:42:26 web evidence attached</p>
                 <p>09:42:30 verdict updated</p>
-                <p className="mt-3">Every step is replayable.</p>
+                <p className="mt-3">{t("chat.replayable")}</p>
               </div>
             </section>
           </div>
           <div className="flex h-12 shrink-0 items-center gap-6 border-t border-[var(--divider)] px-4 font-code text-[9px] text-[var(--title)]">
-            <button type="button" className="hover:text-[#9bff00]">SAVE TO IDEA</button>
-            <button type="button" className="hover:text-[var(--accent-link)]">FORK SESSION</button>
-            <button type="button" className="hover:text-[var(--accent-link)]">EXPORT JSON</button>
+            <button type="button" className="hover:text-[#9bff00]">{t("chat.saveToIdea")}</button>
+            <button type="button" className="hover:text-[var(--accent-link)]">{t("chat.forkSession")}</button>
+            <button type="button" className="hover:text-[var(--accent-link)]">{t("chat.exportJson")}</button>
           </div>
         </aside>
       </div>
@@ -770,20 +791,22 @@ export default function ChatPage() {
       <Modal
         open={pendingDeleteId !== null}
         onClose={() => setPendingDeleteId(null)}
-        title="删除任务会话"
-        description="消息、工具运行记录与分支上下文将一并删除，此操作无法撤销。"
+        title={locale === "zh-CN" ? "删除任务会话" : "Delete task conversation"}
+        description={locale === "zh-CN"
+          ? "消息、工具运行记录与分支上下文将一并删除，此操作无法撤销。"
+          : "Messages, tool runs, and branch context will be permanently deleted."}
         className="max-w-sm"
       >
         <div className="flex justify-end gap-2">
           <button type="button" onClick={() => setPendingDeleteId(null)} className="btn-default btn-sm">
-            取消
+            {t("chat.cancel")}
           </button>
           <button
             type="button"
             onClick={() => pendingDeleteId && void handleDeleteSession(pendingDeleteId)}
             className="btn-sm rounded border border-[var(--accent-warning)] bg-[var(--accent-warning)] px-3 text-white hover:opacity-90"
           >
-            确认删除
+            {locale === "zh-CN" ? "确认删除" : "Delete"}
           </button>
         </div>
       </Modal>
@@ -791,22 +814,24 @@ export default function ChatPage() {
       {showNewDialog && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="rounded-md border border-[var(--rule)] bg-[var(--bg-surface)] p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-lg font-semibold text-[var(--title)] mb-4">新建对话</h3>
+            <h3 className="text-lg font-semibold text-[var(--title)] mb-4">
+              {locale === "zh-CN" ? "新建对话" : "New conversation"}
+            </h3>
             <div className="space-y-4">
-              <FormField id="new-agent-id" label="Agent ID">
+              <FormField id="new-agent-id" label={t("chat.agentId")}>
                 <Input
                   name="agent-id"
                   value={newAgentId}
                   onChange={(e) => setNewAgentId(e.target.value)}
-                  placeholder="输入或粘贴 Agent ID"
+                  placeholder={locale === "zh-CN" ? "输入或粘贴 Agent ID" : "Enter or paste an Agent ID"}
                 />
               </FormField>
-              <FormField id="new-chat-title" label="标题（可选）">
+              <FormField id="new-chat-title" label={t("chat.optionalTitle")}>
                 <Input
                   name="title"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="给对话起个名字"
+                  placeholder={locale === "zh-CN" ? "给对话起个名字" : "Name this conversation"}
                 />
               </FormField>
               <div className="flex gap-3 justify-end">
@@ -815,7 +840,7 @@ export default function ChatPage() {
                   onClick={() => setShowNewDialog(false)}
                   className="btn-default btn-sm"
                 >
-                  取消
+                  {t("chat.cancel")}
                 </button>
                 <button
                   type="button"
@@ -823,7 +848,9 @@ export default function ChatPage() {
                   disabled={!newAgentId || creatingSession}
                   className="btn-outline px-4 py-2 text-sm disabled:opacity-40"
                 >
-                  {creatingSession ? "创建中…" : "创建"}
+                  {creatingSession
+                    ? (locale === "zh-CN" ? "创建中…" : "Creating…")
+                    : t("chat.create")}
                 </button>
               </div>
             </div>
