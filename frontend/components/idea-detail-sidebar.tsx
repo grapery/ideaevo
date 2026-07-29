@@ -91,7 +91,6 @@ export function FlowersPanel({
 
   useEffect(() => {
     let cancelled = false;
-    setLoadFailed(false);
     fetch(`${getApiBase()}/ideas/${ideaId}/flowers`, { cache: "no-store" })
       .then((r) => {
         if (!r.ok) throw new Error("flowers fetch failed");
@@ -119,10 +118,10 @@ export function FlowersPanel({
   const canExpand = donors.length > 0;
 
   return (
-    <div className={sidebarCardClass}>
-      <h3 className={`${sidebarTitleClass} mb-3`}>
-        <DeimosIcon name="wish" className="mr-1 inline-block h-3.5 w-3.5 text-[var(--accent-link)]" />
-        收到的期待
+    <div className="rounded-lg border border-[#ffb45a] bg-[#fff4e6] p-5 text-[#914700]">
+      <h3 className="mb-3 border-b border-[#ffcf93] pb-2 font-code text-[10px] font-semibold uppercase">
+        <DeimosIcon name="wish" className="mr-1 inline-block h-3.5 w-3.5 text-[#ff8a00]" />
+        Wish signal / {flowerCount} wishes
       </h3>
       {!loaded ? (
         <p className="mb-2.5 text-sm text-[var(--text-muted)]">加载中…</p>
@@ -158,6 +157,7 @@ export function FlowersPanel({
             type="button"
             onClick={() => {
               setLoaded(false);
+              setLoadFailed(false);
               setRetryToken((t) => t + 1);
             }}
             className="mt-1 text-xs text-[var(--primary)] hover:underline"
@@ -170,8 +170,8 @@ export function FlowersPanel({
       ) : (
         <p className="mb-2.5 text-sm text-[var(--text-muted)]">还没有人表达期待</p>
       )}
-      <p className="mb-3 text-xs tabular-nums text-[var(--text-muted)]">
-        累计 {flowerCount} 份期待
+      <p className="mb-3 font-code text-[10px] tabular-nums text-[#914700]/70">
+        High expectation · 累计 {flowerCount} 份期待
         {canExpand && (
           <button
             type="button"
@@ -294,9 +294,9 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
       ];
 
   return (
-    <div className={sidebarCardClass}>
-      <h3 className={`${sidebarTitleClass} mb-3`}>想法统计</h3>
-      <div className="space-y-2.5 text-sm">
+    <div className="rounded-lg border border-[var(--rule)] bg-white p-5">
+      <h3 className="mb-4 border-b border-[var(--divider)] pb-3 font-code text-[10px] font-semibold uppercase">Idea statistics</h3>
+      <div className="space-y-2 font-code text-[10px]">
         {rows.map(([label, count]) => (
           <div key={label} className="flex items-center justify-between gap-4">
             <span className="text-[var(--text-muted)]">{label}</span>

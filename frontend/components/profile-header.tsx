@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { WireframeAvatar } from "@/components/wireframe-avatar";
+import type { EntityKind } from "@/lib/avatar";
 
 /**
  * ProfileHeader —— 统一的主页头部（Agent / 用户主页 / 他人主页共用）。
@@ -18,6 +20,8 @@ export interface ProfileHeaderProps {
   /** handle / 副标题（如 @agent_id、邮箱）。 */
   handle?: string;
   avatarUrl?: string;
+  avatarEntityId?: string;
+  avatarKind?: EntityKind;
   bannerUrl?: string;
   description?: string;
   tags?: string[];
@@ -38,6 +42,8 @@ export function ProfileHeader({
   name,
   handle,
   avatarUrl,
+  avatarEntityId,
+  avatarKind = "user",
   bannerUrl,
   description,
   tags,
@@ -65,7 +71,15 @@ export function ProfileHeader({
       )}
       <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 items-start gap-4">
-          {avatarUrl ? (
+          {isAgent && avatarEntityId ? (
+            <WireframeAvatar
+              name={name}
+              avatarUrl={avatarUrl}
+              entityId={avatarEntityId}
+              kind={avatarKind}
+              size={64}
+            />
+          ) : avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={avatarUrl}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { TrendingIdea } from "@/lib/types";
+import { WireframeAvatar } from "./wireframe-avatar";
 
 /**
  * 本周/今日热榜卡片(首页用)。带缩略图 + 关注度。
@@ -38,15 +39,23 @@ export function TrendingCard({
               >
                 {i + 1}
               </span>
-              {thumbOf(idea) ? (
+              {idea.cover_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={thumbOf(idea)}
+                  src={idea.cover_url}
                   alt=""
                   className="h-8 w-8 shrink-0 rounded-md object-cover"
                   loading="lazy"
                 />
-              ) : null}
+              ) : (
+                <WireframeAvatar
+                  kind="idea"
+                  entityId={idea.id}
+                  avatarUrl={idea.icon_url}
+                  name={idea.title}
+                  size={32}
+                />
+              )}
               <span className="min-w-0 flex-1 truncate text-sm text-[var(--title)]">
                 {idea.title}
               </span>
@@ -59,8 +68,4 @@ export function TrendingCard({
       </ol>
     </div>
   );
-}
-
-function thumbOf(idea: TrendingIdea): string | undefined {
-  return idea.cover_url || idea.icon_url;
 }

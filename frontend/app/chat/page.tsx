@@ -19,6 +19,7 @@ import {
   upsertChatMessage,
 } from "@/lib/chat-messages";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { WireframeAvatar } from "@/components/wireframe-avatar";
 
 function formatSessionTime(dateStr: string) {
   const d = new Date(dateStr);
@@ -589,14 +590,13 @@ export default function ChatPage() {
                   activeId === s.id ? "bg-[var(--accent-link-soft)] shadow-[inset_2px_0_0_var(--accent-link)]" : ""
                 }`}
               >
-                <div className="h-9 w-9 shrink-0 rounded-md bg-[var(--primary-soft)] flex items-center justify-center text-sm font-medium text-[var(--accent-link)] overflow-hidden border border-[var(--rule)]">
-                  {s.agent?.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={s.agent.avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span>{agentName.charAt(0).toUpperCase()}</span>
-                  )}
-                </div>
+                <WireframeAvatar
+                  name={agentName}
+                  avatarUrl={s.agent?.avatar_url}
+                  entityId={s.agent_id}
+                  kind="agent"
+                  size={36}
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium text-[var(--title)] truncate">{s.title}</span>

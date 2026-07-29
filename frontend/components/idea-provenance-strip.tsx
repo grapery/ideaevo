@@ -30,7 +30,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
   // ① 个人代理 = 用户本人发布
   if (isPersonal && owner) {
     return (
-      <div className="profile-float-card p-4">
+      <div className="rounded-md border border-[var(--rule)] bg-[#fafafa] p-4">
         <div className="flex items-center gap-3">
           <Link href={`/users/${owner.id}`} className="shrink-0">
             <WireframeAvatar
@@ -61,8 +61,8 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
   // ② 用户拥有的 AI Agent
   if (owner) {
     return (
-      <div className="profile-float-card p-4 space-y-3">
-        <div className="flex items-center gap-3">
+      <div className="grid min-h-[92px] items-center gap-3 rounded-md border border-[var(--rule)] bg-[#fafafa] p-4 sm:grid-cols-[minmax(0,1fr)_96px_minmax(0,1fr)]">
+        <div className="flex min-w-0 items-center gap-3">
           <Link href={`/users/${owner.id}`} className="shrink-0">
             <WireframeAvatar
               name={owner.name}
@@ -76,23 +76,19 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
             <p className="text-[11px] text-[var(--ink-faint)] uppercase tracking-wide">拥有者</p>
             <Link
               href={`/users/${owner.id}`}
-              className="text-sm font-medium text-[var(--ink)] hover:text-[var(--primary)]"
+              className="block truncate text-sm font-medium text-[var(--ink)] hover:text-[var(--primary)]"
             >
               {owner.name}
             </Link>
           </div>
-          <span className="badge-pill shrink-0 inline-flex items-center gap-1 text-[10px] text-[var(--primary)]">
-            AI Agent
-          </span>
         </div>
 
-        <div className="flex items-center gap-2 pl-4 text-[11px] text-[var(--ink-faint)]">
-          <span className="h-px flex-1 bg-[var(--rule)]" />
-          <span>通过 AI Agent 发布</span>
-          <span className="h-px flex-1 bg-[var(--rule)]" />
+        <div className="flex items-center justify-center gap-2 font-code text-[10px] text-[var(--ink-faint)]">
+          <span className="hidden h-px flex-1 bg-[var(--rule)] sm:block" />
+          <span className="whitespace-nowrap">— through AI Agent →</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Link href={`/agents/${idea.agent_id}`} className="shrink-0">
             <WireframeAvatar
               name={agentName}
@@ -105,12 +101,12 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
           <div className="min-w-0 flex-1">
             <Link
               href={`/agents/${idea.agent_id}`}
-              className="text-sm font-medium text-[var(--ink)] hover:text-[var(--primary)]"
+              className="block truncate text-sm font-medium text-[var(--ink)] hover:text-[var(--primary)]"
             >
               {agentName}
             </Link>
-            <p className={meta}>
-              {formatRelativeTime(idea.created_at)} · {idea.category}
+            <p className={`${meta} font-code text-[10px]`}>
+              published {formatRelativeTime(idea.created_at)} · public
             </p>
           </div>
           <FollowAgentButton agentId={idea.agent_id} />
@@ -121,7 +117,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
 
   // ③ 平台助手（系统 Agent，无 owner）——如实标注，不伪装成用户
   return (
-    <div className="profile-float-card p-4">
+      <div className="rounded-md border border-[var(--rule)] bg-[#fafafa] p-4">
       <div className="flex items-center gap-3">
         <Link href={`/agents/${idea.agent_id}`} className="shrink-0">
           <WireframeAvatar

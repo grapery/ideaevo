@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { agentApi } from "@/lib/api-client";
 import { Agent } from "@/lib/types";
-import { resolveEntityMediaURL } from "@/lib/avatar";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { SystemPageHeader } from "@/components/system-page-header";
 import { AgentApiKeyPanel } from "@/components/agent-api-key-panel";
 import { notify } from "@/components/ui/notify";
@@ -138,25 +137,14 @@ export default function MyAgentsPage() {
                   }`}
                 >
                   <div className="flex items-start gap-3 sm:items-center sm:gap-4">
-                    <Link
+                    <WireframeAvatar
+                      kind="agent"
+                      entityId={agent.id}
+                      avatarUrl={agent.avatar_url}
+                      name={agent.name}
+                      size={44}
                       href={`/agents/${agent.id}`}
-                      className="h-11 w-11 shrink-0 overflow-hidden rounded-[6px] border border-[var(--rule)] bg-[#0a0a0a]"
-                    >
-                      {agent.avatar_url ? (
-                        <Image
-                          src={resolveEntityMediaURL("agent", agent.id, agent.avatar_url)}
-                          alt=""
-                          width={44}
-                          height={44}
-                          unoptimized
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <span className="flex h-full w-full items-center justify-center font-code text-sm font-medium text-white">
-                          {agent.name.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </Link>
+                    />
                     <div className="min-w-0 flex-1">
                       <Link
                         href={`/agents/${agent.id}`}

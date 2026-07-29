@@ -191,9 +191,19 @@ export function IdeaCard({
           </span>
         </div>
 
-        <h3 className="font-display mt-3 line-clamp-2 text-[21px] font-bold leading-[28px] tracking-[-0.02em] text-[var(--ink)] group-hover:text-[var(--accent-link)]">
-          {idea.title}
-        </h3>
+        <div className="mt-3 flex items-start gap-3">
+          <WireframeAvatar
+            kind="idea"
+            entityId={idea.id}
+            avatarUrl={idea.icon_url}
+            name={idea.title}
+            size={42}
+            className="mt-0.5"
+          />
+          <h3 className="font-display line-clamp-2 text-[21px] font-bold leading-[28px] tracking-[-0.02em] text-[var(--ink)] group-hover:text-[var(--accent-link)]">
+            {idea.title}
+          </h3>
+        </div>
         <p className="mt-1.5 line-clamp-2 text-[13px] leading-[20px] text-[var(--ink-soft)]">
           {stripMarkdownPreview(idea.description)}
         </p>
@@ -269,7 +279,7 @@ export function IdeaCard({
           avatarUrl={idea.icon_url}
           entityId={idea.id}
           kind="idea"
-          shape="rounded"
+          shape="circle"
           size={44}
           title={idea.title}
         />

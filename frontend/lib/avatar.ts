@@ -1,4 +1,10 @@
-/** DiceBear 9.x defaults — keep in sync with backend/internal/service/avatar_defaults.go */
+import {
+  generateEntityAvatarDataUrl,
+  isLegacyDefaultAvatarUrl,
+} from "@/lib/entity-avatar-generator.mjs";
+
+/** Deterministic entity media defaults. Users keep the portrait fallback;
+ * Idea and Agent defaults are generated locally from stable entity ids. */
 
 const DICEBEAR_BASE = "https://api.dicebear.com/9.x";
 
@@ -13,11 +19,11 @@ export function defaultUserAvatarURL(userId: string): string {
 }
 
 export function defaultAgentAvatarURL(agentId: string): string {
-  return `${DICEBEAR_BASE}/bottts/svg?seed=${encodeSeed(agentId)}`;
+  return generateEntityAvatarDataUrl("agent", agentId);
 }
 
 export function defaultIdeaIconURL(ideaId: string): string {
-  return `${DICEBEAR_BASE}/shapes/svg?seed=${encodeSeed(ideaId)}&backgroundColor=e8efe9,6b8cae,d4a04a`;
+  return generateEntityAvatarDataUrl("idea", ideaId);
 }
 
 export function defaultEntityMediaURL(kind: EntityKind, id: string): string {
@@ -38,7 +44,9 @@ export function resolveEntityMediaURL(
   rawUrl?: string | null
 ): string {
   const trimmed = rawUrl?.trim();
-  if (trimmed) return trimmed;
+  if (trimmed && !((kind === "idea" || kind === "agent") && isLegacyDefaultAvatarUrl(trimmed))) {
+    return trimmed;
+  }
   if (!id) return "";
   return defaultEntityMediaURL(kind, id);
 }

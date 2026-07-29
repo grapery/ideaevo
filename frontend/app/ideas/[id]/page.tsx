@@ -1,7 +1,15 @@
 import Link from "next/link";
-import { FlowerDonor, Idea, IdeaLineage, IdeaStats, Comment, normalizeTags } from "@/lib/types";
+import {
+  FlowerDonor,
+  Idea,
+  IdeaLineage,
+  IdeaStats,
+  Comment,
+  normalizeLinks,
+  normalizeTags,
+  safeUrl,
+} from "@/lib/types";
 import { CommentList } from "@/components/comment-list";
-import { StatusBadge } from "@/components/status-badge";
 import { IdeaActionBar } from "@/components/idea-action-bar";
 import { IdeaDetailEngagementSection } from "@/components/idea-detail-engagement-section";
 import { IdeaIcon, IdeaMetaPanel } from "@/components/idea-meta-panel";
@@ -10,24 +18,20 @@ import { IdeaCoverHero } from "@/components/idea-cover-hero";
 import { IdeaMediaGallery } from "@/components/idea-media-gallery";
 import { IdeaProvenanceStrip } from "@/components/idea-provenance-strip";
 import { ForkDerivativesPanel } from "@/components/fork-derivatives-panel";
-import {
-  ForkTreePanel,
-  FlowersPanel,
-  IdeaStatsPanel,
-} from "@/components/idea-detail-sidebar";
+import { FlowersPanel, IdeaStatsPanel } from "@/components/idea-detail-sidebar";
 import { CommentForm } from "./comments/comment-form";
 import { getApiBase } from "@/lib/api-base";
 import { IconLeaf, IconGitFork } from "@/components/icons";
 import { IdeaViewReporter } from "@/components/idea-view-reporter";
 import { PublishVersionButton } from "@/components/publish-version-dialog";
+import { IdeaEvolutionGraph } from "@/components/idea-evolution-graph";
 
 const apiBase = getApiBase();
 
 async function getIdea(id: string): Promise<Idea | null> {
   try {
     const res = await fetch(`${apiBase}/ideas/${id}`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return res.json();
+    return res.ok ? res.json() : null;
   } catch {
     return null;
   }
@@ -36,18 +40,7 @@ async function getIdea(id: string): Promise<Idea | null> {
 async function getComments(ideaId: string): Promise<Comment[]> {
   try {
     const res = await fetch(`${apiBase}/ideas/${ideaId}/comments`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
-  }
-}
-
-async function getForks(ideaId: string) {
-  try {
-    const res = await fetch(`${apiBase}/ideas/${ideaId}/forks`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return res.json();
+    return res.ok ? res.json() : [];
   } catch {
     return [];
   }
@@ -78,8 +71,7 @@ async function getForkChildren(ideaId: string): Promise<Idea[]> {
 async function getIdeaStats(ideaId: string): Promise<IdeaStats | null> {
   try {
     const res = await fetch(`${apiBase}/ideas/${ideaId}/stats`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return res.json();
+    return res.ok ? res.json() : null;
   } catch {
     return null;
   }
@@ -88,13 +80,11 @@ async function getIdeaStats(ideaId: string): Promise<IdeaStats | null> {
 async function getIdeaLineage(ideaId: string): Promise<IdeaLineage | null> {
   try {
     const res = await fetch(`${apiBase}/ideas/${ideaId}/lineage`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return res.json();
+    return res.ok ? res.json() : null;
   } catch {
     return null;
   }
 }
-
 
 export default async function IdeaDetailPage({
   params,
@@ -107,15 +97,14 @@ export default async function IdeaDetailPage({
   if (!idea) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <IconLeaf className="h-10 w-10 mx-auto mb-4 text-[var(--text-muted)]" aria-hidden="true" />
+        <IconLeaf className="mx-auto mb-4 h-10 w-10 text-[var(--text-muted)]" aria-hidden="true" />
         <p className="text-[var(--text-muted)]">想法不存在或已被删除</p>
       </div>
     );
   }
 
-  const [comments, forks, forkChildren, flowerDonors, stats, lineage] = await Promise.all([
+  const [comments, forkChildren, flowerDonors, stats, lineage] = await Promise.all([
     getComments(id),
-    getForks(id),
     getForkChildren(id),
     idea.flower_count > 0 ? getFlowerDonors(id) : Promise.resolve([]),
     getIdeaStats(id),
@@ -123,131 +112,195 @@ export default async function IdeaDetailPage({
   ]);
 
   const tags = normalizeTags(idea.tags);
+  const repoUrl = safeUrl(idea.repo_url);
+  const demoUrl = safeUrl(idea.demo_url);
+  const evidence = [
+    ...(repoUrl ? [{ label: "Repository", url: repoUrl, detail: "source · implementation" }] : []),
+    ...(demoUrl ? [{ label: "Live demo", url: demoUrl, detail: "demo · product evidence" }] : []),
+    ...normalizeLinks(idea.links)
+      .map((link) => ({
+        label: link.title || link.kind || "Reference",
+        url: safeUrl(link.url),
+        detail: `${link.kind || "reference"} · linked evidence`,
+      }))
+      .filter((item): item is { label: string; url: string; detail: string } => Boolean(item.url)),
+  ];
+  const totalReferences = stats?.reference_count ?? evidence.length;
+  const currentVersion = stats?.version_count || lineage?.current_version?.version || 1;
+  const implStatus = (
+    idea.impl_status || (idea.status === "implemented" ? "implemented" : "concept")
+  ).toUpperCase();
+
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
+    <div className="min-h-screen bg-[#f3f5f7]">
       <IdeaViewReporter ideaId={id} />
-      <div className="mx-auto page-container py-6">
-        <nav className="folio mb-4">
-          <Link href="/">首页</Link>
-          <span className="folio-sep">/</span>
-          <Link href="/ideas">想法</Link>
-          <span className="folio-sep">/</span>
-          <span className="text-[var(--ink)] truncate max-w-[320px] inline-block align-bottom">
-            {idea.title}
-          </span>
+      <div className="mx-auto page-container py-7">
+        <nav className="mb-4 flex items-center gap-3 overflow-hidden font-code text-[10px] font-semibold uppercase text-[var(--ink-faint)]">
+          <Link href="/">Home</Link><span>/</span>
+          <Link href="/ideas">Ideas</Link><span>/</span>
+          <span className="truncate text-[var(--ink)]">{idea.title}</span>
         </nav>
 
-        {/* Sticky sub-nav (GitHub repo-style) */}
-        <div className="profile-tabs -mx-4 sm:-mx-6 mb-0 px-4 sm:px-6">
-          <div className="flex gap-0 overflow-x-auto">
-            <Link href="#" className="profile-tab" data-active="true">想法正文</Link>
-            <Link href="#comments" className="profile-tab">
-              评论
-              {comments.length > 0 && <span className="count-badge">{comments.length}</span>}
-            </Link>
-          </div>
+        <div className="mb-5 flex h-11 items-center gap-6 overflow-x-auto rounded-md border border-[var(--rule)] bg-white px-4 text-[12px] font-semibold text-[var(--ink-soft)]">
+          <Link href="#overview" className="whitespace-nowrap text-[var(--ink)]">想法正文</Link>
+          <Link href="#comments" className="whitespace-nowrap">评论 {comments.length}</Link>
+          <Link href="#evolution" className="whitespace-nowrap">版本 {currentVersion}</Link>
+          <Link href="#evolution" className="whitespace-nowrap">Fork 谱系 {idea.fork_count}</Link>
+          <Link href="#evidence" className="whitespace-nowrap">实现证据 {totalReferences}</Link>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="surface-card p-6">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <StatusBadge status={idea.status} />
-                {idea.forked_from_id && (
-                  <Link
-                    href={`/ideas/${idea.forked_from_id}`}
-                    className="badge-pill inline-flex items-center gap-1 text-[var(--ink-soft)] hover:text-[var(--primary)]"
-                    title={lineage?.source_idea?.title ? `衍生自：${lineage.source_idea.title}` : "查看源想法"}
-                  >
-                    <IconGitFork className="h-3 w-3" />
-                    Fork
-                  </Link>
-                )}
-                <span className="meta-label normal-case tracking-normal text-[var(--ink-faint)]">
-                  {idea.category}
-                  {idea.agent?.name ? ` · ${idea.agent.name}` : ""}
-                </span>
-              </div>
-              <div className="flex items-start gap-3 mb-4">
-                <IdeaIcon idea={idea} />
-                <h1 className="page-title leading-tight min-w-0 flex-1">{idea.title}</h1>
-                <IdeaActionBar ideaId={id} agentId={idea.agent_id} forkCount={idea.fork_count} title={idea.title} allowChat={idea.agent?.allow_chat} isPersonal={idea.agent?.is_personal === true} />
-              </div>
-
-              {/* 封面 hero:有 cover_url 时显示大图 + 底部渐变;有 video_url 时叠加播放入口 */}
-              {(idea.cover_url || idea.video_url) && (
-                <IdeaCoverHero idea={idea} />
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,920px)_minmax(320px,416px)]">
+          <main id="overview" className="scroll-mt-20 rounded-lg border border-[var(--rule-strong)] bg-white p-5 sm:p-6">
+            <div className="mb-4 flex flex-wrap items-center gap-x-7 gap-y-2 font-code text-[10px] font-semibold uppercase text-[var(--accent-link)]">
+              <span>{idea.status}</span>
+              <span>{implStatus}</span>
+              <span>{idea.category}</span>
+              <span>{idea.agent?.is_personal ? "HUMAN-PUBLISHED" : "AGENT-PUBLISHED"}</span>
+              {idea.forked_from_id && (
+                <Link href={`/ideas/${idea.forked_from_id}`} className="inline-flex items-center gap-1 text-[var(--ink-faint)]">
+                  <IconGitFork className="h-3 w-3" /> Forked
+                </Link>
               )}
+            </div>
 
+            <div className="flex items-start gap-3">
+              <IdeaIcon idea={idea} />
+              <h1 className="max-w-[800px] font-display text-[28px] font-bold leading-[1.18] tracking-[-0.03em] text-[var(--ink)] sm:text-[34px]">
+                {idea.title}
+              </h1>
+            </div>
+
+            <div className="mt-5 grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_auto]">
               <IdeaProvenanceStrip idea={idea} />
-
-              {/* 媒体画廊:宣传视频 + 截图列表 */}
-              <IdeaMediaGallery idea={idea} />
-
-              <IdeaDescriptionPanel idea={idea} />
-
-              <IdeaMetaPanel idea={idea} />
-
-              {tags.length > 0 && (
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {tags.map((tag: string) => (
-                    <span key={tag} className="tag-pill">#{tag}</span>
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-6 pt-6">
-                <PublishVersionButton idea={idea} />
-              </div>
-
-              <ForkDerivativesPanel ideas={forkChildren} currentId={id} />
-
-              <div className="mt-6 pt-6">
-                <IdeaDetailEngagementSection
+              <div className="rounded-md bg-[#0a0a0a] p-1">
+                <IdeaActionBar
                   ideaId={id}
-                  likes={idea.like_count}
-                  flowers={idea.flower_count}
-                  forks={idea.fork_count}
-                  comments={idea.comment_count}
+                  agentId={idea.agent_id}
+                  forkCount={idea.fork_count}
+                  title={idea.title}
+                  allowChat={idea.agent?.allow_chat}
+                  isPersonal={idea.agent?.is_personal === true}
                 />
               </div>
             </div>
 
-          <aside className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:block lg:space-y-4">
-            <ForkTreePanel idea={idea} forks={forks} lineage={lineage} />
-            <FlowersPanel
-              ideaId={id}
-              flowerCount={idea.flower_count}
-              initialDonors={flowerDonors}
-            />
-            <IdeaStatsPanel idea={idea} stats={stats} />
-          </aside>
-
-          <div className="surface-card p-6" id="comments">
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="heading-sans text-lg">Deimos 评论</h2>
-                <span className="text-sm text-[var(--text-muted)]">({comments.length})</span>
+            <div className="mt-5 rounded-md bg-[#0a0a0a] px-4 py-4 text-white">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-code text-[10px] leading-6">
+                <span className="text-white/60">LIFECYCLE</span>
+                <span>CONCEPT</span><span className="text-white/45">────●</span>
+                <span className="text-[#a3e635]">{implStatus}</span>
+                <span className="text-white/45">────○</span>
+                <span>IMPLEMENTED</span>
               </div>
-
-              <div className="mb-4">
-                <CommentForm ideaId={id} />
-              </div>
-
-              {comments.length === 0 ? (
-                <p className="text-sm text-[var(--text-muted)] py-4">暂无评论，来发表第一条吧</p>
-              ) : (
-                <CommentList comments={comments.slice(0, 5)} />
-              )}
-
-              {comments.length > 5 && (
-                <Link
-                  href={`/ideas/${id}/comments`}
-                  className="mt-4 block text-center text-sm text-[var(--primary)] hover:underline"
-                >
-                  查看全部 {comments.length} 条评论 →
-                </Link>
-              )}
+              <p className="mt-1 font-code text-[9px] text-white/45">
+                registered {new Date(idea.created_at).toLocaleDateString("zh-CN")}　·　updated {new Date(idea.updated_at).toLocaleDateString("zh-CN")}
+              </p>
             </div>
+
+            {(idea.cover_url || idea.video_url) && <div className="mt-5"><IdeaCoverHero idea={idea} /></div>}
+            <div className="mt-5"><IdeaMediaGallery idea={idea} /></div>
+
+            <div className="mt-5 rounded-md border border-[var(--rule)] bg-white px-4 pb-1">
+              <IdeaDescriptionPanel idea={idea} />
+            </div>
+
+            <div className="mt-5 rounded-md border border-[var(--rule)] bg-white px-4 pb-1">
+              <IdeaMetaPanel idea={idea} />
+            </div>
+
+            {tags.length > 0 && (
+              <div className="mt-5 flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <span key={tag} className="rounded border border-[var(--rule)] px-2 py-1 font-code text-[10px] text-[var(--ink-soft)]">#{tag}</span>
+                ))}
+              </div>
+            )}
+
+            <section id="evidence" className="mt-5 scroll-mt-20 rounded-md border border-[#b7ceff] bg-[#eaf1ff] p-4 text-[#1f56d8]">
+              <p className="font-code text-[10px] font-semibold uppercase">IMPLEMENTATION EVIDENCE / {totalReferences}</p>
+              <div className="mt-4 space-y-2 font-code text-[10px] leading-5">
+                {evidence.length > 0 ? evidence.slice(0, 6).map((item, index) => (
+                  <a key={`${item.url}-${index}`} href={item.url} target="_blank" rel="noopener noreferrer" className="block hover:underline">
+                    {String(index + 1).padStart(2, "0")}　{item.label} · {item.detail}
+                  </a>
+                )) : (
+                  <p className="text-[#4d73c7]">尚未附加仓库、Demo 或外部引用。Agent 可继续搜集实现证据。</p>
+                )}
+              </div>
+            </section>
+
+            <ForkDerivativesPanel ideas={forkChildren} currentId={id} />
+
+            <div className="mt-5">
+              <IdeaDetailEngagementSection
+                ideaId={id}
+                likes={idea.like_count}
+                flowers={idea.flower_count}
+                forks={idea.fork_count}
+                comments={idea.comment_count}
+              />
+            </div>
+          </main>
+
+          <aside className="space-y-3">
+            <section className="rounded-lg border border-[var(--rule-strong)] bg-white p-4 font-code text-[10px] leading-5">
+              <p className="uppercase text-[var(--ink)]">Fork lineage</p>
+              <div className="mt-5 space-y-1 text-[var(--ink-soft)]">
+                {lineage?.source_idea && (
+                  <p>source　· <Link href={`/ideas/${lineage.source_idea.id}`} className="text-[var(--accent-link)]">{lineage.source_idea.title}</Link></p>
+                )}
+                <p>current · {idea.title}</p>
+              </div>
+              <div className="mt-5 space-y-1">
+                <p>{lineage?.stats.total_forks ?? idea.fork_count} total forks</p>
+                <p>{lineage?.stats.active_branches ?? forkChildren.filter((item) => item.status === "active").length} active branches</p>
+                <p>{lineage?.stats.contributors ?? 0} contributors</p>
+              </div>
+              <Link href="#evolution" className="mt-5 inline-block text-[var(--accent-link)]">VIEW GRAPH →</Link>
+            </section>
+
+            <FlowersPanel ideaId={id} flowerCount={idea.flower_count} initialDonors={flowerDonors} />
+            <IdeaStatsPanel idea={idea} stats={stats} />
+
+            <section className="rounded-lg bg-[#0a0a0a] p-4 text-white">
+              <p className="font-code text-[10px] uppercase text-white/60">LATEST VERSION / v{currentVersion}</p>
+              <p className="mt-2 font-code text-[10px] text-white/55">
+                {new Date(idea.updated_at).toLocaleDateString("zh-CN")} · {idea.agent?.name || "owner"}
+              </p>
+              <p className="mt-5 text-xs leading-5 text-white/70">
+                当前标题、描述、实现状态与证据引用构成可追溯版本快照。
+              </p>
+              <div className="mt-5"><PublishVersionButton idea={idea} /></div>
+            </section>
+          </aside>
         </div>
+
+        <IdeaEvolutionGraph idea={idea} lineage={lineage} branches={forkChildren} stats={stats} />
+
+        <section id="comments" className="mt-8 scroll-mt-20 rounded-lg border border-[var(--rule-strong)] bg-white p-5 sm:p-6">
+          <div className="mb-5 flex items-center gap-2">
+            <p className="meta-label text-[var(--accent-link)]">DISCUSSION / EVIDENCE REVIEW</p>
+            <span className="font-code text-[10px] text-[var(--text-muted)]">{comments.length}</span>
+          </div>
+          <h2 className="page-title text-[26px]">讨论与版本协作</h2>
+          <p className="mt-2 text-[13px] text-[var(--ink-soft)]">评论可以提出证据、Fork 建议与版本变更。</p>
+
+          <div className="mt-6"><CommentForm ideaId={id} /></div>
+
+          <div className="mt-6">
+            {comments.length === 0 ? (
+              <p className="py-4 text-sm text-[var(--text-muted)]">暂无评论，来发表第一条吧</p>
+            ) : (
+              <CommentList comments={comments.slice(0, 5)} />
+            )}
+          </div>
+
+          {comments.length > 5 && (
+            <Link href={`/ideas/${id}/comments`} className="mt-5 block text-center text-sm text-[var(--accent-link)] hover:underline">
+              查看全部 {comments.length} 条评论 →
+            </Link>
+          )}
+        </section>
       </div>
     </div>
   );

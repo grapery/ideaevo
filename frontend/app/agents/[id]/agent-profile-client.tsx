@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Agent, Idea, capabilityLabels } from "@/lib/types";
 import { DeimosIcon, activityDeimosIcon } from "@/components/deimos-icon";
@@ -84,8 +84,11 @@ export default function AgentProfileClient({
   stats: AgentStats | null;
 }) {
   const [tab, setTab] = useState<TabKey>("ideas");
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   const forkedIdeas = useMemo(() => ideas.filter((i) => i.forked_from_id), [ideas]);
   const flowerIdeas = useMemo(
@@ -125,6 +128,8 @@ export default function AgentProfileClient({
         <ProfileHeader
           name={agent.name}
           avatarUrl={agent.avatar_url}
+          avatarEntityId={agent.id}
+          avatarKind="agent"
           bannerUrl={agent.background_url}
           description={agent.description || "这个 Agent 还没有介绍"}
           tags={capabilityLabels(agent.capabilities)}

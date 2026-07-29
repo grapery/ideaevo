@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { resolveEntityMediaURL, type EntityKind } from "@/lib/avatar";
 import { safeUrl } from "@/lib/types";
+import { isGeneratedAvatarDataUrl } from "@/lib/entity-avatar-generator.mjs";
 
 type WireframeAvatarProps = {
   name: string;
@@ -13,12 +14,12 @@ type WireframeAvatarProps = {
   size?: number;
   title?: string;
   href?: string;
-  /** Idea icons use rounded rect instead of circle */
+  className?: string;
+  /** Deprecated compatibility prop. Entity avatars now share a circular wireframe. */
   shape?: "circle" | "rounded";
 };
 
-/** 流体玻璃头像：双层光晕 ring (内环实色白边 + 外环柔和光晕 + 轻阴影)。
- *  支持真实头像或 DiceBear 默认。弃用原虚线外圈 (与玻璃风格冲突)。 */
+/** Circular wireframe avatar shared by users, geometric Ideas and bot-like Agents. */
 export function WireframeAvatar({
   name,
   avatarUrl,
@@ -27,38 +28,39 @@ export function WireframeAvatar({
   size = 36,
   title,
   href,
-  shape = "circle",
+  className = "",
 }: WireframeAvatarProps) {
   const initial = (name?.trim() || "?").charAt(0).toUpperCase();
-  const resolved =
-    safeUrl(avatarUrl) ||
-    (entityId ? resolveEntityMediaURL(kind, entityId) : "");
-  const src = resolved || null;
+  const resolved = entityId
+    ? resolveEntityMediaURL(kind, entityId, avatarUrl)
+    : safeUrl(avatarUrl) || "";
+  const src = isGeneratedAvatarDataUrl(resolved) || safeUrl(resolved) ? resolved : null;
   const fontSize = Math.max(11, Math.round(size * 0.36));
-  const radius = shape === "rounded" ? "rounded-[12px]" : "rounded-full";
+  const frameInset = Math.max(1, Math.round(size * 0.055));
 
   const inner = (
     <div
-      className={`relative shrink-0 overflow-hidden bg-[var(--bg-subtle)] ${radius}`}
+      className="relative shrink-0 rounded-full border border-[#0a0a0a] bg-white"
       style={{
         width: size,
         height: size,
-        // 双层光晕: 内环实色高光 + 外环柔光晕 + 投影分离感
-        boxShadow:
-          "0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 4px rgba(255, 255, 255, 0.35), 0 4px 12px rgba(31, 35, 41, 0.12)",
+        padding: frameInset,
+        boxShadow: "0 0 0 1px rgba(255,255,255,.9)",
       }}
     >
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" className="h-full w-full object-cover" />
-      ) : (
-        <span
-          className="flex h-full w-full items-center justify-center font-semibold text-[var(--primary)]"
-          style={{ fontSize }}
-        >
-          {initial}
-        </span>
-      )}
+      <div className="h-full w-full overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span
+            className="flex h-full w-full items-center justify-center font-semibold text-[var(--primary)]"
+            style={{ fontSize }}
+          >
+            {initial}
+          </span>
+        )}
+      </div>
     </div>
   );
 
@@ -67,7 +69,7 @@ export function WireframeAvatar({
       <Link
         href={href}
         title={title ?? name}
-        className={`inline-flex shrink-0 transition-opacity hover:opacity-80 ${radius}`}
+        className={`inline-flex shrink-0 rounded-full transition-opacity hover:opacity-80 ${className}`}
       >
         {inner}
       </Link>
@@ -75,7 +77,7 @@ export function WireframeAvatar({
   }
 
   return (
-    <div title={title ?? name} className="inline-flex shrink-0">
+    <div title={title ?? name} className={`inline-flex shrink-0 ${className}`}>
       {inner}
     </div>
   );

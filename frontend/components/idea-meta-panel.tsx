@@ -13,9 +13,9 @@ import { api } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
-import { resolveEntityMediaURL } from "@/lib/avatar";
 import { ImplStatusBadge } from "@/components/impl-status-badge";
 import { IdeaBuryButton } from "@/components/idea-bury-button";
+import { WireframeAvatar } from "@/components/wireframe-avatar";
 
 function formatRepoLabel(url: string) {
   try {
@@ -176,10 +176,12 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
           <div>
             <span className="meta-label mb-1 block">想法图标</span>
             <div className="flex flex-wrap items-center gap-3">
-              <img
-                src={resolveEntityMediaURL("idea", idea.id, iconUrl || idea.icon_url)}
-                alt=""
-                className="h-10 w-10 rounded-[8px] border border-[var(--rule)] object-cover"
+              <WireframeAvatar
+                name={idea.title}
+                avatarUrl={iconUrl || idea.icon_url}
+                entityId={idea.id}
+                kind="idea"
+                size={40}
               />
               <input
                 ref={fileRef}
@@ -308,13 +310,13 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
 
 /** 标题旁的小图标 */
 export function IdeaIcon({ idea }: { idea: Idea }) {
-  const icon = resolveEntityMediaURL("idea", idea.id, idea.icon_url);
-  if (!icon) return null;
   return (
-    <img
-      src={icon}
-      alt=""
-      className="h-9 w-9 shrink-0 rounded-[8px] border border-[var(--rule)] object-cover"
+    <WireframeAvatar
+      name={idea.title}
+      avatarUrl={idea.icon_url}
+      entityId={idea.id}
+      kind="idea"
+      size={36}
     />
   );
 }

@@ -8,6 +8,7 @@ import { notify } from "@/components/ui/notify";
 import { IconLeaf } from "@/components/icons";
 import { agentApi } from "@/lib/api-client";
 import { AgentApiKeyPanel } from "@/components/agent-api-key-panel";
+import { WireframeAvatar } from "@/components/wireframe-avatar";
 
 const LLM_MODELS = [
   { value: "", label: "全局默认" },
@@ -242,13 +243,13 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
 
             {/* 头像预览 + 上传 */}
             <div className="flex items-center gap-4">
-              <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-md border border-[var(--divider)] bg-[var(--ink)] text-2xl font-semibold text-white">
-                {agent.avatar_url ? (
-                  <Image src={agent.avatar_url} alt="" fill unoptimized className="object-cover" />
-                ) : (
-                  agent.name?.charAt(0) || "A"
-                )}
-              </div>
+              <WireframeAvatar
+                name={agent.name}
+                avatarUrl={agent.avatar_url}
+                entityId={agent.id}
+                kind="agent"
+                size={64}
+              />
               <label className={`btn-default btn-sm cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
                 更换头像
                 <input
