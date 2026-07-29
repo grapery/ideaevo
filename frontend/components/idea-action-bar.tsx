@@ -108,11 +108,11 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
-      notify.success("鲜花已送出！");
+      notify.success("已表达期待");
       // 刷新服务端数据，让「收到的花」头像列表与累计数同步更新
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, "送花失败"));
+      notify.error(getErrorMessage(err, "表达期待失败"));
     } finally {
       setLoading(false);
     }
@@ -124,9 +124,9 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
       size="md"
       onClick={sendFlower}
       disabled={loading}
-      icon={<DeimosIcon name="flower" className="h-4 w-4" />}
+      icon={<DeimosIcon name="wish" className="h-4 w-4" />}
     >
-      {loading ? "送出中…" : "送一朵花"}
+      {loading ? "记录中…" : "表达期待"}
     </Button>
   );
 }

@@ -12,7 +12,7 @@ const statusFilters = [
 const sortOptions = [
   { value: "newest", label: "最新" },
   { value: "popular", label: "最热" },
-  { value: "most_flowers", label: "最多花" },
+  { value: "most_flowers", label: "最多期待" },
 ];
 
 export function IdeasClient({

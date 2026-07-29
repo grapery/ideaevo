@@ -1,4 +1,4 @@
-import { Idea, Comment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities, IdeaVersion, IdeaVersionSummary, Agent, IdeaStats, IdeaLineage, NotificationPreferences, UserDevice, PublishIdeaVersionInput, ChatArchiveResult } from "./types";
+import { Idea, Comment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities, IdeaVersion, IdeaVersionSummary, Agent, IdeaStats, IdeaLineage, NotificationPreferences, UserDevice, PublishIdeaVersionInput, ChatArchiveResult, PlansResponse, MembershipView, CreateOrderResult, BillingOrder, Refund } from "./types";
 import { getApiBase } from "./api-base";
 import { parseResponseError, formatApiError } from "./api-error";
 import { ideaRequestJson } from "./idea-request";
@@ -780,8 +780,81 @@ export const prefsApi = {
       body: JSON.stringify(input),
     }),
 
-  deleteDevice: (deviceId: string) =>
+    deleteDevice: (deviceId: string) =>
     requestWithAuth<{ message: string }>(`/user/devices/${deviceId}`, {
       method: "DELETE",
+    }),
+};
+
+// 充值/会员模块
+export const billingApi = {
+  // 套餐与价格（公开）
+  plans: () => request<PlansResponse>(`/billing/plans`),
+
+  // 当前用户会员状态 + 今日额度 + Agent 用量
+  membership: () => requestWithAuth<MembershipView>(`/billing/membership`),
+
+  // 创建充值订单，返回支付地址（网页跳转 / 二维码 / mock）
+  createOrder: (input: { plan_id: string; currency: string; gateway?: string }) =>
+    requestWithAuth<CreateOrderResult>(`/billing/orders`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // 订单列表
+  listOrders: (limit = 20, offset = 0) =>
+    requestWithAuth<{ orders: BillingOrder[]; total: number }>(
+      `/billing/orders?limit=${limit}&offset=${offset}`,
+    ),
+
+  // 订单详情
+  getOrder: (id: string) => requestWithAuth<BillingOrder>(`/billing/orders/${id}`),
+
+  // 取消未支付订单
+  cancelOrder: (id: string) =>
+    requestWithAuth<{ message: string }>(`/billing/orders/${id}/cancel`, {
+      method: "POST",
+    }),
+
+  // 模拟支付成功（仅 mock 网关降级时可用，联调用）
+  mockPay: (id: string) =>
+    requestWithAuth<{ message: string }>(`/billing/orders/${id}/mock-pay`, {
+      method: "POST",
+    }),
+
+  // 申请退款（对已支付订单，进入待审批）
+  requestRefund: (orderId: string, reason: string) =>
+    requestWithAuth<Refund>(`/billing/orders/${orderId}/refund`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+
+  // 我的退款申请列表
+  listRefunds: (limit = 20, offset = 0) =>
+    requestWithAuth<{ refunds: Refund[]; total: number }>(
+      `/billing/refunds?limit=${limit}&offset=${offset}`,
+    ),
+};
+
+// 管理员：退款审批
+export const adminRefundApi = {
+  // 待审批退款列表
+  listPending: (limit = 20, offset = 0) =>
+    requestWithAuth<{ refunds: Refund[]; total: number }>(
+      `/admin/refunds?limit=${limit}&offset=${offset}`,
+    ),
+
+  // 批准退款（撤销会员）
+  approve: (id: string, note?: string) =>
+    requestWithAuth<{ message: string }>(`/admin/refunds/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ note: note ?? "" }),
+    }),
+
+  // 拒绝退款
+  reject: (id: string, note?: string) =>
+    requestWithAuth<{ message: string }>(`/admin/refunds/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ note: note ?? "" }),
     }),
 };

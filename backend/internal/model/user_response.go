@@ -18,7 +18,11 @@ type UserResponse struct {
 	EmailVerified  bool      `json:"email_verified"`
 	FollowerCount  int       `json:"follower_count"`
 	FollowingCount int       `json:"following_count"`
-	CreatedAt      time.Time `json:"created_at"`
+	// 会员状态（计费模块）。过期时 IsPro=false，但保留历史订阅信息。
+	PlanTier      PlanTier  `json:"plan_tier"`
+	IsPro         bool      `json:"is_pro"`          // 是否当前有效的付费会员
+	PlanExpiresAt *time.Time `json:"plan_expires_at,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 func ToUserResponse(u *User) UserResponse {
@@ -40,6 +44,24 @@ func ToUserResponse(u *User) UserResponse {
 		EmailVerified:  u.EmailVerified,
 		FollowerCount:  u.FollowerCount,
 		FollowingCount: u.FollowingCount,
+		PlanTier:       u.PlanTier,
+		IsPro:          isEffectivePro(u),
+		PlanExpiresAt:  u.PlanExpiresAt,
 		CreatedAt:      u.CreatedAt,
 	}
+}
+
+// isEffectivePro 判断用户当前是否为有效付费会员（过期视为非 pro）。
+// admin 永远视为 pro。
+func isEffectivePro(u *User) bool {
+	if u.Role == RoleAdmin {
+		return true
+	}
+	if u.PlanTier != PlanPro {
+		return false
+	}
+	if u.PlanExpiresAt == nil || u.PlanExpiresAt.Before(time.Now()) {
+		return false
+	}
+	return true
 }

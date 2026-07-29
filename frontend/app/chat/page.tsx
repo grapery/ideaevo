@@ -13,10 +13,12 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
+import { Modal } from "@/components/ui/modal";
 import {
   normalizeChatMessages,
   upsertChatMessage,
 } from "@/lib/chat-messages";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 function formatSessionTime(dateStr: string) {
   const d = new Date(dateStr);
@@ -48,6 +50,7 @@ export default function ChatPage() {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newAgentId, setNewAgentId] = useState("");
   const [newTitle, setNewTitle] = useState("");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const activeSession = useMemo(
     () => sessions.find((s) => s.id === activeId) ?? null,
@@ -242,7 +245,7 @@ export default function ChatPage() {
               id: `error-${Date.now()}`,
               session_id: sessionId,
               role: "system",
-              content: `⚠️ ${err.message}`,
+              content: `工具执行失败：${err.message}`,
               created_at: new Date().toISOString(),
             });
             return updated;
@@ -394,6 +397,8 @@ export default function ChatPage() {
         setActiveId(null);
         setMessages([]);
       }
+      setPendingDeleteId(null);
+      notify.success("会话已删除");
     } catch (err) {
       notify.error(getErrorMessage(err, "删除失败"));
     }
@@ -460,13 +465,41 @@ export default function ChatPage() {
 
   if (!user) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center bg-[var(--bg-canvas)]">
-        <div className="surface-card p-10 text-center max-w-md">
-          <h2 className="text-xl font-semibold text-[var(--title)] mb-2">请先登录</h2>
-          <p className="text-sm text-[var(--text-muted)] mb-4">登录后即可与 Agent 对话</p>
-          <Link href="/login" className="inline-block btn-outline px-6 py-2.5 text-sm font-medium">
-            前往登录
-          </Link>
+      <div className="min-h-[calc(100dvh-var(--header-height))] flex items-center justify-center bg-[var(--bg-canvas)] px-4 py-12">
+        <div className="surface-card w-full max-w-[560px] overflow-hidden">
+          <div className="border-b border-[var(--rule)] bg-[var(--bg-subtle)] px-6 py-5">
+            <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.14em] text-[var(--ink-faint)]">
+              AGENT WORKBENCH
+            </p>
+          </div>
+          <div className="p-6 sm:p-8">
+            <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-md border border-[var(--accent-link)]/30 bg-[var(--accent-link-soft)] text-[var(--accent-link)]">
+              <DeimosIcon name="agent" className="h-6 w-6" />
+            </div>
+            <h2 className="text-xl font-semibold text-[var(--title)]">登录后进入 Agent 工作台</h2>
+            <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-muted)]">
+              对话不只是问答。Agent 会搜索已有想法、调用 MCP 工具、记录证据并持续跟踪实现状态。
+            </p>
+            <div className="my-6 grid gap-2 sm:grid-cols-3">
+              {[
+                ["semantic-search", "语义去重"],
+                ["tool", "MCP 执行"],
+                ["lifecycle", "状态跟踪"],
+              ].map(([icon, label]) => (
+                <div key={label} className="flex items-center gap-2 rounded-md border border-[var(--rule)] bg-white px-3 py-2 text-xs text-[var(--ink-soft)]">
+                  <DeimosIcon
+                    name={icon as "semantic-search" | "tool" | "lifecycle"}
+                    className="h-3.5 w-3.5 text-[var(--accent-link)]"
+                  />
+                  {label}
+                </div>
+              ))}
+            </div>
+            <Link href="/login?returnUrl=/chat" className="inline-flex btn-primary btn-sm">
+              登录并开始对话
+              <DeimosIcon name="chevron-right" className="h-3.5 w-3.5" />
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -476,18 +509,21 @@ export default function ChatPage() {
   const ideaTitle = activeSession?.idea?.title;
 
   return (
-    <div className="h-[calc(100vh-64px)] bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container h-full flex">
+    <div className="chat-workbench h-[calc(100dvh-var(--header-height))] min-h-[640px]">
+      <div className="h-full flex">
         {/* Session column */}
-        <div className="w-[300px] shrink-0 border-r border-[var(--divider)] bg-[var(--bg-surface)] flex flex-col">
-          <div className="flex items-center justify-between px-4 py-4 border-b border-[var(--divider)]">
-            <h2 className="text-base font-semibold text-[var(--title)]">对话</h2>
+        <div className={`${activeId ? "hidden md:flex" : "flex"} w-full md:w-[268px] shrink-0 border-r border-[var(--divider)] bg-[var(--bg-surface)] flex-col`}>
+          <div className="flex h-14 items-center justify-between px-4 border-b border-[var(--divider)]">
+            <div>
+              <p className="font-mono text-[10px] tracking-[0.14em] text-[var(--text-muted)]">AGENT WORKBENCH</p>
+              <h2 className="text-sm font-semibold text-[var(--title)]">任务会话</h2>
+            </div>
             <button
               type="button"
               onClick={() => setShowNewDialog(true)}
-              className="text-sm text-[var(--primary)] hover:underline"
+              className="inline-flex h-7 items-center gap-1 rounded border border-[var(--rule)] px-2 text-xs text-[var(--title)] hover:border-[var(--accent-link)] hover:text-[var(--accent-link)]"
             >
-              + 新对话
+              <DeimosIcon name="plus" className="h-3 w-3" />新建
             </button>
           </div>
           <div className="px-4 py-3">
@@ -517,10 +553,10 @@ export default function ChatPage() {
                 onClick={() => handleSelectSession(s.id)}
                 onKeyDown={(e) => e.key === "Enter" && handleSelectSession(s.id)}
                 className={`px-4 py-3 flex items-start gap-3 cursor-pointer border-b border-[var(--divider)] hover:bg-[var(--bg-subtle)] transition-colors ${
-                  activeId === s.id ? "bg-[var(--primary-soft)]" : ""
+                  activeId === s.id ? "bg-[var(--accent-link-soft)] shadow-[inset_2px_0_0_var(--accent-link)]" : ""
                 }`}
               >
-                <div className="h-9 w-9 shrink-0 rounded-full bg-[var(--primary-soft)] flex items-center justify-center text-sm font-medium text-[var(--primary)] overflow-hidden border border-[var(--rule)]">
+                <div className="h-9 w-9 shrink-0 rounded-md bg-[var(--primary-soft)] flex items-center justify-center text-sm font-medium text-[var(--accent-link)] overflow-hidden border border-[var(--rule)]">
                   {s.agent?.avatar_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={s.agent.avatar_url} alt="" className="h-full w-full object-cover" />
@@ -554,7 +590,7 @@ export default function ChatPage() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteSession(s.id);
+                          setPendingDeleteId(s.id);
                         }}
                         className="text-xs text-[var(--text-muted)] hover:text-[var(--coral)]"
                       >
@@ -570,26 +606,49 @@ export default function ChatPage() {
         </div>
 
         {/* Chat column */}
-        <div className="flex-1 flex flex-col bg-[var(--bg-surface)] min-w-0">
+        <div className={`${activeId ? "flex" : "hidden md:flex"} flex-1 flex-col bg-[var(--bg-canvas)] min-w-0`}>
           {!activeId ? (
-            <div className="flex-1 flex items-center justify-center text-[var(--text-muted)]">
-              <p>选择或创建一个对话开始聊天</p>
+            <div className="flex-1 flex items-center justify-center px-6 text-center">
+              <div className="max-w-sm">
+                <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--accent-link)]">
+                  <DeimosIcon name="agent" className="h-6 w-6" />
+                </div>
+                <h1 className="text-lg font-semibold text-[var(--title)]">把想法交给 Agent 推进</h1>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+                  搜索、去重、评估并调用 MCP 工具，把一次聊天沉淀成可跟踪的想法与证据。
+                </p>
+                <button type="button" onClick={() => setShowNewDialog(true)} className="mt-5 btn-primary btn-sm">
+                  <DeimosIcon name="chat" className="h-3.5 w-3.5" />创建任务会话
+                </button>
+              </div>
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-3 px-5 py-3 border-b border-[var(--divider)]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--primary)]">
+              <div className="flex h-14 items-center gap-3 px-5 border-b border-[var(--divider)] bg-[var(--bg-surface)]">
+                <button
+                  type="button"
+                  onClick={() => setActiveId(null)}
+                  className="mr-1 inline-flex h-8 w-8 items-center justify-center rounded border border-[var(--rule)] text-[var(--text-muted)] hover:text-[var(--title)] md:hidden"
+                  aria-label="返回会话列表"
+                >
+                  <DeimosIcon name="back" className="h-4 w-4" />
+                </button>
+                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--rule)] bg-[var(--primary-soft)] text-xs font-semibold text-[var(--accent-link)]">
                   {agentName.charAt(0).toUpperCase()}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[var(--title)]">{agentName} · 在线</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[var(--title)]">{activeSession?.title || agentName}</p>
                   {ideaTitle && (
-                    <p className="text-xs text-[var(--primary)] truncate">绑定: {ideaTitle}</p>
+                    <p className="text-xs text-[var(--accent-link)] truncate">想法上下文：{ideaTitle}</p>
                   )}
                 </div>
+                <span className="inline-flex items-center gap-1.5 rounded border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] px-2 py-1 text-[10px] font-medium text-[var(--accent-success)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />可执行
+                </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-5 py-4">
+              <div className="flex-1 overflow-y-auto px-5 py-6 lg:px-10">
+                <div className="mx-auto max-w-[820px]">
                 {loading ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="animate-spin w-6 h-6 border-2 border-[var(--primary)] border-t-transparent rounded-full" />
@@ -607,25 +666,91 @@ export default function ChatPage() {
                     ))}
                     {streaming && (
                       <div className="flex justify-start mb-4">
-                        <div className="rounded-2xl bg-[var(--bg-subtle)] px-4 py-2.5 text-sm text-[var(--text-muted)]">
-                          正在思考…
+                        <div className="inline-flex items-center gap-2 rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-muted)]">
+                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent-link)]" />
+                          Agent 正在规划下一步…
                         </div>
                       </div>
                     )}
                     <div ref={messagesEndRef} />
                   </>
                 )}
+                </div>
               </div>
 
               <ChatInput onSend={handleSend} disabled={streaming} />
             </>
           )}
         </div>
+
+        <aside className="hidden w-[260px] shrink-0 border-l border-[var(--divider)] bg-[var(--bg-surface)] xl:flex xl:flex-col">
+          <div className="flex h-14 items-center border-b border-[var(--divider)] px-4">
+            <p className="font-mono text-[10px] tracking-[0.14em] text-[var(--text-muted)]">RUN CONTEXT</p>
+          </div>
+          <div className="space-y-5 p-4">
+            <section>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">执行主体</p>
+              <div className="rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] p-3">
+                <p className="flex items-center gap-2 text-sm font-medium text-[var(--title)]">
+                  <DeimosIcon name="agent" className="h-4 w-4 text-[var(--accent-link)]" />
+                  {activeId ? agentName : "等待选择 Agent"}
+                </p>
+                <p className="mt-1 text-[11px] text-[var(--text-muted)]">MCP + A2A 工具已连接</p>
+              </div>
+            </section>
+            <section>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">当前对象</p>
+              <div className="rounded-md border border-[var(--rule)] p-3 text-xs text-[var(--text-secondary)]">
+                {ideaTitle || "未绑定想法。Agent 可在对话中搜索或创建。"}
+              </div>
+            </section>
+            <section>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">运行能力</p>
+              <ul className="space-y-2 text-xs text-[var(--text-secondary)]">
+                {[
+                  ["semantic-search", "语义搜索与去重"],
+                  ["evidence", "证据提取与验证"],
+                  ["lifecycle", "实现状态跟踪"],
+                  ["tool", "MCP 工具调用"],
+                ].map(([icon, label]) => (
+                  <li key={label} className="flex items-center gap-2">
+                    <DeimosIcon
+                      name={icon as "semantic-search" | "evidence" | "lifecycle" | "tool"}
+                      className="h-3.5 w-3.5 text-[var(--accent-link)]"
+                    />
+                    {label}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </div>
+        </aside>
       </div>
+
+      <Modal
+        open={pendingDeleteId !== null}
+        onClose={() => setPendingDeleteId(null)}
+        title="删除任务会话"
+        description="消息、工具运行记录与分支上下文将一并删除，此操作无法撤销。"
+        className="max-w-sm"
+      >
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={() => setPendingDeleteId(null)} className="btn-default btn-sm">
+            取消
+          </button>
+          <button
+            type="button"
+            onClick={() => pendingDeleteId && void handleDeleteSession(pendingDeleteId)}
+            className="btn-sm rounded border border-[var(--accent-warning)] bg-[var(--accent-warning)] px-3 text-white hover:opacity-90"
+          >
+            确认删除
+          </button>
+        </div>
+      </Modal>
 
       {showNewDialog && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="surface-card p-6 w-full max-w-md">
+          <div className="rounded-md border border-[var(--rule)] bg-[var(--bg-surface)] p-6 w-full max-w-md shadow-2xl">
             <h3 className="text-lg font-semibold text-[var(--title)] mb-4">新建对话</h3>
             <div className="space-y-4">
               <FormField id="new-agent-id" label="Agent ID">

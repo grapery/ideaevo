@@ -7,6 +7,7 @@ import { getErrorMessage } from "@/lib/api-error";
 import { notify } from "@/components/ui/notify";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -37,8 +38,8 @@ export default function ForgotPasswordPage() {
       <div className="min-h-screen bg-[var(--bg-canvas)]">
         <div className="mx-auto max-w-lg px-4 py-16">
           <div className="surface-card p-10 text-center">
-            <div className="mx-auto h-16 w-16 rounded-full bg-[var(--primary-soft)] flex items-center justify-center text-3xl mb-5">
-              ✉️
+            <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-link)]/30 bg-[var(--accent-link-soft)] flex items-center justify-center text-[var(--accent-link)] mb-5">
+              <DeimosIcon name="send" className="h-6 w-6" />
             </div>
             <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">邮件已发送</h2>
             <p className="text-sm text-[var(--text-muted)] mb-6">

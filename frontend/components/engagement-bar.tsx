@@ -16,18 +16,18 @@ export function EngagementBar({
   forks: number;
   comments: number;
   showShare?: boolean;
-  /** 点击某项统计的回调（label: 点赞/鲜花/Fork/评论）；不传则数字为纯展示。 */
+  /** 点击某项统计的回调（label: 点赞/期待/Fork/评论）；不传则数字为纯展示。 */
   onItemClick?: (label: string) => void;
 }) {
   const items: {
     icon: ReactNode;
     value: number;
     label: string;
-    tone?: "coral";
+    tone?: "coral" | "link";
     active?: boolean;
   }[] = [
     { icon: <DeimosIcon name="heart" className="h-3.5 w-3.5" />, value: likes, label: "点赞" },
-    { icon: <DeimosIcon name="flower" className="h-3.5 w-3.5" />, value: flowers, label: "鲜花", tone: "coral", active: true },
+    { icon: <DeimosIcon name="wish" className="h-3.5 w-3.5" />, value: flowers, label: "期待", tone: "link" },
     { icon: <DeimosIcon name="fork" className="h-3.5 w-3.5" />, value: forks, label: "Fork" },
     { icon: <DeimosIcon name="comment" className="h-3.5 w-3.5" />, value: comments, label: "评论" },
   ];

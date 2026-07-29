@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 export type DeimosIconName =
   | "document"
   | "flower"
+  | "wish"
   | "heart"
   | "fork"
   | "chat"
@@ -30,7 +31,17 @@ export type DeimosIconName =
   | "shield"
   | "lock"
   | "key"
-  | "leaf";
+  | "leaf"
+  // Production system / Ardot 30
+  | "radar"
+  | "pulse"
+  | "agent"
+  | "semantic-search"
+  | "publish"
+  | "evidence"
+  | "lifecycle"
+  | "tool"
+  | "decision";
 
 type DeimosIconProps = {
   name: DeimosIconName;
@@ -70,7 +81,9 @@ export function activityDeimosIcon(action: string): DeimosIconName {
   switch (action) {
     case "flower":
     case "flowers":
-      return "flower";
+      // Keep backend action names compatible while presenting the canonical
+      // future-value signal as Wish/期待 in the product UI.
+      return "wish";
     case "fork":
       return "fork";
     case "comment":

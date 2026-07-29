@@ -7,6 +7,7 @@ import { notify } from "@/components/ui/notify";
 import { ChatMessage as ChatMessageType, ChatMessageMetadata, MessageContentType } from "@/lib/types";
 import { normalizeMessageMetadata } from "@/lib/chat-messages";
 import { IconGitFork } from "./icons";
+import { DeimosIcon } from "./deimos-icon";
 
 function resolveContentType(message: ChatMessageType): MessageContentType {
   if (message.content_type) return message.content_type;
@@ -337,7 +338,8 @@ export default function ChatMessage({
           </div>
           {activity?.task && (
             <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              📋 {activity.task.length > 80 ? activity.task.slice(0, 80) + "…" : activity.task}
+              <DeimosIcon name="decision" className="mr-1 inline-block h-3 w-3" />
+              {activity.task.length > 80 ? activity.task.slice(0, 80) + "…" : activity.task}
             </p>
           )}
           {a2aCompleted && (
@@ -354,7 +356,7 @@ export default function ChatMessage({
     return (
       <div className="mb-4">
         <span className="inline-flex items-center gap-2 rounded-full bg-[var(--teal-soft)] px-3 py-1 text-xs font-medium text-[var(--teal)]">
-          ⚡ {message.content}
+          <DeimosIcon name="tool" className="h-3 w-3" />{message.content}
         </span>
       </div>
     );
@@ -362,8 +364,9 @@ export default function ChatMessage({
 
   if (message.role === "system" && !isActivity) {
     return (
-      <div className="mb-4 rounded-xl border border-[var(--primary)] bg-[var(--primary-soft)] p-4 text-sm text-[var(--text-secondary)]">
-        {message.content}
+      <div className="mb-4 flex items-start gap-2 rounded-md border border-[var(--primary)] bg-[var(--primary-soft)] p-4 text-sm text-[var(--text-secondary)]">
+        <DeimosIcon name="decision" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--primary)]" />
+        <span>{message.content}</span>
       </div>
     );
   }
@@ -386,10 +389,10 @@ export default function ChatMessage({
         </div>
         <div className={`min-w-0 ${isUser ? "items-end" : "items-start"} flex flex-col`}>
           <div
-            className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+          className={`rounded-md border px-4 py-2.5 text-sm leading-relaxed ${
               isUser
-                ? "bg-[var(--primary)] text-white rounded-br-md"
-                : "bg-[var(--bg-subtle)] text-[var(--text-secondary)] rounded-bl-md"
+                ? "border-[var(--accent-link)] bg-[var(--accent-link)] text-white"
+                : "border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--text-secondary)]"
             }`}
           >
             <MessageBody content={message.content} contentType={contentType} isUser={isUser} />

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { authApi } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/api-error";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 export default function VerifyEmailPage() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
@@ -46,8 +47,8 @@ export default function VerifyEmailPage() {
           )}
           {status === "success" && (
             <>
-              <div className="mx-auto h-16 w-16 rounded-full bg-[var(--teal-soft)] flex items-center justify-center text-3xl mb-5">
-                ✅
+              <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] flex items-center justify-center text-[var(--accent-success)] mb-5">
+                <DeimosIcon name="check" className="h-7 w-7" />
               </div>
               <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">验证成功</h2>
               <p className="text-sm text-[var(--text-muted)] mb-6">{message}</p>
@@ -61,8 +62,8 @@ export default function VerifyEmailPage() {
           )}
           {status === "error" && (
             <>
-              <div className="mx-auto h-16 w-16 rounded-full bg-[var(--coral)]/15 flex items-center justify-center text-3xl mb-5">
-                ❌
+              <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)] flex items-center justify-center text-[var(--accent-warning)] mb-5">
+                <DeimosIcon name="decision" className="h-7 w-7" />
               </div>
               <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">验证失败</h2>
               <p className="text-sm text-[var(--text-muted)] mb-6">{message}</p>

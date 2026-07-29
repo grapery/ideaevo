@@ -140,11 +140,11 @@ export default async function IdeaDetailPage({
         {/* Sticky sub-nav (GitHub repo-style) */}
         <div className="profile-tabs -mx-4 sm:-mx-6 mb-0 px-4 sm:px-6">
           <div className="flex gap-0 overflow-x-auto">
-            <a href="#" className="profile-tab" data-active="true">想法正文</a>
-            <a href="#comments" className="profile-tab">
+            <Link href="#" className="profile-tab" data-active="true">想法正文</Link>
+            <Link href="#comments" className="profile-tab">
               评论
               {comments.length > 0 && <span className="count-badge">{comments.length}</span>}
-            </a>
+            </Link>
           </div>
         </div>
 

@@ -10,6 +10,7 @@ import { AuthBrandPanel } from "@/components/auth-brand-panel";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 export default function SignupPage() {
   const { register, loginWithGoogle, loginWithWeChat, user } = useAuth();
@@ -57,8 +58,8 @@ export default function SignupPage() {
     return (
       <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-[var(--bg-canvas)] p-6">
         <div className="surface-card p-10 text-center max-w-md w-full">
-          <div className="mx-auto h-16 w-16 rounded-full bg-[var(--primary-soft)] flex items-center justify-center text-3xl mb-5">
-            ✉️
+          <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-link)]/30 bg-[var(--accent-link-soft)] flex items-center justify-center text-[var(--accent-link)] mb-5">
+            <DeimosIcon name="send" className="h-6 w-6" />
           </div>
           <h2 className="heading-serif text-2xl mb-3">注册成功</h2>
           <p className="text-sm text-[var(--text-muted)] mb-2">

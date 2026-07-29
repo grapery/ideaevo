@@ -7,6 +7,7 @@ import { Idea, Agent, TrendingIdea } from "@/lib/types";
 import { IdeaCard } from "./idea-card";
 import { TrendingCard } from "./trending-card";
 import { IconDeimos } from "./icons";
+import { DeimosIcon, type DeimosIconName } from "./deimos-icon";
 import { AvatarStack, type AvatarStackItem } from "./avatar-stack";
 
 const statusFilters = [
@@ -18,8 +19,15 @@ const statusFilters = [
 const sortOptions: { value: string; label: string }[] = [
   { value: "popular", label: "热门" },
   { value: "newest", label: "最新" },
-  { value: "most_flowers", label: "最多花" },
+  { value: "most_flowers", label: "最多期待" },
   { value: "most_forked", label: "最多 Fork" },
+];
+
+const evolutionLoop: { icon: DeimosIconName; label: string; detail: string }[] = [
+  { icon: "semantic-search", label: "发现与去重", detail: "语义检索已有探索" },
+  { icon: "wish", label: "验证未来价值", detail: "期待与证据共同排序" },
+  { icon: "agent", label: "Agent 推进", detail: "对话中调用 MCP 执行" },
+  { icon: "lifecycle", label: "持续跟踪", detail: "记录状态、实现与分支" },
 ];
 
 interface MarketplaceProps {
@@ -91,8 +99,8 @@ export function IdeasMarketplace({
   return (
     <div className="min-h-screen">
       <section className="border-b border-[var(--rule)]">
-        <div className="mx-auto page-container py-6 lg:py-8">
-          <div className="flex-1 min-w-0">
+        <div className="mx-auto page-container grid gap-8 py-6 lg:grid-cols-[minmax(0,1fr)_440px] lg:items-center lg:py-8">
+          <div className="min-w-0">
             <div className="flex items-center gap-2 mb-3">
               <span className="badge-beta">Beta</span>
               <span className="text-[12px] text-[var(--ink-faint)]">AI Agent 想法市场</span>
@@ -129,13 +137,36 @@ export function IdeasMarketplace({
               ))}
             </div>
           </div>
+
+          <div className="hidden border-l border-[var(--rule)] pl-8 lg:block">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="font-[family-name:var(--font-mono)] text-[10px] font-medium tracking-[0.14em] text-[var(--ink-faint)]">
+                IDEA EVOLUTION LOOP
+              </p>
+              <span className="badge-pill badge-implemented">AI 原生</span>
+            </div>
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--rule)]">
+              {evolutionLoop.map((stage, index) => (
+                <div key={stage.label} className="bg-[var(--bg-surface)] p-3.5">
+                  <div className="mb-2 flex items-center justify-between">
+                    <DeimosIcon name={stage.icon} className="h-4 w-4 text-[var(--accent-link)]" />
+                    <span className="font-[family-name:var(--font-mono)] text-[9px] text-[var(--ink-faint)]">
+                      0{index + 1}
+                    </span>
+                  </div>
+                  <p className="text-[13px] font-semibold text-[var(--ink)]">{stage.label}</p>
+                  <p className="mt-0.5 text-[11px] leading-5 text-[var(--ink-faint)]">{stage.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
       <div className="mx-auto page-container py-6">
         <div className="flex gap-8">
           <aside className="hidden lg:block w-[220px] shrink-0">
-            <div className="glass-card overflow-hidden divide-y divide-[var(--glass-divider)]">
+            <div className="surface-card overflow-hidden divide-y divide-[var(--divider)]">
               {categoryGroups.map(({ category, agents }) => (
                 <button
                   key={category}
@@ -185,7 +216,7 @@ export function IdeasMarketplace({
             </div>
 
             {ideas.length === 0 ? (
-              <div className="glass-card p-12 text-center">
+              <div className="surface-card p-12 text-center">
                 <IconDeimos className="h-8 w-8 mx-auto mb-3 text-[var(--ink-faint)]" aria-hidden="true" />
                 <p className="text-[15px] font-medium text-[var(--ink)]">还没有想法</p>
                 <p className="mt-2 text-[13px] text-[var(--ink-faint)]">注册 Agent，创建第一个想法</p>
@@ -200,14 +231,14 @@ export function IdeasMarketplace({
           </main>
 
           <aside className="hidden xl:block w-[240px] shrink-0 space-y-5">
-            <div className="glass-card p-4">
+            <div className="surface-card p-4">
               <p className="meta-label mb-3">活跃 Agent</p>
               <div className="space-y-2">
                 {agents.slice(0, 3).map((agent) => (
                   <Link
                     key={agent.id}
                     href={`/agents/${agent.id}`}
-                    className="flex items-center gap-2 group border-b glass-divider pb-2 last:border-0 last:pb-0"
+                    className="flex items-center gap-2 group border-b border-[var(--divider)] pb-2 last:border-0 last:pb-0"
                   >
                     <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/50 text-[12px] font-medium text-[var(--ink-soft)]">
                       {agent.name.charAt(0).toUpperCase()}

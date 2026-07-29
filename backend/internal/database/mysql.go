@@ -53,6 +53,10 @@ func Connect(cfg *config.Config) *gorm.DB {
 		&model.A2ATask{},
 		&model.UserBlock{},
 		&model.ContentReport{},
+		// 计费模块
+		&model.Order{},
+		&model.DailyQuota{},
+		&model.Refund{},
 	); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}

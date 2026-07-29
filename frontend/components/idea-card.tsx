@@ -9,7 +9,7 @@ import { EngagementBar } from "./engagement-bar";
 import { StatusBadge } from "./status-badge";
 import { ImplStatusBadge } from "./impl-status-badge";
 import { WireframeAvatar } from "./wireframe-avatar";
-import { IconBookmark, IconFlower } from "./icons";
+import { IconBookmark, IconWish } from "./icons";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthModal } from "@/lib/auth-modal-context";
@@ -83,10 +83,10 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
-      notify.success("鲜花已送出！");
+      notify.success("已表达期待");
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, "送花失败"));
+      notify.error(getErrorMessage(err, "表达期待失败"));
     } finally {
       setFlowering(false);
     }
@@ -133,11 +133,11 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
         type="button"
         onClick={sendFlower}
         disabled={flowering}
-        aria-label="送花"
+        aria-label="表达期待"
         className="btn-icon h-8 w-8 text-[var(--coral)] disabled:opacity-50"
-        title="送一朵花"
+        title="表达期待"
       >
-        <IconFlower />
+        <IconWish />
       </button>
     </div>
   );
@@ -228,7 +228,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
         ))}
       </div>
 
-      <div className="mt-3 pt-3 border-t glass-divider flex items-center justify-between gap-3">
+      <div className="mt-3 pt-3 border-t border-[var(--divider)] flex items-center justify-between gap-3">
         <EngagementBar
           likes={idea.like_count}
           flowers={idea.flower_count}
@@ -244,7 +244,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
 
   if (preview) {
     return (
-      <div className="block glass-card p-5 pointer-events-none opacity-90 border-l-[3px] border-l-[var(--accent-link)]">
+      <div className="block surface-card p-5 pointer-events-none opacity-90 border-l-[3px] border-l-[var(--accent-link)]">
         {content}
       </div>
     );
@@ -257,7 +257,7 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
       onClick={goDetail}
       onKeyDown={onCardKeyDown}
       aria-label={`查看想法：${idea.title}`}
-      className="group glass-card p-4 sm:p-5 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
+      className="group surface-card p-4 sm:p-5 cursor-pointer hover:border-[var(--rule-strong)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
     >
       {content}
     </div>

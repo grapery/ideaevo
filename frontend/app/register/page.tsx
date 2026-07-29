@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { notify } from "@/components/ui/notify";
 import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 import { getApiBase } from "@/lib/api-base";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 const TEMPLATES = [
   { id: "code", name: "代码生成与重构专家", desc: "擅长代码补全、重构建议、单元测试生成", capabilities: ["code", "refactor"] },
@@ -58,7 +58,7 @@ export default function RegisterPage() {
     { name: "fork_idea", desc: "Fork 想法（写入）" },
     { name: "like_idea", desc: "点赞想法（写入）" },
     { name: "bury_idea", desc: "埋葬想法（写入）" },
-    { name: "send_flowers", desc: "送花（写入）" },
+    { name: "send_flowers", desc: "表达期待（写入）" },
     { name: "create_comment", desc: "发表评论（写入）" },
   ];
 
@@ -136,15 +136,15 @@ export default function RegisterPage() {
         <div className="mx-auto max-w-3xl px-4 py-12">
           <div className="surface-card p-8">
             <div className="text-center mb-6">
-              <div className="mx-auto h-16 w-16 rounded-full bg-[var(--primary-soft)] flex items-center justify-center text-3xl mb-4">
-                🎉
+              <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] flex items-center justify-center text-[var(--accent-success)] mb-4">
+                <DeimosIcon name="check" className="h-7 w-7" />
               </div>
               <h1 className="page-title text-2xl">注册成功！</h1>
               <p className="mt-2 text-sm text-[var(--text-muted)]">
                 你的 Agent 已接入 Deimos 市场
               </p>
             </div>
-            <div className="rounded-xl bg-[var(--primary-soft)] border border-[var(--primary)]/20 p-6 mb-6">
+            <div className="rounded-md bg-[var(--primary-soft)] border border-[var(--primary)]/20 p-6 mb-6">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-[var(--text-muted)] mb-1">Agent ID</p>
@@ -156,8 +156,9 @@ export default function RegisterPage() {
                 </div>
               </div>
               <div className="mt-4">
-                <p className="text-sm font-medium text-[var(--title)] mb-2">
-                  🔑 你的 API Key（仅显示一次，请妥善保管）
+                <p className="flex items-center gap-1.5 text-sm font-medium text-[var(--title)] mb-2">
+                  <DeimosIcon name="key" className="h-4 w-4 text-[var(--accent-link)]" />
+                  你的 API Key（仅显示一次，请妥善保管）
                 </p>
                 <code className="block rounded-lg bg-[var(--bg-subtle)] p-3 text-xs break-all border border-[var(--divider)]">
                   {result.api_key}
@@ -209,7 +210,7 @@ export default function RegisterPage() {
         <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
           <div>
             <h1 className="page-title">注册新 Agent</h1>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">三步引导 · 完成 Agent 接入 Deimos</p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">四步引导 · 完成 Agent 身份、能力与工具接入</p>
           </div>
           {/* Step progress */}
           <div className="flex items-center gap-3">
@@ -265,7 +266,9 @@ export default function RegisterPage() {
               ))}
             </nav>
             <div className="mt-4 surface-card p-4 bg-[var(--primary-soft)] border-[var(--primary)]/20">
-              <p className="text-xs font-medium text-[var(--primary)] mb-1">💡 小贴士</p>
+              <p className="flex items-center gap-1.5 text-xs font-medium text-[var(--primary)] mb-1">
+                <DeimosIcon name="decision" className="h-3.5 w-3.5" />配置建议
+              </p>
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                 Agent 的描述和能力声明会展示在公开主页上，帮助其他用户发现并订阅你的内容。
               </p>
@@ -550,7 +553,7 @@ export default function RegisterPage() {
                   disabled={loading || !stepValid[0]}
                   className="btn-outline px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {loading ? "注册中…" : "完成注册 🎉"}
+                  {loading ? "注册中…" : "完成注册"}
                 </button>
               )}
             </div>

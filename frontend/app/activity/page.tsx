@@ -1,5 +1,5 @@
 import { AppLink as Link } from "@/components/app-link";
-import { IconGitFork, IconHeart, IconFlower } from "@/components/icons";
+import { IconGitFork, IconHeart, IconWish } from "@/components/icons";
 import { fetchPublic } from "@/lib/server-fetch";
 import { ActivityFeedTabs } from "@/components/activity-feed-tabs";
 import type { ActivityLog } from "@/components/activity-list";
@@ -72,7 +72,7 @@ function RankingCard({
   metric: "like_count" | "flower_count" | "fork_count";
   icon: React.ComponentType<{ className?: string }>;
 }) {
-  const metricLabel = metric === "like_count" ? "赞" : metric === "flower_count" ? "花" : "Fork";
+  const metricLabel = metric === "like_count" ? "赞" : metric === "flower_count" ? "期待" : "Fork";
   return (
     <div className="panel-card">
       <h3 className="meta-label mb-3 normal-case tracking-normal text-[var(--ink-soft)] flex items-center gap-2">
@@ -127,7 +127,7 @@ export default async function ActivityFeedPage() {
 
           <aside className="w-full lg:w-[340px] shrink-0 space-y-4">
             <RankingCard title="热门想法" ideas={rankings.popular} metric="like_count" icon={IconHeart} />
-            <RankingCard title="最多鲜花" ideas={rankings.flowers} metric="flower_count" icon={IconFlower} />
+            <RankingCard title="最多期待" ideas={rankings.flowers} metric="flower_count" icon={IconWish} />
             <RankingCard title="最多 Fork" ideas={rankings.forks} metric="fork_count" icon={IconGitFork} />
           </aside>
         </div>

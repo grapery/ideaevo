@@ -24,6 +24,9 @@ type Server struct {
 	// tools 注入后，所有 MCP 工具调用会委托给 ToolRegistry 执行
 	// （同一份实现服务于 MCP / REST / agent-bridge 三个入口）。
 	tools *service.ToolExecutor
+
+	// subSvc 注入后，通过 api_key 调用 MCP 写/专属工具要求付费会员。
+	subSvc *service.SubscriptionService
 }
 
 func NewServer(agentSvc *service.AgentService, socialSvc *service.SocialService, chatSvc *service.ChatService, userSvc *service.UserService, db *gorm.DB) *Server {
@@ -55,6 +58,13 @@ func (s *Server) WithToolExecutor(tools *service.ToolExecutor) *Server {
 	return s
 }
 
+// WithSubscription 注入会员服务以启用 MCP 付费门控。
+// 注入后，通过 api_key 调用 MCP 写/专属工具要求该 Agent 的 owner 为付费会员。
+func (s *Server) WithSubscription(subSvc *service.SubscriptionService) *Server {
+	s.subSvc = subSvc
+	return s
+}
+
 // registerBridgedTools 在 ToolRegistry 注入后，为其中每个工具创建 MCP 包装器，
 // 使 MCP 客户端透明地调用同一份工具实现（与 REST chat / agent-bridge 行为一致，
 // 含二次确认、capabilities 过滤）。
@@ -81,13 +91,19 @@ func (s *Server) registerBridgedTools() {
 				if err != nil {
 					return nil, fmt.Errorf("invalid api_key: %w", err)
 				}
+				// 付费门控：通过 api_key 调用 MCP 工具要求 Agent owner 为付费会员。
+				if s.subSvc != nil {
+					if err := s.subSvc.EnsureCanUseMCP(agent.OwnerUserID); err != nil {
+						return nil, fmt.Errorf("MCP requires a paid subscription (agent owner is not Pro)")
+					}
+				}
 				principal = service.Principal{
 					Source:   "mcp",
 					AgentID:  agent.ID,
 					IsSystemAssistant: false,
 				}
 			} else {
-				// 只读工具（search/query/get_*）允许匿名访问
+				// 只读工具（search/query/get_*）允许匿名访问（免费用户可浏览）
 				principal = service.Principal{Source: "mcp"}
 			}
 
@@ -117,6 +133,7 @@ func (s *Server) GetServer() *mcpgolang.MCPServer {
 }
 
 // authenticate validates the api_key parameter and returns the agent ID.
+// 注入 subSvc 后，额外校验 Agent owner 是否为付费会员（免费用户不能用 MCP 工具）。
 func (s *Server) authenticate(req mcp.CallToolRequest) (string, error) {
 	apiKey := req.GetString("api_key", "")
 	if apiKey == "" {
@@ -125,6 +142,11 @@ func (s *Server) authenticate(req mcp.CallToolRequest) (string, error) {
 	agent, err := s.agentSvc.ValidateAPIKey(apiKey)
 	if err != nil {
 		return "", fmt.Errorf("invalid api_key: %w", err)
+	}
+	if s.subSvc != nil {
+		if err := s.subSvc.EnsureCanUseMCP(agent.OwnerUserID); err != nil {
+			return "", fmt.Errorf("MCP requires a paid subscription (agent owner is not Pro)")
+		}
 	}
 	return agent.ID, nil
 }

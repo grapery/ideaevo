@@ -5,14 +5,15 @@ function apiRewriteOrigin(): string {
   return raw.replace(/\/api\/?$/, "").replace(/\/$/, "");
 }
 
-// Lint is run as a separate CI step (with continue-on-error). Don't let it
-// abort the production build — `next build` otherwise fails on any ESLint error.
-// (Next 16's `NextConfig` type doesn't include `eslint`, so we cast.)
-const nextConfig = {
+const nextConfig: NextConfig = {
   output: "standalone",
-  eslint: {
-    ignoreDuringBuilds: true,
+  // The monorepo also has a lockfile above frontend/. Pin the app root so
+  // Turbopack resolves and watches only this Next.js application.
+  turbopack: {
+    root: process.cwd(),
   },
+  // Keep local-IP previews hydrated when the dev server starts on localhost.
+  allowedDevOrigins: ["127.0.0.1"],
   // Browser calls same-origin /api/*; Next proxies to the Go API (no CORS / cookie issues).
   async rewrites() {
     const origin = apiRewriteOrigin();
@@ -29,6 +30,6 @@ const nextConfig = {
       static: 180,
     },
   },
-} as NextConfig;
+};
 
 export default nextConfig;

@@ -9,6 +9,7 @@ import { WireframeAvatar } from "./wireframe-avatar";
 import { Modal } from "./ui/modal";
 import { getApiBase } from "@/lib/api-base";
 import { IconGitFork, IconMessage } from "./icons";
+import { DeimosIcon } from "./deimos-icon";
 
 const sidebarCardClass = "surface-card p-5";
 const sidebarTitleClass = "heading-sans text-sm pb-2 mb-3 border-b border-[var(--divider)]";
@@ -120,10 +121,8 @@ export function FlowersPanel({
   return (
     <div className={sidebarCardClass}>
       <h3 className={`${sidebarTitleClass} mb-3`}>
-        <span aria-hidden="true" className="mr-1">
-          🌸
-        </span>
-        收到的花
+        <DeimosIcon name="wish" className="mr-1 inline-block h-3.5 w-3.5 text-[var(--accent-link)]" />
+        收到的期待
       </h3>
       {!loaded ? (
         <p className="mb-2.5 text-sm text-[var(--text-muted)]">加载中…</p>
@@ -132,8 +131,8 @@ export function FlowersPanel({
           type="button"
           onClick={() => setListOpen(true)}
           className="mb-2.5 flex flex-wrap items-center gap-2 rounded-md p-1 -m-1 text-left transition-colors hover:bg-[var(--bg-subtle)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ink-faint)] cursor-pointer"
-          aria-label={`查看全部 ${donors.length} 位送花者`}
-          title="点击查看全部送花者"
+          aria-label={`查看全部 ${donors.length} 位期待者`}
+          title="点击查看全部期待者"
         >
           {displayDonors.map((donor) => (
             <WireframeAvatar
@@ -154,7 +153,7 @@ export function FlowersPanel({
         </button>
       ) : loadFailed ? (
         <div className="mb-2.5">
-          <p className="text-sm text-[var(--text-muted)]">送花者信息加载失败</p>
+          <p className="text-sm text-[var(--text-muted)]">期待者信息加载失败</p>
           <button
             type="button"
             onClick={() => {
@@ -167,12 +166,12 @@ export function FlowersPanel({
           </button>
         </div>
       ) : flowerCount > 0 ? (
-        <p className="mb-2.5 text-sm text-[var(--text-muted)]">送花者详情暂不可用</p>
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">期待者详情暂不可用</p>
       ) : (
-        <p className="mb-2.5 text-sm text-[var(--text-muted)]">还没有人送花</p>
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">还没有人表达期待</p>
       )}
       <p className="mb-3 text-xs tabular-nums text-[var(--text-muted)]">
-        累计 {flowerCount} 朵鲜花
+        累计 {flowerCount} 份期待
         {canExpand && (
           <button
             type="button"
@@ -189,8 +188,8 @@ export function FlowersPanel({
         <Modal
           open={listOpen}
           onClose={() => setListOpen(false)}
-          title={`送花者（${donors.length}）`}
-          description="为这个想法献过花的用户与 Agent"
+          title={`期待者（${donors.length}）`}
+          description="对这个想法表达过期待的用户与 Agent"
         >
           <ul className="-mx-1 max-h-[60vh] space-y-1 overflow-y-auto">
             {donors.map((donor) => {
@@ -277,7 +276,7 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
   const rows: [string, number][] = stats
     ? [
         ["点赞", stats.like_count],
-        ["鲜花", stats.flower_count],
+        ["期待", stats.flower_count],
         ["Fork", stats.fork_count],
         ["评论", stats.comment_count],
         ["浏览", stats.view_count],
@@ -289,7 +288,7 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
       ]
     : [
         ["点赞", idea.like_count],
-        ["鲜花", idea.flower_count],
+        ["期待", idea.flower_count],
         ["Fork", idea.fork_count],
         ["评论", idea.comment_count],
       ];

@@ -14,24 +14,17 @@ import { ChatSession, User, type NotificationPreferences } from "@/lib/types";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { useApiKey } from "@/lib/api-key-context";
-import {
-  IconUser,
-  IconBell,
-  IconKey,
-  IconLock,
-  IconMessage,
-  IconShield,
-} from "@/components/icons";
+import { DeimosIcon, type DeimosIconName } from "@/components/deimos-icon";
 
 type Section = "profile" | "security" | "sessions" | "notifications" | "blocks" | "apikey";
 
-const NAV: { key: Section; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: "profile", label: "个人资料", icon: IconUser },
-  { key: "security", label: "账号安全", icon: IconLock },
-  { key: "sessions", label: "我的会话", icon: IconMessage },
-  { key: "notifications", label: "通知偏好", icon: IconBell },
-  { key: "blocks", label: "屏蔽管理", icon: IconShield },
-  { key: "apikey", label: "Agent API Key", icon: IconKey },
+const NAV: { key: Section; label: string; icon: DeimosIconName }[] = [
+  { key: "profile", label: "个人资料", icon: "profile" },
+  { key: "security", label: "账号安全", icon: "lock" },
+  { key: "sessions", label: "我的会话", icon: "chat" },
+  { key: "notifications", label: "通知偏好", icon: "bell" },
+  { key: "blocks", label: "屏蔽管理", icon: "shield" },
+  { key: "apikey", label: "Agent API Key", icon: "key" },
 ];
 
 const DEFAULT_NOTIF_PREFS: NotificationPreferences = {
@@ -424,9 +417,8 @@ export default function SettingsPage() {
               <h1 className="heading-sans text-[22px]">设置</h1>
               <p className="text-sm text-[var(--text-muted)] mt-0.5">管理你的账号和偏好</p>
             </div>
-            <nav className="surface-card p-2">
+            <nav className="surface-card flex gap-1 overflow-x-auto p-2 lg:block">
               {NAV.map((item) => {
-                const Icon = item.icon;
                 const active = section === item.key;
                 const badge =
                   item.key === "sessions" && sessionTotal > 0
@@ -441,14 +433,14 @@ export default function SettingsPage() {
                     key={item.key}
                     type="button"
                     onClick={() => setSection(item.key)}
-                    className={`w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                    className={`flex shrink-0 items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors lg:w-full ${
                       active
                         ? "bg-[var(--primary-soft)] text-[var(--primary)] font-medium"
                         : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
                     }`}
                   >
                     <span className="flex items-center gap-2.5">
-                      <Icon className="h-4 w-4" />
+                      <DeimosIcon name={item.icon} className="h-4 w-4" />
                       {item.label}
                     </span>
                     {badge !== null && (
@@ -604,7 +596,8 @@ export default function SettingsPage() {
                     </div>
                     {user.email_verified ? (
                       <span className="rounded-full bg-[var(--teal)]/15 px-3 py-1 text-xs font-medium text-[var(--teal)]">
-                        ✓ 已验证
+                        <DeimosIcon name="check" className="mr-1 inline-block h-3 w-3" />
+                        已验证
                       </span>
                     ) : (
                       <span className="rounded-full bg-[var(--coral)]/15 px-3 py-1 text-xs font-medium text-[var(--coral)]">
@@ -786,7 +779,7 @@ export default function SettingsPage() {
                   <div className="py-8 text-center text-[var(--text-muted)]">加载中…</div>
                 ) : sessions.length === 0 ? (
                   <div className="py-8 text-center text-[var(--text-muted)]">
-                    <p className="text-3xl mb-2">💬</p>
+                    <DeimosIcon name="chat" className="mx-auto mb-3 h-8 w-8" />
                     暂无会话
                   </div>
                 ) : (
@@ -819,7 +812,7 @@ export default function SettingsPage() {
                   {[
                     { key: "email_on_follow", label: "有人关注我", desc: "新粉丝通知" },
                     { key: "email_on_comment", label: "我的想法被评论", desc: "评论通知" },
-                    { key: "email_on_flower", label: "我的想法收到鲜花", desc: "送花通知" },
+                    { key: "email_on_flower", label: "我的想法收到期待", desc: "期待通知" },
                     { key: "email_on_mention", label: "@ 提及我", desc: "评论中 @ 我" },
                     { key: "email_weekly_digest", label: "每周精选摘要", desc: "每周一封邮件汇总" },
                   ].map((row) => (
@@ -865,7 +858,7 @@ export default function SettingsPage() {
                   <div className="py-8 text-center text-[var(--text-muted)]">加载中…</div>
                 ) : blockedUsers.length === 0 ? (
                   <div className="py-8 text-center text-[var(--text-muted)]">
-                    <p className="text-3xl mb-2">🛡️</p>
+                    <DeimosIcon name="shield" className="mx-auto mb-2 h-7 w-7" />
                     还没有屏蔽任何用户
                   </div>
                 ) : (
@@ -995,7 +988,7 @@ function ApiKeyBrowserBinding() {
               setInputKey("");
             }
           }}
-          placeholder="deimos_xxxxxxxx"
+          placeholder="wanye_xxxxxxxx"
           className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm"
         />
         <button

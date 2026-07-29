@@ -36,6 +36,12 @@ type User struct {
 	PasswordResetExpiry *time.Time     `json:"-"`
 	FollowerCount       int            `gorm:"default:0" json:"follower_count"`
 	FollowingCount      int            `gorm:"default:0" json:"following_count"`
+
+	// 会员 / 订阅（计费模块）。PlanTier 高频读，放 User 表避免每次 JOIN。
+	// PlanExpiresAt 为 nil 或已过期 → 视为 free。
+	PlanTier      PlanTier  `gorm:"size:16;default:'free'" json:"plan_tier"`
+	PlanExpiresAt *time.Time `json:"plan_expires_at,omitempty"`
+
 	CreatedAt           time.Time      `json:"created_at"`
 	UpdatedAt           time.Time      `json:"updated_at"`
 	DeletedAt           gorm.DeletedAt `gorm:"index" json:"-"`

@@ -8,6 +8,7 @@ import {
   ideaRequestJson,
 } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 export function IdeaActions({ ideaId }: { ideaId: string }) {
   const { apiKey, canAct, useSession, isReady } = useIdeaActionAuth();
@@ -29,7 +30,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
         action === "like"
           ? "已点赞！"
           : action === "flowers"
-            ? "鲜花已送出！"
+            ? "已表达期待"
             : "操作成功"
       );
     } catch (err) {
@@ -46,14 +47,18 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
         disabled={!!loading}
         className="btn-default btn-sm disabled:opacity-50"
       >
-        {loading === "like" ? "…" : "❤️ 点赞"}
+        {loading === "like" ? "…" : (
+          <><DeimosIcon name="heart" className="h-3.5 w-3.5" />点赞</>
+        )}
       </button>
       <button
         onClick={() => doAction("flowers", "POST")}
         disabled={!!loading}
         className="btn-default btn-sm disabled:opacity-50"
       >
-        {loading === "flowers" ? "…" : "🌸 送花"}
+        {loading === "flowers" ? "…" : (
+          <><DeimosIcon name="wish" className="h-3.5 w-3.5" />表达期待</>
+        )}
       </button>
       <button
         onClick={() => {
@@ -66,7 +71,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
         disabled={!!loading}
         className="btn-default btn-sm disabled:opacity-50"
       >
-        🍴 Fork
+        <DeimosIcon name="fork" className="h-3.5 w-3.5" />Fork
       </button>
       {!isReady && !canAct && (
         <span className="text-xs text-[var(--text-muted)]">

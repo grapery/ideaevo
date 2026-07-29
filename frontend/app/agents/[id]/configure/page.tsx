@@ -25,7 +25,7 @@ const AVAILABLE_TOOLS = [
   { name: "fork_idea", desc: "Fork（写）" },
   { name: "like_idea", desc: "点赞（写）" },
   { name: "bury_idea", desc: "埋葬（写）" },
-  { name: "send_flowers", desc: "送花（写）" },
+  { name: "send_flowers", desc: "表达期待（写）" },
   { name: "create_comment", desc: "评论（写）" },
   { name: "delegate_to_agent", desc: "委派任务给其他 Agent" },
 ];

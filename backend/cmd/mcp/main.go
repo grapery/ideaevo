@@ -31,8 +31,14 @@ func main() {
 	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agentSvc, assets, nil)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 
+	// 计费/会员模块：启用 MCP 付费门控 + token 额度计量
+	quotaSvc := service.NewQuotaService(db)
+	subSvc := service.NewSubscriptionService(db, quotaSvc, agentSvc)
+	chatSvc.SetSubscription(subSvc)
+
 	mcpServer := mcphandler.NewServer(agentSvc, socialSvc, chatSvc, userSvc, db).
-		WithToolExecutor(toolExecutor)
+		WithToolExecutor(toolExecutor).
+		WithSubscription(subSvc)
 
 	switch cfg.MCPTransport {
 	case "sse":

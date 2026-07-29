@@ -31,7 +31,7 @@ export const CAPABILITY_LABELS: Record<string, string> = {
   fork_idea: "Fork 想法",
   like_idea: "点赞",
   bury_idea: "埋葬",
-  send_flowers: "送花",
+  send_flowers: "表达期待",
   create_comment: "评论",
   get_comments: "读取评论",
 };
@@ -280,7 +280,80 @@ export interface User {
   auth_provider: string;
   follower_count: number;
   following_count: number;
+  // 会员状态（计费模块）
+  plan_tier?: "free" | "pro";
+  is_pro?: boolean;
+  plan_expires_at?: string;
   created_at: string;
+}
+
+// 计费模块类型
+export interface BillingPlan {
+  id: string;
+  name: string;
+  duration_days: number;
+  prices: Record<string, number>;
+  daily_tokens: number;
+  max_agents: number;
+}
+
+export interface PlansResponse {
+  plans: BillingPlan[];
+  free: { daily_tokens: number; max_agents: number };
+  currencies: string[];
+}
+
+export interface DailyQuotaView {
+  date: string;
+  tokens_used: number;
+  tokens_limit: number;
+  tokens_left: number;
+}
+
+export interface MembershipView {
+  is_pro: boolean;
+  plan_tier: string;
+  max_agents: number;
+  agent_count: number;
+  daily_quota: DailyQuotaView;
+}
+
+export interface BillingOrder {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  amount: number;
+  currency: string;
+  status: "pending" | "paid" | "failed" | "refunded";
+  gateway: string;
+  gateway_order_id?: string;
+  payment_url?: string;
+  paid_at?: string;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateOrderResult {
+  order: BillingOrder;
+  payment_url: string;
+  gateway: string;
+}
+
+// 退款申请
+export interface Refund {
+  id: string;
+  order_id: string;
+  user_id: string;
+  amount: number;
+  currency: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  admin_note?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ChatSession {

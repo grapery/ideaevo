@@ -52,6 +52,7 @@ type ChatService struct {
 	ideaRetriever *IdeaContextRetriever
 	tools         *ToolExecutor      // 可选，启用后支持 tool use
 	toolNames     []string           // 给 LLM 暴露的工具白名单（空=全部）
+	subSvc        *SubscriptionService // 可选，启用后对 LLM token 做每日额度计量
 }
 
 func NewChatService(db *gorm.DB, ideaSvc *IdeaService, agentSvc *AgentService, llm *LLMService) *ChatService {
@@ -71,6 +72,13 @@ func (s *ChatService) SetRAG(embed *EmbeddingService, searcher SimilaritySearche
 func (s *ChatService) SetTools(executor *ToolExecutor, toolNames []string) {
 	s.tools = executor
 	s.toolNames = toolNames
+}
+
+// SetSubscription 注入会员服务以启用每日 token 额度计量。
+// 启用后：发消息前校验额度（超限拒绝），LLM 返回后按真实 token 数扣减。
+// 未注入时（subSvc==nil）不计量，行为与改造前一致。
+func (s *ChatService) SetSubscription(subSvc *SubscriptionService) {
+	s.subSvc = subSvc
 }
 
 func (s *ChatService) CreateSession(userID string, input CreateSessionInput) (*model.ChatSession, error) {
@@ -398,6 +406,14 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 		return nil, err
 	}
 
+	// 每日 token 额度预检：发消息前校验当日剩余额度。
+	// 解析计费归属用户（MCP 路径下 userID 形如 "agent:<id>"，需反查 agent owner）。
+	if s.subSvc != nil {
+		if err := s.checkQuota(userID); err != nil {
+			return nil, err
+		}
+	}
+
 	userMsg := s.newUserMessage(session, userID, input.Content)
 	if err := s.db.Create(&userMsg).Error; err != nil {
 		return nil, fmt.Errorf("failed to save user message: %w", err)
@@ -412,6 +428,11 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 	if err != nil {
 		s.persistConversationFailure(session, err)
 		return nil, err
+	}
+
+	// LLM 已消耗真实 token，按实际用量扣减当日额度（原子累加，不阻塞返回）。
+	if s.subSvc != nil {
+		s.chargeTokens(userID, tokensUsed)
 	}
 
 	s.bumpSessionMessageCount(session, 2)
@@ -700,6 +721,13 @@ func (s *ChatService) SendMessageStream(sessionID, userID, content string) (<-ch
 		return nil, nil, err
 	}
 
+	// 每日 token 额度预检（同 SendMessage）
+	if s.subSvc != nil {
+		if err := s.checkQuota(userID); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	userMsg := s.newUserMessage(session, userID, content)
 	if err := s.db.Create(&userMsg).Error; err != nil {
 		return nil, nil, fmt.Errorf("failed to save user message: %w", err)
@@ -712,7 +740,7 @@ func (s *ChatService) SendMessageStream(sessionID, userID, content string) (<-ch
 
 	// tools 启用时：流式即工具循环 + 进度事件
 	if s.tools != nil {
-		return s.streamWithTools(session, &userMsg, content, principal)
+		return s.streamWithTools(session, &userMsg, content, principal, userID)
 	}
 
 	// 否则：保持原有 ChatStream（无工具）
@@ -758,7 +786,7 @@ func (s *ChatService) streamNoTools(session *model.ChatSession, userMsg *model.C
 
 // streamWithTools 在 goroutine 中跑工具循环，把进度事件转成 StreamChunk 推出。
 // 错误时回滚 user message（P0 #3）。
-func (s *ChatService) streamWithTools(session *model.ChatSession, userMsg *model.ChatMessage, content string, principal Principal) (<-chan StreamChunk, *model.ChatMessage, error) {
+func (s *ChatService) streamWithTools(session *model.ChatSession, userMsg *model.ChatMessage, content string, principal Principal, billUserID string) (<-chan StreamChunk, *model.ChatMessage, error) {
 	out := make(chan StreamChunk, 64)
 
 	go func() {
@@ -774,10 +802,15 @@ func (s *ChatService) streamWithTools(session *model.ChatSession, userMsg *model
 			}
 		}()
 
-		_, _, _, err := s.runConversationWithProgress(session, content, principal, progressCh)
+		_, _, totalTokens, err := s.runConversationWithProgress(session, content, principal, progressCh)
 		// 无论成功失败，先关掉 progressCh 让转发器退出（避免死锁）
 		close(progressCh)
 		<-done
+
+		// LLM 已消耗真实 token，按实际用量扣减当日额度
+		if err == nil && s.subSvc != nil {
+			s.chargeTokens(billUserID, totalTokens)
+		}
 
 		if err != nil {
 			s.persistConversationFailure(session, err)
@@ -1075,6 +1108,50 @@ func (s *ChatService) buildSystemPrompt(session *model.ChatSession) string {
 	}
 
 	return prompt
+}
+
+// billingOwnerID 把聊天发起者解析成计费归属的用户 ID。
+// REST 用户聊天：userID 即用户 ID，直接返回。
+// MCP/A2A 路径：userID 形如 "agent:<agentID>"，需反查 agent.OwnerUserID；
+//   owner 为空（系统助手被 agent 调用）则不计费（返回空）。
+func (s *ChatService) billingOwnerID(userID string) string {
+	const agentPrefix = "agent:"
+	if len(userID) > len(agentPrefix) && userID[:len(agentPrefix)] == agentPrefix {
+		agentID := userID[len(agentPrefix):]
+		agent, err := s.agentSvc.GetByID(agentID)
+		if err != nil || agent.OwnerUserID == "" {
+			return "" // 系统 agent 或查不到，不计费
+		}
+		return agent.OwnerUserID
+	}
+	return userID
+}
+
+// checkQuota 发消息前的每日额度预检。
+// 解析计费归属用户后，若当日剩余额度为 0 则返回 ErrQuotaExceeded。
+func (s *ChatService) checkQuota(userID string) error {
+	owner := s.billingOwnerID(userID)
+	if owner == "" {
+		return nil // 无法归属（如系统助手被匿名调用），不拦截
+	}
+	tier := s.subSvc.EffectiveTier(owner)
+	q, err := s.subSvc.QuotaService().GetOrInitToday(owner, ResolveDailyLimit(tier))
+	if err != nil {
+		return nil // 计费基础设施异常时降级放行，不阻断核心聊天
+	}
+	if q.Remaining() <= 0 {
+		return ErrQuotaExceeded
+	}
+	return nil
+}
+
+// chargeTokens 扣减当日 token 用量。失败仅记录日志，不影响对话返回。
+func (s *ChatService) chargeTokens(userID string, tokens int) {
+	owner := s.billingOwnerID(userID)
+	if owner == "" || tokens <= 0 {
+		return
+	}
+	s.subSvc.QuotaService().Deduct(owner, tokens)
 }
 
 // buildPrincipal 构造工具执行身份。火卫二助手会话中写操作归属用户默认 Agent。

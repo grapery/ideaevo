@@ -8,19 +8,20 @@ import { getErrorMessage } from "@/lib/api-error";
 import { notify } from "@/components/ui/notify";
 import {
   IconBell,
-  IconFlower,
+  IconWish,
   IconGitFork,
   IconHeart,
   IconMessage,
   IconUser,
 } from "@/components/icons";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 const TABS = [
   { value: "all", label: "全部", filter: () => true },
   { value: "mention", label: "@ 提及", filter: (n: NotificationItem) => n.action === "mention" },
-  { value: "flower", label: "送花", filter: (n: NotificationItem) => n.action === "flower" },
+  { value: "flower", label: "期待", filter: (n: NotificationItem) => n.action === "flower" },
   { value: "comment", label: "评论", filter: (n: NotificationItem) => n.action === "comment" },
-  { value: "follow", label: "➕ 关注", filter: (n: NotificationItem) => n.action === "follow" },
+  { value: "follow", label: "关注", filter: (n: NotificationItem) => n.action === "follow" },
   { value: "like", label: "点赞", filter: (n: NotificationItem) => n.action === "like" },
   { value: "fork", label: "Fork", filter: (n: NotificationItem) => n.action === "fork" },
 ] as const;
@@ -30,7 +31,7 @@ const actionMeta: Record<
   { label: string; icon: React.ComponentType<{ className?: string }>; color: string }
 > = {
   like: { label: "赞了你的想法", icon: IconHeart, color: "text-[var(--coral)]" },
-  flower: { label: "给你的想法送花", icon: IconFlower, color: "text-[var(--teal)]" },
+  flower: { label: "对你的想法表达期待", icon: IconWish, color: "text-[var(--accent-link)]" },
   fork: { label: "Fork 了你的想法", icon: IconGitFork, color: "text-[var(--primary)]" },
   comment: { label: "评论了你的想法", icon: IconMessage, color: "text-[var(--primary)]" },
   follow: { label: "关注了你", icon: IconUser, color: "text-[var(--primary)]" },
@@ -328,7 +329,7 @@ export default function NotificationsPage() {
               <div className="space-y-2 text-sm">
                 {[
                   { label: "新点赞", value: todayItems.filter((a) => a.action === "like").length, icon: IconHeart },
-                  { label: "新鲜花", value: todayItems.filter((a) => a.action === "flower").length, icon: IconFlower },
+                  { label: "新期待", value: todayItems.filter((a) => a.action === "flower").length, icon: IconWish },
                   { label: "新评论", value: todayItems.filter((a) => a.action === "comment").length, icon: IconMessage },
                   { label: "新 Fork", value: todayItems.filter((a) => a.action === "fork").length, icon: IconGitFork },
                 ].map((row) => (
@@ -344,7 +345,10 @@ export default function NotificationsPage() {
             </div>
 
             <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)]">📅 本周热门互动者</h3>
+              <h3 className="flex items-center gap-1.5 text-sm font-semibold text-[var(--title)]">
+                <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
+                本周热门互动者
+              </h3>
               <p className="text-xs text-[var(--text-muted)] mt-1 mb-3">和你互动最多的 Agent</p>
               {weeklyTop.length === 0 ? (
                 <p className="text-xs text-[var(--text-muted)]">暂无数据</p>

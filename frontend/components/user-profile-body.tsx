@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AppLink as AppLinkComponent } from "@/components/app-link";
-import { userApi, chatApi } from "@/lib/api-client";
+import { userApi, chatApi, billingApi } from "@/lib/api-client";
 import { getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/lib/auth-context";
 import { useApiKey } from "@/lib/api-key-context";
-import { Idea, User, ChatSession, Agent } from "@/lib/types";
+import { Idea, User, ChatSession, Agent, MembershipView } from "@/lib/types";
 import { IdeaCard } from "@/components/idea-card";
 import { ActivityList, ActivityLog } from "@/components/activity-list";
 import UserCard from "@/components/user-card";
@@ -39,6 +39,14 @@ function formatJoinDate(dateStr: string) {
   return `加入于 ${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
 }
 
+// 格式化 token 数为简短形式：10000 -> "1万"，10000000 -> "1000万"。
+function formatTokensShort(n: number): string {
+  if (n >= 10000) {
+    return `${Math.floor(n / 10000)}万`;
+  }
+  return String(n);
+}
+
 /**
  * UserProfileBody —— GitHub 风格的用户主页主体（tab 导航 + 主列/侧栏）。
  * isOwn=true 时额外显示"对话"tab（自己的主页）。
@@ -67,6 +75,8 @@ export function UserProfileBody({
   const [sessions, setSessions] = useState<ChatSession[] | null>(null);
   const [followersTotal, setFollowersTotal] = useState(stats.follower_count ?? 0);
   const [followingTotal, setFollowingTotal] = useState(stats.following_count ?? 0);
+  // 会员状态（仅本人主页展示，按需懒加载）
+  const [membership, setMembership] = useState<MembershipView | null>(null);
 
   const loadIdeas = useCallback(async () => {
     try {
@@ -135,6 +145,12 @@ export function UserProfileBody({
     if (ideas === null) loadIdeas();
     if (activity === null) loadActivity();
   }, [ideas, activity, loadIdeas, loadActivity]);
+
+  // 本人主页：加载会员状态/额度用于侧栏展示。
+  useEffect(() => {
+    if (!isOwn || membership !== null) return;
+    billingApi.membership().then(setMembership).catch(() => {});
+  }, [isOwn, membership]);
 
   // tab 切换时按需加载。
   useEffect(() => {
@@ -207,6 +223,54 @@ export function UserProfileBody({
               {isOwn && <StatRow label="对话" value={stats.session_count ?? 0} />}
             </div>
           </AboutCard>
+
+          {/* 会员状态（仅本人主页展示） */}
+          {isOwn && membership && (
+            <AboutCard title="会员状态">
+              <div className="space-y-2.5">
+                <StatRow
+                  label="会员等级"
+                  value={
+                    membership.is_pro ? (
+                      <span className="badge-pill badge-active">Pro</span>
+                    ) : (
+                      <span className="badge-pill badge-muted">免费</span>
+                    )
+                  }
+                />
+                <StatRow
+                  label="今日 Token"
+                  value={
+                    <span>
+                      {formatTokensShort(membership.daily_quota.tokens_left)}
+                      <span className="text-[var(--text-muted)] font-normal">
+                        {" "}/ {formatTokensShort(membership.daily_quota.tokens_limit)}
+                      </span>
+                    </span>
+                  }
+                />
+                <StatRow
+                  label="Agent 配额"
+                  value={
+                    <span>
+                      {membership.agent_count}
+                      <span className="text-[var(--text-muted)] font-normal">
+                        {" "}/ {membership.max_agents}
+                      </span>
+                    </span>
+                  }
+                />
+                {!membership.is_pro && (
+                  <Link
+                    href="/billing"
+                    className="block pt-2 text-sm text-[var(--primary)] hover:underline"
+                  >
+                    升级 Pro 解锁更多额度 →
+                  </Link>
+                )}
+              </div>
+            </AboutCard>
+          )}
 
           {ideas !== null && ideas.length > 0 && (
             <AboutCard title="最新想法">
@@ -492,7 +556,7 @@ function ApiKeyTab() {
               value={inputKey}
               onChange={(e) => setInputKey(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSet()}
-              placeholder="deimos_xxxxxxxx"
+              placeholder="wanye_xxxxxxxx"
               className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm"
             />
             <button onClick={handleSet} className="btn-outline px-5 py-2 text-sm font-medium">

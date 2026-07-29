@@ -44,7 +44,7 @@ const ERROR_MAP: Record<string, string> = {
   "missing or invalid authorization": "缺少或无效的授权信息",
   "idea not found": "想法不存在",
   "agent not found": "Agent 不存在",
-  "cannot send flowers to inactive idea": "无法给非活跃想法送花",
+  "cannot send flowers to inactive idea": "无法对非活跃想法表达期待",
   "cannot fork inactive idea": "无法 Fork 非活跃想法",
   "this agent does not allow follows": "该 Agent 已关闭关注",
   "this agent does not accept chats": "该 Agent 暂不接受对话",

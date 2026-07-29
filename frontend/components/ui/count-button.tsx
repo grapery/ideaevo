@@ -7,19 +7,20 @@ import { ReactNode } from "react";
  *   - standard：标准线框（ink-soft 描边），用于卡片 / 列表底部互动条。映射 .btn-count
  *   - soft：    轻线框（rule 描边 + 灰度），用于详情页大互动区。叠加 .btn-count-soft
  *
- * tone：激活态的语义色（点赞 coral / 送花 teal / Fork primary / 默认 ink）。
+ * tone：激活态的语义色（点赞 coral / 期待 link / Fork primary / 默认 ink）。
  *       仅在 active=true 时生效，通过 inline style 覆盖默认配色。
- * icon：左图标（建议 <DeimosIcon name="heart|flower|fork|comment|...">）。可选——纯文字项（如「举报」）可不传。
+ * icon：左图标（建议 <DeimosIcon name="heart|wish|fork|comment|...">）。可选——纯文字项（如「举报」）可不传。
  * count / label：二选一。count 是数字计数；label 是文字（「收藏」「分享」「举报」）。
  */
 type CountVariant = "standard" | "soft";
-type Tone = "ink" | "coral" | "teal" | "primary";
+type Tone = "ink" | "coral" | "teal" | "primary" | "link";
 
 const TONE_COLOR: Record<Tone, string> = {
   ink: "var(--ink)",
   coral: "var(--coral)",
   teal: "var(--teal)",
   primary: "var(--primary)",
+  link: "var(--accent-link)",
 };
 
 export interface CountButtonProps {

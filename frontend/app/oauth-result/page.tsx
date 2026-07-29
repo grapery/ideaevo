@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 export default function OAuthResultPage() {
   const router = useRouter();
@@ -36,8 +37,8 @@ export default function OAuthResultPage() {
     return (
       <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
         <div className="surface-card max-w-md w-full p-10 text-center">
-          <div className="mx-auto h-16 w-16 rounded-full bg-[var(--coral)]/15 flex items-center justify-center text-3xl mb-5">
-            ⚠️
+          <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)] flex items-center justify-center text-[var(--accent-warning)] mb-5">
+            <DeimosIcon name="decision" className="h-7 w-7" />
           </div>
           <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">登录失败</h2>
           <p className="text-sm text-[var(--text-muted)] mb-6">{error}</p>

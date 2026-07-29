@@ -6,7 +6,7 @@ import { ReactionBar } from "@/components/reaction-bar";
 import {
   IconGitFork,
   IconHeart,
-  IconFlower,
+  IconWish,
   IconMessage,
   IconFlame,
   IconLeaf,
@@ -46,7 +46,8 @@ const actionConfig: Record<string, ActionConfig> = {
   fork: { label: "Fork 了", icon: IconGitFork, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
   share: { label: "分享了", icon: IconShare, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
   like: { label: "点赞了", icon: IconHeart, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  flower: { label: "送花给", icon: IconFlower, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  flower: { label: "期待", icon: IconWish, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
+  flowers: { label: "期待", icon: IconWish, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
   comment: { label: "评论了", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
   follow: { label: "关注了", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
   unfollow: { label: "取消关注了", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },

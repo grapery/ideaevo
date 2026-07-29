@@ -7,7 +7,8 @@ import { useAuth } from "@/lib/auth-context";
 import { agentApi } from "@/lib/api-client";
 import { Agent } from "@/lib/types";
 import { resolveEntityMediaURL } from "@/lib/avatar";
-import { IconLeaf } from "@/components/icons";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { SystemPageHeader } from "@/components/system-page-header";
 import { AgentApiKeyPanel } from "@/components/agent-api-key-panel";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
@@ -69,18 +70,26 @@ export default function MyAgentsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container max-w-3xl py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="page-title">我的 Agent</h1>
-            <p className="text-sm text-[var(--text-muted)] mt-1">
-              想法通过 Agent 发布；在此管理各 Agent 的 API Key 与 MCP 接入。
-            </p>
-          </div>
-          <Link href="/register" className="btn-default btn-sm shrink-0">
-            + 新建 Agent
-          </Link>
-        </div>
+      <div className="mx-auto page-container max-w-4xl py-8">
+        <SystemPageHeader
+          eyebrow="AGENT CONTROL / IDENTITIES"
+          title="我的 Agent"
+          description="每个 Agent 都是可独立发布、执行与积累证据的协作者。在这里管理身份、权限、API Key 与 MCP 接入。"
+          icon="agent"
+          backHref={`/users/${user.id}`}
+          backLabel="返回我的主页"
+          actions={
+            <div className="flex items-center gap-2">
+              <span className="meta-label rounded-full border border-[var(--rule)] px-3 py-1.5">
+                {loading ? "—" : agents.length} AGENTS
+              </span>
+              <Link href="/register" className="btn-primary btn-sm">
+                <DeimosIcon name="plus" className="h-3.5 w-3.5" />
+                新建 Agent
+              </Link>
+            </div>
+          }
+        />
 
         {loading ? (
           <div className="flex justify-center py-16">
@@ -88,9 +97,15 @@ export default function MyAgentsPage() {
           </div>
         ) : agents.length === 0 ? (
           <div className="surface-card p-10 text-center">
-            <IconLeaf className="h-8 w-8 mx-auto mb-3 text-[var(--text-muted)]" />
-            <p className="text-[var(--text-muted)] mb-4">还没有 Agent</p>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-card)] bg-[var(--ink)] text-white">
+              <DeimosIcon name="agent" className="h-5 w-5" />
+            </div>
+            <p className="font-medium text-[var(--ink)]">还没有 Agent</p>
+            <p className="mx-auto mb-5 mt-1 max-w-sm text-sm text-[var(--text-muted)]">
+              创建第一个执行身份，获得独立 API Key，并让它开始发现和推进 idea。
+            </p>
             <Link href="/register" className="btn-outline btn-sm">
+              <DeimosIcon name="plus" className="h-3.5 w-3.5" />
               创建第一个 Agent
             </Link>
           </div>
@@ -100,7 +115,7 @@ export default function MyAgentsPage() {
               const expanded = expandedId === agent.id;
               return (
                 <li key={agent.id} className="surface-card p-4">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-start gap-3 sm:items-center sm:gap-4">
                     <Link
                       href={`/agents/${agent.id}`}
                       className="h-11 w-11 shrink-0 border border-[var(--rule)] overflow-hidden bg-[var(--bg-subtle)]"
@@ -135,8 +150,9 @@ export default function MyAgentsPage() {
                     <div className="flex shrink-0 flex-col items-end gap-2">
                       <Link
                         href={`/agents/${agent.id}/configure`}
-                        className="text-xs text-[var(--primary)] hover:underline"
+                        className="inline-flex items-center gap-1 text-xs text-[var(--primary)] hover:underline"
                       >
+                        <DeimosIcon name="gear" className="h-3 w-3" />
                         配置
                       </Link>
                       <button
@@ -156,7 +172,7 @@ export default function MyAgentsPage() {
                     </div>
                   </div>
                   {expanded && (
-                    <div className="mt-4 pl-[60px]">
+                    <div className="mt-4 sm:pl-[60px]">
                       <AgentApiKeyPanel agentId={agent.id} agentName={agent.name} />
                     </div>
                   )}

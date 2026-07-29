@@ -62,6 +62,20 @@ func main() {
 		log.Printf("[llm] enabled: provider=%s base=%s model=%s", cfg.LLM.Provider, cfg.LLM.BaseURL, cfg.LLM.Model)
 	}
 	chatSvc := service.NewChatService(db, ideaSvc, agentSvc, llmSvc)
+
+	// —— 计费/会员/充值模块 ——
+	quotaSvc := service.NewQuotaService(db)
+	subSvc := service.NewSubscriptionService(db, quotaSvc, agentSvc)
+	orderSvc := service.NewOrderService(db, subSvc)
+	refundSvc := service.NewRefundService(db, subSvc)
+	// 注册支付网关（凭证缺失时各网关 Enabled()=false，下单自动降级到 mock）
+	payCfg := service.LoadPaymentConfig(cfg)
+	orderSvc.RegisterGateway(service.NewAlipayGateway(payCfg))
+	orderSvc.RegisterGateway(service.NewWeChatGateway(payCfg))
+	orderSvc.RegisterGateway(service.NewStripeGateway(payCfg))
+	orderSvc.SetFrontendURL(cfg.FrontendURL)
+	// 启用 ChatService 的每日 token 额度计量
+	chatSvc.SetSubscription(subSvc)
 	notifSvc := service.NewNotificationService(db)
 	prefsSvc := service.NewNotificationPreferencesService(db)
 	followSvc := service.NewFollowService(db, notifSvc)
@@ -172,6 +186,7 @@ func main() {
 	agentSvc.SetObjectStore(assets)
 	agentHandler := handler.NewAgentHandler(agentSvc, ideaSvc, assets, followSvc)
 	authHandler := handler.NewAuthHandler(agentSvc)
+	authHandler.SetSubscription(subSvc) // 启用 Agent 创建权限校验（需付费会员）
 	commentHandler := handler.NewCommentHandler(commentSvc)
 	activityHandler := handler.NewActivityHandler(db, followSvc, socialSvc)
 	userAuthHandler := handler.NewUserAuthHandler(userSvc, authSvc)
@@ -184,6 +199,7 @@ func main() {
 	phoneHandler := handler.NewPhoneAuthHandler(userSvc, smsSvc, authSvc)
 	bridgeHandler := handler.NewAgentBridgeHandler(bridgeSvc)
 	modHandler := handler.NewModerationHandler(modSvc)
+	billingHandler := handler.NewBillingHandler(orderSvc, subSvc, refundSvc)
 
 	// —— A2A（Agent-to-Agent 协议）——
 	a2aSvc := a2a.NewService(db, chatSvc)
@@ -415,6 +431,29 @@ func main() {
 		{
 			adminRoutes.GET("/admin/comments", commentHandler.ListAdmin)
 			adminRoutes.PATCH("/admin/comments/:id/moderate", commentHandler.Moderate)
+			// 退款审批
+			adminRoutes.GET("/admin/refunds", billingHandler.ListPendingRefunds)
+			adminRoutes.POST("/admin/refunds/:id/approve", billingHandler.ApproveRefund)
+			adminRoutes.POST("/admin/refunds/:id/reject", billingHandler.RejectRefund)
+		}
+
+		// —— 充值/会员模块 ——
+		// 套餐与价格、支付回调：公开
+		api.GET("/billing/plans", billingHandler.Plans)
+		api.POST("/billing/webhooks/:gateway", billingHandler.Webhook)
+
+		// 会员状态、订单管理：需登录
+		billingRoutes := api.Group("")
+		billingRoutes.Use(middleware.UserAuth(cfg.JWTSecret))
+		{
+			billingRoutes.GET("/billing/membership", billingHandler.Membership)
+			billingRoutes.POST("/billing/orders", billingHandler.CreateOrder)
+			billingRoutes.GET("/billing/orders", billingHandler.ListOrders)
+			billingRoutes.GET("/billing/orders/:id", billingHandler.GetOrder)
+			billingRoutes.POST("/billing/orders/:id/cancel", billingHandler.CancelOrder)
+			billingRoutes.POST("/billing/orders/:id/mock-pay", billingHandler.MockPay)
+			billingRoutes.POST("/billing/orders/:id/refund", billingHandler.RequestRefund)
+			billingRoutes.GET("/billing/refunds", billingHandler.ListMyRefunds)
 		}
 	}
 

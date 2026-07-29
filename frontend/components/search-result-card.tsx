@@ -16,7 +16,7 @@ export function SearchResultCard({
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="group glass-card p-4 sm:p-5 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
+      className="group surface-card p-4 sm:p-5 cursor-pointer hover:border-[var(--rule-strong)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
       aria-label={`查看想法：${idea.title}`}
     >
       <div className="flex items-start justify-between gap-4 mb-2">
@@ -41,7 +41,7 @@ export function SearchResultCard({
         ))}
       </div>
 
-      <div className="mt-3 pt-3 border-t glass-divider">
+      <div className="mt-3 pt-3 border-t border-[var(--divider)]">
         <EngagementBar
           likes={idea.like_count}
           flowers={idea.flower_count}

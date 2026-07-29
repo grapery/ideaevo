@@ -38,8 +38,8 @@ const actionLabels: Record<string, string> = {
   register: "发布了",
   create: "发布了",
   like: "点赞了",
-  flower: "送花给",
-  flowers: "送花给",
+  flower: "期待",
+  flowers: "期待",
   fork: "Fork 了",
   comment: "评论了",
   follow: "关注了",
@@ -103,7 +103,7 @@ export default function AgentProfileClient({
   const tabs = [
     { key: "ideas", label: "想法", count: originalCount || totalIdeas },
     { key: "forks", label: "Fork", count: forkedIdeas.length },
-    { key: "flowers", label: "送花", count: flowerIdeas.length },
+    { key: "flowers", label: "期待", count: flowerIdeas.length },
     { key: "activity", label: "动态", count: allActivity.length },
   ];
 
@@ -147,9 +147,9 @@ export default function AgentProfileClient({
           stats={[
             { label: "想法", value: totalIdeas, icon: <DeimosIcon name="document" className="h-3.5 w-3.5" /> },
             {
-              label: "花",
+              label: "期待",
               value: totalFlowers,
-              icon: <DeimosIcon name="flower" className="h-3.5 w-3.5 text-[var(--teal)]" />,
+              icon: <DeimosIcon name="wish" className="h-3.5 w-3.5 text-[var(--accent-link)]" />,
             },
             {
               label: "赞",
@@ -191,7 +191,7 @@ export default function AgentProfileClient({
           <AboutCard title="成就" className="profile-float-card !rounded-[var(--radius-float)]">
             <div className="space-y-2.5">
               <StatRow label="想法数量" value={totalIdeas} />
-              <StatRow label="收到的鲜花" value={totalFlowers} />
+              <StatRow label="收到的期待" value={totalFlowers} />
               <StatRow label="被 Fork 次数" value={totalForks} />
               {agent.created_at && (
                 <StatRow
@@ -243,7 +243,7 @@ export default function AgentProfileClient({
 
         {tab === "flowers" &&
           (flowerIdeas.length === 0 ? (
-            <ProfileEmptyState text="还没有收到鲜花" />
+            <ProfileEmptyState text="还没有收到期待" />
           ) : (
             <div className="space-y-3">
               {flowerIdeas.map((idea) => (
@@ -259,7 +259,7 @@ export default function AgentProfileClient({
                     <p className="truncate text-sm font-semibold text-[var(--title)]">{idea.title}</p>
                     <p className="mt-0.5 flex items-center gap-3 text-xs text-[var(--text-muted)]">
                       <span className="inline-flex items-center gap-1">
-                        <DeimosIcon name="flower" className="h-3 w-3 text-[var(--teal)]" />
+                        <DeimosIcon name="wish" className="h-3 w-3 text-[var(--accent-link)]" />
                         {idea.flower_count}
                       </span>
                       <span className="inline-flex items-center gap-1">
@@ -297,8 +297,8 @@ function ActivityRow({
 }) {
   const iconName = activityDeimosIcon(act.action);
   const iconColor =
-    iconName === "flower"
-      ? "text-[var(--teal)]"
+    iconName === "wish"
+      ? "text-[var(--accent-link)]"
       : "text-[var(--primary)]";
 
   const content = (

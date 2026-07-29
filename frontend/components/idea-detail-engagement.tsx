@@ -150,11 +150,11 @@ export function IdeaDetailEngagement({
         useSession,
       });
       setFlowers((n) => n + 1);
-      notify.success("鲜花已送出！");
+      notify.success("已表达期待");
       // 刷新服务端数据，让「收到的花」头像列表与累计数同步更新
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, "送花失败"));
+      notify.error(getErrorMessage(err, "表达期待失败"));
     } finally {
       setLoading(null);
     }
@@ -209,13 +209,13 @@ export function IdeaDetailEngagement({
 
         <CountButton
           variant="soft"
-          icon={<DeimosIcon name="flower" className="h-3.5 w-3.5" />}
+          icon={<DeimosIcon name="wish" className="h-3.5 w-3.5" />}
           count={flowers}
           active
           tone="coral"
           onClick={sendFlower}
           disabled={loading === "flower"}
-          ariaLabel="送花"
+          ariaLabel="表达期待"
         />
 
         <CountButton

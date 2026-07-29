@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth-context";
@@ -7,7 +8,6 @@ import { ApiKeyProvider } from "@/lib/api-key-context";
 import { Header } from "@/components/header";
 import { AuthModal } from "@/components/auth-modal";
 import { SiteFooter } from "@/components/site-footer";
-import { LiquidBackground } from "@/components/liquid-background";
 import "./globals.css";
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -57,10 +57,9 @@ export default function RootLayout({
       className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} ${notoSans.variable} ${notoSerif.variable} antialiased`}
     >
       <head>
-        <script src="/runtime-env.js" />
+        <Script src="/runtime-env.js" strategy="beforeInteractive" />
       </head>
       <body className="min-h-screen bg-[var(--bg-canvas)] text-[var(--title)] font-sans flex flex-col">
-        <LiquidBackground />
         <AuthProvider>
           <AuthModalProvider>
             <ApiKeyProvider>

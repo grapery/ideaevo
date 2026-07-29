@@ -12,7 +12,7 @@ const links: { href: string; label: string; external?: boolean }[] = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-[var(--rule)] mt-auto">
+    <footer className="site-footer border-t border-[var(--rule)] mt-auto">
       <div className="mx-auto page-container py-8">
         <nav
           className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mb-6"

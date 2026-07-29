@@ -53,7 +53,12 @@ export function IconHeart({ className = "h-3.5 w-3.5" }: IconProps) {
 }
 
 export function IconFlower({ className = "h-3.5 w-3.5" }: IconProps) {
-  return <DeimosIcon name="flower" className={className} />;
+  return <DeimosIcon name="wish" className={className} />;
+}
+
+/** Canonical future-value signal. `IconFlower` remains as an API-compatible alias. */
+export function IconWish({ className = "h-3.5 w-3.5" }: IconProps) {
+  return <DeimosIcon name="wish" className={className} />;
 }
 
 export function IconGitFork({ className = "h-3.5 w-3.5" }: IconProps) {
