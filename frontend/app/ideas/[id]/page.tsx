@@ -156,10 +156,10 @@ export default async function IdeaDetailPage({
       ? tab
       : "overview";
   const tabClass = (value: typeof activeTab) =>
-    `flex w-full items-center whitespace-nowrap border-l-2 px-4 py-3 text-sm font-semibold transition-colors ${
+    `relative flex h-full items-center whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
       activeTab === value
-        ? "border-[var(--ink)] bg-[var(--bg-subtle,#f3f5f7)] text-[var(--ink)]"
-        : "border-transparent text-[var(--ink-soft)] hover:bg-[var(--bg-subtle,#f3f5f7)] hover:text-[var(--ink)]"
+        ? "border-[var(--ink)] text-[var(--ink)]"
+        : "border-transparent text-[var(--ink-soft)] hover:text-[var(--ink)]"
     }`;
 
   return (
@@ -173,7 +173,7 @@ export default async function IdeaDetailPage({
         </nav>
 
         <nav
-          className="mb-5 flex flex-col gap-1 rounded-md border border-[var(--rule)] bg-white p-2"
+          className="mb-5 flex h-12 items-center gap-1 overflow-x-auto rounded-md border border-[var(--rule)] bg-white px-2"
           aria-label="Idea detail content"
         >
           <Link href={`/ideas/${id}?tab=overview`} className={tabClass("overview")}>
