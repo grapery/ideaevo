@@ -6,17 +6,20 @@ import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { IconActionButton } from "@/components/ui/icon-action-button";
 
 export default function FollowButton({
   userId,
   initialFollowing,
   isSelf,
   onChange,
+  iconOnly = false,
 }: {
   userId: string;
   initialFollowing: boolean;
   isSelf?: boolean;
   onChange?: (following: boolean) => void;
+  iconOnly?: boolean;
 }) {
   const [following, setFollowing] = useState(initialFollowing);
   const [loading, setLoading] = useState(false);
@@ -39,6 +42,23 @@ export default function FollowButton({
       setLoading(false);
     }
   };
+
+  if (iconOnly) {
+    return (
+      <IconActionButton
+        onClick={toggle}
+        disabled={loading}
+        label={following ? "取消关注" : "关注"}
+        tone={following ? "active" : "default"}
+        icon={
+          <DeimosIcon
+            name={following ? "check" : "users"}
+            className="h-[18px] w-[18px]"
+          />
+        }
+      />
+    );
+  }
 
   return (
     <Button

@@ -89,10 +89,13 @@ async function getIdeaLineage(ideaId: string): Promise<IdeaLineage | null> {
 
 export default async function IdeaDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab } = await searchParams;
   const { locale, t } = await getServerI18n();
   const idea = await getIdea(id);
 
@@ -148,6 +151,13 @@ export default async function IdeaDetailPage({
       : idea.status === "buried"
         ? t("market.buried")
         : t("market.active");
+  const activeTab = tab === "evolution" || tab === "comments" ? tab : "overview";
+  const tabClass = (value: typeof activeTab) =>
+    `relative flex h-full items-center whitespace-nowrap border-b-2 px-1 transition-colors ${
+      activeTab === value
+        ? "border-[var(--ink)] text-[var(--ink)]"
+        : "border-transparent text-[var(--ink-soft)] hover:text-[var(--ink)]"
+    }`;
 
   return (
     <div className="min-h-screen bg-[#f3f5f7]">
@@ -159,14 +169,33 @@ export default async function IdeaDetailPage({
           <span className="truncate text-[var(--ink)]">{idea.title}</span>
         </nav>
 
-        <div className="mb-5 flex h-11 items-center gap-6 overflow-x-auto rounded-md border border-[var(--rule)] bg-white px-4 text-[12px] font-semibold text-[var(--ink-soft)]">
-          <Link href="#overview" className="whitespace-nowrap text-[var(--ink)]">{t("idea.body")}</Link>
-          <Link href="#comments" className="whitespace-nowrap">{t("idea.comments")} {comments.length}</Link>
-          <Link href="#evolution" className="whitespace-nowrap">{t("idea.versions")} {currentVersion}</Link>
-          <Link href="#evolution" className="whitespace-nowrap">{t("idea.forkLineage")} {idea.fork_count}</Link>
-          <Link href="#evidence" className="whitespace-nowrap">{t("idea.evidence")} {totalReferences}</Link>
-        </div>
+        <nav
+          className="mb-5 flex h-12 items-center gap-7 overflow-x-auto rounded-md border border-[var(--rule)] bg-white px-4 text-[12px] font-semibold"
+          aria-label={locale === "zh-CN" ? "Idea 详情内容" : "Idea detail content"}
+        >
+          <Link href={`/ideas/${id}?tab=overview`} className={tabClass("overview")}>
+            {t("idea.body")}
+          </Link>
+          <Link href={`/ideas/${id}?tab=evolution`} className={tabClass("evolution")}>
+            {t("idea.evolution")}
+            <span className="ml-1.5 font-code text-[9px] text-[var(--ink-faint)]">
+              v{currentVersion} · {idea.fork_count} Fork
+            </span>
+          </Link>
+          <Link href={`/ideas/${id}?tab=comments`} className={tabClass("comments")}>
+            {t("idea.comments")}
+            <span className="ml-1.5 font-code text-[9px] text-[var(--ink-faint)]">{comments.length}</span>
+          </Link>
+          <Link
+            href={`/ideas/${id}?tab=overview#evidence`}
+            className="relative flex h-full items-center whitespace-nowrap border-b-2 border-transparent px-1 text-[var(--ink-soft)] transition-colors hover:text-[var(--ink)]"
+          >
+            {t("idea.evidence")}
+            <span className="ml-1.5 font-code text-[9px] text-[var(--ink-faint)]">{totalReferences}</span>
+          </Link>
+        </nav>
 
+        {activeTab === "overview" && (
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,920px)_minmax(320px,416px)]">
           <main id="overview" className="scroll-mt-20 rounded-lg border border-[var(--rule-strong)] bg-white p-5 sm:p-6">
             <header className="border-b border-[var(--rule)] pb-5">
@@ -197,7 +226,6 @@ export default async function IdeaDetailPage({
                   </div>
                 </div>
 
-                <div className="rounded-md bg-[#0a0a0a] p-1">
                 <IdeaActionBar
                   ideaId={id}
                   agentId={idea.agent_id}
@@ -206,7 +234,6 @@ export default async function IdeaDetailPage({
                   allowChat={idea.agent?.allow_chat}
                   isPersonal={idea.agent?.is_personal === true}
                 />
-              </div>
               </div>
             </header>
 
@@ -282,7 +309,7 @@ export default async function IdeaDetailPage({
                 <p>{lineage?.stats.active_branches ?? forkChildren.filter((item) => item.status === "active").length} {locale === "zh-CN" ? "个活跃分支" : "active branches"}</p>
                 <p>{lineage?.stats.contributors ?? 0} {locale === "zh-CN" ? "位贡献者" : "contributors"}</p>
               </div>
-              <Link href="#evolution" className="mt-5 inline-block text-[var(--accent-link)]">
+              <Link href={`/ideas/${id}?tab=evolution`} className="mt-5 inline-block text-[var(--accent-link)]">
                 {locale === "zh-CN" ? "查看关系图" : "View graph"} →
               </Link>
             </section>
@@ -306,9 +333,13 @@ export default async function IdeaDetailPage({
             </section>
           </aside>
         </div>
+        )}
 
-        <IdeaEvolutionGraph idea={idea} lineage={lineage} branches={forkChildren} stats={stats} />
+        {activeTab === "evolution" && (
+          <IdeaEvolutionGraph idea={idea} lineage={lineage} branches={forkChildren} stats={stats} />
+        )}
 
+        {activeTab === "comments" && (
         <section id="comments" className="mt-8 scroll-mt-20 rounded-lg border border-[var(--rule-strong)] bg-white p-5 sm:p-6">
           <div className="mb-5 flex items-center gap-2">
             <p className="meta-label text-[var(--accent-link)]">
@@ -343,6 +374,7 @@ export default async function IdeaDetailPage({
             </Link>
           )}
         </section>
+        )}
       </div>
     </div>
   );

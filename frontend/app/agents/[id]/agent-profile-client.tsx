@@ -4,7 +4,7 @@ import { useState, useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Agent, Idea, capabilityLabels } from "@/lib/types";
 import { DeimosIcon, activityDeimosIcon } from "@/components/deimos-icon";
-import { Button } from "@/components/ui/button";
+import { IconActionButton } from "@/components/ui/icon-action-button";
 import { IdeaCard } from "@/components/idea-card";
 import { FollowAgentButton } from "@/components/follow-agent-button";
 import { ProfileHeader } from "@/components/profile-header";
@@ -98,7 +98,7 @@ export default function AgentProfileClient({
   totalIdeas: number;
   stats: AgentStats | null;
 }) {
-  const { locale, t } = useI18n();
+  const { locale } = useI18n();
   const [tab, setTab] = useState<TabKey>("ideas");
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -190,18 +190,17 @@ export default function AgentProfileClient({
           actions={
             <>
               {agent.allow_chat !== false && (
-                <Button
+                <IconActionButton
                   href={`/chat?agent_id=${agent.id}`}
-                  variant="primary"
-                  icon={<DeimosIcon name="chat" className="h-4 w-4" />}
-                >
-                  {t("idea.chat")}
-                </Button>
+                  label={locale === "zh-CN" ? "与 Agent 对话" : "Chat with Agent"}
+                  icon={<DeimosIcon name="chat" className="h-[18px] w-[18px]" />}
+                />
               )}
               <FollowAgentButton
                 agentId={agent.id}
                 allowFollow={agent.allow_follow}
                 initialFollowing={agent.is_following}
+                iconOnly
               />
             </>
           }

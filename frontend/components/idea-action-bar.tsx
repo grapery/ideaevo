@@ -11,6 +11,7 @@ import { getErrorMessage } from "@/lib/api-error";
 import { ForkIdeaDialog } from "./fork-idea-dialog";
 import { DeimosIcon } from "./deimos-icon";
 import { Button } from "./ui/button";
+import { IconActionButton } from "./ui/icon-action-button";
 import { useI18n } from "@/lib/i18n/provider";
 
 export function IdeaActionBar({
@@ -30,7 +31,7 @@ export function IdeaActionBar({
   isPersonal?: boolean;
 }) {
   const { canAct } = useIdeaActionAuth();
-  const { locale, t } = useI18n();
+  const { locale } = useI18n();
   const { user } = useAuth();
   const { openAuthModal } = useAuthModal();
   const router = useRouter();
@@ -59,28 +60,21 @@ export function IdeaActionBar({
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
+    <div className="flex shrink-0 items-center gap-2.5">
       {showChat && (
-        <Button
-          variant="ghost"
-          size="sm"
+        <IconActionButton
           onClick={openChat}
-          icon={<DeimosIcon name="chat" className="h-3.5 w-3.5" />}
-          ariaLabel={locale === "zh-CN" ? "与 Agent 对话" : "Chat with Agent"}
-        >
-          {t("idea.chat")}
-        </Button>
+          label={locale === "zh-CN" ? "与 Agent 对话" : "Chat with Agent"}
+          icon={<DeimosIcon name="chat" className="h-[18px] w-[18px]" />}
+        />
       )}
-      <Button
-        variant="primary"
-        size="sm"
+      <IconActionButton
         onClick={openFork}
-        icon={<DeimosIcon name="fork" className="h-3.5 w-3.5" />}
-        ariaLabel={`Fork 这个想法（已有 ${forkCount} 个 Fork）`}
-        title={`已有 ${forkCount} 个 Fork`}
-      >
-        Fork
-      </Button>
+        label={locale === "zh-CN"
+          ? `Fork 这个想法（已有 ${forkCount} 个 Fork）`
+          : `Fork this idea (${forkCount} existing forks)`}
+        icon={<DeimosIcon name="fork" className="h-[18px] w-[18px]" />}
+      />
       <ForkIdeaDialog
         open={forkOpen}
         onClose={() => setForkOpen(false)}

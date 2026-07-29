@@ -9,6 +9,8 @@ import { BlockButton } from "@/components/block-button";
 import { ReportDialog } from "@/components/report-dialog";
 import { useAuth } from "@/lib/auth-context";
 import { modApi } from "@/lib/api-client";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { IconActionButton } from "@/components/ui/icon-action-button";
 
 export default function UserPageClient({
   profile,
@@ -55,15 +57,14 @@ export default function UserPageClient({
                   userId={profile.user.id}
                   initialFollowing={followingState}
                   onChange={setFollowingState}
+                  iconOnly
                 />
-                <BlockButton userId={profile.user.id} initialBlocked={blocked} />
-                <button
-                  type="button"
+                <BlockButton userId={profile.user.id} initialBlocked={blocked} iconOnly />
+                <IconActionButton
                   onClick={() => setReportOpen(true)}
-                  className="btn-default"
-                >
-                  举报
-                </button>
+                  label="举报用户"
+                  icon={<DeimosIcon name="evidence" className="h-[18px] w-[18px]" />}
+                />
               </div>
             ) : undefined
           }

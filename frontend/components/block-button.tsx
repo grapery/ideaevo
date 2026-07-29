@@ -4,6 +4,8 @@ import { useState } from "react";
 import { modApi } from "@/lib/api-client";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { IconActionButton } from "@/components/ui/icon-action-button";
 
 /**
  * BlockButton — 屏蔽/取消屏蔽用户，对接 POST/DELETE /users/:id/block。
@@ -13,10 +15,12 @@ export function BlockButton({
   userId,
   initialBlocked = false,
   className = "",
+  iconOnly = false,
 }: {
   userId: string;
   initialBlocked?: boolean;
   className?: string;
+  iconOnly?: boolean;
 }) {
   const [blocked, setBlocked] = useState(initialBlocked);
   const [loading, setLoading] = useState(false);
@@ -42,6 +46,19 @@ export function BlockButton({
     } finally {
       setLoading(false);
     }
+  }
+
+  if (iconOnly) {
+    return (
+      <IconActionButton
+        onClick={toggle}
+        disabled={loading}
+        label={blocked ? "取消屏蔽" : "屏蔽用户"}
+        tone={blocked ? "danger" : "default"}
+        className={className}
+        icon={<DeimosIcon name={blocked ? "check" : "shield"} className="h-[18px] w-[18px]" />}
+      />
+    );
   }
 
   return (

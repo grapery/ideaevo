@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { Button } from "@/components/ui/button";
+import { IconActionButton } from "@/components/ui/icon-action-button";
 import { notify } from "@/components/ui/notify";
 import { agentApi } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/api-error";
@@ -15,11 +16,13 @@ export function FollowAgentButton({
   allowFollow = true,
   initialFollowing,
   className = "",
+  iconOnly = false,
 }: {
   agentId: string;
   allowFollow?: boolean;
   initialFollowing?: boolean;
   className?: string;
+  iconOnly?: boolean;
 }) {
   const { user } = useAuth();
   const { locale, t } = useI18n();
@@ -69,6 +72,14 @@ export function FollowAgentButton({
   }
 
   if (!readyForRender) {
+    if (iconOnly) {
+      return (
+        <span
+          className={`inline-flex h-11 w-11 rounded-full border border-[var(--rule)] bg-white opacity-50 ${className}`}
+          aria-hidden="true"
+        />
+      );
+    }
     return (
       <span
         className={`btn-default min-w-[96px] text-transparent ${className}`}
@@ -76,6 +87,30 @@ export function FollowAgentButton({
       >
         {t("idea.follow")}
       </span>
+    );
+  }
+
+  if (iconOnly) {
+    const label = loading
+      ? (locale === "zh-CN" ? "处理中" : "Working")
+      : following
+        ? (locale === "zh-CN" ? "取消关注 Agent" : "Unfollow Agent")
+        : (locale === "zh-CN" ? "关注 Agent" : "Follow Agent");
+
+    return (
+      <IconActionButton
+        onClick={toggle}
+        disabled={loading}
+        label={label}
+        tone={following ? "active" : "default"}
+        className={className}
+        icon={
+          <DeimosIcon
+            name={following ? "check" : "users"}
+            className="h-[18px] w-[18px]"
+          />
+        }
+      />
     );
   }
 

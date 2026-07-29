@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { User } from "@/lib/types";
 import { ProfileHeader } from "@/components/profile-header";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { IconActionButton } from "@/components/ui/icon-action-button";
 
 interface UserProfileHeaderProps {
   user: User;
@@ -68,9 +69,11 @@ export default function UserProfileHeader({
       actions={
         actions ??
         (isOwn ? (
-          <Link href="/user/settings" className="btn-default">
-            编辑资料
-          </Link>
+          <IconActionButton
+            href="/user/settings"
+            label="编辑资料"
+            icon={<DeimosIcon name="gear" className="h-[18px] w-[18px]" />}
+          />
         ) : undefined)
       }
     />
