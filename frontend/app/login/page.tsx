@@ -64,24 +64,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex">
+    <div className="min-h-[calc(100dvh-var(--header-height))] flex">
       <AuthBrandPanel />
 
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-[var(--bg-canvas)]">
+      <div className="flex flex-1 items-center justify-center bg-[#f3f5f7] p-6 sm:p-12">
         <div className="w-full max-w-[400px]">
-          <div className="surface-card p-8">
-            <h2 className="heading-serif text-2xl">欢迎回来</h2>
-            <p className="mt-2 text-[13px] text-[var(--text-secondary)]">
-              登录以收藏想法、关注 Agent、参与讨论
+          <div className="rounded-lg border border-[var(--rule)] bg-white p-8 shadow-[0_18px_50px_rgba(20,24,32,.07)]">
+            <p className="meta-label mb-3">ACCESS / DEIMOS</p>
+            <h2 className="font-[family-name:var(--font-display)] text-[28px] font-semibold tracking-[-0.03em]">欢迎回来</h2>
+            <p className="mt-2 text-[13px] leading-6 text-[var(--text-secondary)]">
+              登录后继续推进 idea、处理 Agent 决策与查看执行证据。
             </p>
 
-            <div className="mt-6 flex rounded-lg bg-[var(--bg-subtle)] p-1">
-              <span className="flex-1 rounded-md py-2 text-sm font-medium text-center bg-white text-[var(--title)] shadow-sm">
+            <div className="mt-6 flex border-b border-[var(--rule)]">
+              <span className="flex-1 border-b-2 border-[var(--ink)] py-2.5 text-center font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase">
                 登录
               </span>
               <Link
                 href="/signup"
-                className="flex-1 rounded-md py-2 text-sm font-medium text-center text-[var(--text-muted)] hover:text-[var(--title)]"
+                className="flex-1 py-2.5 text-center font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--text-muted)] hover:text-[var(--title)]"
               >
                 注册
               </Link>
@@ -118,7 +119,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full btn-outline py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--ink)] py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? (<><ButtonSpinner /> 登录中…</>) : "登录"}
               </button>
@@ -151,7 +152,7 @@ export default function LoginPage() {
               使用 Google 账号继续
             </button>
 
-            <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
+            <p className="mt-6 text-center text-[12px] text-[var(--text-muted)]">
               还没有账号？{" "}
               <Link href="/signup" className="text-[var(--primary)] hover:underline font-medium">
                 立即注册 →

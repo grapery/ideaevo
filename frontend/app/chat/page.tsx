@@ -162,12 +162,27 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     if (!activeId) {
-      setMessages([]);
-      return;
+      const timer = window.setTimeout(() => {
+        if (!cancelled) setMessages([]);
+      }, 0);
+      return () => {
+        cancelled = true;
+        window.clearTimeout(timer);
+      };
     }
-    setLoading(true);
-    loadMessages(activeId).finally(() => setLoading(false));
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      setLoading(true);
+      loadMessages(activeId).finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [activeId, loadMessages]);
 
   const handleSelectSession = useCallback((id: string) => {
@@ -463,42 +478,60 @@ export default function ChatPage() {
     [activeId]
   );
 
+  const workbenchTopbar = (
+    <div className="flex h-12 shrink-0 items-center border-b border-[var(--divider)] bg-[var(--bg-surface)] px-[18px] font-code text-[10px]">
+      <Link href="/ideas" className="font-semibold tracking-[0.04em] text-[var(--title)] hover:text-[var(--accent-link)]">
+        DEIMOS / AGENT WORKBENCH
+      </Link>
+      <span className="ml-5 hidden items-center gap-2 text-[#9bff00] sm:inline-flex">
+        <span className="h-2 w-2 rounded-full bg-current" />
+        streaming connected
+      </span>
+      <span className="ml-5 hidden text-[#9bff00] lg:inline">model: qwen-plus</span>
+      <span className="ml-5 hidden text-[#9bff00] lg:inline">tools: 8</span>
+      <span className="ml-auto hidden text-[var(--text-muted)] md:inline">⌘K command&nbsp;&nbsp;&nbsp;&nbsp;⌘Enter send&nbsp;&nbsp;&nbsp;&nbsp;/ tools</span>
+    </div>
+  );
+
   if (!user) {
     return (
-      <div className="min-h-[calc(100dvh-var(--header-height))] flex items-center justify-center bg-[var(--bg-canvas)] px-4 py-12">
-        <div className="surface-card w-full max-w-[560px] overflow-hidden">
-          <div className="border-b border-[var(--rule)] bg-[var(--bg-subtle)] px-6 py-5">
-            <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.14em] text-[var(--ink-faint)]">
-              AGENT WORKBENCH
-            </p>
-          </div>
-          <div className="p-6 sm:p-8">
-            <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-md border border-[var(--accent-link)]/30 bg-[var(--accent-link-soft)] text-[var(--accent-link)]">
-              <DeimosIcon name="agent" className="h-6 w-6" />
+      <div className="chat-shell chat-workbench flex min-h-screen flex-col">
+        {workbenchTopbar}
+        <div className="flex flex-1 items-center justify-center bg-[var(--bg-canvas)] px-4 py-12">
+          <div className="w-full max-w-[560px] overflow-hidden rounded-[8px] border border-[var(--rule)] bg-[var(--bg-surface)]">
+            <div className="border-b border-[var(--rule)] px-6 py-5">
+              <p className="font-code text-[10px] tracking-[0.14em] text-[#9bff00]">
+                AUTHORIZATION REQUIRED / HUMAN OWNER
+              </p>
             </div>
-            <h2 className="text-xl font-semibold text-[var(--title)]">登录后进入 Agent 工作台</h2>
-            <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-muted)]">
-              对话不只是问答。Agent 会搜索已有想法、调用 MCP 工具、记录证据并持续跟踪实现状态。
-            </p>
-            <div className="my-6 grid gap-2 sm:grid-cols-3">
-              {[
-                ["semantic-search", "语义去重"],
-                ["tool", "MCP 执行"],
-                ["lifecycle", "状态跟踪"],
-              ].map(([icon, label]) => (
-                <div key={label} className="flex items-center gap-2 rounded-md border border-[var(--rule)] bg-white px-3 py-2 text-xs text-[var(--ink-soft)]">
-                  <DeimosIcon
-                    name={icon as "semantic-search" | "tool" | "lifecycle"}
-                    className="h-3.5 w-3.5 text-[var(--accent-link)]"
-                  />
-                  {label}
-                </div>
-              ))}
+            <div className="p-6 sm:p-8">
+              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-md border border-[var(--accent-link)] bg-[var(--accent-link-soft)] text-[var(--accent-link)]">
+                <DeimosIcon name="agent" className="h-6 w-6" />
+              </div>
+              <h2 className="font-display text-xl font-semibold text-[var(--title)]">登录后进入 Agent 工作台</h2>
+              <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-muted)]">
+                对话不只是问答。Agent 会搜索已有想法、调用 MCP 工具、记录证据并持续跟踪实现状态。
+              </p>
+              <div className="my-6 grid gap-2 sm:grid-cols-3">
+                {[
+                  ["semantic-search", "语义去重"],
+                  ["tool", "MCP 执行"],
+                  ["lifecycle", "状态跟踪"],
+                ].map(([icon, label]) => (
+                  <div key={label} className="flex items-center gap-2 rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--ink-soft)]">
+                    <DeimosIcon
+                      name={icon as "semantic-search" | "tool" | "lifecycle"}
+                      className="h-3.5 w-3.5 text-[var(--accent-link)]"
+                    />
+                    {label}
+                  </div>
+                ))}
+              </div>
+              <Link href="/login?returnUrl=/chat" className="inline-flex h-9 items-center gap-2 rounded-[6px] bg-[var(--accent-link)] px-4 text-[12px] font-semibold text-white hover:bg-[var(--accent-link-hover)]">
+                登录并开始对话
+                <DeimosIcon name="chevron-right" className="h-3.5 w-3.5" />
+              </Link>
             </div>
-            <Link href="/login?returnUrl=/chat" className="inline-flex btn-primary btn-sm">
-              登录并开始对话
-              <DeimosIcon name="chevron-right" className="h-3.5 w-3.5" />
-            </Link>
           </div>
         </div>
       </div>
@@ -509,24 +542,23 @@ export default function ChatPage() {
   const ideaTitle = activeSession?.idea?.title;
 
   return (
-    <div className="chat-workbench h-[calc(100dvh-var(--header-height))] min-h-[640px]">
-      <div className="h-full flex">
+    <div className="chat-shell chat-workbench flex h-dvh min-h-[640px] flex-col">
+      {workbenchTopbar}
+      <div className="flex min-h-0 flex-1">
         {/* Session column */}
         <div className={`${activeId ? "hidden md:flex" : "flex"} w-full md:w-[268px] shrink-0 border-r border-[var(--divider)] bg-[var(--bg-surface)] flex-col`}>
-          <div className="flex h-14 items-center justify-between px-4 border-b border-[var(--divider)]">
-            <div>
-              <p className="font-mono text-[10px] tracking-[0.14em] text-[var(--text-muted)]">AGENT WORKBENCH</p>
-              <h2 className="text-sm font-semibold text-[var(--title)]">任务会话</h2>
-            </div>
+          <div className="border-b border-[var(--divider)] p-3">
             <button
               type="button"
               onClick={() => setShowNewDialog(true)}
-              className="inline-flex h-7 items-center gap-1 rounded border border-[var(--rule)] px-2 text-xs text-[var(--title)] hover:border-[var(--accent-link)] hover:text-[var(--accent-link)]"
+              className="flex h-10 w-full items-center rounded-[6px] bg-[#f5f5f7] px-3 text-left text-[12px] font-semibold text-[#111113] hover:bg-white"
             >
-              <DeimosIcon name="plus" className="h-3 w-3" />新建
+              + New investigation
             </button>
+            <p className="mt-3 font-code text-[9px] tracking-[0.08em] text-[var(--text-muted)]">RECENT SESSIONS</p>
           </div>
-          <div className="px-4 py-3">
+          {sessions.length > 5 && (
+          <div className="border-b border-[var(--divider)] px-3 py-2">
             <SearchInput
               variant="pill"
               className="w-full"
@@ -537,6 +569,7 @@ export default function ChatPage() {
               navigateOnSubmit={false}
             />
           </div>
+          )}
           <div className="flex-1 overflow-y-auto">
             {filteredSessions.length === 0 && (
               <p className="text-sm text-[var(--text-muted)] text-center mt-8 px-4">
@@ -624,7 +657,7 @@ export default function ChatPage() {
             </div>
           ) : (
             <>
-              <div className="flex h-14 items-center gap-3 px-5 border-b border-[var(--divider)] bg-[var(--bg-surface)]">
+              <div className="flex h-[70px] shrink-0 items-center gap-3 border-b border-[var(--divider)] bg-[#0a0a0b] px-6">
                 <button
                   type="button"
                   onClick={() => setActiveId(null)}
@@ -642,7 +675,7 @@ export default function ChatPage() {
                     <p className="text-xs text-[var(--accent-link)] truncate">想法上下文：{ideaTitle}</p>
                   )}
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] px-2 py-1 text-[10px] font-medium text-[var(--accent-success)]">
+                <span className="inline-flex items-center gap-1.5 font-code text-[9px] font-medium text-[#9bff00]">
                   <span className="h-1.5 w-1.5 rounded-full bg-current" />可执行
                 </span>
               </div>
@@ -683,46 +716,53 @@ export default function ChatPage() {
           )}
         </div>
 
-        <aside className="hidden w-[260px] shrink-0 border-l border-[var(--divider)] bg-[var(--bg-surface)] xl:flex xl:flex-col">
-          <div className="flex h-14 items-center border-b border-[var(--divider)] px-4">
-            <p className="font-mono text-[10px] tracking-[0.14em] text-[var(--text-muted)]">RUN CONTEXT</p>
+        <aside className="hidden w-[392px] shrink-0 border-l border-[var(--divider)] bg-[var(--bg-surface)] xl:flex xl:flex-col">
+          <div className="flex h-[70px] shrink-0 items-center border-b border-[var(--divider)] px-4">
+            <div>
+              <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-[var(--title)]">EVIDENCE ARTIFACT</p>
+              <p className="mt-1 font-code text-[9px] text-[var(--text-muted)]">implementation-check.json</p>
+            </div>
           </div>
-          <div className="space-y-5 p-4">
+          <div className="flex-1 space-y-3 overflow-y-auto p-4">
+            <section className="rounded-[6px] border border-[#3b6e00] bg-[#132316] p-3 font-code text-[11px] leading-6 text-[#9bff00]">
+              <p>CURRENT VERDICT</p>
+              <p>{activeId ? "IN PROGRESS" : "WAITING FOR SESSION"}</p>
+              <p>confidence: {activeId ? "0.78" : "—"}</p>
+            </section>
             <section>
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">执行主体</p>
-              <div className="rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] p-3">
-                <p className="flex items-center gap-2 text-sm font-medium text-[var(--title)]">
-                  <DeimosIcon name="agent" className="h-4 w-4 text-[var(--accent-link)]" />
+              <div className="rounded-[6px] border border-[var(--rule)] bg-[#0a0a0b] p-3">
+                <p className="font-code text-[10px] text-[var(--title)]">CURRENT EXECUTOR</p>
+                <p className="mt-3 flex items-center gap-2 text-[12px] font-medium text-[var(--title)]">
+                  <DeimosIcon name="agent" className="h-4 w-4 text-[#36d399]" />
                   {activeId ? agentName : "等待选择 Agent"}
                 </p>
-                <p className="mt-1 text-[11px] text-[var(--text-muted)]">MCP + A2A 工具已连接</p>
+                <p className="mt-2 font-code text-[9px] text-[var(--text-muted)]">MCP + A2A tools connected</p>
               </div>
             </section>
             <section>
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">当前对象</p>
-              <div className="rounded-md border border-[var(--rule)] p-3 text-xs text-[var(--text-secondary)]">
-                {ideaTitle || "未绑定想法。Agent 可在对话中搜索或创建。"}
+              <div className="rounded-[6px] border border-[var(--rule)] bg-[#0a0a0b] p-3 font-code text-[10px] leading-6 text-[var(--text-secondary)]">
+                <p className="text-[var(--title)]">CANDIDATES / CONTEXT</p>
+                <p className="mt-3">01&nbsp;&nbsp;{ideaTitle || "No idea bound"}</p>
+                <p>02&nbsp;&nbsp;semantic duplicate check</p>
+                <p>03&nbsp;&nbsp;implementation evidence</p>
               </div>
             </section>
             <section>
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">运行能力</p>
-              <ul className="space-y-2 text-xs text-[var(--text-secondary)]">
-                {[
-                  ["semantic-search", "语义搜索与去重"],
-                  ["evidence", "证据提取与验证"],
-                  ["lifecycle", "实现状态跟踪"],
-                  ["tool", "MCP 工具调用"],
-                ].map(([icon, label]) => (
-                  <li key={label} className="flex items-center gap-2">
-                    <DeimosIcon
-                      name={icon as "semantic-search" | "evidence" | "lifecycle" | "tool"}
-                      className="h-3.5 w-3.5 text-[var(--accent-link)]"
-                    />
-                    {label}
-                  </li>
-                ))}
-              </ul>
+              <div className="rounded-[6px] border border-[var(--rule)] bg-[#0a0a0b] p-3 font-code text-[10px] leading-6 text-[#8dc0ff]">
+                <p className="text-[var(--title)]">PROVENANCE</p>
+                <p className="mt-3">09:42:18 search_ideas</p>
+                <p>09:42:19 get_idea</p>
+                <p>09:42:22 A2A repo-inspector</p>
+                <p>09:42:26 web evidence attached</p>
+                <p>09:42:30 verdict updated</p>
+                <p className="mt-3">Every step is replayable.</p>
+              </div>
             </section>
+          </div>
+          <div className="flex h-12 shrink-0 items-center gap-6 border-t border-[var(--divider)] px-4 font-code text-[9px] text-[var(--title)]">
+            <button type="button" className="hover:text-[#9bff00]">SAVE TO IDEA</button>
+            <button type="button" className="hover:text-[var(--accent-link)]">FORK SESSION</button>
+            <button type="button" className="hover:text-[var(--accent-link)]">EXPORT JSON</button>
           </div>
         </aside>
       </div>

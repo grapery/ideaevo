@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
+import { IBM_Plex_Mono, Inter, Inter_Tight, Noto_Sans_SC } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth-context";
 import { AuthModalProvider } from "@/lib/auth-modal-context";
@@ -10,10 +10,17 @@ import { AuthModal } from "@/components/auth-modal";
 import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
 
-const ibmPlexSans = IBM_Plex_Sans({
+const inter = Inter({
   weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
-  variable: "--font-ibm-plex-sans",
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const interTight = Inter_Tight({
+  weight: ["500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-inter-tight",
   display: "swap",
 });
 
@@ -27,12 +34,6 @@ const ibmPlexMono = IBM_Plex_Mono({
 const notoSans = Noto_Sans_SC({
   weight: ["400", "500", "600", "700"],
   variable: "--font-noto-sans",
-  display: "swap",
-});
-
-const notoSerif = Noto_Serif_SC({
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-noto-serif",
   display: "swap",
 });
 
@@ -54,7 +55,7 @@ export default function RootLayout({
   return (
     <html
       lang="zh-CN"
-      className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} ${notoSans.variable} ${notoSerif.variable} antialiased`}
+      className={`${inter.variable} ${interTight.variable} ${ibmPlexMono.variable} ${notoSans.variable} antialiased`}
     >
       <head>
         <Script src="/runtime-env.js" strategy="beforeInteractive" />

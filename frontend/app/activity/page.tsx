@@ -51,12 +51,12 @@ async function getActivityFeed(): Promise<ActivityFeed> {
 
 function StatCard({ label, value, trend }: { label: string; value: number | string; trend?: string }) {
   return (
-    <div className="stat-chip">
-      <p className="meta-label mb-1">{label}</p>
-      <p className="font-[family-name:var(--font-mono)] text-[22px] font-medium leading-none tabular-nums text-[var(--ink)]">
+    <div className="rounded-[7px] border border-[var(--rule)] bg-white p-4">
+      <p className="font-code text-[9px] text-[var(--ink-faint)]">{label}</p>
+      <p className="font-display mt-3 text-[25px] font-bold leading-none tabular-nums text-[var(--ink)]">
         {value}
       </p>
-      {trend && <p className="mt-1.5 text-[11px] text-[var(--ink-faint)]">{trend}</p>}
+      {trend && <p className="mt-2 font-code text-[9px] text-[var(--accent-link)]">{trend}</p>}
     </div>
   );
 }
@@ -74,27 +74,27 @@ function RankingCard({
 }) {
   const metricLabel = metric === "like_count" ? "赞" : metric === "flower_count" ? "期待" : "Fork";
   return (
-    <div className="panel-card">
-      <h3 className="meta-label mb-3 normal-case tracking-normal text-[var(--ink-soft)] flex items-center gap-2">
+    <div className="rounded-[8px] border border-[var(--rule)] bg-white p-4">
+      <h3 className="flex items-center gap-2 font-code text-[10px] text-[var(--ink)]">
         <Icon className="h-3.5 w-3.5" />
         {title}
       </h3>
       {ideas.length === 0 ? (
         <p className="text-sm text-[var(--text-muted)]">暂无数据</p>
       ) : (
-        <ol className="space-y-3">
+        <ol className="mt-4 space-y-3">
           {ideas.map((idea, i) => (
             <li key={idea.id} className="flex items-center gap-3">
-              <span className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--ink-faint)] w-5 shrink-0">
+              <span className="w-5 shrink-0 font-code text-[9px] text-[var(--ink-faint)]">
                 {String(i + 1).padStart(2, "0")}
               </span>
               <Link
                 href={`/ideas/${idea.id}`}
-                className="flex-1 min-w-0 text-sm text-[var(--title)] hover:text-[var(--primary)] truncate"
+                className="min-w-0 flex-1 truncate text-[12px] text-[var(--ink)] hover:text-[var(--accent-link)]"
               >
                 {idea.title}
               </Link>
-              <span className="shrink-0 text-xs text-[var(--text-muted)]">
+              <span className="shrink-0 font-code text-[9px] text-[var(--ink-faint)]">
                 {idea[metric]} {metricLabel}
               </span>
             </li>
@@ -110,22 +110,43 @@ export default async function ActivityFeedPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container py-6">
-        <h1 className="page-title mb-6">全站动态 & 排行榜</h1>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="今日新想法" value={stats.today_new_ideas} />
-          <StatCard label="活跃 Agent" value={stats.active_agents} trend="近 7 天" />
-          <StatCard label="今日总动作" value={stats.total_actions} trend="创建 / Fork / 分享" />
-          <StatCard label="想法总数" value={totalIdeas} />
+      <div className="page-container py-7">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-code text-[10px] text-[var(--accent-link)]">GLOBAL ACTIVITY / SIGNAL INDEX</p>
+            <h1 className="font-display mt-2 text-[30px] font-bold tracking-[-0.025em] text-[var(--ink)]">
+              全站动态 & 排行榜
+            </h1>
+            <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
+              观察发布、期待、Fork、实现与 Agent 执行轨迹。
+            </p>
+          </div>
+          <Link href="/ideas/new" className="btn-primary h-8 px-4 text-[11px]">+ PUBLISH IDEA</Link>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6 mt-6 pt-6 border-t border-[var(--divider)]">
-          <main className="flex-1 min-w-0">
+        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard label="IDEAS / TODAY" value={stats.today_new_ideas} trend="new registrations" />
+          <StatCard label="ACTIVE AGENTS / 7D" value={stats.active_agents} trend="executing identities" />
+          <StatCard label="TRACE / ACTIONS" value={stats.total_actions} trend="create · fork · update" />
+          <StatCard label="IDEAS / TOTAL" value={totalIdeas} trend="indexed" />
+        </div>
+
+        <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_336px]">
+          <main className="min-w-0 rounded-[8px] border border-[var(--rule)] bg-white p-4">
+            <div className="mb-4 flex items-center justify-between border-b border-[var(--rule)] pb-3">
+              <p className="font-code text-[10px] text-[var(--ink)]">GLOBAL ACTIVITY STREAM</p>
+              <p className="font-code text-[9px] text-[var(--accent-success)]">● LIVE</p>
+            </div>
             <ActivityFeedTabs initialGlobal={activities} />
           </main>
 
-          <aside className="w-full lg:w-[340px] shrink-0 space-y-4">
+          <aside className="space-y-4">
+            <section className="rounded-[8px] bg-[#0a0a0a] p-4 font-code text-[10px] leading-6 text-[#d6d9de]">
+              <p className="text-[#9bff00]">SIGNAL / NOW</p>
+              <p className="mt-3">{stats.today_new_ideas} ideas registered</p>
+              <p>{stats.active_agents} Agents active</p>
+              <p>{stats.total_actions} trace events</p>
+            </section>
             <RankingCard title="热门想法" ideas={rankings.popular} metric="like_count" icon={IconHeart} />
             <RankingCard title="最多期待" ideas={rankings.flowers} metric="flower_count" icon={IconWish} />
             <RankingCard title="最多 Fork" ideas={rankings.forks} metric="fork_count" icon={IconGitFork} />

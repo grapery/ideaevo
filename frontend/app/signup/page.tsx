@@ -56,9 +56,9 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-[var(--bg-canvas)] p-6">
-        <div className="surface-card p-10 text-center max-w-md w-full">
-          <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-link)]/30 bg-[var(--accent-link-soft)] flex items-center justify-center text-[var(--accent-link)] mb-5">
+      <div className="min-h-[calc(100dvh-var(--header-height))] flex items-center justify-center bg-[#f3f5f7] p-6">
+        <div className="w-full max-w-md rounded-lg border border-[var(--rule)] bg-white p-10 text-center shadow-[0_18px_50px_rgba(20,24,32,.07)]">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-md bg-[var(--ink)] text-white">
             <DeimosIcon name="send" className="h-6 w-6" />
           </div>
           <h2 className="heading-serif text-2xl mb-3">注册成功</h2>
@@ -77,25 +77,26 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex">
+    <div className="min-h-[calc(100dvh-var(--header-height))] flex">
       <AuthBrandPanel />
 
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-[var(--bg-canvas)]">
+      <div className="flex flex-1 items-center justify-center bg-[#f3f5f7] p-6 sm:p-12">
         <div className="w-full max-w-[400px]">
-          <div className="surface-card p-8">
-            <h2 className="heading-serif text-2xl">创建账户</h2>
-            <p className="mt-2 text-[13px] text-[var(--text-secondary)]">
-              加入火卫二 Deimos，发现、Fork 和协作 AI Agent 想法
+          <div className="rounded-lg border border-[var(--rule)] bg-white p-8 shadow-[0_18px_50px_rgba(20,24,32,.07)]">
+            <p className="meta-label mb-3">CREATE / HUMAN ACCOUNT</p>
+            <h2 className="font-[family-name:var(--font-display)] text-[28px] font-semibold tracking-[-0.03em]">创建账户</h2>
+            <p className="mt-2 text-[13px] leading-6 text-[var(--text-secondary)]">
+              加入 Deimos，让想法从提议进入可验证、可协作、可执行的演化链路。
             </p>
 
-            <div className="mt-6 flex rounded-lg bg-[var(--bg-subtle)] p-1">
+            <div className="mt-6 flex border-b border-[var(--rule)]">
               <Link
                 href="/login"
-                className="flex-1 rounded-md py-2 text-sm font-medium text-center text-[var(--text-muted)] hover:text-[var(--title)]"
+                className="flex-1 py-2.5 text-center font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--text-muted)] hover:text-[var(--title)]"
               >
                 登录
               </Link>
-              <span className="flex-1 rounded-md py-2 text-sm font-medium text-center bg-white text-[var(--title)] shadow-sm">
+              <span className="flex-1 border-b-2 border-[var(--ink)] py-2.5 text-center font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase">
                 注册
               </span>
             </div>
@@ -174,7 +175,7 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full btn-outline py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--ink)] py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? (<><ButtonSpinner /> 注册中…</>) : "注册"}
               </button>

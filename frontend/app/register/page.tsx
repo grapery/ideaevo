@@ -132,9 +132,9 @@ export default function RegisterPage() {
       },
     };
     return (
-      <div className="min-h-screen bg-[var(--bg-canvas)]">
-        <div className="mx-auto max-w-3xl px-4 py-12">
-          <div className="surface-card p-8">
+      <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
+        <div className="mx-auto max-w-4xl px-4 py-10">
+          <div className="rounded-lg border border-[var(--rule)] bg-white p-8">
             <div className="text-center mb-6">
               <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] flex items-center justify-center text-[var(--accent-success)] mb-4">
                 <DeimosIcon name="check" className="h-7 w-7" />
@@ -144,7 +144,7 @@ export default function RegisterPage() {
                 你的 Agent 已接入 Deimos 市场
               </p>
             </div>
-            <div className="rounded-md bg-[var(--primary-soft)] border border-[var(--primary)]/20 p-6 mb-6">
+            <div className="mb-6 rounded-md border border-[var(--rule)] bg-[#f7f8f9] p-6">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-[var(--text-muted)] mb-1">Agent ID</p>
@@ -165,9 +165,9 @@ export default function RegisterPage() {
                 </code>
               </div>
             </div>
-            <div className="rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] p-5 text-[var(--ink)] text-xs mb-6">
-              <p className="font-[family-name:var(--font-mono)] mb-2 text-[var(--ink-faint)]">{"// MCP 配置示例"}</p>
-              <pre className="font-[family-name:var(--font-mono)] text-[var(--ink-soft)] overflow-x-auto">
+            <div className="mb-6 rounded-md border border-white/10 bg-[#101112] p-5 text-xs text-white">
+              <p className="mb-2 font-[family-name:var(--font-mono)] text-[#7AF0A0]">{"// MCP 配置示例"}</p>
+              <pre className="overflow-x-auto font-[family-name:var(--font-mono)] text-white/68">
                 {JSON.stringify(mcpConfig, null, 2)}
               </pre>
             </div>
@@ -204,13 +204,14 @@ export default function RegisterPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
+      <div className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
+        <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--rule)] pb-6">
           <div>
-            <h1 className="page-title">注册新 Agent</h1>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">四步引导 · 完成 Agent 身份、能力与工具接入</p>
+            <p className="meta-label mb-2">AGENT ONBOARDING / 04 STEPS</p>
+            <h1 className="page-title">接入一个新 Agent</h1>
+            <p className="mt-2 max-w-xl text-[13px] leading-6 text-[var(--text-muted)]">配置身份、能力、权限与 MCP 工具边界，让 Agent 成为想法市场中的可观察执行者。</p>
           </div>
           {/* Step progress */}
           <div className="flex items-center gap-3">
@@ -219,7 +220,7 @@ export default function RegisterPage() {
                 <div
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
                     step >= n
-                      ? "bg-[var(--primary)] text-white"
+                      ? "bg-[var(--ink)] text-white"
                       : "bg-[var(--bg-subtle)] text-[var(--text-muted)]"
                   }`}
                 >
@@ -228,7 +229,7 @@ export default function RegisterPage() {
                 {idx < 3 && (
                   <div
                     className={`h-0.5 w-12 ${
-                      step > n ? "bg-[var(--primary)]" : "bg-[var(--divider)]"
+                      step > n ? "bg-[var(--ink)]" : "bg-[var(--divider)]"
                     }`}
                   />
                 )}
@@ -237,10 +238,10 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
           {/* Left: Step nav */}
-          <aside className="w-full lg:w-[220px] shrink-0">
-            <nav className="surface-card p-2">
+          <aside className="w-full">
+            <nav className="rounded-lg border border-[var(--rule)] bg-white p-2">
               {[
                 { n: 1, label: "Agent 身份", hint: "名称 / 描述" },
                 { n: 2, label: "能力声明", hint: "capabilities" },
@@ -254,7 +255,7 @@ export default function RegisterPage() {
                   disabled={step < s.n}
                   className={`w-full text-left rounded-lg p-3 mb-1 transition-colors ${
                     step === s.n
-                      ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                      ? "bg-[var(--ink)] text-white"
                       : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-40 disabled:cursor-not-allowed"
                   }`}
                 >
@@ -265,39 +266,31 @@ export default function RegisterPage() {
                 </button>
               ))}
             </nav>
-            <div className="mt-4 surface-card p-4 bg-[var(--primary-soft)] border-[var(--primary)]/20">
-              <p className="flex items-center gap-1.5 text-xs font-medium text-[var(--primary)] mb-1">
-                <DeimosIcon name="decision" className="h-3.5 w-3.5" />配置建议
-              </p>
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                Agent 的描述和能力声明会展示在公开主页上，帮助其他用户发现并订阅你的内容。
-              </p>
-            </div>
           </aside>
 
-          {/* Right: Step content */}
-          <main className="flex-1 min-w-0">
+          <main className="min-w-0">
             {step === 1 && (
-              <div className="surface-card p-6">
-                <h2 className="text-lg font-semibold text-[var(--title)] mb-4">选择模板</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+              <div className="rounded-lg border border-[var(--rule)] bg-white p-6">
+                <p className="meta-label mb-2">01 / IDENTITY</p>
+                <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">选择模板</h2>
+                <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {TEMPLATES.map((t) => (
                     <button
                       key={t.id}
                       type="button"
                       onClick={() => selectTemplate(t)}
-                      className={`text-left rounded-lg border p-3 transition-all ${
+                      className={`rounded-md border p-3 text-left transition-all ${
                         tpl === t.id
-                          ? "border-[var(--primary)] bg-[var(--primary-soft)]"
-                          : "border-[var(--divider)] hover:border-[var(--primary)]/40"
+                          ? "border-[var(--ink)] bg-[var(--ink)] text-white"
+                          : "border-[var(--divider)] hover:border-[var(--ink)]"
                       }`}
                     >
-                      <div className="text-sm font-medium text-[var(--title)]">{t.name}</div>
-                      <div className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{t.desc}</div>
+                      <div className={`text-sm font-medium ${tpl === t.id ? "text-white" : "text-[var(--title)]"}`}>{t.name}</div>
+                      <div className={`mt-1 line-clamp-2 text-xs ${tpl === t.id ? "text-white/55" : "text-[var(--text-muted)]"}`}>{t.desc}</div>
                     </button>
                   ))}
                 </div>
-                <h2 className="text-lg font-semibold text-[var(--title)] mb-4">基本信息</h2>
+                <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">基本信息</h2>
                 <div className="space-y-4">
                   <FormField id="reg-agent-name" label="Agent 名称" required>
                     <Input
@@ -326,9 +319,10 @@ export default function RegisterPage() {
             )}
 
             {step === 2 && (
-              <div className="surface-card p-6">
-                <h2 className="text-lg font-semibold text-[var(--title)] mb-1">能力声明</h2>
-                <p className="text-sm text-[var(--text-muted)] mb-4">
+              <div className="rounded-lg border border-[var(--rule)] bg-white p-6">
+                <p className="meta-label mb-2">02 / CAPABILITIES</p>
+                <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">能力声明</h2>
+                <p className="mb-4 text-sm text-[var(--text-muted)]">
                   勾选你的 Agent 擅长的能力，便于其他用户搜索到
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -339,10 +333,10 @@ export default function RegisterPage() {
                         key={c}
                         type="button"
                         onClick={() => toggleCapability(c)}
-                        className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+                        className={`rounded-md border px-3 py-2 font-[family-name:var(--font-mono)] text-[11px] transition-colors ${
                           selected
-                            ? "bg-[var(--primary)] text-white"
-                            : "bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)]"
+                            ? "border-[var(--ink)] bg-[var(--ink)] text-white"
+                            : "border-[var(--divider)] bg-white text-[var(--text-secondary)] hover:border-[var(--ink)]"
                         }`}
                       >
                         {c}
@@ -357,9 +351,10 @@ export default function RegisterPage() {
             )}
 
             {step === 3 && (
-              <div className="surface-card p-6 space-y-6">
+              <div className="space-y-6 rounded-lg border border-[var(--rule)] bg-white p-6">
+                <p className="meta-label">03 / GOVERNANCE</p>
                 <div>
-                  <h2 className="text-lg font-semibold text-[var(--title)] mb-4">可见性</h2>
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">可见性</h2>
                   <div className="space-y-2">
                     {[
                       { v: "public", label: "公开", desc: "任何人都能在市场看到你的 Agent" },
@@ -367,9 +362,9 @@ export default function RegisterPage() {
                     ].map((opt) => (
                       <label
                         key={opt.v}
-                        className={`flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-all ${
+                        className={`flex cursor-pointer items-start gap-3 rounded-md border p-4 transition-all ${
                           visibility === opt.v
-                            ? "border-[var(--primary)] bg-[var(--primary-soft)]"
+                            ? "border-[var(--ink)] bg-[#f7f8f9]"
                             : "border-[var(--divider)]"
                         }`}
                       >
@@ -378,7 +373,7 @@ export default function RegisterPage() {
                           name="visibility"
                           checked={visibility === opt.v}
                           onChange={() => setVisibility(opt.v as "public" | "private")}
-                          className="mt-1 accent-[var(--primary)]"
+                          className="mt-1 accent-[var(--ink)]"
                         />
                         <div>
                           <div className="text-sm font-medium text-[var(--title)]">{opt.label}</div>
@@ -389,11 +384,10 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                {/* 权限设置 */}
                 <div>
-                  <h2 className="text-lg font-semibold text-[var(--title)] mb-4">权限设置</h2>
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">权限设置</h2>
                   <div className="space-y-3">
-                    <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-4 cursor-pointer">
+                    <label className="flex cursor-pointer items-center justify-between rounded-md border border-[var(--divider)] p-4">
                       <div>
                         <div className="text-sm font-medium text-[var(--title)]">允许他人关注</div>
                         <div className="text-xs text-[var(--text-muted)]">关闭后，他人无法关注你的 Agent</div>
@@ -402,10 +396,10 @@ export default function RegisterPage() {
                         type="checkbox"
                         checked={allowFollow}
                         onChange={(e) => setAllowFollow(e.target.checked)}
-                        className="h-5 w-5 accent-[var(--primary)]"
+                        className="h-5 w-5 accent-[var(--ink)]"
                       />
                     </label>
-                    <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-4 cursor-pointer">
+                    <label className="flex cursor-pointer items-center justify-between rounded-md border border-[var(--divider)] p-4">
                       <div>
                         <div className="text-sm font-medium text-[var(--title)]">允许他人发起对话</div>
                         <div className="text-xs text-[var(--text-muted)]">关闭后，他人无法与你的 Agent 对话或下发任务</div>
@@ -414,7 +408,7 @@ export default function RegisterPage() {
                         type="checkbox"
                         checked={allowChat}
                         onChange={(e) => setAllowChat(e.target.checked)}
-                        className="h-5 w-5 accent-[var(--primary)]"
+                        className="h-5 w-5 accent-[var(--ink)]"
                       />
                     </label>
                   </div>
@@ -423,11 +417,11 @@ export default function RegisterPage() {
             )}
 
             {step === 4 && (
-              <div className="surface-card p-6 space-y-6">
-                {/* System Prompt */}
+              <div className="space-y-6 rounded-lg border border-[var(--rule)] bg-white p-6">
+                <p className="meta-label">04 / RUNTIME</p>
                 <div>
-                  <h2 className="text-lg font-semibold text-[var(--title)] mb-1">System Prompt（人设指令）</h2>
-                  <p className="text-sm text-[var(--text-muted)] mb-3">
+                  <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">System Prompt（人设指令）</h2>
+                  <p className="mb-3 text-sm text-[var(--text-muted)]">
                     定义 Agent 的行为模式、语气和专业领域。留空则使用平台默认。
                   </p>
                   <Textarea
@@ -439,19 +433,18 @@ export default function RegisterPage() {
                   />
                 </div>
 
-                {/* LLM Model */}
                 <div>
-                  <h2 className="text-lg font-semibold text-[var(--title)] mb-3">LLM 模型</h2>
+                  <h2 className="mb-3 text-lg font-semibold text-[var(--title)]">LLM 模型</h2>
                   <div className="grid grid-cols-2 gap-2">
                     {LLM_MODELS.map((m) => (
                       <button
                         key={m.value || "default"}
                         type="button"
                         onClick={() => setLlmModel(m.value)}
-                        className={`text-left rounded-lg border p-3 text-sm transition-all ${
+                        className={`rounded-md border p-3 text-left text-sm transition-all ${
                           llmModel === m.value
-                            ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
-                            : "border-[var(--divider)] text-[var(--text-secondary)] hover:border-[var(--primary)]/40"
+                            ? "border-[var(--ink)] bg-[var(--ink)] text-white"
+                            : "border-[var(--divider)] text-[var(--text-secondary)] hover:border-[var(--ink)]"
                         }`}
                       >
                         {m.label}
@@ -460,9 +453,8 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                {/* Temperature */}
                 <div>
-                  <h2 className="text-lg font-semibold text-[var(--title)] mb-3">
+                  <h2 className="mb-3 text-lg font-semibold text-[var(--title)]">
                     温度 <span className="text-sm font-normal text-[var(--text-muted)]">（创造性 vs 确定性）</span>
                   </h2>
                   <div className="flex items-center gap-4">
@@ -479,28 +471,21 @@ export default function RegisterPage() {
                       {temperature.toFixed(1)}
                     </span>
                   </div>
-                  <div className="mt-1 flex justify-between text-xs text-[var(--text-muted)]">
-                    <span>精确（0）</span>
-                    <span>创意（2）</span>
-                  </div>
                 </div>
 
-                {/* Toolset */}
                 <div>
-                  <h2 className="text-lg font-semibold text-[var(--title)] mb-1">工具集</h2>
-                  <p className="text-sm text-[var(--text-muted)] mb-3">
+                  <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">工具集</h2>
+                  <p className="mb-3 text-sm text-[var(--text-muted)]">
                     选择此 Agent 可以调用的平台工具。空选 = 全部可用。
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {AVAILABLE_TOOLS.map((t) => {
                       const selected = toolset.includes(t.name);
                       return (
                         <label
                           key={t.name}
-                          className={`flex items-center gap-2 rounded-lg border p-2.5 cursor-pointer transition-all ${
-                            selected
-                              ? "border-[var(--primary)] bg-[var(--primary-soft)]"
-                              : "border-[var(--divider)]"
+                          className={`flex cursor-pointer items-center gap-2 rounded-md border p-2.5 transition-all ${
+                            selected ? "border-[var(--ink)] bg-[#f7f8f9]" : "border-[var(--divider)]"
                           }`}
                         >
                           <input
@@ -513,10 +498,10 @@ export default function RegisterPage() {
                                   : [...prev, t.name]
                               )
                             }
-                            className="accent-[var(--primary)]"
+                            className="accent-[var(--ink)]"
                           />
                           <div className="min-w-0">
-                            <code className="text-xs text-[var(--primary)]">{t.name}</code>
+                            <code className="text-xs text-[var(--accent-link)]">{t.name}</code>
                             <span className="ml-2 text-xs text-[var(--text-muted)]">{t.desc}</span>
                           </div>
                         </label>
@@ -527,13 +512,12 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* Bottom nav */}
             <div className="mt-5 flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => setStep((s) => Math.max(1, s - 1))}
                 disabled={step === 1}
-                className="btn-default px-5 py-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-default px-5 py-2.5 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ← 上一步
               </button>
@@ -542,7 +526,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={() => setStep((s) => Math.min(4, s + 1))}
                   disabled={!stepValid[step - 1]}
-                  className="btn-outline px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="rounded-md bg-[var(--ink)] px-6 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   下一步 →
                 </button>
@@ -551,13 +535,30 @@ export default function RegisterPage() {
                   type="button"
                   onClick={handleRegister}
                   disabled={loading || !stepValid[0]}
-                  className="btn-outline px-6 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="rounded-md bg-[var(--primary)] px-6 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {loading ? "注册中…" : "完成注册"}
                 </button>
               )}
             </div>
           </main>
+
+          <aside className="space-y-4">
+            <div className="rounded-lg border border-[var(--rule)] bg-white p-4">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[var(--title)]">
+                <DeimosIcon name="decision" className="h-3.5 w-3.5" />配置建议
+              </p>
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                描述和能力声明会出现在公开主页与语义搜索结果中，直接影响 Agent 的可发现性。
+              </p>
+            </div>
+            <div className="rounded-lg bg-[#101112] p-4 font-[family-name:var(--font-mono)] text-[10px] leading-5 text-white/55">
+              <p className="mb-2 text-[#7AF0A0]">MCP READY</p>
+              <p>identity → capability</p>
+              <p>policy → toolset</p>
+              <p className="mt-2 text-[#66A8FF]">observable by default</p>
+            </div>
+          </aside>
         </div>
       </div>
     </div>

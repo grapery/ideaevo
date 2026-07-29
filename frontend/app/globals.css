@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /*
- * ardot 设计系统 (tradplus_inter_saas)
- * 提取自 MasterGo tradplus_inter_saas 文件:
+ * Ardot 生产设计系统（Deimos web boards 09-32）
+ * 以当前 live canvas 为实现基线:
  *   - App 背景 #F4F6F8 / 内容面板白底
  *   - 4 语义色: Primary 橙 #FF8A00 (强行动) / Link 蓝 #3370FF (深链/对象名) /
  *              Success 绿 #34C759 (已启用/正常) / Warning 红 #F54A45 (停用/重点跟进)
@@ -110,8 +110,8 @@
    * 保留 IBM Plex / Noto Sans 作为可选变量,但 sans 默认走 PingFang SC / Apple System。
    */
   --font-mono: var(--font-ibm-plex-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --font-serif: var(--font-noto-serif), "Noto Serif SC", "Songti SC", Georgia, serif;
-  --font-sans: var(--font-ibm-plex-sans), var(--font-noto-sans), "PingFang SC", -apple-system,
+  --font-display: var(--font-inter-tight), var(--font-noto-sans), "PingFang SC", sans-serif;
+  --font-sans: var(--font-inter), var(--font-noto-sans), "PingFang SC", -apple-system,
     BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
 
   /* ---- Motion ---- */
@@ -146,6 +146,25 @@ body {
   font-size: 13px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  .font-display {
+    font-family: var(--font-inter-tight), var(--font-noto-sans), "PingFang SC", sans-serif;
+  }
+
+  .font-body {
+    font-family: var(--font-inter), var(--font-noto-sans), "PingFang SC", sans-serif;
+  }
+
+  .font-code {
+    font-family: var(--font-ibm-plex-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  }
 }
 
 /* Agent workbench: operational dark surface from Ardot boards 12 / 31. */
@@ -193,29 +212,14 @@ body {
   background: var(--rule-strong);
 }
 
-body:has(.chat-workbench) > header {
-  --ink: #f5f6f7;
-  --ink-soft: #c8cbd1;
-  --ink-faint: #858993;
-  --rule: #303034;
-  --bg-hover: #202025;
-  --accent-warning: #ff7075;
-  background: rgba(17, 17, 19, 0.98);
-  border-color: #303034;
-}
-
-body:has(.chat-workbench) > header input {
-  --input-bg: #161619;
-  color: #f5f6f7;
-}
-
-body:has(.chat-workbench) .site-footer {
+body:has(.chat-shell) > header,
+body:has(.chat-shell) .site-footer {
   display: none;
 }
 
 /* ============ 排版层级 (Typography, ardot) ============ */
 .heading-serif {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--title);
@@ -438,13 +442,14 @@ a {
 
 /* ============ 页面骨架 (Page Layout) ============ */
 .page-container {
-  max-width: 1280px;
+  width: 100%;
+  max-width: 1440px;
   margin-inline: auto;
-  padding-inline: 1.5rem;
+  padding-inline: 1rem;
 }
 @media (min-width: 640px) {
   .page-container {
-    padding-inline: 1.5rem;
+    padding-inline: 1.25rem;
   }
 }
 @media (min-width: 1024px) {
@@ -458,7 +463,7 @@ a {
  * (替代原 Magazine 34-44px 营销大字, 改为工具型紧凑标题)
  */
 .page-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: 22px;
   letter-spacing: -0.01em;

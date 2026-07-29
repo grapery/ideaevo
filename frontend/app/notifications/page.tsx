@@ -80,7 +80,6 @@ export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState<string>("all");
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await notificationApi.list({ limit: 50 });
       setItems(res.items || []);
@@ -95,8 +94,8 @@ export default function NotificationsPage() {
   }, []);
 
   useEffect(() => {
-    if (user) load();
-    else setLoading(false);
+    if (user) queueMicrotask(() => void load());
+    else queueMicrotask(() => setLoading(false));
   }, [user, load]);
 
   const counts = useMemo(() => {
@@ -165,14 +164,15 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container py-6">
+    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
+      <div className="mx-auto page-container py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-[var(--rule)] pb-6">
           <div>
+            <p className="meta-label mb-2">SIGNAL INBOX / LAST 7 DAYS</p>
             <h1 className="page-title">通知中心</h1>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
-              最近 7 天 · 与你相关的活动
+            <p className="mt-2 text-[13px] text-[var(--text-muted)]">
+              统一查看期待、评论、Fork 与 Agent 协作信号
               {unread > 0 && (
                 <span className="ml-2 rounded-full bg-[var(--coral)]/15 px-2 py-0.5 text-xs font-medium text-[var(--coral)]">
                   {unread} 条未读
@@ -199,25 +199,23 @@ export default function NotificationsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap gap-2 mb-6 border-b border-[var(--divider)] pb-3">
+        <div className="mb-6 flex flex-wrap border-b border-[var(--divider)]">
           {TABS.map((t) => (
             <button
               key={t.value}
               type="button"
               onClick={() => setActiveTab(t.value)}
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm transition-colors ${
+              className={`inline-flex items-center gap-2 border-b-2 px-4 py-2.5 font-[family-name:var(--font-mono)] text-[10px] font-semibold uppercase transition-colors ${
                 activeTab === t.value
-                  ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-                  : "text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]"
+                  ? "border-[var(--ink)] text-[var(--ink)]"
+                  : "border-transparent text-[var(--text-muted)] hover:text-[var(--ink)]"
               }`}
             >
               {t.label}
               {counts[t.value] > 0 && (
                 <span
                   className={`rounded-full px-1.5 text-xs ${
-                    activeTab === t.value
-                      ? "bg-[var(--primary)] text-white"
-                      : "bg-[var(--bg-subtle)]"
+                    activeTab === t.value ? "bg-[var(--ink)] text-white" : "bg-white"
                   }`}
                 >
                   {counts[t.value]}
@@ -227,7 +225,7 @@ export default function NotificationsPage() {
           ))}
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           {/* Notification list */}
           <main className="flex-1 min-w-0">
             {loading ? (
@@ -241,10 +239,10 @@ export default function NotificationsPage() {
               <div className="space-y-6">
                 {groups.map((group) => (
                   <div key={group.label}>
-                    <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-2">
+                    <h2 className="meta-label mb-2">
                       {group.label}
                     </h2>
-                    <div className="surface-card divide-y divide-[var(--divider)]">
+                    <div className="divide-y divide-[var(--divider)] rounded-lg border border-[var(--rule)] bg-white">
                       {group.items.map((n) => {
                         const meta = actionMeta[n.action] || {
                           label: n.action,
@@ -260,11 +258,11 @@ export default function NotificationsPage() {
                         return (
                           <div
                             key={n.id}
-                            className={`px-5 py-4 flex items-start gap-3 hover:bg-[var(--bg-subtle)] transition-colors ${
-                              !n.read ? "bg-[var(--primary-soft)]/40" : ""
+                            className={`flex items-start gap-3 px-5 py-4 transition-colors hover:bg-[var(--bg-subtle)] ${
+                              !n.read ? "border-l-[3px] border-l-[var(--primary)] bg-[#fff9f6]" : ""
                             }`}
                           >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--primary)]">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[var(--ink)] text-sm font-semibold text-white">
                               {actorName.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -323,9 +321,10 @@ export default function NotificationsPage() {
           </main>
 
           {/* Summary sidebar */}
-          <aside className="w-full lg:w-[300px] shrink-0 space-y-4">
-            <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)] mb-3">今日概览</h3>
+          <aside className="w-full space-y-4">
+            <div className="rounded-lg bg-[#101112] p-5 text-white">
+              <p className="mb-2 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.12em] text-[#7AF0A0]">LIVE SIGNALS</p>
+              <h3 className="mb-4 text-sm font-semibold">今日概览</h3>
               <div className="space-y-2 text-sm">
                 {[
                   { label: "新点赞", value: todayItems.filter((a) => a.action === "like").length, icon: IconHeart },
@@ -334,17 +333,17 @@ export default function NotificationsPage() {
                   { label: "新 Fork", value: todayItems.filter((a) => a.action === "fork").length, icon: IconGitFork },
                 ].map((row) => (
                   <div key={row.label} className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-[var(--text-muted)]">
+                    <span className="flex items-center gap-2 text-white/55">
                       <row.icon className="h-3.5 w-3.5" />
                       {row.label}
                     </span>
-                    <span className="font-semibold text-[var(--title)]">{row.value}</span>
+                    <span className="font-semibold text-white">{row.value}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="surface-card p-4">
+            <div className="rounded-lg border border-[var(--rule)] bg-white p-4">
               <h3 className="flex items-center gap-1.5 text-sm font-semibold text-[var(--title)]">
                 <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
                 本周热门互动者

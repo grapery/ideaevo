@@ -28,7 +28,19 @@ function formatRelativeTime(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("zh-CN");
 }
 
-export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: boolean }) {
+type IdeaCardProps = {
+  idea: Idea;
+  preview?: boolean;
+  variant?: "default" | "market";
+  highlighted?: boolean;
+};
+
+export function IdeaCard({
+  idea,
+  preview = false,
+  variant = "default",
+  highlighted = false,
+}: IdeaCardProps) {
   const router = useRouter();
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const { user } = useAuth();
@@ -141,6 +153,101 @@ export function IdeaCard({ idea, preview = false }: { idea: Idea; preview?: bool
       </button>
     </div>
   );
+
+  if (variant === "market") {
+    const lifecycleLabel =
+      idea.status === "implemented"
+        ? "IMPLEMENTED"
+        : idea.status === "archived"
+          ? "ARCHIVED"
+          : idea.status === "buried"
+            ? "BURIED"
+            : "ACTIVE";
+    const implementationLabel = (idea.impl_status || "concept").toUpperCase();
+
+    return (
+      <article
+        role="link"
+        tabIndex={0}
+        onClick={goDetail}
+        onKeyDown={onCardKeyDown}
+        aria-label={`查看想法：${idea.title}`}
+        className={`group relative min-h-[170px] cursor-pointer overflow-hidden rounded-[8px] border bg-white px-5 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
+          highlighted
+            ? "min-h-[190px] border-[var(--rule-strong)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--accent-link)]"
+            : "border-[var(--rule)]"
+        }`}
+      >
+        <div className="flex items-center gap-8 font-code text-[10px] font-medium">
+          <Link
+            href={creatorHref}
+            onClick={(event) => event.stopPropagation()}
+            className={isPersonal ? "text-[#b75b00] hover:underline" : "text-[var(--accent-link)] hover:underline"}
+          >
+            {isPersonal ? "HUMAN" : "AGENT"} · {creatorName}
+          </Link>
+          <span className={isPersonal ? "text-[#b75b00]" : "text-[var(--accent-link)]"}>
+            {lifecycleLabel} / {implementationLabel}
+          </span>
+        </div>
+
+        <h3 className="font-display mt-3 line-clamp-2 text-[21px] font-bold leading-[28px] tracking-[-0.02em] text-[var(--ink)] group-hover:text-[var(--accent-link)]">
+          {idea.title}
+        </h3>
+        <p className="mt-1.5 line-clamp-2 text-[13px] leading-[20px] text-[var(--ink-soft)]">
+          {stripMarkdownPreview(idea.description)}
+        </p>
+
+        <div className="mt-3 flex min-h-[16px] flex-wrap gap-6 font-code text-[10px] text-[var(--ink-faint)]">
+          {tags.map((tag) => <span key={tag}>#{tag}</span>)}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-5 text-[12px] text-[var(--ink-soft)]">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEngagementItem("点赞");
+            }}
+            className="hover:text-[var(--accent-link)]"
+          >
+            LIKE {idea.like_count}
+          </button>
+          <button
+            type="button"
+            onClick={sendFlower}
+            disabled={flowering}
+            className="hover:text-[var(--primary)] disabled:opacity-50"
+          >
+            WISH {idea.wish_count ?? idea.flower_count}
+          </button>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEngagementItem("Fork");
+            }}
+            className="hover:text-[var(--accent-link)]"
+          >
+            FORK {idea.fork_count}
+          </button>
+          {idea.comment_count > 0 && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEngagementItem("评论");
+              }}
+              className="hover:text-[var(--accent-link)]"
+            >
+              COMMENTS {idea.comment_count}
+            </button>
+          )}
+          <span className="ml-auto text-[var(--ink-faint)]">{formatRelativeTime(idea.created_at)}</span>
+        </div>
+      </article>
+    );
+  }
 
   const content = (
     <>

@@ -43,7 +43,6 @@ export default function NewIdeaPage() {
 
   useEffect(() => {
     if (!user) return;
-    setLoadingAgents(true);
     agentApi
       .listMyAgents()
       .then((res) => {
@@ -95,119 +94,141 @@ export default function NewIdeaPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container max-w-2xl py-8">
-        <nav className="folio mb-6">
-          <Link href="/ideas">想法</Link>
-          <span className="folio-sep">/</span>
-          <span className="text-[var(--ink)]">发布新想法</span>
+      <div className="page-container py-7">
+        <nav className="font-code text-[9px] text-[var(--ink-faint)]">
+          IDEA MARKET&nbsp;&nbsp;/&nbsp;&nbsp;<span className="text-[var(--primary)]">PUBLISH</span>
         </nav>
-
-        <h1 className="page-title mb-2">发布新想法</h1>
-        <p className="text-sm text-[var(--text-muted)] mb-6">
-          把你的想法登记到市场。默认以你本人名义发布；也可以选择一个你拥有的 AI Agent 作为发布者。
-          不想手动填表？可以
-          <Link href="/chat" className="text-[var(--primary)] hover:underline mx-1">
-            和火卫二助手聊聊
-          </Link>
-          ，让它帮你整理并发布。
+        <h1 className="font-display mt-3 text-[30px] font-bold tracking-[-0.025em] text-[var(--ink)]">
+          发布一个值得演化的想法
+        </h1>
+        <p className="mt-1 max-w-3xl text-[13px] text-[var(--ink-soft)]">
+          不只登记成品。可以发布问题、机会、假设或方案；系统会在提交前执行语义去重。
         </p>
 
-        <form onSubmit={handleSubmit} className="surface-card p-6 space-y-5">
-          <FormField id="new-agent" label="发布身份（可选）">
-            {loadingAgents ? (
-              <p className="text-sm text-[var(--text-muted)]">加载中…</p>
-            ) : (
-              <select
-                value={agentId}
-                onChange={(e) => setAgentId(e.target.value)}
-                className="w-full border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-sm"
-              >
-                <option value="">默认 · 以你本人名义发布</option>
-                {agents.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </FormField>
-          <p className="-mt-3 text-xs text-[var(--text-muted)]">
-            {selectedAgent
-              ? `将以 ${selectedAgent.name} 的名义发布`
-              : "不选时，系统会自动用你的个人身份发布。想在 AI Agent 名下发布？先去创建一个。"}
-          </p>
-
-          <FormField id="new-title" label="标题" required>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="一句话概括你的想法"
-              maxLength={500}
-            />
-          </FormField>
-
-          <FormField id="new-desc" label="描述" required>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="详细说明：做什么、给谁用、为什么有价值"
-              rows={8}
-              className="w-full font-[family-name:var(--font-mono)] text-sm"
-            />
-          </FormField>
-
-          <FormField id="new-category" label="分类">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-sm"
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </FormField>
-
-          {similarIdeas.length > 0 && (
-            <div className="border border-[var(--rule)] bg-[var(--bg-muted)] p-4 space-y-2">
-              <p className="text-sm font-medium text-[var(--ink)]">发现相似想法</p>
-              <p className="text-xs text-[var(--text-muted)]">
-                建议扩展现有想法或调整标题/描述后再发布。
-              </p>
-              <ul className="space-y-2">
-                {similarIdeas.map(({ idea, similarity }) => (
-                  <li key={idea.id} className="text-sm">
-                    <Link
-                      href={`/ideas/${idea.id}`}
-                      className="text-[var(--primary)] hover:underline"
-                    >
-                      {idea.title}
-                    </Link>
-                    <span className="ml-2 text-xs text-[var(--text-muted)]">
-                      相似度 {Math.round(similarity * 100)}%
-                    </span>
-                  </li>
-                ))}
-              </ul>
+        <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,760px)_320px] lg:justify-center">
+          <form onSubmit={handleSubmit} className="rounded-[8px] border border-[var(--rule)] bg-white p-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField id="new-agent" label="01 / PUBLISHER">
+                {loadingAgents ? (
+                  <p className="text-[12px] text-[var(--ink-faint)]">loading identities…</p>
+                ) : (
+                  <select
+                    value={agentId}
+                    onChange={(event) => setAgentId(event.target.value)}
+                    className="input-field h-9"
+                  >
+                    <option value="">Human owner · personal Agent</option>
+                    {agents.map((agent) => (
+                      <option key={agent.id} value={agent.id}>{agent.name}</option>
+                    ))}
+                  </select>
+                )}
+              </FormField>
+              <FormField id="new-category" label="02 / CATEGORY">
+                <select
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value)}
+                  className="input-field h-9"
+                >
+                  {CATEGORIES.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
+                </select>
+              </FormField>
             </div>
-          )}
 
-          <div className="flex items-center gap-3 pt-2">
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loading}
-              icon={<DeimosIcon name="send" className="h-4 w-4" />}
-            >
-              {loading ? "发布中…" : "发布想法"}
-            </Button>
-            <Link href="/ideas" className="text-sm text-[var(--text-muted)] hover:text-[var(--ink)]">
-              取消
-            </Link>
-          </div>
-        </form>
+            <p className="mt-2 font-code text-[9px] text-[var(--ink-faint)]">
+              {selectedAgent
+                ? `EXECUTOR / ${selectedAgent.name}`
+                : "OWNER / HUMAN · execution may be delegated later"}
+            </p>
+
+            <div className="mt-5">
+              <FormField id="new-title" label="03 / IDEA TITLE" required>
+                <Input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="例如：让 MCP Agent 自动验证一个 idea 是否已经被实现"
+                  maxLength={500}
+                  className="h-10"
+                />
+              </FormField>
+            </div>
+
+            <div className="mt-5">
+              <FormField id="new-desc" label="04 / PROBLEM · OPPORTUNITY · PROPOSAL" required>
+                <Textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder={"问题是什么？谁受到影响？\n已有探索与证据是什么？\n什么结果意味着值得继续？"}
+                  rows={12}
+                  className="w-full font-code text-[12px] leading-6"
+                />
+              </FormField>
+            </div>
+
+            {similarIdeas.length > 0 && (
+              <section className="mt-5 rounded-[6px] border border-[#ffb76a] bg-[#fff6ea] p-4">
+                <p className="font-code text-[10px] font-medium text-[#b75b00]">SIMILARITY GUARD / MATCHES FOUND</p>
+                <ul className="mt-3 space-y-2">
+                  {similarIdeas.map(({ idea, similarity }) => (
+                    <li key={idea.id} className="flex items-center justify-between gap-4 text-[12px]">
+                      <Link href={`/ideas/${idea.id}`} className="truncate text-[var(--ink)] hover:text-[var(--accent-link)]">
+                        {idea.title}
+                      </Link>
+                      <span className="shrink-0 font-code text-[10px] text-[#b75b00]">
+                        {Math.round(similarity * 100)}% MATCH
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--rule)] pt-4">
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={loading}
+                icon={<DeimosIcon name="send" className="h-4 w-4" />}
+              >
+                {loading ? "发布中…" : "发布并建立 provenance"}
+              </Button>
+              <Link href="/ideas" className="font-code text-[10px] text-[var(--ink-faint)] hover:text-[var(--ink)]">
+                CANCEL
+              </Link>
+            </div>
+          </form>
+
+          <aside className="space-y-4">
+            <section className="rounded-[8px] border border-[#ffb76a] bg-[#fff6ea] p-4">
+              <p className="font-code text-[10px] font-medium text-[#b75b00]">SIMILARITY GUARD / PRE-FLIGHT</p>
+              <p className="mt-4 text-[13px] font-semibold text-[var(--ink)]">
+                提交前自动检查已有探索
+              </p>
+              <div className="mt-4 space-y-2 font-code text-[10px] leading-5 text-[var(--ink-soft)]">
+                <p>01&nbsp;&nbsp;semantic title match</p>
+                <p>02&nbsp;&nbsp;problem overlap</p>
+                <p>03&nbsp;&nbsp;implementation evidence</p>
+              </div>
+            </section>
+
+            <section className="rounded-[8px] bg-[#0a0a0a] p-4 font-code text-[10px] leading-6 text-[#d6d9de]">
+              <p className="text-[#9bff00]">AI-NATIVE PUBLISHING</p>
+              <p className="mt-3">Agent can enrich this draft, attach evidence and update lifecycle after publication.</p>
+              <Link href="/chat" className="mt-4 inline-flex text-[#9bff00] hover:underline">
+                OPEN IN AGENT WORKBENCH →
+              </Link>
+            </section>
+
+            <section className="rounded-[8px] border border-[#9bbcff] bg-[#edf3ff] p-4">
+              <p className="font-code text-[10px] text-[#1e5ee9]">WHAT GETS RECORDED</p>
+              <p className="mt-3 font-code text-[10px] leading-5 text-[#174aa9]">
+                publisher · executing Agent · source idea · semantic matches · lifecycle transitions
+              </p>
+            </section>
+          </aside>
+        </div>
       </div>
     </div>
   );

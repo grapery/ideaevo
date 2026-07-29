@@ -1,6 +1,186 @@
-import { redirect } from "next/navigation";
+"use client";
 
-// 面板已合并到主页（/user/profile），这里永久重定向。
-export default function DashboardRedirect() {
-  redirect("/user/profile");
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { agentApi, notificationApi, NotificationItem, userApi } from "@/lib/api-client";
+import { Agent, UserProfile } from "@/lib/types";
+import { useAuth } from "@/lib/auth-context";
+import { DeimosIcon } from "@/components/deimos-icon";
+
+export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push("/login?returnUrl=/dashboard");
+      return;
+    }
+    let cancelled = false;
+    Promise.all([
+      userApi.getMyProfile(),
+      agentApi.listMyAgents(8, 0),
+      notificationApi.list({ limit: 8 }),
+    ])
+      .then(([profileResult, agentResult, notificationResult]) => {
+        if (cancelled) return;
+        setProfile(profileResult);
+        setAgents(agentResult.agents || []);
+        setNotifications(notificationResult.items || []);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, router, user]);
+
+  const pendingDecisions = useMemo(
+    () => notifications.filter((item) => !item.read).slice(0, 4),
+    [notifications]
+  );
+
+  if (authLoading || loading || !user || !profile) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center bg-[var(--bg-canvas)]">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--accent-link)] border-t-transparent" />
+      </div>
+    );
+  }
+
+  const metricCards = [
+    ["MY IDEAS", profile.idea_count, "registered"],
+    ["OWNED AGENTS", profile.agent_count, "operational"],
+    ["ACTIVE FORKS", profile.following_count, "following"],
+    ["NEEDS ATTENTION", pendingDecisions.length, "decision"],
+  ];
+
+  return (
+    <div className="min-h-screen bg-[var(--bg-canvas)]">
+      <div className="page-container py-7">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-code text-[10px] text-[var(--accent-link)]">OWNER WORKSPACE / LIVE</p>
+            <h1 className="font-display mt-2 text-[30px] font-bold tracking-[-0.025em] text-[var(--ink)]">
+              {profile.user.name} 的工作台
+            </h1>
+            <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
+              想法、Agent、分支、证据与待决策事项集中在一个可执行工作区。
+            </p>
+          </div>
+          <Link href="/user/settings" className="btn-outline h-8 px-4 text-[11px]">
+            WORKSPACE SETTINGS
+          </Link>
+        </div>
+
+        <section className="mt-5 grid min-h-[152px] gap-5 rounded-[8px] bg-[#0a0a0a] p-5 text-white lg:grid-cols-[1fr_340px]">
+          <div>
+            <p className="font-code text-[10px] text-[#9bff00]">QUICK DECISION</p>
+            <h2 className="font-display mt-4 text-[22px] font-bold">今天最值得推进什么？</h2>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link href="/ideas/new" className="rounded-[5px] bg-white px-3 py-2 text-[11px] font-semibold text-black">
+                + NEW IDEA
+              </Link>
+              <Link href="/chat" className="rounded-[5px] border border-[#3b3b40] px-3 py-2 font-code text-[10px] text-[#d6d9de]">
+                ASK AGENT
+              </Link>
+              <Link href="/search" className="rounded-[5px] border border-[#3b3b40] px-3 py-2 font-code text-[10px] text-[#d6d9de]">
+                SEARCH EVIDENCE
+              </Link>
+            </div>
+          </div>
+          <div className="rounded-[6px] border border-[#2e5c24] bg-[#132316] p-4 font-code text-[10px] leading-5 text-[#9bff00]">
+            <p>PROCESS MEMORY / {notifications.length} EVENTS</p>
+            <p className="mt-3">✓ session state saved</p>
+            <p>✓ Agent identities available: {agents.length}</p>
+            <p>✓ provenance recording enabled</p>
+          </div>
+        </section>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {metricCards.map(([label, value, detail]) => (
+            <div key={String(label)} className="rounded-[7px] border border-[var(--rule)] bg-white p-4">
+              <p className="font-code text-[9px] text-[var(--ink-faint)]">{label}</p>
+              <p className="font-display mt-3 text-[25px] font-bold text-[var(--ink)]">{value}</p>
+              <p className="mt-1 font-code text-[9px] text-[var(--accent-link)]">{detail}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_336px]">
+          <main className="space-y-4">
+            <section className="rounded-[8px] border border-[var(--rule)] bg-white">
+              <div className="flex h-11 items-center justify-between border-b border-[var(--rule)] px-4">
+                <p className="font-code text-[10px] text-[var(--ink)]">TODAY / ACTION REQUIRED</p>
+                <Link href="/notifications" className="font-code text-[9px] text-[var(--accent-link)]">OPEN INBOX →</Link>
+              </div>
+              {pendingDecisions.length === 0 ? (
+                <div className="p-5 text-[13px] text-[var(--ink-faint)]">当前没有未处理的决策。</div>
+              ) : (
+                pendingDecisions.map((item, index) => (
+                  <Link
+                    key={item.id}
+                    href={item.target_id ? `/ideas/${item.target_id}` : "/notifications"}
+                    className="grid min-h-[62px] grid-cols-[28px_1fr_auto] items-center gap-3 border-b border-[var(--rule)] px-4 last:border-0 hover:bg-[var(--bg-subtle)]"
+                  >
+                    <span className="font-code text-[10px] text-[var(--ink-faint)]">0{index + 1}</span>
+                    <span className="text-[13px] font-medium text-[var(--ink)]">
+                      {item.actor_name || "协作者"} · {item.action}
+                    </span>
+                    <span className="font-code text-[9px] text-[var(--accent-link)]">REVIEW</span>
+                  </Link>
+                ))
+              )}
+            </section>
+
+            <section className="rounded-[8px] border border-[#9bbcff] bg-[#edf3ff] p-5">
+              <div className="flex items-center gap-3 text-[#1e5ee9]">
+                <DeimosIcon name="semantic-search" className="h-5 w-5" />
+                <p className="font-code text-[10px] font-medium">TEAM VALUE RECORD</p>
+              </div>
+              <p className="mt-4 text-[13px] leading-6 text-[#174aa9]">
+                工作区把对话、工具执行与 idea 生命周期连接起来。每次状态变化都会保留 owner、executor 与证据来源。
+              </p>
+            </section>
+          </main>
+
+          <aside className="space-y-4">
+            <section className="rounded-[8px] border border-[var(--rule)] bg-white p-4">
+              <p className="font-code text-[10px] text-[var(--ink)]">OWNED AGENTS / {agents.length}</p>
+              <div className="mt-4 space-y-3">
+                {agents.slice(0, 4).map((agent) => (
+                  <Link key={agent.id} href={`/agents/${agent.id}`} className="flex items-center gap-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-[5px] bg-[#0a0a0a] font-code text-[10px] text-white">
+                      {agent.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[12px] font-medium text-[var(--ink)]">{agent.name}</span>
+                      <span className="font-code text-[9px] text-[var(--accent-success)]">OPERATIONAL</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              <Link href="/user/agents" className="mt-5 inline-flex font-code text-[9px] text-[var(--accent-link)]">
+                MANAGE FLEET →
+              </Link>
+            </section>
+
+            <section className="rounded-[8px] bg-[#0a0a0a] p-4 font-code text-[10px] leading-6 text-[#d6d9de]">
+              <p className="text-[#9bff00]">QUICK ACTIONS</p>
+              <Link href="/chat" className="mt-3 block hover:text-white">/chat&nbsp;&nbsp;delegate a task</Link>
+              <Link href="/ideas/new" className="block hover:text-white">/publish&nbsp;&nbsp;register an idea</Link>
+              <Link href="/docs/mcp" className="block hover:text-white">/mcp&nbsp;&nbsp;connect tools</Link>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
 }

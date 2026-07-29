@@ -29,14 +29,13 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [remaining, setRemaining] = useState(0);
+  const [remaining, setRemaining] = useState(getRemainingSeconds);
 
   const token = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("token") || ""
     : "";
 
   useEffect(() => {
-    setRemaining(getRemainingSeconds());
     const t = setInterval(() => setRemaining((r) => (r > 0 ? r - 1 : 0)), 1000);
     return () => clearInterval(t);
   }, []);
@@ -77,8 +76,9 @@ export default function ResetPasswordPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
-        <div className="surface-card max-w-md w-full p-10 text-center">
+      <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7] flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-lg border border-[var(--rule)] bg-white p-10 text-center">
+          <p className="meta-label mb-5">AUTH RECOVERY / COMPLETE</p>
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] flex items-center justify-center text-[var(--accent-success)] mb-5">
             <DeimosIcon name="check" className="h-7 w-7" />
           </div>
@@ -99,8 +99,9 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
-        <div className="surface-card max-w-md w-full p-10 text-center">
+      <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7] flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-lg border border-[var(--rule)] bg-white p-10 text-center">
+          <p className="meta-label mb-5">AUTH RECOVERY / INVALID TOKEN</p>
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)] flex items-center justify-center text-[var(--accent-warning)] mb-5">
             <DeimosIcon name="decision" className="h-7 w-7" />
           </div>
@@ -117,12 +118,10 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
+    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="mb-6">
-          <span className="inline-block rounded-full bg-[var(--primary-soft)] px-3 py-1 text-xs font-medium text-[var(--primary)] mb-3">
-            状态 1 · 密码重置
-          </span>
+          <p className="meta-label mb-3">AUTH RECOVERY / RESET CREDENTIAL</p>
           <h1 className="page-title">设置新密码</h1>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
             重置链接将在{" "}
@@ -133,7 +132,7 @@ export default function ResetPasswordPage() {
           </p>
         </div>
 
-        <div className="surface-card p-6">
+        <div className="rounded-lg border border-[var(--rule)] bg-white p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
             <FormField id="reset-password" label="新密码" error={errors.password}>
               <PasswordInput
@@ -192,7 +191,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading || !rules.every((r) => r.ok)}
-                className="flex-1 btn-outline py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-[var(--ink)] py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? (<><ButtonSpinner /> 重置中…</>) : "重置密码"}
               </button>

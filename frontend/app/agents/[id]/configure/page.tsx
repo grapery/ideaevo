@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/lib/auth-context";
 import { notify } from "@/components/ui/notify";
 import { IconLeaf } from "@/components/icons";
@@ -49,7 +49,6 @@ interface AgentConfig {
 
 export default function AgentConfigurePage({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuth();
-  const router = useRouter();
   const [agentId, setAgentId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -188,24 +187,28 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 py-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Link href={`/agents/${agentId}`} className="text-sm text-[var(--text-muted)] hover:text-[var(--primary)]">
+    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
+      <div className="mx-auto max-w-[1180px] px-4 py-8 sm:px-6">
+        <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--rule)] pb-6">
+          <div>
+            <p className="meta-label mb-2">AGENT CONTROL PLANE / {agentId.slice(0, 8)}</p>
+            <h1 className="page-title">配置 Agent — {agent.name}</h1>
+          </div>
+          <Link href={`/agents/${agentId}`} className="btn-default">
             ← 返回
           </Link>
-          <h1 className="page-title">配置 Agent — {agent.name}</h1>
         </div>
 
-        <div className="surface-card p-6 space-y-6">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-6 rounded-lg border border-[var(--rule)] bg-white p-6">
           {/* 头像 & 背景图 */}
           <div className="space-y-4">
             {/* 背景图预览 + 上传 */}
             <div>
               <label className="block text-sm font-medium text-[var(--title)] mb-2">背景图</label>
-              <div className="relative h-32 rounded-xl overflow-hidden bg-[var(--primary-soft)] border border-[var(--divider)]">
+              <div className="relative h-32 overflow-hidden rounded-md border border-[var(--divider)] bg-[var(--primary-soft)]">
                 {agent.background_url ? (
-                  <img src={agent.background_url} alt="" className="h-full w-full object-cover" />
+                  <Image src={agent.background_url} alt="" fill unoptimized className="object-cover" />
                 ) : (
                   <div className="h-full w-full" />
                 )}
@@ -239,9 +242,9 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
 
             {/* 头像预览 + 上传 */}
             <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-2xl overflow-hidden bg-[var(--primary-soft)] border border-[var(--divider)] flex items-center justify-center text-2xl font-semibold text-[var(--primary)]">
+              <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-md border border-[var(--divider)] bg-[var(--ink)] text-2xl font-semibold text-white">
                 {agent.avatar_url ? (
-                  <img src={agent.avatar_url} alt="" className="h-full w-full object-cover" />
+                  <Image src={agent.avatar_url} alt="" fill unoptimized className="object-cover" />
                 ) : (
                   agent.name?.charAt(0) || "A"
                 )}
@@ -282,7 +285,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               onChange={(e) => setSystemPrompt(e.target.value)}
               rows={5}
               placeholder="定义 Agent 的行为模式、语气和专业领域。留空使用平台默认。"
-              className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm text-[var(--text-secondary)] outline-none focus:border-[var(--primary)] resize-y"
+              className="w-full resize-y rounded-md border border-[var(--divider)] bg-white px-4 py-2.5 font-[family-name:var(--font-mono)] text-xs leading-6 text-[var(--text-secondary)] outline-none focus:border-[var(--ink)]"
             />
           </div>
 
@@ -297,8 +300,8 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                   onClick={() => setLlmModel(m.value)}
                   className={`text-left rounded-lg border p-3 text-sm transition-all ${
                     llmModel === m.value
-                      ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
-                      : "border-[var(--divider)] text-[var(--text-secondary)] hover:border-[var(--primary)]/40"
+                      ? "border-[var(--ink)] bg-[var(--ink)] text-white"
+                      : "border-[var(--divider)] text-[var(--text-secondary)] hover:border-[var(--ink)]"
                   }`}
                 >
                   {m.label}
@@ -398,29 +401,33 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-40"
+              className="rounded-md bg-[var(--primary)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-40"
             >
               {saving ? "保存中…" : "保存配置"}
             </button>
           </div>
         </div>
 
-        <div className="mt-6 surface-card p-6">
-          <AgentApiKeyPanel agentId={agentId} agentName={agent.name} />
-        </div>
+        <aside className="space-y-6">
+          <div className="rounded-lg border border-[var(--rule)] bg-white p-6">
+            <p className="meta-label mb-4">CREDENTIALS / MCP</p>
+            <AgentApiKeyPanel agentId={agentId} agentName={agent.name} />
+          </div>
 
-        {/* A2A 协议信息 */}
-        <div className="mt-6 surface-card p-6">
-          <h3 className="text-sm font-semibold text-[var(--title)] mb-2">A2A 协议端点</h3>
-          <p className="text-xs text-[var(--text-muted)] mb-3">
-            此 Agent 可通过 A2A（Agent-to-Agent）协议被其他 Agent 调用：
-          </p>
-          <code className="block rounded-lg bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-secondary)] border border-[var(--divider)] break-all">
-            POST {typeof window !== "undefined" ? window.location.origin : ""}/api/../a2a/agents/{agentId}
-          </code>
-          <p className="mt-2 text-xs text-[var(--text-muted)]">
-            Agent Card（发现）：GET /a2a/agents/{agentId}/.well-known/agent.json
-          </p>
+          <div className="rounded-lg bg-[#101112] p-6 text-white">
+            <p className="mb-3 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.12em] text-[#7AF0A0]">A2A ENDPOINT / LIVE</p>
+            <h3 className="mb-2 text-sm font-semibold">Agent-to-Agent 协议</h3>
+            <p className="mb-3 text-xs leading-5 text-white/50">
+              此 Agent 可被其他 Agent 发现、委派与调用：
+            </p>
+            <code className="block break-all rounded-md border border-white/10 bg-black/35 p-3 font-[family-name:var(--font-mono)] text-[10px] leading-5 text-[#66A8FF]">
+              POST {typeof window !== "undefined" ? window.location.origin : ""}/api/../a2a/agents/{agentId}
+            </code>
+            <p className="mt-3 font-[family-name:var(--font-mono)] text-[10px] leading-5 text-white/45">
+              GET /a2a/agents/{agentId}/.well-known/agent.json
+            </p>
+          </div>
+        </aside>
         </div>
       </div>
     </div>

@@ -1,7 +1,6 @@
 import { AppLink as Link } from "./app-link";
 import { Idea, normalizeTags } from "@/lib/types";
-import { StatusBadge } from "./status-badge";
-import { EngagementBar } from "./engagement-bar";
+import { stripMarkdownPreview } from "@/lib/markdown-utils";
 
 export function SearchResultCard({
   idea,
@@ -16,39 +15,39 @@ export function SearchResultCard({
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="group surface-card p-4 sm:p-5 cursor-pointer hover:border-[var(--rule-strong)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
+      className="group block rounded-[8px] border border-[var(--rule)] bg-white p-4 hover:border-[var(--accent-link)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
       aria-label={`查看想法：${idea.title}`}
     >
-      <div className="flex items-start justify-between gap-4 mb-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/50 text-[12px] font-medium text-[var(--ink-soft)] shrink-0">
-            {agentName.charAt(0).toUpperCase()}
-          </div>
-          <span className="text-[13px] font-medium text-[var(--ink)] truncate">{agentName}</span>
-          <StatusBadge status={idea.status} />
+      <div className="flex items-start justify-between gap-5">
+        <div className="min-w-0">
+          <p className="font-code text-[9px] text-[var(--accent-link)]">
+            {idea.agent?.is_personal ? "HUMAN" : "AGENT"} · {agentName}
+          </p>
+          <h3 className="font-display mt-2 line-clamp-2 text-[17px] font-bold leading-[23px] text-[var(--ink)] group-hover:text-[var(--accent-link)]">
+            {idea.title}
+          </h3>
         </div>
-        <span className="badge-pill shrink-0 badge-active">
-          {(similarity * 100).toFixed(0)}% 匹配
-        </span>
+        <div className="shrink-0 rounded-[5px] border border-[#9bbcff] bg-[#edf3ff] px-3 py-2 text-right">
+          <p className="font-display text-[17px] font-bold text-[#1e5ee9]">{(similarity * 100).toFixed(0)}%</p>
+          <p className="font-code text-[8px] text-[#1e5ee9]">SEMANTIC MATCH</p>
+        </div>
       </div>
 
-      <h3 className="text-[15px] font-semibold text-[var(--ink)] leading-snug line-clamp-1 transition-colors group-hover:text-[var(--primary)]">{idea.title}</h3>
-      <p className="mt-1.5 text-[13px] text-[var(--ink-soft)] line-clamp-2 min-h-[40px]">{idea.description}</p>
+      <p className="mt-2 line-clamp-2 min-h-[38px] text-[12px] leading-[19px] text-[var(--ink-soft)]">
+        {stripMarkdownPreview(idea.description)}
+      </p>
 
-      <div className="mt-2.5 min-h-[24px] flex flex-wrap gap-1.5">
+      <div className="mt-3 flex min-h-[16px] flex-wrap gap-5 font-code text-[9px] text-[var(--ink-faint)]">
         {tags.map((tag) => (
-          <span key={tag} className="tag-pill">#{tag}</span>
+          <span key={tag}>#{tag}</span>
         ))}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-[var(--divider)]">
-        <EngagementBar
-          likes={idea.like_count}
-          flowers={idea.flower_count}
-          forks={idea.fork_count}
-          comments={idea.comment_count}
-          showShare={false}
-        />
+      <div className="mt-3 flex items-center gap-5 border-t border-[var(--rule)] pt-3 font-code text-[9px] text-[var(--ink-soft)]">
+        <span>{idea.status.toUpperCase()}</span>
+        <span>LIKE {idea.like_count}</span>
+        <span>WISH {idea.wish_count ?? idea.flower_count}</span>
+        <span>FORK {idea.fork_count}</span>
       </div>
     </Link>
   );

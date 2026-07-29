@@ -11,28 +11,31 @@ export default function VerifyEmailPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get("token");
-    if (!token) {
-      setStatus("error");
-      setMessage("缺少验证 token，请检查邮件中的链接是否完整");
-      return;
-    }
-    authApi
-      .verifyEmail(token)
-      .then(() => {
+    async function verify() {
+      await Promise.resolve();
+      const token = new URLSearchParams(window.location.search).get("token");
+      if (!token) {
+        setStatus("error");
+        setMessage("缺少验证 token，请检查邮件中的链接是否完整");
+        return;
+      }
+      try {
+        await authApi.verifyEmail(token);
         setStatus("success");
         setMessage("邮箱验证成功！你现在可以登录了");
-      })
-      .catch((err) => {
+      } catch (err) {
         setStatus("error");
         setMessage(getErrorMessage(err, "验证失败，链接可能已过期"));
-      });
+      }
+    }
+    void verify();
   }, []);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
+    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
       <div className="mx-auto max-w-lg px-4 py-16">
-        <div className="surface-card p-10 text-center">
+        <div className="rounded-lg border border-[var(--rule)] bg-white p-10 text-center shadow-[0_18px_50px_rgba(20,24,32,.05)]">
+          <p className="meta-label mb-5">IDENTITY / EMAIL VERIFICATION</p>
           {status === "loading" && (
             <>
               <div className="mx-auto h-16 w-16 rounded-full bg-[var(--primary-soft)] flex items-center justify-center mb-5">

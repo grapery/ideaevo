@@ -33,20 +33,24 @@ export function ProfileLayout({
   return (
     <div>
       {/* Sticky tab bar */}
-      <nav className="profile-tabs">
+      <nav className="sticky top-12 z-30 mt-4 bg-[var(--bg-canvas)]">
         <div className="mx-auto page-container">
-          <div className="flex gap-0 overflow-x-auto">
+          <div className="flex h-10 gap-5 overflow-x-auto rounded-[6px] border border-[var(--rule)] bg-white px-4">
             {tabs.map((t) => (
               <button
                 key={t.key}
                 type="button"
                 onClick={() => onTabChange(t.key)}
                 data-active={activeTab === t.key}
-                className="profile-tab"
+                className={`shrink-0 border-b-2 font-code text-[9px] ${
+                  activeTab === t.key
+                    ? "border-[var(--accent-link)] text-[var(--accent-link)]"
+                    : "border-transparent text-[var(--ink-faint)] hover:text-[var(--ink)]"
+                }`}
               >
                 <span>{t.label}</span>
                 {t.count !== undefined && t.count > 0 && (
-                  <span className="count-badge">{t.count}</span>
+                  <span className="ml-1 text-[8px]">{t.count}</span>
                 )}
               </button>
             ))}
@@ -56,7 +60,7 @@ export function ProfileLayout({
 
       {/* Content: main + sidebar two-column */}
       <div className="mx-auto page-container py-6">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_296px]">
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <main className="min-w-0">{children}</main>
           {sidebar && (
             <aside className="hidden lg:block space-y-4">{sidebar}</aside>
@@ -80,8 +84,8 @@ export function AboutCard({
   className?: string;
 }) {
   return (
-    <div className={`surface-card p-5 ${className}`.trim()}>
-      <h3 className="heading-sans text-sm pb-3 mb-3 border-b border-[var(--divider)]">
+    <div className={`rounded-[8px] border border-[var(--rule)] bg-white p-4 ${className}`.trim()}>
+      <h3 className="mb-3 border-b border-[var(--divider)] pb-3 font-code text-[10px] text-[var(--ink)]">
         {title}
       </h3>
       {children}

@@ -35,10 +35,11 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="min-h-screen bg-[var(--bg-canvas)]">
+      <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
         <div className="mx-auto max-w-lg px-4 py-16">
-          <div className="surface-card p-10 text-center">
-            <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-link)]/30 bg-[var(--accent-link-soft)] flex items-center justify-center text-[var(--accent-link)] mb-5">
+          <div className="rounded-lg border border-[var(--rule)] bg-white p-10 text-center">
+            <p className="meta-label mb-5">AUTH RECOVERY / MESSAGE SENT</p>
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-md bg-[var(--ink)] text-white">
               <DeimosIcon name="send" className="h-6 w-6" />
             </div>
             <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">邮件已发送</h2>
@@ -58,16 +59,17 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
+    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
       <div className="mx-auto max-w-lg px-4 py-16">
-        <div className="text-center mb-8">
+        <div className="mb-8 text-center">
+          <p className="meta-label mb-3">AUTH RECOVERY / REQUEST</p>
           <h1 className="page-title">忘记密码</h1>
           <p className="mt-3 text-base text-[var(--text-muted)]">
             输入注册邮箱，我们将发送重置链接
           </p>
         </div>
 
-        <div className="surface-card p-8">
+        <div className="rounded-lg border border-[var(--rule)] bg-white p-8 shadow-[0_18px_50px_rgba(20,24,32,.05)]">
           <form onSubmit={handleSubmit} className="space-y-5">
             <FormField id="forgot-email" label="邮箱地址" error={error}>
               <Input
@@ -85,7 +87,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-outline py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--ink)] py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? (<><ButtonSpinner /> 发送中…</>) : "发送重置链接"}
             </button>
