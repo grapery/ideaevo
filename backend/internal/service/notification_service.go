@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	"github.com/wanye/ideaevo/internal/model"
 	"gorm.io/gorm"
 )
@@ -47,10 +49,18 @@ type NotificationView struct {
 	TargetTitle string `json:"target_title,omitempty"`
 }
 
-func (s *NotificationService) List(userID string, limit, offset int, onlyUnread bool) (*NotificationList, error) {
+func (s *NotificationService) List(
+	userID string,
+	limit, offset int,
+	onlyUnread bool,
+	since *time.Time,
+) (*NotificationList, error) {
 	q := s.db.Model(&model.Notification{}).Where("user_id = ?", userID)
 	if onlyUnread {
 		q = q.Where("is_read = ?", false)
+	}
+	if since != nil {
+		q = q.Where("created_at >= ?", *since)
 	}
 	var items []model.Notification
 	var total int64
@@ -59,7 +69,12 @@ func (s *NotificationService) List(userID string, limit, offset int, onlyUnread 
 		return nil, err
 	}
 	var unread int64
-	s.db.Model(&model.Notification{}).Where("user_id = ? AND is_read = ?", userID, false).Count(&unread)
+	unreadQuery := s.db.Model(&model.Notification{}).
+		Where("user_id = ? AND is_read = ?", userID, false)
+	if since != nil {
+		unreadQuery = unreadQuery.Where("created_at >= ?", *since)
+	}
+	unreadQuery.Count(&unread)
 	return &NotificationList{Items: enrichNotifications(s.db, items), Total: total, Unread: unread}, nil
 }
 
@@ -82,26 +97,31 @@ func enrichNotifications(db *gorm.DB, items []model.Notification) []Notification
 		}
 	}
 	avatarByID := map[string]string{}
+	nameByID := map[string]string{}
 	if len(userIDs) > 0 {
 		ids := keys(userIDs)
 		var rows []struct {
 			ID        string
+			Name      string
 			AvatarURL string
 		}
-		db.Table("users").Select("id, avatar_url").Where("id IN ?", ids).Scan(&rows)
+		db.Table("users").Select("id, name, avatar_url").Where("id IN ?", ids).Scan(&rows)
 		for _, r := range rows {
 			avatarByID[r.ID] = ResolveUserAvatar(r.ID, r.AvatarURL)
+			nameByID[r.ID] = r.Name
 		}
 	}
 	if len(agentIDs) > 0 {
 		ids := keys(agentIDs)
 		var rows []struct {
 			ID        string
+			Name      string
 			AvatarURL string
 		}
-		db.Table("agents").Select("id, avatar_url").Where("id IN ?", ids).Scan(&rows)
+		db.Table("agents").Select("id, name, avatar_url").Where("id IN ?", ids).Scan(&rows)
 		for _, r := range rows {
 			avatarByID[r.ID] = ResolveAgentAvatar(r.ID, r.AvatarURL)
+			nameByID[r.ID] = r.Name
 		}
 	}
 	titleByIdeaID := map[string]string{}
@@ -118,6 +138,9 @@ func enrichNotifications(db *gorm.DB, items []model.Notification) []Notification
 	}
 	out := make([]NotificationView, len(items))
 	for i, n := range items {
+		if n.ActorName == "" {
+			n.ActorName = nameByID[n.ActorID]
+		}
 		v := NotificationView{Notification: n, ActorAvatar: avatarByID[n.ActorID]}
 		if n.TargetType == "idea" {
 			v.TargetTitle = titleByIdeaID[n.TargetID]

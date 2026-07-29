@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Idea } from "@/lib/types";
 import { normalizeStringArray } from "@/lib/types";
+import { DeimosIcon } from "./deimos-icon";
 import { VideoCoverButton } from "./video-player";
 
 /**
@@ -60,9 +61,7 @@ export function IdeaMediaGallery({ idea }: { idea: Idea }) {
             className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
             aria-label="关闭"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            <DeimosIcon name="close" className="h-5 w-5" />
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

@@ -53,16 +53,23 @@ export function Header() {
   useEffect(() => {
     function closeMenus(event: MouseEvent) {
       const target = event.target as Node;
-      if (menuRef.current && !menuRef.current.contains(target)) setMenuOpen(false);
-      if (accountRef.current && !accountRef.current.contains(target)) setAccountOpen(false);
+      if (menuRef.current && !menuRef.current.contains(target))
+        setMenuOpen(false);
+      if (accountRef.current && !accountRef.current.contains(target))
+        setAccountOpen(false);
     }
-    if (menuOpen || accountOpen) document.addEventListener("mousedown", closeMenus);
+    if (menuOpen || accountOpen)
+      document.addEventListener("mousedown", closeMenus);
     return () => document.removeEventListener("mousedown", closeMenus);
   }, [accountOpen, menuOpen]);
 
   const accountLinks = (
     <>
-      <Link href="/notifications" className={menuLinkClass} onClick={() => setAccountOpen(false)}>
+      <Link
+        href="/notifications"
+        className={menuLinkClass}
+        onClick={() => setAccountOpen(false)}
+      >
         <DeimosIcon name="decision" className="h-3.5 w-3.5" />
         {t("header.inbox")}
         {unread > 0 && (
@@ -71,20 +78,44 @@ export function Header() {
           </span>
         )}
       </Link>
-      <Link href="/dashboard" className={menuLinkClass} onClick={() => setAccountOpen(false)}>
+      <Link
+        href="/dashboard"
+        className={menuLinkClass}
+        onClick={() => setAccountOpen(false)}
+      >
         <DeimosIcon name="home" className="h-3.5 w-3.5" />
         {t("header.workspace")}
       </Link>
-      <Link href="/user/agents" className={menuLinkClass} onClick={() => setAccountOpen(false)}>
+      <Link
+        href="/user/agents"
+        className={menuLinkClass}
+        onClick={() => setAccountOpen(false)}
+      >
         <DeimosIcon name="agent" className="h-3.5 w-3.5" />
         {t("header.fleet")}
       </Link>
-      <Link href="/user/settings" className={menuLinkClass} onClick={() => setAccountOpen(false)}>
+      <Link
+        href="/billing"
+        className={menuLinkClass}
+        onClick={() => setAccountOpen(false)}
+      >
+        <DeimosIcon name="billing" className="h-3.5 w-3.5" />
+        {t("header.billing")}
+      </Link>
+      <Link
+        href="/user/settings"
+        className={menuLinkClass}
+        onClick={() => setAccountOpen(false)}
+      >
         <DeimosIcon name="gear" className="h-3.5 w-3.5" />
         {t("header.settings")}
       </Link>
       {user?.role === "admin" && (
-        <Link href="/admin" className={menuLinkClass} onClick={() => setAccountOpen(false)}>
+        <Link
+          href="/admin"
+          className={menuLinkClass}
+          onClick={() => setAccountOpen(false)}
+        >
           <DeimosIcon name="evidence" className="h-3.5 w-3.5" />
           {t("header.admin")}
         </Link>
@@ -109,9 +140,15 @@ export function Header() {
         <Logo compact />
 
         <nav className="hidden items-center gap-7 md:flex">
-          <Link href="/ideas" className={navLinkClass}>{t("header.discover")}</Link>
-          <Link href="/activity" className={navLinkClass}>{t("header.activity")}</Link>
-          <Link href="/user/agents" className={navLinkClass}>{t("header.agents")}</Link>
+          <Link href="/ideas" className={navLinkClass}>
+            {t("header.discover")}
+          </Link>
+          <Link href="/activity" className={navLinkClass}>
+            {t("header.activity")}
+          </Link>
+          <Link href="/user/agents" className={navLinkClass}>
+            {t("header.agents")}
+          </Link>
         </nav>
 
         <SearchInput
@@ -149,7 +186,11 @@ export function Header() {
             >
               {user.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={user.avatar_url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 user.name.charAt(0).toUpperCase()
               )}
@@ -180,17 +221,35 @@ export function Header() {
             aria-label={t("header.menu")}
             aria-expanded={menuOpen}
           >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeWidth="1.75" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <DeimosIcon name="menu" className="h-4 w-4" />
           </button>
           {menuOpen && (
             <div className="fixed inset-x-3 top-14 overflow-hidden rounded-[6px] border border-[var(--rule)] bg-white py-1 shadow-[var(--shadow-float)]">
               <LanguageSwitcher mobile />
-              <Link href="/ideas" className={menuLinkClass} onClick={() => setMenuOpen(false)}>{t("header.discover")}</Link>
-              <Link href="/chat" className={menuLinkClass} onClick={() => setMenuOpen(false)}>{t("header.ask")}</Link>
-              <Link href="/activity" className={menuLinkClass} onClick={() => setMenuOpen(false)}>{t("header.activity")}</Link>
-              {user ? accountLinks : (
+              <Link
+                href="/ideas"
+                className={menuLinkClass}
+                onClick={() => setMenuOpen(false)}
+              >
+                {t("header.discover")}
+              </Link>
+              <Link
+                href="/chat"
+                className={menuLinkClass}
+                onClick={() => setMenuOpen(false)}
+              >
+                {t("header.ask")}
+              </Link>
+              <Link
+                href="/activity"
+                className={menuLinkClass}
+                onClick={() => setMenuOpen(false)}
+              >
+                {t("header.activity")}
+              </Link>
+              {user ? (
+                accountLinks
+              ) : (
                 <button
                   type="button"
                   className={menuLinkClass}

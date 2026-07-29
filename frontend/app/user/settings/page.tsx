@@ -4,7 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { userApi, notificationApi, authApi, prefsApi, modApi } from "@/lib/api-client";
+import {
+  userApi,
+  notificationApi,
+  authApi,
+  prefsApi,
+  modApi,
+} from "@/lib/api-client";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,18 +20,14 @@ import { ChatSession, User, type NotificationPreferences } from "@/lib/types";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { useApiKey } from "@/lib/api-key-context";
-import { DeimosIcon, type DeimosIconName } from "@/components/deimos-icon";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { WireframeAvatar } from "@/components/wireframe-avatar";
+import {
+  AccountSidebar,
+  type AccountSettingsSection,
+} from "@/components/account-sidebar";
 
-type Section = "profile" | "security" | "sessions" | "notifications" | "blocks" | "apikey";
-
-const NAV: { key: Section; label: string; icon: DeimosIconName }[] = [
-  { key: "profile", label: "个人资料", icon: "profile" },
-  { key: "security", label: "账号安全", icon: "lock" },
-  { key: "sessions", label: "我的会话", icon: "chat" },
-  { key: "notifications", label: "通知偏好", icon: "bell" },
-  { key: "blocks", label: "屏蔽管理", icon: "shield" },
-  { key: "apikey", label: "Agent API Key", icon: "key" },
-];
+type Section = AccountSettingsSection;
 
 const DEFAULT_NOTIF_PREFS: NotificationPreferences = {
   email_on_follow: true,
@@ -42,7 +44,14 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const s = searchParams.get("section");
-    if (s === "apikey" || s === "profile" || s === "security" || s === "sessions" || s === "notifications" || s === "blocks") {
+    if (
+      s === "apikey" ||
+      s === "profile" ||
+      s === "security" ||
+      s === "sessions" ||
+      s === "notifications" ||
+      s === "blocks"
+    ) {
       setSection(s);
     }
   }, [searchParams]);
@@ -53,7 +62,9 @@ export default function SettingsPage() {
   const [backgroundUrl, setBackgroundUrl] = useState("");
   const [bio, setBio] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
-  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>(
+    {},
+  );
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBackground, setUploadingBackground] = useState(false);
 
@@ -84,7 +95,8 @@ export default function SettingsPage() {
   const [loadingSessions, setLoadingSessions] = useState(false);
 
   // Notification prefs（服务端持久化，GET/PATCH /user/notification-preferences）
-  const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIF_PREFS);
+  const [prefs, setPrefs] =
+    useState<NotificationPreferences>(DEFAULT_NOTIF_PREFS);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [prefsSaving, setPrefsSaving] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
@@ -109,18 +121,15 @@ export default function SettingsPage() {
     if (section === "blocks" && user) void loadBlocks();
   }, [section, user, loadBlocks]);
 
-  const unblock = useCallback(
-    async (userId: string) => {
-      try {
-        await modApi.unblockUser(userId);
-        setBlockedUsers((prev) => prev.filter((u) => u.id !== userId));
-        notify.success("已取消屏蔽");
-      } catch (err) {
-        notify.error(getErrorMessage(err, "操作失败"));
-      }
-    },
-    []
-  );
+  const unblock = useCallback(async (userId: string) => {
+    try {
+      await modApi.unblockUser(userId);
+      setBlockedUsers((prev) => prev.filter((u) => u.id !== userId));
+      notify.success("已取消屏蔽");
+    } catch (err) {
+      notify.error(getErrorMessage(err, "操作失败"));
+    }
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -134,13 +143,19 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (deleteSmsCooldown <= 0) return;
-    const t = setInterval(() => setDeleteSmsCooldown((c) => Math.max(0, c - 1)), 1000);
+    const t = setInterval(
+      () => setDeleteSmsCooldown((c) => Math.max(0, c - 1)),
+      1000,
+    );
     return () => clearInterval(t);
   }, [deleteSmsCooldown]);
 
   useEffect(() => {
     if (changeCooldown <= 0) return;
-    const t = setInterval(() => setChangeCooldown((c) => Math.max(0, c - 1)), 1000);
+    const t = setInterval(
+      () => setChangeCooldown((c) => Math.max(0, c - 1)),
+      1000,
+    );
     return () => clearInterval(t);
   }, [changeCooldown]);
 
@@ -212,7 +227,8 @@ export default function SettingsPage() {
         notify.error("图片不能超过 5MB");
         return;
       }
-      const setUploading = kind === "avatar" ? setUploadingAvatar : setUploadingBackground;
+      const setUploading =
+        kind === "avatar" ? setUploadingAvatar : setUploadingBackground;
       setUploading(true);
       try {
         const presign = await userApi.presignUpload(kind, file.type);
@@ -238,7 +254,7 @@ export default function SettingsPage() {
         setUploading(false);
       }
     },
-    [refreshUser]
+    [refreshUser],
   );
 
   const resetAvatar = useCallback(async () => {
@@ -291,7 +307,7 @@ export default function SettingsPage() {
         payload.password = deletePwd;
       } else if (user.auth_provider === "google") {
         if (deleteConfirm !== "DELETE") {
-          notify.error('请输入 DELETE 确认');
+          notify.error("请输入 DELETE 确认");
           setDeleting(false);
           return;
         }
@@ -397,9 +413,16 @@ export default function SettingsPage() {
     return (
       <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
         <div className="surface-card max-w-md w-full p-10 text-center">
-          <h2 className="text-xl font-semibold text-[var(--title)] mb-2">请先登录</h2>
-          <p className="text-sm text-[var(--text-muted)] mb-4">登录后管理你的账号设置</p>
-          <Link href="/login" className="inline-block btn-outline px-6 py-2.5 text-sm font-medium">
+          <h2 className="text-xl font-semibold text-[var(--title)] mb-2">
+            请先登录
+          </h2>
+          <p className="text-sm text-[var(--text-muted)] mb-4">
+            登录后管理你的账号设置
+          </p>
+          <Link
+            href="/login"
+            className="inline-block btn-outline px-6 py-2.5 text-sm font-medium"
+          >
             前往登录
           </Link>
         </div>
@@ -411,56 +434,12 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       <div className="mx-auto page-container py-6">
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Left nav */}
-          <aside className="w-full lg:w-[240px] shrink-0">
-            <div className="mb-4">
-              <h1 className="heading-sans text-[22px]">设置</h1>
-              <p className="text-sm text-[var(--text-muted)] mt-0.5">管理你的账号和偏好</p>
-            </div>
-            <nav className="surface-card flex gap-1 overflow-x-auto p-2 lg:block">
-              {NAV.map((item) => {
-                const active = section === item.key;
-                const badge =
-                  item.key === "sessions" && sessionTotal > 0
-                    ? sessionTotal
-                    : item.key === "apikey"
-                    ? "Agent"
-                    : item.key === "security" && !user.email_verified
-                    ? "未验证"
-                    : null;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setSection(item.key)}
-                    className={`flex shrink-0 items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors lg:w-full ${
-                      active
-                        ? "bg-[var(--primary-soft)] text-[var(--primary)] font-medium"
-                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <DeimosIcon name={item.icon} className="h-4 w-4" />
-                      {item.label}
-                    </span>
-                    {badge !== null && (
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${
-                          badge === "未验证"
-                            ? "bg-[var(--coral)]/15 text-[var(--coral)]"
-                            : badge === "Agent"
-                            ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-                            : "bg-[var(--bg-subtle)] text-[var(--text-secondary)]"
-                        }`}
-                      >
-                        {badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </aside>
+          <AccountSidebar
+            activeSection={section}
+            onSectionChange={setSection}
+            sessionCount={sessionTotal}
+            emailVerified={user.email_verified}
+          />
 
           {/* Right content */}
           <main className="flex-1 min-w-0 max-w-[760px]">
@@ -468,23 +447,33 @@ export default function SettingsPage() {
             <div className="surface-card overflow-hidden mb-6">
               <div className="h-28 bg-[var(--primary-soft)] relative">
                 {backgroundUrl ? (
-                  <img src={backgroundUrl} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={backgroundUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="h-full w-full bg-gradient-to-br from-[var(--primary-soft)] to-[var(--teal)]/15" />
                 )}
               </div>
-              <div className="px-5 pb-5 -mt-10 flex items-end gap-4">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-2xl font-semibold text-[var(--primary)] overflow-hidden border-4 border-white shadow-sm">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    user.name.charAt(0).toUpperCase()
-                  )}
+              <div className="relative min-h-[96px] px-5 pb-5 pt-4">
+                <div className="absolute -top-10 left-5 z-10 rounded-full bg-white p-1 shadow-sm">
+                  <WireframeAvatar
+                    name={user.name}
+                    avatarUrl={avatarUrl}
+                    entityId={user.id}
+                    kind="user"
+                    size={80}
+                  />
                 </div>
-                <div className="pb-1">
-                  <div className="text-lg font-semibold text-[var(--title)]">{user.name}</div>
+                <div className="min-w-0 pl-24">
+                  <div className="truncate text-lg font-semibold text-[var(--title)]">
+                    {user.name}
+                  </div>
                   {user.email && (
-                    <div className="text-sm text-[var(--text-muted)]">{user.email}</div>
+                    <div className="truncate text-sm text-[var(--text-muted)]">
+                      {user.email}
+                    </div>
                   )}
                   <div className="mt-1 text-xs text-[var(--text-muted)]">
                     关注 {user.following_count} · 粉丝 {user.follower_count}
@@ -496,10 +485,14 @@ export default function SettingsPage() {
 
             {section === "profile" && (
               <div className="surface-card p-6">
-                <h2 className="text-base font-semibold text-[var(--title)] mb-4">基本信息</h2>
+                <h2 className="text-base font-semibold text-[var(--title)] mb-4">
+                  基本信息
+                </h2>
                 <div className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">头像</label>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                      头像
+                    </label>
                     <div className="flex flex-wrap items-center gap-3">
                       <label className="btn-outline px-4 py-2 text-sm font-medium cursor-pointer">
                         {uploadingAvatar ? "上传中…" : "上传图片"}
@@ -525,7 +518,9 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">背景图</label>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                      背景图
+                    </label>
                     <div className="flex flex-wrap items-center gap-3">
                       <label className="btn-outline px-4 py-2 text-sm font-medium cursor-pointer">
                         {uploadingBackground ? "上传中…" : "上传图片"}
@@ -550,16 +545,27 @@ export default function SettingsPage() {
                       </button>
                     </div>
                   </div>
-                  <FormField id="set-name" label="显示名" error={profileErrors.name}>
+                  <FormField
+                    id="set-name"
+                    label="显示名"
+                    error={profileErrors.name}
+                  >
                     <Input
                       name="name"
                       autoComplete="name"
                       value={name}
-                      onChange={(e) => { setName(e.target.value); setProfileErrors({}); }}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        setProfileErrors({});
+                      }}
                       hasError={!!profileErrors.name}
                     />
                   </FormField>
-                  <FormField id="set-bio" label="简介" hint={`${bio.length} / 500 字符`}>
+                  <FormField
+                    id="set-bio"
+                    label="简介"
+                    hint={`${bio.length} / 500 字符`}
+                  >
                     <Textarea
                       name="bio"
                       value={bio}
@@ -586,17 +592,26 @@ export default function SettingsPage() {
 
             {section === "security" && (
               <div className="surface-card p-6">
-                <h2 className="text-base font-semibold text-[var(--title)] mb-4">账号安全</h2>
+                <h2 className="text-base font-semibold text-[var(--title)] mb-4">
+                  账号安全
+                </h2>
 
                 {user.email && user.auth_provider !== "wechat" && (
                   <div className="mb-6 rounded-lg border border-[var(--divider)] p-4 flex items-center justify-between">
                     <div>
-                      <div className="text-sm font-medium text-[var(--title)]">邮箱验证</div>
-                      <div className="text-xs text-[var(--text-muted)] mt-0.5">{user.email}</div>
+                      <div className="text-sm font-medium text-[var(--title)]">
+                        邮箱验证
+                      </div>
+                      <div className="text-xs text-[var(--text-muted)] mt-0.5">
+                        {user.email}
+                      </div>
                     </div>
                     {user.email_verified ? (
                       <span className="rounded-full bg-[var(--teal)]/15 px-3 py-1 text-xs font-medium text-[var(--teal)]">
-                        <DeimosIcon name="check" className="mr-1 inline-block h-3 w-3" />
+                        <DeimosIcon
+                          name="check"
+                          className="mr-1 inline-block h-3 w-3"
+                        />
                         已验证
                       </span>
                     ) : (
@@ -609,7 +624,8 @@ export default function SettingsPage() {
 
                 {user.auth_provider === "google" ? (
                   <div className="rounded-lg bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
-                    你使用 Google 账号登录，无需设置密码。如需修改密码请前往 Google 账号管理。
+                    你使用 Google 账号登录，无需设置密码。如需修改密码请前往
+                    Google 账号管理。
                   </div>
                 ) : user.auth_provider === "wechat" ? (
                   <div className="space-y-4">
@@ -621,7 +637,9 @@ export default function SettingsPage() {
                     </div>
                     {user.phone_verified && (
                       <div className="rounded-lg border border-[var(--divider)] p-4 space-y-3 max-w-md">
-                        <div className="text-sm font-medium text-[var(--title)]">更换绑定手机</div>
+                        <div className="text-sm font-medium text-[var(--title)]">
+                          更换绑定手机
+                        </div>
                         <FormField id="change-phone" label="新手机号">
                           <Input
                             type="tel"
@@ -631,7 +649,11 @@ export default function SettingsPage() {
                           />
                         </FormField>
                         <div className="flex gap-2 items-end">
-                          <FormField id="change-code" label="短信验证码" className="flex-1">
+                          <FormField
+                            id="change-code"
+                            label="短信验证码"
+                            className="flex-1"
+                          >
                             <Input
                               value={changeCode}
                               onChange={(e) => setChangeCode(e.target.value)}
@@ -644,7 +666,9 @@ export default function SettingsPage() {
                             disabled={changeCooldown > 0}
                             className="shrink-0 btn-default btn-sm disabled:opacity-50"
                           >
-                            {changeCooldown > 0 ? `${changeCooldown}s` : "获取验证码"}
+                            {changeCooldown > 0
+                              ? `${changeCooldown}s`
+                              : "获取验证码"}
                           </button>
                         </div>
                         <button
@@ -660,30 +684,51 @@ export default function SettingsPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <FormField id="set-old-pwd" label="当前密码" error={pwdErrors.oldPwd}>
+                    <FormField
+                      id="set-old-pwd"
+                      label="当前密码"
+                      error={pwdErrors.oldPwd}
+                    >
                       <PasswordInput
                         name="old-password"
                         autoComplete="current-password"
                         value={oldPwd}
-                        onChange={(e) => { setOldPwd(e.target.value); setPwdErrors({}); }}
+                        onChange={(e) => {
+                          setOldPwd(e.target.value);
+                          setPwdErrors({});
+                        }}
                         hasError={!!pwdErrors.oldPwd}
                       />
                     </FormField>
-                    <FormField id="set-new-pwd" label="新密码" error={pwdErrors.newPwd}>
+                    <FormField
+                      id="set-new-pwd"
+                      label="新密码"
+                      error={pwdErrors.newPwd}
+                    >
                       <PasswordInput
                         name="new-password"
                         autoComplete="new-password"
                         value={newPwd}
-                        onChange={(e) => { setNewPwd(e.target.value); setPwdErrors({}); }}
+                        onChange={(e) => {
+                          setNewPwd(e.target.value);
+                          setPwdErrors({});
+                        }}
                         hasError={!!pwdErrors.newPwd}
                       />
                     </FormField>
-                    <FormField id="set-confirm-pwd" label="确认新密码" error={pwdErrors.confirmPwd}>
+                    <FormField
+                      id="set-confirm-pwd"
+                      label="确认新密码"
+                      error={pwdErrors.confirmPwd}
+                    >
                       <PasswordInput
                         name="confirm-password"
                         autoComplete="new-password"
                         value={confirmPwd}
-                        onChange={(e) => { setConfirmPwd(e.target.value); setPwdErrors({}); }}
+                        onChange={(e) => {
+                          setConfirmPwd(e.target.value);
+                          setPwdErrors({});
+                        }}
                         hasError={!!pwdErrors.confirmPwd}
                       />
                     </FormField>
@@ -701,7 +746,9 @@ export default function SettingsPage() {
                 )}
 
                 <div className="mt-6 pt-6 border-t border-[var(--divider)]">
-                  <h3 className="text-sm font-semibold text-[var(--coral)] mb-2">危险区域</h3>
+                  <h3 className="text-sm font-semibold text-[var(--coral)] mb-2">
+                    危险区域
+                  </h3>
                   <p className="text-sm text-[var(--text-muted)] mb-4">
                     注销账号后，个人资料将被匿名化且无法恢复。
                   </p>
@@ -719,7 +766,7 @@ export default function SettingsPage() {
                   )}
                   {user.auth_provider === "google" && (
                     <div className="space-y-3 max-w-md">
-                      <FormField id="delete-confirm" label='输入 DELETE 确认'>
+                      <FormField id="delete-confirm" label="输入 DELETE 确认">
                         <Input
                           value={deleteConfirm}
                           onChange={(e) => setDeleteConfirm(e.target.value)}
@@ -739,7 +786,11 @@ export default function SettingsPage() {
                         />
                       </FormField>
                       <div className="flex gap-2 items-end">
-                        <FormField id="delete-sms" label="短信验证码" className="flex-1">
+                        <FormField
+                          id="delete-sms"
+                          label="短信验证码"
+                          className="flex-1"
+                        >
                           <Input
                             value={deleteSmsCode}
                             onChange={(e) => setDeleteSmsCode(e.target.value)}
@@ -752,7 +803,9 @@ export default function SettingsPage() {
                           disabled={deleteSmsCooldown > 0}
                           className="shrink-0 btn-default btn-sm disabled:opacity-50"
                         >
-                          {deleteSmsCooldown > 0 ? `${deleteSmsCooldown}s` : "获取验证码"}
+                          {deleteSmsCooldown > 0
+                            ? `${deleteSmsCooldown}s`
+                            : "获取验证码"}
                         </button>
                       </div>
                     </div>
@@ -772,11 +825,17 @@ export default function SettingsPage() {
             {section === "sessions" && (
               <div className="surface-card p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-[var(--title)]">我的会话</h2>
-                  <span className="text-xs text-[var(--text-muted)]">共 {sessionTotal} 个</span>
+                  <h2 className="text-base font-semibold text-[var(--title)]">
+                    我的会话
+                  </h2>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    共 {sessionTotal} 个
+                  </span>
                 </div>
                 {loadingSessions ? (
-                  <div className="py-8 text-center text-[var(--text-muted)]">加载中…</div>
+                  <div className="py-8 text-center text-[var(--text-muted)]">
+                    加载中…
+                  </div>
                 ) : sessions.length === 0 ? (
                   <div className="py-8 text-center text-[var(--text-muted)]">
                     <DeimosIcon name="chat" className="mx-auto mb-3 h-8 w-8" />
@@ -785,7 +844,10 @@ export default function SettingsPage() {
                 ) : (
                   <ul className="divide-y divide-[var(--divider)]">
                     {sessions.map((s) => (
-                      <li key={s.id} className="py-3 flex items-center justify-between">
+                      <li
+                        key={s.id}
+                        className="py-3 flex items-center justify-between"
+                      >
                         <Link href={`/chat/${s.id}`} className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-[var(--title)] truncate hover:text-[var(--primary)]">
                             {s.title || "未命名会话"}
@@ -804,22 +866,51 @@ export default function SettingsPage() {
 
             {section === "notifications" && (
               <div className="surface-card p-6">
-                <h2 className="text-base font-semibold text-[var(--title)] mb-1">通知偏好</h2>
+                <h2 className="text-base font-semibold text-[var(--title)] mb-1">
+                  通知偏好
+                </h2>
                 <p className="text-sm text-[var(--text-muted)] mb-4">
                   选择你希望在哪些事件发生时收到通知
                 </p>
                 <ul className="divide-y divide-[var(--divider)]">
                   {[
-                    { key: "email_on_follow", label: "有人关注我", desc: "新粉丝通知" },
-                    { key: "email_on_comment", label: "我的想法被评论", desc: "评论通知" },
-                    { key: "email_on_flower", label: "我的想法收到期待", desc: "期待通知" },
-                    { key: "email_on_mention", label: "@ 提及我", desc: "评论中 @ 我" },
-                    { key: "email_weekly_digest", label: "每周精选摘要", desc: "每周一封邮件汇总" },
+                    {
+                      key: "email_on_follow",
+                      label: "有人关注我",
+                      desc: "新粉丝通知",
+                    },
+                    {
+                      key: "email_on_comment",
+                      label: "我的想法被评论",
+                      desc: "评论通知",
+                    },
+                    {
+                      key: "email_on_flower",
+                      label: "我的想法收到期待",
+                      desc: "期待通知",
+                    },
+                    {
+                      key: "email_on_mention",
+                      label: "@ 提及我",
+                      desc: "评论中 @ 我",
+                    },
+                    {
+                      key: "email_weekly_digest",
+                      label: "每周精选摘要",
+                      desc: "每周一封邮件汇总",
+                    },
                   ].map((row) => (
-                    <li key={row.key} className="py-3 flex items-center justify-between">
+                    <li
+                      key={row.key}
+                      className="py-3 flex items-center justify-between"
+                    >
                       <div>
-                        <div className="text-sm font-medium text-[var(--title)]">{row.label}</div>
-                        <div className="text-xs text-[var(--text-muted)] mt-0.5">{row.desc}</div>
+                        <div className="text-sm font-medium text-[var(--title)]">
+                          {row.label}
+                        </div>
+                        <div className="text-xs text-[var(--text-muted)] mt-0.5">
+                          {row.desc}
+                        </div>
                       </div>
                       <Toggle
                         id={`pref-${row.key}`}
@@ -842,7 +933,11 @@ export default function SettingsPage() {
                     disabled={!prefsLoaded || prefsSaving}
                     className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
                   >
-                    {prefsSaving ? "保存中…" : !prefsLoaded ? "加载中…" : "保存偏好"}
+                    {prefsSaving
+                      ? "保存中…"
+                      : !prefsLoaded
+                        ? "加载中…"
+                        : "保存偏好"}
                   </button>
                 </div>
               </div>
@@ -850,25 +945,42 @@ export default function SettingsPage() {
 
             {section === "blocks" && (
               <div className="surface-card p-6">
-                <h2 className="text-base font-semibold text-[var(--title)] mb-1">屏蔽管理</h2>
+                <h2 className="text-base font-semibold text-[var(--title)] mb-1">
+                  屏蔽管理
+                </h2>
                 <p className="text-sm text-[var(--text-muted)] mb-4">
                   被屏蔽的用户无法与你互动，也不会出现在你的内容流中。
                 </p>
                 {!blocksLoaded ? (
-                  <div className="py-8 text-center text-[var(--text-muted)]">加载中…</div>
+                  <div className="py-8 text-center text-[var(--text-muted)]">
+                    加载中…
+                  </div>
                 ) : blockedUsers.length === 0 ? (
                   <div className="py-8 text-center text-[var(--text-muted)]">
-                    <DeimosIcon name="shield" className="mx-auto mb-2 h-7 w-7" />
+                    <DeimosIcon
+                      name="shield"
+                      className="mx-auto mb-2 h-7 w-7"
+                    />
                     还没有屏蔽任何用户
                   </div>
                 ) : (
                   <ul className="divide-y divide-[var(--divider)]">
                     {blockedUsers.map((u) => (
-                      <li key={u.id} className="py-3 flex items-center justify-between gap-3">
-                        <Link href={`/users/${u.id}`} className="flex items-center gap-3 min-w-0 flex-1">
+                      <li
+                        key={u.id}
+                        className="py-3 flex items-center justify-between gap-3"
+                      >
+                        <Link
+                          href={`/users/${u.id}`}
+                          className="flex items-center gap-3 min-w-0 flex-1"
+                        >
                           <div className="h-9 w-9 rounded-full bg-[var(--primary-soft)] flex items-center justify-center text-sm font-medium text-[var(--primary)] overflow-hidden shrink-0">
                             {u.avatar_url ? (
-                              <img src={u.avatar_url} alt="" className="h-full w-full object-cover" />
+                              <img
+                                src={u.avatar_url}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
                               u.name?.charAt(0).toUpperCase() || "?"
                             )}
@@ -878,7 +990,9 @@ export default function SettingsPage() {
                               {u.name}
                             </div>
                             {u.bio && (
-                              <div className="text-xs text-[var(--text-muted)] truncate">{u.bio}</div>
+                              <div className="text-xs text-[var(--text-muted)] truncate">
+                                {u.bio}
+                              </div>
                             )}
                           </div>
                         </Link>
@@ -900,23 +1014,36 @@ export default function SettingsPage() {
               <div className="space-y-6">
                 <div className="surface-card p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-base font-semibold text-[var(--title)]">浏览器 API Key</h2>
+                    <h2 className="text-base font-semibold text-[var(--title)]">
+                      浏览器 API Key
+                    </h2>
                   </div>
                   <p className="text-sm text-[var(--text-muted)] mb-4">
-                    在浏览器中 Fork、点赞等操作时使用的 Agent Key（存于本地）。各 Agent 的独立 Key 请在「我的 Agent」中管理。
+                    在浏览器中 Fork、点赞等操作时使用的 Agent
+                    Key（存于本地）。各 Agent 的独立 Key 请在「我的
+                    Agent」中管理。
                   </p>
                   <ApiKeyBrowserBinding />
                 </div>
                 <div className="surface-card p-6">
-                  <h2 className="text-base font-semibold text-[var(--title)] mb-2">管理各 Agent 的 Key</h2>
+                  <h2 className="text-base font-semibold text-[var(--title)] mb-2">
+                    管理各 Agent 的 Key
+                  </h2>
                   <p className="text-sm text-[var(--text-muted)] mb-4">
-                    注册或重新生成后 Key 仅显示一次。用于 MCP、REST 或 A2A 接入。
+                    注册或重新生成后 Key 仅显示一次。用于 MCP、REST 或 A2A
+                    接入。
                   </p>
                   <Link href="/user/agents" className="btn-outline btn-sm">
                     前往我的 Agent
                   </Link>
                   <p className="mt-3 text-xs text-[var(--text-muted)]">
-                    MCP 配置见 <Link href="/docs/mcp" className="text-[var(--primary)] hover:underline">文档</Link>
+                    MCP 配置见{" "}
+                    <Link
+                      href="/docs/mcp"
+                      className="text-[var(--primary)] hover:underline"
+                    >
+                      文档
+                    </Link>
                   </p>
                 </div>
               </div>
@@ -951,13 +1078,19 @@ function ApiKeyBrowserBinding() {
     <div className="space-y-4">
       <div className="rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)]/50 p-4">
         <p className="text-sm text-[var(--text-muted)]">当前绑定的 Agent</p>
-        <p className="text-base font-medium text-[var(--title)] mt-1">{agentName || "Agent"}</p>
+        <p className="text-base font-medium text-[var(--title)] mt-1">
+          {agentName || "Agent"}
+        </p>
         {agentId && (
-          <p className="text-xs text-[var(--text-muted)] mt-1 font-mono">{agentId}</p>
+          <p className="text-xs text-[var(--text-muted)] mt-1 font-mono">
+            {agentId}
+          </p>
         )}
       </div>
       <div>
-        <label className="block text-sm font-medium text-[var(--title)] mb-1.5">API Key</label>
+        <label className="block text-sm font-medium text-[var(--title)] mb-1.5">
+          API Key
+        </label>
         <div className="flex gap-2">
           <input
             type={revealed ? "text" : "password"}
@@ -965,18 +1098,28 @@ function ApiKeyBrowserBinding() {
             value={apiKey || ""}
             className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm font-mono text-[var(--text-secondary)]"
           />
-          <button type="button" onClick={() => setRevealed(!revealed)} className="btn-default btn-sm">
+          <button
+            type="button"
+            onClick={() => setRevealed(!revealed)}
+            className="btn-default btn-sm"
+          >
             {revealed ? "隐藏" : "显示"}
           </button>
         </div>
       </div>
-      <button type="button" onClick={() => setApiKey("")} className="btn-danger btn-sm">
+      <button
+        type="button"
+        onClick={() => setApiKey("")}
+        className="btn-danger btn-sm"
+      >
         解除绑定
       </button>
     </div>
   ) : (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-[var(--title)]">输入 Agent API Key</label>
+      <label className="block text-sm font-medium text-[var(--title)]">
+        输入 Agent API Key
+      </label>
       <div className="max-w-md flex gap-2">
         <input
           type="password"
@@ -1006,11 +1149,17 @@ function ApiKeyBrowserBinding() {
       </div>
       <p className="text-xs text-[var(--text-muted)]">
         还没有 Key？在{" "}
-        <Link href="/user/agents" className="text-[var(--primary)] hover:underline">
+        <Link
+          href="/user/agents"
+          className="text-[var(--primary)] hover:underline"
+        >
           我的 Agent
         </Link>{" "}
         重新生成，或{" "}
-        <Link href="/register" className="text-[var(--primary)] hover:underline">
+        <Link
+          href="/register"
+          className="text-[var(--primary)] hover:underline"
+        >
           注册新 Agent
         </Link>
       </p>

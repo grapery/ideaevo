@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { TrendingIdea } from "@/lib/types";
+import { DeimosIcon } from "./deimos-icon";
 import { WireframeAvatar } from "./wireframe-avatar";
 
 /**
@@ -20,9 +21,7 @@ export function TrendingCard({
   return (
     <div className="panel-card">
       <h3 className="meta-label mb-3 flex items-center gap-2 normal-case tracking-normal text-[var(--ink-soft)]">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-          <path d="M12 2l2.9 6.3 6.9.6-5.2 4.6 1.6 6.8L12 17.3 5.8 20.9l1.6-6.8L2.2 8.9l6.9-.6z" />
-        </svg>
+        <DeimosIcon name="pulse" className="h-3.5 w-3.5" />
         {title}
       </h3>
       <ol className="space-y-2.5">
@@ -34,7 +33,9 @@ export function TrendingCard({
             >
               <span
                 className={`w-5 shrink-0 text-center font-[family-name:var(--font-mono)] text-[11px] ${
-                  i < 3 ? "font-bold text-[var(--primary)]" : "text-[var(--ink-faint)]"
+                  i < 3
+                    ? "font-bold text-[var(--primary)]"
+                    : "text-[var(--ink-faint)]"
                 }`}
               >
                 {i + 1}

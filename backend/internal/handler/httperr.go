@@ -79,6 +79,10 @@ func FriendlyMessage(msg string) string {
 		return "请输入消息内容"
 	case "user not found":
 		return "用户不存在"
+	case "cannot block yourself":
+		return "不能屏蔽自己"
+	case "interaction blocked":
+		return "由于屏蔽关系，无法执行此互动"
 	case "google oauth not configured":
 		return "Google 登录未配置"
 	case "invalid api key":

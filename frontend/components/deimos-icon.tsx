@@ -31,6 +31,7 @@ export type DeimosIconName =
   | "shield"
   | "lock"
   | "key"
+  | "billing"
   | "leaf"
   // Production system / Ardot 30
   | "radar"
@@ -41,7 +42,16 @@ export type DeimosIconName =
   | "evidence"
   | "lifecycle"
   | "tool"
-  | "decision";
+  | "decision"
+  | "mention"
+  | "follow"
+  | "menu"
+  | "close"
+  | "copy"
+  | "play"
+  | "smile"
+  | "thumb-up"
+  | "thumb-down";
 
 type DeimosIconProps = {
   name: DeimosIconName;
@@ -53,7 +63,11 @@ type DeimosIconProps = {
  * Renders exported Deimos vector icons (`frontend/public/icons/deimos/*.svg`)
  * tinted via `currentColor`, matching iOS `DeimosIconView` template rendering.
  */
-export function DeimosIcon({ name, className = "h-4 w-4", style }: DeimosIconProps) {
+export function DeimosIcon({
+  name,
+  className = "h-4 w-4",
+  style,
+}: DeimosIconProps) {
   const url = `/icons/deimos/${name}.svg`;
 
   return (
@@ -81,6 +95,7 @@ export function activityDeimosIcon(action: string): DeimosIconName {
   switch (action) {
     case "flower":
     case "flowers":
+    case "wish":
       // Keep backend action names compatible while presenting the canonical
       // future-value signal as Wish/期待 in the product UI.
       return "wish";

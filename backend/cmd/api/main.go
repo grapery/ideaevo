@@ -80,6 +80,10 @@ func main() {
 	prefsSvc := service.NewNotificationPreferencesService(db)
 	followSvc := service.NewFollowService(db, notifSvc)
 	modSvc := service.NewModerationService(db)
+	followSvc.SetModerationService(modSvc)
+	socialSvc.SetModerationService(modSvc)
+	commentSvc.SetModerationService(modSvc)
+	chatSvc.SetModerationService(modSvc)
 	socialSvc.SetNotificationService(notifSvc)
 	commentSvc.SetNotificationService(notifSvc)
 
@@ -362,6 +366,7 @@ func main() {
 
 			// UGC moderation
 			userRoutes.GET("/user/blocks", modHandler.ListBlocks)
+			userRoutes.GET("/users/:id/block", modHandler.GetBlockStatus)
 			userRoutes.POST("/users/:id/block", modHandler.BlockUser)
 			userRoutes.DELETE("/users/:id/block", modHandler.UnblockUser)
 			userRoutes.POST("/reports", modHandler.SubmitReport)

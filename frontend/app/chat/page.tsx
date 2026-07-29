@@ -484,16 +484,16 @@ export default function ChatPage() {
   );
 
   const workbenchTopbar = (
-    <div className="flex h-12 shrink-0 items-center border-b border-[var(--divider)] bg-[var(--bg-surface)] px-[18px] font-code text-[10px]">
+    <div className="flex h-12 shrink-0 items-center border-b border-[var(--divider)] bg-[var(--bg-surface)] px-[18px] font-code text-xs">
       <Link href="/ideas" className="font-semibold tracking-[0.04em] text-[var(--title)] hover:text-[var(--accent-link)]">
         {t("chat.workbench")}
       </Link>
-      <span className="ml-5 hidden items-center gap-2 text-[#9bff00] sm:inline-flex">
+      <span className="ml-5 hidden items-center gap-2 text-[var(--accent-success)] sm:inline-flex">
         <span className="h-2 w-2 rounded-full bg-current" />
         {t("chat.streamingConnected")}
       </span>
-      <span className="ml-5 hidden text-[#9bff00] lg:inline">{t("chat.model")}: qwen-plus</span>
-      <span className="ml-5 hidden text-[#9bff00] lg:inline">{t("chat.tools")}: 8</span>
+      <span className="ml-5 hidden text-[var(--accent-success)] lg:inline">{t("chat.model")}: qwen-plus</span>
+      <span className="ml-5 hidden text-[var(--accent-success)] lg:inline">{t("chat.tools")}: 8</span>
       <span className="ml-auto hidden text-[var(--text-muted)] md:inline">{t("chat.commandHints")}</span>
       <div className="ml-4">
         <LanguageSwitcher dark />
@@ -508,7 +508,7 @@ export default function ChatPage() {
         <div className="flex flex-1 items-center justify-center bg-[var(--bg-canvas)] px-4 py-12">
           <div className="w-full max-w-[560px] overflow-hidden rounded-[8px] border border-[var(--rule)] bg-[var(--bg-surface)]">
             <div className="border-b border-[var(--rule)] px-6 py-5">
-              <p className="font-code text-[10px] tracking-[0.14em] text-[#9bff00]">
+              <p className="font-code text-xs tracking-[0.12em] text-[var(--accent-success)]">
                 {t("chat.authRequired")}
               </p>
             </div>
@@ -554,16 +554,16 @@ export default function ChatPage() {
       {workbenchTopbar}
       <div className="flex min-h-0 flex-1">
         {/* Session column */}
-        <div className={`${activeId ? "hidden md:flex" : "flex"} w-full md:w-[268px] shrink-0 border-r border-[var(--divider)] bg-[var(--bg-surface)] flex-col`}>
+        <div className={`${activeId ? "hidden md:flex" : "flex"} w-full md:w-[288px] shrink-0 border-r border-[var(--divider)] bg-[var(--bg-surface)] flex-col`}>
           <div className="border-b border-[var(--divider)] p-3">
             <button
               type="button"
               onClick={() => setShowNewDialog(true)}
-              className="flex h-10 w-full items-center rounded-[6px] bg-[#f5f5f7] px-3 text-left text-[12px] font-semibold text-[#111113] hover:bg-white"
+              className="flex h-11 w-full items-center rounded-[6px] bg-[#f2f4f7] px-3.5 text-left text-[13px] font-semibold text-[#15181d] hover:bg-white"
             >
               + {t("chat.newChat")}
             </button>
-            <p className="mt-3 font-code text-[9px] tracking-[0.08em] text-[var(--text-muted)]">{t("chat.recentSessions")}</p>
+            <p className="mt-3 font-code text-xs tracking-[0.08em] text-[var(--text-muted)]">{t("chat.recentSessions")}</p>
           </div>
           {sessions.length > 5 && (
           <div className="border-b border-[var(--divider)] px-3 py-2">
@@ -607,12 +607,12 @@ export default function ChatPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium text-[var(--title)] truncate">{s.title}</span>
-                    <span className="text-[10px] text-[var(--text-muted)] shrink-0 tabular-nums">
+                    <span className="text-xs text-[var(--text-muted)] shrink-0 tabular-nums">
                       {formatSessionTime(s.updated_at, locale)}
                     </span>
                   </div>
                   <div className="mt-0.5 flex items-center justify-between gap-2">
-                    <p className="text-xs text-[var(--text-muted)] truncate">
+                    <p className="text-[13px] text-[var(--text-muted)] truncate">
                       {agentName} · {t("chat.messageCount", { count: s.message_count })}
                     </p>
                     <div className="flex shrink-0 items-center gap-2.5">
@@ -622,7 +622,7 @@ export default function ChatPage() {
                           e.stopPropagation();
                           void handleArchiveSession(s.id);
                         }}
-                        className="text-xs text-[var(--text-muted)] hover:text-[var(--ink)]"
+                        className="text-[12px] text-[var(--text-muted)] hover:text-[var(--ink)]"
                       >
                         {t("chat.archive")}
                       </button>
@@ -632,7 +632,7 @@ export default function ChatPage() {
                           e.stopPropagation();
                           setPendingDeleteId(s.id);
                         }}
-                        className="text-xs text-[var(--text-muted)] hover:text-[var(--coral)]"
+                        className="text-[12px] text-[var(--text-muted)] hover:text-[var(--coral)]"
                       >
                         {t("chat.delete")}
                       </button>
@@ -664,7 +664,7 @@ export default function ChatPage() {
             </div>
           ) : (
             <>
-              <div className="flex h-[70px] shrink-0 items-center gap-3 border-b border-[var(--divider)] bg-[#0a0a0b] px-6">
+              <div className="flex h-[72px] shrink-0 items-center gap-3 border-b border-[var(--divider)] bg-[var(--bg-surface)] px-6">
                 <button
                   type="button"
                   onClick={() => setActiveId(null)}
@@ -681,18 +681,18 @@ export default function ChatPage() {
                   size={38}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[var(--title)]">{activeSession?.title || agentName}</p>
+                  <p className="text-[15px] font-semibold text-[var(--title)]">{activeSession?.title || agentName}</p>
                   {ideaTitle && (
-                    <p className="text-xs text-[var(--accent-link)] truncate">{t("chat.ideaContext")}: {ideaTitle}</p>
+                    <p className="text-[13px] text-[var(--accent-link)] truncate">{t("chat.ideaContext")}: {ideaTitle}</p>
                   )}
                 </div>
-                <span className="inline-flex items-center gap-1.5 font-code text-[9px] font-medium text-[#9bff00]">
+                <span className="inline-flex items-center gap-1.5 font-code text-xs font-medium text-[var(--accent-success)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-current" />{t("chat.executable")}
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-5 py-6 lg:px-10">
-                <div className="mx-auto max-w-[820px]">
+              <div className="flex-1 overflow-y-auto px-5 py-7 lg:px-10">
+                <div className="mx-auto max-w-[880px]">
                 {loading ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="animate-spin w-6 h-6 border-2 border-[var(--primary)] border-t-transparent rounded-full" />
@@ -737,31 +737,31 @@ export default function ChatPage() {
           )}
         </div>
 
-        <aside className="hidden w-[392px] shrink-0 border-l border-[var(--divider)] bg-[var(--bg-surface)] xl:flex xl:flex-col">
-          <div className="flex h-[70px] shrink-0 items-center border-b border-[var(--divider)] px-4">
+        <aside className="hidden w-[380px] shrink-0 border-l border-[var(--divider)] bg-[var(--bg-surface)] xl:flex xl:flex-col">
+          <div className="flex h-[72px] shrink-0 items-center border-b border-[var(--divider)] px-5">
             <div>
-              <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-[var(--title)]">{t("chat.evidenceArtifact")}</p>
-              <p className="mt-1 font-code text-[9px] text-[var(--text-muted)]">implementation-check.json</p>
+              <p className="font-code text-[12px] font-semibold tracking-[0.06em] text-[var(--title)]">{t("chat.evidenceArtifact")}</p>
+              <p className="mt-1 font-code text-xs text-[var(--text-muted)]">implementation-check.json</p>
             </div>
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto p-4">
-            <section className="rounded-[6px] border border-[#3b6e00] bg-[#132316] p-3 font-code text-[11px] leading-6 text-[#9bff00]">
+            <section className="rounded-[6px] border border-[#466b48] bg-[var(--accent-success-soft)] p-4 font-code text-[12px] leading-7 text-[var(--accent-success)]">
               <p>{t("chat.currentVerdict")}</p>
               <p>{activeId ? t("chat.inProgress") : t("chat.waitingSession")}</p>
               <p>{t("chat.confidence")}: {activeId ? "0.78" : "—"}</p>
             </section>
             <section>
-              <div className="rounded-[6px] border border-[var(--rule)] bg-[#0a0a0b] p-3">
-                <p className="font-code text-[10px] text-[var(--title)]">{t("chat.currentExecutor")}</p>
-                <p className="mt-3 flex items-center gap-2 text-[12px] font-medium text-[var(--title)]">
+              <div className="rounded-[6px] border border-[var(--rule)] bg-[var(--bg-canvas)] p-4">
+                <p className="font-code text-[12px] text-[var(--title)]">{t("chat.currentExecutor")}</p>
+                <p className="mt-3 flex items-center gap-2 text-[13px] font-medium text-[var(--title)]">
                   <DeimosIcon name="agent" className="h-4 w-4 text-[#36d399]" />
                   {activeId ? agentName : t("chat.waitingSession")}
                 </p>
-                <p className="mt-2 font-code text-[9px] text-[var(--text-muted)]">{t("chat.toolsConnected")}</p>
+                <p className="mt-2 font-code text-xs text-[var(--text-muted)]">{t("chat.toolsConnected")}</p>
               </div>
             </section>
             <section>
-              <div className="rounded-[6px] border border-[var(--rule)] bg-[#0a0a0b] p-3 font-code text-[10px] leading-6 text-[var(--text-secondary)]">
+              <div className="rounded-[6px] border border-[var(--rule)] bg-[var(--bg-canvas)] p-4 font-code text-[12px] leading-7 text-[var(--text-secondary)]">
                 <p className="text-[var(--title)]">{t("chat.candidates")}</p>
                 <p className="mt-3">01&nbsp;&nbsp;{ideaTitle || t("chat.noIdeaBound")}</p>
                 <p>02&nbsp;&nbsp;{t("chat.semanticDedup")}</p>
@@ -769,7 +769,7 @@ export default function ChatPage() {
               </div>
             </section>
             <section>
-              <div className="rounded-[6px] border border-[var(--rule)] bg-[#0a0a0b] p-3 font-code text-[10px] leading-6 text-[#8dc0ff]">
+              <div className="rounded-[6px] border border-[var(--rule)] bg-[var(--bg-canvas)] p-4 font-code text-[12px] leading-7 text-[var(--accent-link)]">
                 <p className="text-[var(--title)]">{t("chat.provenance")}</p>
                 <p className="mt-3">09:42:18 search_ideas</p>
                 <p>09:42:19 get_idea</p>
@@ -780,8 +780,8 @@ export default function ChatPage() {
               </div>
             </section>
           </div>
-          <div className="flex h-12 shrink-0 items-center gap-6 border-t border-[var(--divider)] px-4 font-code text-[9px] text-[var(--title)]">
-            <button type="button" className="hover:text-[#9bff00]">{t("chat.saveToIdea")}</button>
+          <div className="flex h-12 shrink-0 items-center gap-6 border-t border-[var(--divider)] px-4 font-code text-xs text-[var(--title)]">
+            <button type="button" className="hover:text-[var(--accent-success)]">{t("chat.saveToIdea")}</button>
             <button type="button" className="hover:text-[var(--accent-link)]">{t("chat.forkSession")}</button>
             <button type="button" className="hover:text-[var(--accent-link)]">{t("chat.exportJson")}</button>
           </div>

@@ -1,18 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getErrorMessage } from "@/lib/api-error";
-import {
-  IDEA_AUTH_REQUIRED_MSG,
-  ideaRequestJson,
-} from "@/lib/idea-request";
+import { IDEA_AUTH_REQUIRED_MSG, ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { Modal } from "@/components/ui/modal";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { notify } from "@/components/ui/notify";
+import { DeimosIcon } from "@/components/deimos-icon";
 import { IconGitFork } from "./icons";
 
 type ForkIdeaDialogProps = {
@@ -28,11 +26,17 @@ const TITLE_MAX = 120;
 function validateTitle(v: string): string {
   const t = v.trim();
   if (!t) return "请为新想法填写标题";
-  if (t.length > TITLE_MAX) return `标题最多 ${TITLE_MAX} 字，当前 ${t.length} 字`;
+  if (t.length > TITLE_MAX)
+    return `标题最多 ${TITLE_MAX} 字，当前 ${t.length} 字`;
   return "";
 }
 
-export function ForkIdeaDialog({
+export function ForkIdeaDialog(props: ForkIdeaDialogProps) {
+  if (!props.open) return null;
+  return <ForkIdeaDialogContent key={props.ideaId} {...props} />;
+}
+
+function ForkIdeaDialogContent({
   open,
   onClose,
   ideaId,
@@ -54,18 +58,6 @@ export function ForkIdeaDialog({
     form?: string;
   }>({});
   const [loading, setLoading] = useState(false);
-
-  // 打开时重置表单。
-  useEffect(() => {
-    if (open) {
-      setTitle(defaultTitle);
-      setDescription("");
-      setReason("");
-      setErrors({});
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, ideaId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,7 +90,7 @@ export function ForkIdeaDialog({
             description: description.trim(),
             reason: reason.trim(),
           }),
-        }
+        },
       );
       notify.success("已基于该想法创建你的新想法", {
         action: {
@@ -167,7 +159,9 @@ export function ForkIdeaDialog({
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-[var(--divider)] bg-[var(--bg-subtle)] px-4 py-3">
         <IconGitFork className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" />
         <div className="min-w-0">
-          <div className="text-xs text-[var(--text-muted)]">将基于此想法创建 Fork</div>
+          <div className="text-xs text-[var(--text-muted)]">
+            将基于此想法创建 Fork
+          </div>
           <div className="mt-0.5 line-clamp-2 text-sm font-medium text-[var(--title)]">
             {sourceTitle}
           </div>
@@ -242,10 +236,7 @@ export function ForkIdeaDialog({
             role="alert"
             className="field-shake flex items-start gap-2.5 rounded-xl border border-[var(--coral)] bg-[var(--coral-soft)] px-4 py-2.5 text-sm text-[var(--coral)]"
           >
-            <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 8v4M12 16h.01" />
-            </svg>
+            <DeimosIcon name="decision" className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{errors.form}</span>
           </div>
         )}

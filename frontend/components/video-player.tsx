@@ -1,24 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-/** 内联播放图标(三角),避免引入新图标依赖。 */
-function PlayIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-}
-
-/** 内联关闭图标(X)。 */
-function CloseIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
-}
+import { DeimosIcon } from "./deimos-icon";
 
 /**
  * 视频封面按钮:显示首帧缩略图 + 播放图标,点击弹出全屏模态播放器。
@@ -55,7 +38,7 @@ export function VideoCoverButton({
         <span className="absolute inset-0 bg-black/20 transition-opacity group-hover:bg-black/30" />
         <span className="absolute flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg">
           <span className="ml-0.5 text-[var(--ink,#0f1b2d)]">
-            <PlayIcon size={20} />
+            <DeimosIcon name="play" className="h-5 w-5" />
           </span>
         </span>
       </button>
@@ -78,7 +61,7 @@ function VideoModal({ url, onClose }: { url: string; onClose: () => void }) {
         className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
         aria-label="关闭"
       >
-        <CloseIcon size={20} />
+        <DeimosIcon name="close" className="h-5 w-5" />
       </button>
       <video
         src={url}

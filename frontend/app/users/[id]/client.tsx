@@ -22,17 +22,21 @@ export default function UserPageClient({
   const [followingState, setFollowingState] = useState(initialFollowing);
   const [reportOpen, setReportOpen] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [blockedBy, setBlockedBy] = useState(false);
   const { user: currentUser } = useAuth();
 
   // 看自己 → 不显示关注按钮（与 own profile 一致）。
   const isSelf = currentUser?.id === profile.user.id;
 
-  // 登录用户预查是否已屏蔽该用户（后端无单点状态接口，用 listBlocks 判断）
+  // 单点状态同时返回双向屏蔽关系，用于立即关闭关注等互动入口。
   useEffect(() => {
     if (!currentUser || isSelf) return;
     modApi
-      .listBlocks()
-      .then((res) => setBlocked(res.users.some((u) => u.id === profile.user.id)))
+      .getBlockStatus(profile.user.id)
+      .then((res) => {
+        setBlocked(res.blocked);
+        setBlockedBy(res.blocked_by);
+      })
       .catch(() => {});
   }, [currentUser, isSelf, profile.user.id]);
 
@@ -53,13 +57,21 @@ export default function UserPageClient({
           actions={
             !isSelf && currentUser ? (
               <div className="flex flex-wrap items-center gap-2">
-                <FollowButton
+                {!blocked && !blockedBy && (
+                  <FollowButton
+                    userId={profile.user.id}
+                    initialFollowing={followingState}
+                    onChange={setFollowingState}
+                    iconOnly
+                  />
+                )}
+                <BlockButton
+                  key={blocked ? "blocked" : "unblocked"}
                   userId={profile.user.id}
-                  initialFollowing={followingState}
-                  onChange={setFollowingState}
+                  initialBlocked={blocked}
+                  onChange={setBlocked}
                   iconOnly
                 />
-                <BlockButton userId={profile.user.id} initialBlocked={blocked} iconOnly />
                 <IconActionButton
                   onClick={() => setReportOpen(true)}
                   label="举报用户"

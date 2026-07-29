@@ -26,10 +26,10 @@ type SendMessageInput struct {
 }
 
 type SendMessageResult struct {
-	UserMessage      model.ChatMessage  `json:"user_message"`
-	AssistantMessage model.ChatMessage  `json:"assistant_message"`
-	ToolResults      []ToolCallResult   `json:"tool_results,omitempty"` // 工具调用结果（前端可渲染卡片）
-	TokensUsed       int                `json:"tokens_used,omitempty"`
+	UserMessage      model.ChatMessage `json:"user_message"`
+	AssistantMessage model.ChatMessage `json:"assistant_message"`
+	ToolResults      []ToolCallResult  `json:"tool_results,omitempty"` // 工具调用结果（前端可渲染卡片）
+	TokensUsed       int               `json:"tokens_used,omitempty"`
 }
 
 type ChatMessageView struct {
@@ -50,9 +50,10 @@ type ChatService struct {
 	embed         *EmbeddingService
 	searcher      SimilaritySearcher // 可选，用于 RAG 检索
 	ideaRetriever *IdeaContextRetriever
-	tools         *ToolExecutor      // 可选，启用后支持 tool use
-	toolNames     []string           // 给 LLM 暴露的工具白名单（空=全部）
+	tools         *ToolExecutor        // 可选，启用后支持 tool use
+	toolNames     []string             // 给 LLM 暴露的工具白名单（空=全部）
 	subSvc        *SubscriptionService // 可选，启用后对 LLM token 做每日额度计量
+	modSvc        *ModerationService
 }
 
 func NewChatService(db *gorm.DB, ideaSvc *IdeaService, agentSvc *AgentService, llm *LLMService) *ChatService {
@@ -81,6 +82,10 @@ func (s *ChatService) SetSubscription(subSvc *SubscriptionService) {
 	s.subSvc = subSvc
 }
 
+func (s *ChatService) SetModerationService(modSvc *ModerationService) {
+	s.modSvc = modSvc
+}
+
 func (s *ChatService) CreateSession(userID string, input CreateSessionInput) (*model.ChatSession, error) {
 	agent, err := s.agentSvc.GetByID(input.AgentID)
 	if err != nil {
@@ -90,6 +95,11 @@ func (s *ChatService) CreateSession(userID string, input CreateSessionInput) (*m
 	// 权限校验：agent 关闭了对话（owner 自己不受限）
 	if agent.AllowChat != nil && !*agent.AllowChat && agent.OwnerUserID != userID {
 		return nil, fmt.Errorf("this agent does not accept chats")
+	}
+	if s.modSvc != nil {
+		if err := s.modSvc.EnsureUsersCanInteract(userID, agent.OwnerUserID); err != nil {
+			return nil, err
+		}
 	}
 
 	// Reuse an existing idea-bound session to avoid duplicate conversations.
@@ -405,6 +415,11 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 	if err != nil {
 		return nil, err
 	}
+	if s.modSvc != nil {
+		if err := s.modSvc.EnsureAgentInteraction(userID, session.AgentID); err != nil {
+			return nil, err
+		}
+	}
 
 	// 每日 token 额度预检：发消息前校验当日剩余额度。
 	// 解析计费归属用户（MCP 路径下 userID 形如 "agent:<id>"，需反查 agent owner）。
@@ -448,7 +463,7 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 }
 
 const (
-	maxToolRounds    = 5     // 单次对话最多 5 轮工具调用，防止失控
+	maxToolRounds    = 5      // 单次对话最多 5 轮工具调用，防止失控
 	maxToolHistoryMs = 60_000 // 整个 tool use 循环不超过 60 秒
 )
 
@@ -719,6 +734,11 @@ func (s *ChatService) SendMessageStream(sessionID, userID, content string) (<-ch
 	session, err := s.GetSession(sessionID, userID)
 	if err != nil {
 		return nil, nil, err
+	}
+	if s.modSvc != nil {
+		if err := s.modSvc.EnsureAgentInteraction(userID, session.AgentID); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// 每日 token 额度预检（同 SendMessage）
@@ -1113,7 +1133,8 @@ func (s *ChatService) buildSystemPrompt(session *model.ChatSession) string {
 // billingOwnerID 把聊天发起者解析成计费归属的用户 ID。
 // REST 用户聊天：userID 即用户 ID，直接返回。
 // MCP/A2A 路径：userID 形如 "agent:<agentID>"，需反查 agent.OwnerUserID；
-//   owner 为空（系统助手被 agent 调用）则不计费（返回空）。
+//
+//	owner 为空（系统助手被 agent 调用）则不计费（返回空）。
 func (s *ChatService) billingOwnerID(userID string) string {
 	const agentPrefix = "agent:"
 	if len(userID) > len(agentPrefix) && userID[:len(agentPrefix)] == agentPrefix {

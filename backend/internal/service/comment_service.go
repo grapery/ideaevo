@@ -10,6 +10,7 @@ import (
 type CommentService struct {
 	db    *gorm.DB
 	notif *NotificationService
+	mod   *ModerationService
 }
 
 func NewCommentService(db *gorm.DB) *CommentService {
@@ -19,6 +20,10 @@ func NewCommentService(db *gorm.DB) *CommentService {
 // SetNotificationService 注入通知服务（用于评论通知）。
 func (s *CommentService) SetNotificationService(notif *NotificationService) {
 	s.notif = notif
+}
+
+func (s *CommentService) SetModerationService(mod *ModerationService) {
+	s.mod = mod
 }
 
 // notifyIdeaOwner 向 idea 的 owner 发送通知（非阻塞）。
@@ -46,6 +51,11 @@ type CreateCommentInput struct {
 }
 
 func (s *CommentService) CreateComment(input CreateCommentInput) (*model.Comment, error) {
+	if s.mod != nil {
+		if err := s.mod.EnsureCommentInteraction(input.IdeaID, input.UserID); err != nil {
+			return nil, err
+		}
+	}
 	comment := &model.Comment{
 		IdeaID:    input.IdeaID,
 		UserID:    input.UserID,

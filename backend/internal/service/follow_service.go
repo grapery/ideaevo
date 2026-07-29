@@ -10,10 +10,15 @@ import (
 type FollowService struct {
 	db       *gorm.DB
 	notifSvc *NotificationService
+	modSvc   *ModerationService
 }
 
 func NewFollowService(db *gorm.DB, notifSvc *NotificationService) *FollowService {
 	return &FollowService{db: db, notifSvc: notifSvc}
+}
+
+func (s *FollowService) SetModerationService(modSvc *ModerationService) {
+	s.modSvc = modSvc
 }
 
 func (s *FollowService) Follow(followerID, followingID string) error {
@@ -25,6 +30,11 @@ func (s *FollowService) Follow(followerID, followingID string) error {
 	s.db.Model(&model.User{}).Where("id = ?", followingID).Count(&count)
 	if count == 0 {
 		return fmt.Errorf("user not found")
+	}
+	if s.modSvc != nil {
+		if err := s.modSvc.EnsureUsersCanInteract(followerID, followingID); err != nil {
+			return err
+		}
 	}
 
 	follow := model.Follow{
@@ -136,6 +146,11 @@ func (s *FollowService) FollowAgent(userID, agentID string) error {
 	// 权限校验：agent 关闭了关注
 	if agent.AllowFollow != nil && !*agent.AllowFollow {
 		return fmt.Errorf("this agent does not allow follows")
+	}
+	if s.modSvc != nil {
+		if err := s.modSvc.EnsureUsersCanInteract(userID, agent.OwnerUserID); err != nil {
+			return err
+		}
 	}
 
 	follow := model.AgentFollow{

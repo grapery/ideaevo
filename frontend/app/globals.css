@@ -166,33 +166,34 @@ body {
 
 /* Agent workbench: operational dark surface from Ardot boards 12 / 31. */
 .chat-workbench {
-  --bg-canvas: #0a0a0b;
-  --bg-surface: #111113;
-  --bg-subtle: #1a1a1e;
-  --bg-hover: #202025;
-  --title: #f5f6f7;
-  --body: #c8cbd1;
-  --text-secondary: #c8cbd1;
-  --text-muted: #858993;
-  --ink: #f5f6f7;
-  --ink-soft: #c8cbd1;
-  --ink-faint: #858993;
-  --rule: #303034;
-  --rule-light: #242428;
-  --rule-strong: #46464c;
+  --bg-canvas: #0f1115;
+  --bg-surface: #15181d;
+  --bg-subtle: #1d2128;
+  --bg-hover: #252b34;
+  --title: #f2f4f7;
+  --body: #d5d9e1;
+  --text-secondary: #cbd1da;
+  --text-muted: #9ba4b0;
+  --ink: #f2f4f7;
+  --ink-soft: #cbd1da;
+  --ink-faint: #9ba4b0;
+  --rule: #343b46;
+  --rule-light: #292f38;
+  --rule-strong: #4a5360;
   --border: var(--rule);
-  --divider: #27272b;
-  --primary: #3370ff;
-  --primary-hover: #4c82ff;
-  --primary-soft: #131d36;
-  --accent-link: #5d8cff;
-  --accent-link-hover: #77a0ff;
-  --accent-link-soft: #111a2f;
-  --accent-success: #7fdb76;
-  --accent-success-soft: #142217;
-  --input-bg: #161619;
+  --divider: #2c323b;
+  --primary: #6388e8;
+  --primary-hover: #7799ef;
+  --primary-soft: #1a2540;
+  --accent-link: #7da5f5;
+  --accent-link-hover: #96b7fa;
+  --accent-link-soft: #18233a;
+  --accent-success: #87d17d;
+  --accent-success-soft: #17271c;
+  --input-bg: #1a1e24;
   background: var(--bg-canvas);
   color: var(--body);
+  font-size: 15px;
 }
 
 .chat-workbench input,

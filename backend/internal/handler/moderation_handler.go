@@ -30,6 +30,21 @@ func (h *ModerationHandler) ListBlocks(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"users": out, "total": len(out)})
 }
 
+func (h *ModerationHandler) GetBlockStatus(c *gin.Context) {
+	viewerID := c.GetString("user_id")
+	targetID := c.Param("id")
+	blocked, blockedBy, err := h.modSvc.BlockStatus(viewerID, targetID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": ServiceError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"blocked":      blocked,
+		"blocked_by":   blockedBy,
+		"can_interact": !blocked && !blockedBy,
+	})
+}
+
 func (h *ModerationHandler) BlockUser(c *gin.Context) {
 	blockerID := c.GetString("user_id")
 	blockedID := c.Param("id")

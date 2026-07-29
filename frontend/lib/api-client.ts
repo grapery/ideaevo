@@ -1,4 +1,27 @@
-import { Idea, Comment, User, ChatSession, ChatMessage, MessageContentType, UserProfile, normalizeCapabilities, IdeaVersion, IdeaVersionSummary, Agent, IdeaStats, IdeaLineage, NotificationPreferences, UserDevice, PublishIdeaVersionInput, ChatArchiveResult, PlansResponse, MembershipView, CreateOrderResult, BillingOrder, Refund } from "./types";
+import {
+  Idea,
+  Comment,
+  User,
+  ChatSession,
+  ChatMessage,
+  MessageContentType,
+  UserProfile,
+  normalizeCapabilities,
+  IdeaVersion,
+  IdeaVersionSummary,
+  Agent,
+  IdeaStats,
+  IdeaLineage,
+  NotificationPreferences,
+  UserDevice,
+  PublishIdeaVersionInput,
+  ChatArchiveResult,
+  PlansResponse,
+  MembershipView,
+  CreateOrderResult,
+  BillingOrder,
+  Refund,
+} from "./types";
 import { getApiBase } from "./api-base";
 import { parseResponseError, formatApiError } from "./api-error";
 import { ideaRequestJson } from "./idea-request";
@@ -15,7 +38,10 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function fetchApi(path: string, options?: RequestInit): Promise<Response> {
+async function fetchApi(
+  path: string,
+  options?: RequestInit,
+): Promise<Response> {
   try {
     return await fetch(`${getApiBase()}${path}`, options);
   } catch {
@@ -50,7 +76,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-async function requestWithAuth<T>(path: string, options?: RequestInit): Promise<T> {
+async function requestWithAuth<T>(
+  path: string,
+  options?: RequestInit,
+): Promise<T> {
   const hasBody = options?.body != null;
   const headers: Record<string, string> = {
     ...(hasBody ? { "Content-Type": "application/json" } : {}),
@@ -88,7 +117,7 @@ export const api = {
   // Ideas
   queryIdeas: (params: Record<string, string | number> = {}) => {
     const qs = new URLSearchParams(
-      Object.entries(params).map(([k, v]) => [k, String(v)])
+      Object.entries(params).map(([k, v]) => [k, String(v)]),
     ).toString();
     return request<{ ideas: Idea[]; total: number }>(`/ideas?${qs}`);
   },
@@ -102,7 +131,7 @@ export const api = {
       repo_url?: string;
       demo_url?: string;
       icon_url?: string;
-    }
+    },
   ) =>
     requestWithAuth<Idea>(`/ideas/${id}/meta`, {
       method: "PATCH",
@@ -110,19 +139,33 @@ export const api = {
     }),
 
   presignIdeaIcon: (id: string, contentType: string) =>
-    requestWithAuth<{ upload_url: string; public_url: string; key: string; expires_in: number }>(
-      `/ideas/${id}/upload/presign`,
-      { method: "POST", body: JSON.stringify({ content_type: contentType, kind: "icon" }) }
-    ),
+    requestWithAuth<{
+      upload_url: string;
+      public_url: string;
+      key: string;
+      expires_in: number;
+    }>(`/ideas/${id}/upload/presign`, {
+      method: "POST",
+      body: JSON.stringify({ content_type: contentType, kind: "icon" }),
+    }),
 
   resetIdeaIcon: (id: string) =>
     requestWithAuth<Idea>(`/ideas/${id}/icon/reset`, { method: "POST" }),
 
-  presignIdeaAsset: (id: string, kind: "icon" | "content", contentType: string) =>
-    requestWithAuth<{ upload_url: string; public_url: string; key: string; expires_in: number }>(
-      `/ideas/${id}/upload/presign`,
-      { method: "POST", body: JSON.stringify({ content_type: contentType, kind }) }
-    ),
+  presignIdeaAsset: (
+    id: string,
+    kind: "icon" | "content",
+    contentType: string,
+  ) =>
+    requestWithAuth<{
+      upload_url: string;
+      public_url: string;
+      key: string;
+      expires_in: number;
+    }>(`/ideas/${id}/upload/presign`, {
+      method: "POST",
+      body: JSON.stringify({ content_type: contentType, kind }),
+    }),
 
   getIdeaVersions: (id: string) =>
     request<{ versions: IdeaVersionSummary[] }>(`/ideas/${id}/versions`),
@@ -132,7 +175,7 @@ export const api = {
 
   updateIdeaDescription: (
     id: string,
-    data: { description: string; changelog?: string }
+    data: { description: string; changelog?: string },
   ) =>
     requestWithAuth<Idea>(`/ideas/${id}/description`, {
       method: "PATCH",
@@ -187,7 +230,10 @@ export const api = {
     }),
 
   // 分享计数落库（user 或 agent 均可）
-  shareIdea: (id: string, opts: { apiKey?: string; useSession?: boolean } = {}) =>
+  shareIdea: (
+    id: string,
+    opts: { apiKey?: string; useSession?: boolean } = {},
+  ) =>
     ideaRequestJson<{ message: string }>(`/ideas/${id}/share`, {
       method: "POST",
       apiKey: opts.useSession ? undefined : opts.apiKey,
@@ -198,7 +244,7 @@ export const api = {
   publishIdeaVersion: (
     id: string,
     input: PublishIdeaVersionInput,
-    opts: { apiKey?: string; useSession?: boolean } = {}
+    opts: { apiKey?: string; useSession?: boolean } = {},
   ) =>
     ideaRequestJson<Idea>(`/ideas/${id}/versions`, {
       method: "POST",
@@ -211,9 +257,13 @@ export const api = {
   getBookmarkStatus: (id: string) =>
     requestWithAuth<{ bookmarked: boolean }>(`/ideas/${id}/bookmark`),
   bookmarkIdea: (id: string) =>
-    requestWithAuth<{ message: string }>(`/ideas/${id}/bookmark`, { method: "POST" }),
+    requestWithAuth<{ message: string }>(`/ideas/${id}/bookmark`, {
+      method: "POST",
+    }),
   unbookmarkIdea: (id: string) =>
-    requestWithAuth<{ message: string }>(`/ideas/${id}/bookmark`, { method: "DELETE" }),
+    requestWithAuth<{ message: string }>(`/ideas/${id}/bookmark`, {
+      method: "DELETE",
+    }),
 
   // Social
   likeIdea: (id: string, apiKey: string) =>
@@ -238,7 +288,7 @@ export const api = {
   forkIdea: (
     id: string,
     apiKey: string,
-    data: { title: string; description: string; reason: string }
+    data: { title: string; description: string; reason: string },
   ) =>
     request<Idea>(`/ideas/${id}/fork`, {
       method: "POST",
@@ -253,7 +303,7 @@ export const api = {
   createComment: (
     ideaId: string,
     apiKey: string,
-    data: { content: string; sentiment?: string; parent_id?: string }
+    data: { content: string; sentiment?: string; parent_id?: string },
   ) =>
     request<Comment>(`/ideas/${ideaId}/comments`, {
       method: "POST",
@@ -265,16 +315,24 @@ export const api = {
   registerAgent: (data: { name: string; description?: string }) =>
     requestWithAuth<{ agent: { id: string; name: string }; api_key: string }>(
       `/auth/register`,
-      { method: "POST", body: JSON.stringify(data) }
+      { method: "POST", body: JSON.stringify(data) },
     ),
 
   getAgent: async (id: string) => {
-    const data = await request<{ id: string; name: string; description: string; capabilities: unknown; created_at: string }>(`/agents/${id}`);
+    const data = await request<{
+      id: string;
+      name: string;
+      description: string;
+      capabilities: unknown;
+      created_at: string;
+    }>(`/agents/${id}`);
     return { ...data, capabilities: normalizeCapabilities(data.capabilities) };
   },
 
   getAgentIdeas: (id: string, limit = 20, offset = 0) =>
-    request<{ ideas: Idea[]; total: number }>(`/agents/${id}/ideas?limit=${limit}&offset=${offset}`),
+    request<{ ideas: Idea[]; total: number }>(
+      `/agents/${id}/ideas?limit=${limit}&offset=${offset}`,
+    ),
 
   getAgentStats: (id: string) =>
     request<{
@@ -282,7 +340,12 @@ export const api = {
       total_likes: number;
       total_flowers: number;
       total_forks: number;
-      recent_activity: { id: string; action: string; target_type: string; created_at: string }[];
+      recent_activity: {
+        id: string;
+        action: string;
+        target_type: string;
+        created_at: string;
+      }[];
     }>(`/agents/${id}/stats`),
 
   getMe: (apiKey: string) =>
@@ -308,13 +371,15 @@ export const commentApi = {
     }),
 
   delete: (id: string) =>
-    requestWithAuth<{ message: string }>(`/comments/${id}`, { method: "DELETE" }),
+    requestWithAuth<{ message: string }>(`/comments/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const agentApi = {
   listMyAgents: (limit = 50, offset = 0) =>
     requestWithAuth<{ agents: Agent[]; total: number }>(
-      `/my/agents?limit=${limit}&offset=${offset}`
+      `/my/agents?limit=${limit}&offset=${offset}`,
     ),
 
   getFollowStatus: (id: string) =>
@@ -339,21 +404,26 @@ export const agentApi = {
     }),
 
   presignUpload: (agentId: string, kind: string, contentType: string) =>
-    requestWithAuth<{ upload_url: string; public_url: string; key: string; expires_in: number }>(
-      `/agents/${agentId}/upload/presign`,
-      { method: "POST", body: JSON.stringify({ kind, content_type: contentType }) }
-    ),
+    requestWithAuth<{
+      upload_url: string;
+      public_url: string;
+      key: string;
+      expires_in: number;
+    }>(`/agents/${agentId}/upload/presign`, {
+      method: "POST",
+      body: JSON.stringify({ kind, content_type: contentType }),
+    }),
 
   resetAvatar: (agentId: string) =>
     requestWithAuth<{ id: string; avatar_url?: string; name?: string }>(
       `/agents/${agentId}/avatar/reset`,
-      { method: "POST" }
+      { method: "POST" },
     ),
 
   resetBackground: (agentId: string) =>
     requestWithAuth<{ id: string; background_url?: string }>(
       `/agents/${agentId}/background/reset`,
-      { method: "POST" }
+      { method: "POST" },
     ),
 
   deleteAgent: (agentId: string) =>
@@ -385,8 +455,7 @@ export const authApi = {
       method: "POST",
     }),
 
-  me: () =>
-    requestWithAuth<{ user: User }>(`/auth/user/me`),
+  me: () => requestWithAuth<{ user: User }>(`/auth/user/me`),
 
   forgotPassword: (email: string) =>
     requestWithAuth<{ message: string }>(`/auth/user/forgot-password`, {
@@ -401,7 +470,9 @@ export const authApi = {
     }),
 
   verifyEmail: (token: string) =>
-    requestWithAuth<{ message: string }>(`/auth/user/verify?token=${encodeURIComponent(token)}`),
+    requestWithAuth<{ message: string }>(
+      `/auth/user/verify?token=${encodeURIComponent(token)}`,
+    ),
 
   sendPhoneCode: (phone: string, purpose?: string) =>
     requestWithAuth<{ message: string }>(`/auth/phone/send-code`, {
@@ -420,7 +491,11 @@ export const authApi = {
 };
 
 export const chatApi = {
-  createSession: (data: { agent_id: string; idea_id?: string; title?: string }) =>
+  createSession: (data: {
+    agent_id: string;
+    idea_id?: string;
+    title?: string;
+  }) =>
     requestWithAuth<{ session: ChatSession }>("/sessions", {
       method: "POST",
       body: JSON.stringify(data),
@@ -428,11 +503,10 @@ export const chatApi = {
 
   listSessions: (limit = 20, offset = 0) =>
     requestWithAuth<{ sessions: ChatSession[]; total: number }>(
-      `/sessions?limit=${limit}&offset=${offset}`
+      `/sessions?limit=${limit}&offset=${offset}`,
     ),
 
-  getSession: (id: string) =>
-    requestWithAuth<ChatSession>(`/sessions/${id}`),
+  getSession: (id: string) => requestWithAuth<ChatSession>(`/sessions/${id}`),
 
   renameSession: (id: string, title: string) =>
     requestWithAuth<{ message: string }>(`/sessions/${id}`, {
@@ -468,7 +542,7 @@ export const chatApi = {
     onChunk: (text: string) => void,
     onDone: (fullContent: string) => void,
     onError: (err: Error) => void,
-    onEvent?: (type: string, data: unknown) => void
+    onEvent?: (type: string, data: unknown) => void,
   ) => {
     const url = `${getApiBase()}/sessions/${sessionId}/stream?content=${encodeURIComponent(content)}`;
 
@@ -479,7 +553,10 @@ export const chatApi = {
     }
 
     const reader = res.body?.getReader();
-    if (!reader) { onError(new Error("No stream body")); return; }
+    if (!reader) {
+      onError(new Error("No stream body"));
+      return;
+    }
 
     const decoder = new TextDecoder();
     let fullContent = "";
@@ -495,7 +572,11 @@ export const chatApi = {
       if (eventType === "error") {
         try {
           const err = JSON.parse(dataStr);
-          onError(new Error(formatApiError(err.error || "stream error", "消息发送失败")));
+          onError(
+            new Error(
+              formatApiError(err.error || "stream error", "消息发送失败"),
+            ),
+          );
         } catch {
           onError(new Error(dataStr || "stream error"));
         }
@@ -574,32 +655,32 @@ export const chatApi = {
     const params = new URLSearchParams({ limit: String(limit) });
     if (beforeId) params.set("before_id", beforeId);
     return requestWithAuth<{ messages: ChatMessage[] }>(
-      `/sessions/${sessionId}/messages?${params}`
+      `/sessions/${sessionId}/messages?${params}`,
     );
   },
 
   setMessageFeedback: (
     sessionId: string,
     messageId: string,
-    rating: "like" | "dislike"
+    rating: "like" | "dislike",
   ) =>
     requestWithAuth<{ user_feedback: "like" | "dislike" }>(
       `/sessions/${sessionId}/messages/${messageId}/feedback`,
       {
         method: "POST",
         body: JSON.stringify({ rating }),
-      }
+      },
     ),
 
   clearMessageFeedback: (sessionId: string, messageId: string) =>
     requestWithAuth<{ message: string }>(
       `/sessions/${sessionId}/messages/${messageId}/feedback`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     ),
 
   forkSession: (
     sessionId: string,
-    data?: { before_message_id?: string; title?: string }
+    data?: { before_message_id?: string; title?: string },
   ) =>
     requestWithAuth<{ session: ChatSession }>(`/sessions/${sessionId}/fork`, {
       method: "POST",
@@ -614,27 +695,29 @@ export const chatApi = {
 
 export const userApi = {
   getProfile: (id: string) =>
-    request<{ profile: UserProfile; is_following: boolean }>(`/users/${id}/profile`),
+    request<{ profile: UserProfile; is_following: boolean }>(
+      `/users/${id}/profile`,
+    ),
 
   getFollowers: (id: string, limit = 20, offset = 0) =>
     request<{ users: User[]; total: number }>(
-      `/users/${id}/followers?limit=${limit}&offset=${offset}`
+      `/users/${id}/followers?limit=${limit}&offset=${offset}`,
     ),
 
   getFollowing: (id: string, limit = 20, offset = 0) =>
     request<{ users: User[]; total: number }>(
-      `/users/${id}/following?limit=${limit}&offset=${offset}`
+      `/users/${id}/following?limit=${limit}&offset=${offset}`,
     ),
 
   // 该用户拥有的所有想法（跨其拥有的 agent 聚合）—— 用户主页用。
   getUserIdeas: (id: string, limit = 50, offset = 0) =>
     request<{ ideas: Idea[]; total: number }>(
-      `/users/${id}/ideas?limit=${limit}&offset=${offset}`
+      `/users/${id}/ideas?limit=${limit}&offset=${offset}`,
     ),
 
   getUserAgents: (id: string, limit = 20, offset = 0) =>
     request<{ agents: Agent[]; total: number }>(
-      `/users/${id}/agents?limit=${limit}&offset=${offset}`
+      `/users/${id}/agents?limit=${limit}&offset=${offset}`,
     ),
 
   follow: (id: string) =>
@@ -647,12 +730,11 @@ export const userApi = {
       method: "DELETE",
     }),
 
-  getMyProfile: () =>
-    requestWithAuth<UserProfile>("/user/profile"),
+  getMyProfile: () => requestWithAuth<UserProfile>("/user/profile"),
 
   getMySessions: (limit = 20, offset = 0) =>
     requestWithAuth<{ sessions: ChatSession[]; total: number }>(
-      `/user/sessions?limit=${limit}&offset=${offset}`
+      `/user/sessions?limit=${limit}&offset=${offset}`,
     ),
 
   updateMyProfile: (data: {
@@ -673,14 +755,16 @@ export const userApi = {
       {
         method: "POST",
         body: JSON.stringify({ kind, content_type: contentType }),
-      }
+      },
     ),
 
   resetAvatar: () =>
     requestWithAuth<{ user: User }>("/user/avatar/reset", { method: "POST" }),
 
   resetBackground: () =>
-    requestWithAuth<{ user: User }>("/user/background/reset", { method: "POST" }),
+    requestWithAuth<{ user: User }>("/user/background/reset", {
+      method: "POST",
+    }),
 
   deleteAccount: (data: {
     password?: string;
@@ -696,7 +780,10 @@ export const userApi = {
   changePassword: (oldPassword: string, newPassword: string) =>
     requestWithAuth<{ message: string }>("/user/password", {
       method: "POST",
-      body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+      body: JSON.stringify({
+        old_password: oldPassword,
+        new_password: newPassword,
+      }),
     }),
 };
 
@@ -706,20 +793,30 @@ export interface NotificationItem {
   actor_type: string;
   actor_id: string;
   actor_name: string;
+  actor_avatar?: string;
   action: string;
   target_type: string;
   target_id: string;
+  target_title?: string;
   summary: string;
   read: boolean;
   created_at: string;
 }
 
 export const notificationApi = {
-  list: (opts: { limit?: number; offset?: number; unread?: boolean } = {}) => {
+  list: (
+    opts: {
+      limit?: number;
+      offset?: number;
+      unread?: boolean;
+      days?: number;
+    } = {},
+  ) => {
     const qs = new URLSearchParams();
     if (opts.limit) qs.set("limit", String(opts.limit));
     if (opts.offset) qs.set("offset", String(opts.offset));
     if (opts.unread) qs.set("unread", "1");
+    if (opts.days) qs.set("days", String(opts.days));
     return requestWithAuth<{
       items: NotificationItem[];
       total: number;
@@ -731,10 +828,14 @@ export const notificationApi = {
     requestWithAuth<{ unread: number }>("/notifications/unread-count"),
 
   markRead: (id: string) =>
-    requestWithAuth<{ message: string }>(`/notifications/read/${id}`, { method: "POST" }),
+    requestWithAuth<{ message: string }>(`/notifications/read/${id}`, {
+      method: "POST",
+    }),
 
   markAllRead: () =>
-    requestWithAuth<{ message: string }>("/notifications/read-all", { method: "POST" }),
+    requestWithAuth<{ message: string }>("/notifications/read-all", {
+      method: "POST",
+    }),
 };
 
 // 举报类型（POST /reports 的 target_type 取值）
@@ -745,11 +846,22 @@ export const modApi = {
   listBlocks: () =>
     requestWithAuth<{ users: User[]; total: number }>(`/user/blocks`),
 
+  getBlockStatus: (userId: string) =>
+    requestWithAuth<{
+      blocked: boolean;
+      blocked_by: boolean;
+      can_interact: boolean;
+    }>(`/users/${userId}/block`),
+
   blockUser: (userId: string) =>
-    requestWithAuth<{ message: string }>(`/users/${userId}/block`, { method: "POST" }),
+    requestWithAuth<{ message: string }>(`/users/${userId}/block`, {
+      method: "POST",
+    }),
 
   unblockUser: (userId: string) =>
-    requestWithAuth<{ message: string }>(`/users/${userId}/block`, { method: "DELETE" }),
+    requestWithAuth<{ message: string }>(`/users/${userId}/block`, {
+      method: "DELETE",
+    }),
 
   submitReport: (input: {
     target_type: ReportTargetType;
@@ -780,7 +892,7 @@ export const prefsApi = {
       body: JSON.stringify(input),
     }),
 
-    deleteDevice: (deviceId: string) =>
+  deleteDevice: (deviceId: string) =>
     requestWithAuth<{ message: string }>(`/user/devices/${deviceId}`, {
       method: "DELETE",
     }),
@@ -795,7 +907,11 @@ export const billingApi = {
   membership: () => requestWithAuth<MembershipView>(`/billing/membership`),
 
   // 创建充值订单，返回支付地址（网页跳转 / 二维码 / mock）
-  createOrder: (input: { plan_id: string; currency: string; gateway?: string }) =>
+  createOrder: (input: {
+    plan_id: string;
+    currency: string;
+    gateway?: string;
+  }) =>
     requestWithAuth<CreateOrderResult>(`/billing/orders`, {
       method: "POST",
       body: JSON.stringify(input),
@@ -808,7 +924,8 @@ export const billingApi = {
     ),
 
   // 订单详情
-  getOrder: (id: string) => requestWithAuth<BillingOrder>(`/billing/orders/${id}`),
+  getOrder: (id: string) =>
+    requestWithAuth<BillingOrder>(`/billing/orders/${id}`),
 
   // 取消未支付订单
   cancelOrder: (id: string) =>

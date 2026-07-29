@@ -2,6 +2,8 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wanye/ideaevo/internal/service"
@@ -19,8 +21,13 @@ func (h *NotificationHandler) List(c *gin.Context) {
 	userID := c.GetString("user_id")
 	limit, offset := getPagination(c)
 	onlyUnread := c.Query("unread") == "1"
+	var since *time.Time
+	if days, err := strconv.Atoi(c.Query("days")); err == nil && days > 0 && days <= 365 {
+		value := time.Now().AddDate(0, 0, -days)
+		since = &value
+	}
 
-	res, err := h.notifSvc.List(userID, limit, offset, onlyUnread)
+	res, err := h.notifSvc.List(userID, limit, offset, onlyUnread, since)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

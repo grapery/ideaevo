@@ -9,18 +9,20 @@ import { IconActionButton } from "@/components/ui/icon-action-button";
 
 /**
  * BlockButton — 屏蔽/取消屏蔽用户，对接 POST/DELETE /users/:id/block。
- * 后端无单点状态查询接口，故由父组件可选地传入 initialBlocked（如来自 listBlocks）。
+ * 父组件可通过 GET /users/:id/block 注入双向屏蔽状态。
  */
 export function BlockButton({
   userId,
   initialBlocked = false,
   className = "",
   iconOnly = false,
+  onChange,
 }: {
   userId: string;
   initialBlocked?: boolean;
   className?: string;
   iconOnly?: boolean;
+  onChange?: (blocked: boolean) => void;
 }) {
   const [blocked, setBlocked] = useState(initialBlocked);
   const [loading, setLoading] = useState(false);
@@ -31,6 +33,7 @@ export function BlockButton({
       if (blocked) {
         await modApi.unblockUser(userId);
         setBlocked(false);
+        onChange?.(false);
         notify.success("已取消屏蔽");
       } else {
         if (!window.confirm("屏蔽后，对方将无法与你互动。确定屏蔽该用户？")) {
@@ -39,6 +42,7 @@ export function BlockButton({
         }
         await modApi.blockUser(userId);
         setBlocked(true);
+        onChange?.(true);
         notify.success("已屏蔽该用户");
       }
     } catch (err) {

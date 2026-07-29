@@ -4,7 +4,11 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { notify } from "@/components/ui/notify";
-import { ChatMessage as ChatMessageType, ChatMessageMetadata, MessageContentType } from "@/lib/types";
+import {
+  ChatMessage as ChatMessageType,
+  ChatMessageMetadata,
+  MessageContentType,
+} from "@/lib/types";
 import { normalizeMessageMetadata } from "@/lib/chat-messages";
 import { IconGitFork } from "./icons";
 import { DeimosIcon } from "./deimos-icon";
@@ -30,7 +34,7 @@ function resolveActivityMeta(metadata?: ChatMessageMetadata | string) {
   // legacy SSE-only metadata
   if (meta?.type === "tool_call" || meta?.tool) {
     return {
-      type: meta.type === "tool_call" ? "tool_call" as const : undefined,
+      type: meta.type === "tool_call" ? ("tool_call" as const) : undefined,
       tool: meta.tool,
       is_a2a: meta.is_a2a,
       target_agent_name: meta.target_agent_name,
@@ -44,7 +48,7 @@ function resolveActivityMeta(metadata?: ChatMessageMetadata | string) {
 
 function isActivityMessage(message: ChatMessageType): boolean {
   const meta = normalizeMessageMetadata(
-    message.metadata as ChatMessageMetadata | string | undefined
+    message.metadata as ChatMessageMetadata | string | undefined,
   );
   return (
     message.role === "system" &&
@@ -66,7 +70,7 @@ function JsonBlock({ content }: { content: string }) {
     // keep raw string
   }
   return (
-    <pre className="overflow-x-auto rounded-lg bg-[var(--bg-canvas)] p-3 text-xs leading-relaxed font-mono">
+    <pre className="overflow-x-auto rounded-lg bg-[var(--bg-canvas)] p-3 text-[13px] leading-6 font-mono">
       <code>{formatted}</code>
     </pre>
   );
@@ -78,19 +82,33 @@ function MarkdownBody({ content }: { content: string }) {
       remarkPlugins={[remarkGfm]}
       components={{
         h1: ({ children }) => (
-          <h1 className="mb-2 mt-3 text-base font-semibold first:mt-0">{children}</h1>
+          <h1 className="mb-2 mt-4 text-lg font-semibold leading-7 text-[var(--title)] first:mt-0">
+            {children}
+          </h1>
         ),
         h2: ({ children }) => (
-          <h2 className="mb-2 mt-3 text-base font-semibold first:mt-0">{children}</h2>
+          <h2 className="mb-2 mt-4 text-[17px] font-semibold leading-7 text-[var(--title)] first:mt-0">
+            {children}
+          </h2>
         ),
         h3: ({ children }) => (
-          <h3 className="mb-1.5 mt-2.5 text-sm font-semibold first:mt-0">{children}</h3>
+          <h3 className="mb-1.5 mt-3 text-[15px] font-semibold leading-6 text-[var(--title)] first:mt-0">
+            {children}
+          </h3>
         ),
         p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-        ul: ({ children }) => <ul className="mb-2 list-disc pl-5 last:mb-0">{children}</ul>,
-        ol: ({ children }) => <ol className="mb-2 list-decimal pl-5 last:mb-0">{children}</ol>,
+        ul: ({ children }) => (
+          <ul className="mb-2 list-disc pl-5 last:mb-0">{children}</ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="mb-2 list-decimal pl-5 last:mb-0">{children}</ol>
+        ),
         li: ({ children }) => <li className="mb-0.5">{children}</li>,
-        strong: ({ children }) => <strong className="font-semibold text-[var(--title)]">{children}</strong>,
+        strong: ({ children }) => (
+          <strong className="font-semibold text-[var(--title)]">
+            {children}
+          </strong>
+        ),
         a: ({ href, children }) => (
           <a
             href={href}
@@ -105,13 +123,13 @@ function MarkdownBody({ content }: { content: string }) {
           const isBlock = className?.includes("language-");
           if (isBlock) {
             return (
-              <code className="block overflow-x-auto rounded-lg bg-[var(--bg-canvas)] p-3 text-xs font-mono">
+              <code className="block overflow-x-auto rounded-lg bg-[var(--bg-canvas)] p-3 text-[13px] leading-6 font-mono">
                 {children}
               </code>
             );
           }
           return (
-            <code className="rounded bg-[var(--bg-canvas)] px-1 py-0.5 text-[0.85em] font-mono">
+            <code className="rounded bg-[var(--bg-canvas)] px-1.5 py-0.5 text-[0.88em] font-mono text-[var(--title)]">
               {children}
             </code>
           );
@@ -235,20 +253,7 @@ function MessageActions({
             onClick={handleLike}
             isUser={isUser}
           >
-            <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.75}
-                d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.75}
-                d="M4 21h4v-9H4v9z"
-              />
-            </svg>
+            <DeimosIcon name="thumb-up" className={iconClass} />
           </ActionButton>
           <ActionButton
             label={t("chat.dislike")}
@@ -256,41 +261,23 @@ function MessageActions({
             onClick={handleDislike}
             isUser={isUser}
           >
-            <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.75}
-                d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.75}
-                d="M20 3h-4v9h4V3z"
-              />
-            </svg>
+            <DeimosIcon name="thumb-down" className={iconClass} />
           </ActionButton>
         </>
       )}
-      <ActionButton label={copied ? t("chat.copied") : t("chat.copy")} onClick={handleCopy} isUser={isUser}>
-        {copied ? (
-          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        ) : (
-          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-            />
-          </svg>
-        )}
+      <ActionButton
+        label={copied ? t("chat.copied") : t("chat.copy")}
+        onClick={handleCopy}
+        isUser={isUser}
+      >
+        <DeimosIcon name={copied ? "check" : "copy"} className={iconClass} />
       </ActionButton>
       {canFork && persisted && onFork && (
-        <ActionButton label={t("chat.forkHere")} onClick={() => onFork(message.id)} isUser={isUser}>
+        <ActionButton
+          label={t("chat.forkHere")}
+          onClick={() => onFork(message.id)}
+          isUser={isUser}
+        >
           <IconGitFork className={iconClass} />
         </ActionButton>
       )}
@@ -321,25 +308,32 @@ export default function ChatMessage({
   const isActivity = isActivityMessage(message);
   const isA2ADelegation = isActivity && activity?.is_a2a;
   const a2aCompleted = Boolean(activity?.a2a_completed);
-  const isToolInProgress = isActivity && activity?.type === "tool_call" && !activity?.is_a2a;
+  const isToolInProgress =
+    isActivity && activity?.type === "tool_call" && !activity?.is_a2a;
   const contentType = resolveContentType(message);
 
   if (isA2ADelegation) {
     const targetAgentName = activity?.target_agent_name ?? "Agent";
     return (
       <div className="mb-4">
-        <div className={`inline-flex flex-col gap-1.5 rounded-xl border px-4 py-3 max-w-[85%] ${
-          a2aCompleted
-            ? "border-[var(--teal)]/30 bg-[var(--teal-soft)]"
-            : "border-[var(--primary)]/30 bg-[var(--primary-soft)]"
-        }`}>
-          <div className="flex items-center gap-2 text-xs font-medium">
+        <div
+          className={`inline-flex flex-col gap-1.5 rounded-xl border px-4 py-3 max-w-[85%] ${
+            a2aCompleted
+              ? "border-[var(--teal)]/30 bg-[var(--teal-soft)]"
+              : "border-[var(--primary)]/30 bg-[var(--primary-soft)]"
+          }`}
+        >
+          <div className="flex items-center gap-2 text-[13px] font-medium">
             {a2aCompleted ? (
               <span className="text-[var(--teal)]">✓</span>
             ) : (
               <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
             )}
-            <span className={a2aCompleted ? "text-[var(--teal)]" : "text-[var(--primary)]"}>
+            <span
+              className={
+                a2aCompleted ? "text-[var(--teal)]" : "text-[var(--primary)]"
+              }
+            >
               {a2aCompleted ? t("chat.agentReply") : t("chat.communicating")}
             </span>
           </div>
@@ -355,13 +349,18 @@ export default function ChatMessage({
             </span>
           </div>
           {activity?.task && (
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              <DeimosIcon name="decision" className="mr-1 inline-block h-3 w-3" />
-              {activity.task.length > 80 ? activity.task.slice(0, 80) + "…" : activity.task}
+            <p className="text-[13px] text-[var(--text-muted)] leading-6">
+              <DeimosIcon
+                name="decision"
+                className="mr-1 inline-block h-3 w-3"
+              />
+              {activity.task.length > 80
+                ? activity.task.slice(0, 80) + "…"
+                : activity.task}
             </p>
           )}
           {a2aCompleted && (
-            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+            <p className="text-[13px] text-[var(--text-secondary)] leading-6">
               {message.content.replace(/^✓\s*\S+\s*回复：/, "")}
             </p>
           )}
@@ -373,8 +372,9 @@ export default function ChatMessage({
   if (isToolInProgress || (isActivity && !isA2ADelegation)) {
     return (
       <div className="mb-4">
-        <span className="inline-flex items-center gap-2 rounded-full bg-[var(--teal-soft)] px-3 py-1 text-xs font-medium text-[var(--teal)]">
-          <DeimosIcon name="tool" className="h-3 w-3" />{message.content}
+        <span className="inline-flex items-center gap-2 rounded-full bg-[var(--teal-soft)] px-3 py-1.5 text-[13px] font-medium text-[var(--teal)]">
+          <DeimosIcon name="tool" className="h-3 w-3" />
+          {message.content}
         </span>
       </div>
     );
@@ -383,7 +383,10 @@ export default function ChatMessage({
   if (message.role === "system" && !isActivity) {
     return (
       <div className="mb-4 flex items-start gap-2 rounded-md border border-[var(--primary)] bg-[var(--primary-soft)] p-4 text-sm text-[var(--text-secondary)]">
-        <DeimosIcon name="decision" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--primary)]" />
+        <DeimosIcon
+          name="decision"
+          className="mt-0.5 h-4 w-4 shrink-0 text-[var(--primary)]"
+        />
         <span>{message.content}</span>
       </div>
     );
@@ -406,8 +409,12 @@ export default function ChatMessage({
       };
 
   return (
-    <div className={`group flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
-      <div className={`flex gap-2 max-w-[85%] ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+    <div
+      className={`group flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
+    >
+      <div
+        className={`flex gap-2.5 max-w-[88%] ${isUser ? "flex-row-reverse" : "flex-row"}`}
+      >
         <WireframeAvatar
           kind={isUser ? "user" : "agent"}
           entityId={identity.id}
@@ -416,15 +423,21 @@ export default function ChatMessage({
           size={34}
           className="self-start"
         />
-        <div className={`min-w-0 ${isUser ? "items-end" : "items-start"} flex flex-col`}>
+        <div
+          className={`min-w-0 ${isUser ? "items-end" : "items-start"} flex flex-col`}
+        >
           <div
-          className={`rounded-md border px-4 py-2.5 text-sm leading-relaxed ${
+            className={`rounded-md border px-4 py-3 text-[15px] leading-[1.75] ${
               isUser
-                ? "border-[var(--accent-link)] bg-[var(--accent-link)] text-white"
+                ? "border-[#6f94ee] bg-[#557bd8] text-white"
                 : "border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--text-secondary)]"
             }`}
           >
-            <MessageBody content={message.content} contentType={contentType} isUser={isUser} />
+            <MessageBody
+              content={message.content}
+              contentType={contentType}
+              isUser={isUser}
+            />
           </div>
           <MessageActions
             message={message}

@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useCallback, useEffect, useRef } from "react";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 type ModalProps = {
   open: boolean;
@@ -52,7 +53,7 @@ export function Modal({
     const card = cardRef.current;
     if (card) {
       const focusable = card.querySelector<HTMLElement>(
-        'input, textarea, select, button, a[href], [tabindex]:not([tabindex="-1"])'
+        'input, textarea, select, button, a[href], [tabindex]:not([tabindex="-1"])',
       );
       focusable?.focus();
     }
@@ -122,17 +123,7 @@ export function Modal({
                 aria-label="关闭"
                 className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--title)] disabled:opacity-40"
               >
-                <svg
-                  className="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  aria-hidden="true"
-                >
-                  <path d="M18 6 6 18M6 6l12 12" />
-                </svg>
+                <DeimosIcon name="close" className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -141,7 +132,9 @@ export function Modal({
         <div>{children}</div>
 
         {footer && (
-          <div className="mt-6 flex items-center justify-end gap-3">{footer}</div>
+          <div className="mt-6 flex items-center justify-end gap-3">
+            {footer}
+          </div>
         )}
       </div>
     </div>
@@ -151,7 +144,7 @@ export function Modal({
 /** Keep Tab focus cycling within the dialog. */
 function trapFocus(e: KeyboardEvent, container: HTMLElement) {
   const focusables = container.querySelectorAll<HTMLElement>(
-    'input, textarea, select, button, a[href], [tabindex]:not([tabindex="-1"])'
+    'input, textarea, select, button, a[href], [tabindex]:not([tabindex="-1"])',
   );
   if (focusables.length === 0) return;
 

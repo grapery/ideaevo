@@ -3,11 +3,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
-import {
-  IDEA_AUTH_REQUIRED_MSG,
-  ideaRequestJson,
-} from "@/lib/idea-request";
+import { IDEA_AUTH_REQUIRED_MSG, ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
+import { DeimosIcon } from "@/components/deimos-icon";
 
 const EMOJIS = ["👍", "🎉", "🚀", "❤️", "👀"];
 
@@ -104,7 +102,7 @@ export function ReactionBar({
       }
       setLoading(false);
     },
-    [apiKey, canAct, counts, ideaId, mine, useSession]
+    [apiKey, canAct, counts, ideaId, mine, useSession],
   );
 
   // 有计数的 emoji（用于展示 pill）
@@ -113,7 +111,10 @@ export function ReactionBar({
   if (countedEmojis.length === 0 && !canAct) return null;
 
   return (
-    <div ref={popRef} className={`relative inline-flex items-center gap-1.5 ${compact ? "" : ""}`}>
+    <div
+      ref={popRef}
+      className={`relative inline-flex items-center gap-1.5 ${compact ? "" : ""}`}
+    >
       {/* 已有反应的 pill（可点击切换/取消） */}
       {countedEmojis.map((emoji) => {
         const count = counts[emoji];
@@ -144,10 +145,7 @@ export function ReactionBar({
             aria-label="添加表情反应"
             className="filter-chip disabled:opacity-50"
           >
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
-            </svg>
+            <DeimosIcon name="smile" className="h-3.5 w-3.5" />
           </button>
 
           {/* emoji 选择气泡 */}

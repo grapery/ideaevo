@@ -13,6 +13,7 @@ type SocialService struct {
 	db      *gorm.DB
 	indexer *IdeaVectorIndexer
 	notif   *NotificationService
+	mod     *ModerationService
 }
 
 func NewSocialService(db *gorm.DB) *SocialService {
@@ -27,6 +28,10 @@ func (s *SocialService) SetVectorIndexer(indexer *IdeaVectorIndexer) {
 // SetNotificationService 注入通知服务（可选，用于点赞/送花/Fork 通知）。
 func (s *SocialService) SetNotificationService(notif *NotificationService) {
 	s.notif = notif
+}
+
+func (s *SocialService) SetModerationService(mod *ModerationService) {
+	s.mod = mod
 }
 
 // notifyIdeaOwner 向 idea 的 owner（agent 的创建者）发送通知（非阻塞）。
@@ -134,6 +139,11 @@ func (s *SocialService) resolveVoterReputation(tx *gorm.DB, userID, agentID stri
 }
 
 func (s *SocialService) LikeIdea(ideaID, userID, agentID string) error {
+	if s.mod != nil {
+		if err := s.mod.EnsureIdeaInteraction(ideaID, userID, agentID); err != nil {
+			return err
+		}
+	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// 防刷:同一 owner(user 本人 + 其所有 agent)对一个 idea 只能投一票
 		ownerID := s.resolveVotingOwnerID(tx, userID, agentID)
@@ -198,9 +208,14 @@ func (s *SocialService) HasLikedIdea(ideaID, userID, agentID string) bool {
 	return count > 0
 }
 
-// WishIdea 表达「期待」（与 LikeIdea 同构）。作为轻量排序信号，不进 Feed、不推送。
+// WishIdea 表达「期待」（与 LikeIdea 同构）。作为轻量排序信号，不进 Feed，但通知 idea owner。
 // 同样有防刷:同一 owner 只能投一次。
 func (s *SocialService) WishIdea(ideaID, userID, agentID string) error {
+	if s.mod != nil {
+		if err := s.mod.EnsureIdeaInteraction(ideaID, userID, agentID); err != nil {
+			return err
+		}
+	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// 防刷:同一 owner(user 本人 + 其所有 agent)对一个 idea 只能投一票
 		ownerID := s.resolveVotingOwnerID(tx, userID, agentID)
@@ -226,6 +241,13 @@ func (s *SocialService) WishIdea(ideaID, userID, agentID string) error {
 		if err := s.addWeightedScore(tx, ideaID, reputation); err != nil {
 			return err
 		}
+		actorType := "agent"
+		actorID := agentID
+		if userID != "" {
+			actorType = "user"
+			actorID = userID
+		}
+		s.notifyIdeaOwner(tx, ideaID, actorType, actorID, "", "wish", "")
 		return nil
 	})
 }
@@ -264,6 +286,11 @@ type SendFlowersInput struct {
 }
 
 func (s *SocialService) SendFlowers(input SendFlowersInput) error {
+	if s.mod != nil {
+		if err := s.mod.EnsureIdeaInteraction(input.IdeaID, input.UserID, input.AgentID); err != nil {
+			return err
+		}
+	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		flower := model.Flower{
 			IdeaID:  input.IdeaID,
@@ -301,6 +328,11 @@ type ForkIdeaInput struct {
 }
 
 func (s *SocialService) ForkIdea(input ForkIdeaInput) (*model.Idea, error) {
+	if s.mod != nil {
+		if err := s.mod.EnsureIdeaInteraction(input.IdeaID, "", input.AgentID); err != nil {
+			return nil, err
+		}
+	}
 	var idea *model.Idea
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		var original model.Idea

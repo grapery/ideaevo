@@ -69,14 +69,14 @@ export default function ChatInput({
             placeholder={placeholder}
             disabled={sending || disabled}
             rows={1}
-            className="flex-1 resize-none min-h-[38px] max-h-[120px] !border-0 !bg-transparent !shadow-none"
+            className="flex-1 resize-none min-h-[42px] max-h-[120px] !border-0 !bg-transparent !text-[15px] !leading-6 !shadow-none"
           />
           <button
             type="button"
             onClick={handleSend}
             disabled={!text.trim() || sending || disabled}
             aria-label="发送"
-            className="inline-flex h-[38px] w-[38px] items-center justify-center rounded border border-[var(--accent-link)] bg-[var(--accent-link)] text-white shrink-0 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
+            className="inline-flex h-[42px] w-[42px] items-center justify-center rounded border border-[var(--accent-link)] bg-[var(--primary)] text-white shrink-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--primary-hover)]"
           >
             {sending ? (
               <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -94,13 +94,13 @@ export default function ChatInput({
               key={action.label}
               type="button"
               onClick={() => setText(action.label)}
-              className="inline-flex items-center gap-1.5 rounded border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 py-1 text-[11px] text-[var(--text-muted)] hover:border-[var(--accent-link)] hover:text-[var(--accent-link)]"
+              className="inline-flex items-center gap-1.5 rounded border border-[var(--rule)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:border-[var(--accent-link)] hover:text-[var(--accent-link)]"
             >
               <DeimosIcon name={action.icon} className="h-3 w-3" />
               {action.label}
             </button>
           ))}
-          <span className="ml-auto hidden text-[10px] text-[var(--text-muted)] sm:inline">
+          <span className="ml-auto hidden text-xs text-[var(--text-muted)] sm:inline">
             Enter 发送 · Shift+Enter 换行
           </span>
         </div>
