@@ -17,6 +17,7 @@ import {
   StatRow,
   ProfileEmptyState,
 } from "@/components/profile-layout";
+import { useI18n } from "@/lib/i18n/provider";
 
 const AppLink = AppLinkComponent as unknown as React.ComponentType<{
   href: string;
@@ -34,9 +35,12 @@ interface ProfileStats {
   session_count?: number;
 }
 
-function formatJoinDate(dateStr: string) {
+function formatJoinDate(dateStr: string, locale: string) {
   const d = new Date(dateStr);
-  return `加入于 ${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
+  if (locale === "zh-CN") {
+    return `加入于 ${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
+  }
+  return `Joined ${d.toLocaleDateString("en", { year: "numeric", month: "long" })}`;
 }
 
 // 格式化 token 数为简短形式：10000 -> "1万"，10000000 -> "1000万"。
@@ -64,6 +68,7 @@ export function UserProfileBody({
   stats: ProfileStats;
 }) {
   const { user: currentUser } = useAuth();
+  const { t, locale } = useI18n();
   const [tab, setTab] = useState<Tab>("overview");
 
   // 各 tab 数据，按需懒加载。
@@ -172,17 +177,17 @@ export function UserProfileBody({
 
   const tabs: { key: Tab; label: string; count?: number }[] = (
     [
-      { key: "overview", label: "概览" },
-      { key: "ideas", label: "想法", count: stats.idea_count ?? 0 },
-      { key: "agents", label: "Agent", count: stats.agent_count ?? 0 },
-      { key: "activity", label: "动态" },
-      { key: "followers", label: "关注者", count: followersTotal },
-      { key: "following", label: "关注中", count: followingTotal },
-      { key: "sessions", label: "对话", ownOnly: true },
-      { key: "api", label: "API 管理", ownOnly: true },
+      { key: "overview", label: locale === "zh-CN" ? "概览" : "Overview" },
+      { key: "ideas", label: t("idea.ideas"), count: stats.idea_count ?? 0 },
+      { key: "agents", label: t("header.agents"), count: stats.agent_count ?? 0 },
+      { key: "activity", label: t("header.activity") },
+      { key: "followers", label: t("agents.followers"), count: followersTotal },
+      { key: "following", label: t("activity.followFeed"), count: followingTotal },
+      { key: "sessions", label: t("idea.chat"), ownOnly: true },
+      { key: "api", label: t("settings.apiKeyTitle"), ownOnly: true },
     ] as { key: Tab; label: string; count?: number; ownOnly?: boolean }[]
   )
-    .filter((t) => !t.ownOnly || isOwn)
+    .filter((tab) => !tab.ownOnly || isOwn)
     .map(({ key, label, count }) => ({ key, label, count }));
 
   const ideaCount = stats.idea_count ?? 0;
@@ -194,7 +199,7 @@ export function UserProfileBody({
       onTabChange={(k) => setTab(k as Tab)}
       sidebar={
         <>
-          <AboutCard title="关于">
+          <AboutCard title={t("agents.aboutAgent")}>
             <div className="space-y-2.5 text-sm">
               {user.bio && (
                 <p className="text-[var(--text-secondary)] leading-relaxed">{user.bio}</p>
@@ -202,44 +207,44 @@ export function UserProfileBody({
               {isOwn && user.email && (
                 <p className="text-[var(--text-muted)]">{user.email}</p>
               )}
-              <p className="text-[var(--text-muted)]">{formatJoinDate(user.created_at)}</p>
+              <p className="text-[var(--text-muted)]">{formatJoinDate(user.created_at, locale)}</p>
               {isOwn && (
                 <Link href="/user/agents" className="inline-block text-sm text-[var(--primary)] hover:underline">
-                  管理我的 Agent →
+                  {t("settings.myAgents")} →
                 </Link>
               )}
               {(user.role === "admin" || user.role === "moderator") && (
-                <span className="badge-pill badge-active">{user.role === "admin" ? "管理员" : "版主"}</span>
+                <span className="badge-pill badge-active">{user.role === "admin" ? "Admin" : "Moderator"}</span>
               )}
             </div>
           </AboutCard>
 
-          <AboutCard title="数据概览">
+          <AboutCard title={locale === "zh-CN" ? "数据概览" : "Stats overview"}>
             <div className="space-y-2.5">
-              <StatRow label="想法" value={ideaCount} />
-              <StatRow label="Agent" value={stats.agent_count ?? 0} />
-              <StatRow label="关注者" value={followersTotal} />
-              <StatRow label="关注中" value={followingTotal} />
-              {isOwn && <StatRow label="对话" value={stats.session_count ?? 0} />}
+              <StatRow label={t("idea.ideas")} value={ideaCount} />
+              <StatRow label={t("header.agents")} value={stats.agent_count ?? 0} />
+              <StatRow label={t("agents.followers")} value={followersTotal} />
+              <StatRow label={t("activity.followFeed")} value={followingTotal} />
+              {isOwn && <StatRow label={t("idea.chat")} value={stats.session_count ?? 0} />}
             </div>
           </AboutCard>
 
           {/* 会员状态（仅本人主页展示） */}
           {isOwn && membership && (
-            <AboutCard title="会员状态">
+            <AboutCard title={t("billing.membershipQuota")}>
               <div className="space-y-2.5">
                 <StatRow
-                  label="会员等级"
+                  label={locale === "zh-CN" ? "会员等级" : "Membership tier"}
                   value={
                     membership.is_pro ? (
                       <span className="badge-pill badge-active">Pro</span>
                     ) : (
-                      <span className="badge-pill badge-muted">免费</span>
+                      <span className="badge-pill badge-muted">{t("billing.freeUser")}</span>
                     )
                   }
                 />
                 <StatRow
-                  label="今日 Token"
+                  label={t("billing.dailyQuota")}
                   value={
                     <span>
                       {formatTokensShort(membership.daily_quota.tokens_left)}
@@ -250,7 +255,7 @@ export function UserProfileBody({
                   }
                 />
                 <StatRow
-                  label="Agent 配额"
+                  label={t("billing.agentsCreated")}
                   value={
                     <span>
                       {membership.agent_count}
@@ -265,7 +270,7 @@ export function UserProfileBody({
                     href="/billing"
                     className="block pt-2 text-sm text-[var(--primary)] hover:underline"
                   >
-                    升级 Pro 解锁更多额度 →
+                    {t("billing.subscribeNow")} →
                   </Link>
                 )}
               </div>
@@ -273,7 +278,7 @@ export function UserProfileBody({
           )}
 
           {ideas !== null && ideas.length > 0 && (
-            <AboutCard title="最新想法">
+            <AboutCard title={locale === "zh-CN" ? "最新想法" : "Latest ideas"}>
               <ul className="space-y-2">
                 {ideas.slice(0, 5).map((idea) => (
                   <li key={idea.id}>
@@ -304,7 +309,7 @@ export function UserProfileBody({
         (ideas === null ? (
           <Loading />
         ) : ideas.length === 0 ? (
-          <ProfileEmptyState text={isOwn ? "你还没有创建想法" : "这个用户还没有创建想法"} />
+          <ProfileEmptyState text={isOwn ? (locale === "zh-CN" ? "你还没有创建想法" : "You haven't created any ideas") : (locale === "zh-CN" ? "这个用户还没有创建想法" : "This user hasn't created any ideas")} />
         ) : (
           <div className="space-y-4">
             {ideas.map((idea) => (
@@ -317,7 +322,7 @@ export function UserProfileBody({
         (agents === null ? (
           <Loading />
         ) : agents.length === 0 ? (
-          <ProfileEmptyState text={isOwn ? "你还没有 Agent" : "这个用户还没有公开的 Agent"} />
+          <ProfileEmptyState text={isOwn ? (locale === "zh-CN" ? "你还没有 Agent" : "You don't have any Agents") : (locale === "zh-CN" ? "这个用户还没有公开的 Agent" : "This user has no public Agents")} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {agents.map((agent) => (
@@ -328,11 +333,11 @@ export function UserProfileBody({
               >
                 <p className="font-medium text-[var(--ink)]">{agent.name}</p>
                 <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">
-                  {agent.description || "暂无描述"}
+                  {agent.description || t("agents.noDesc")}
                 </p>
                 <p className="meta-label mt-2">
-                  {agent.visibility === "private" ? "私有" : "公开"}
-                  {agent.follower_count != null ? ` · ${agent.follower_count} 关注者` : ""}
+                  {agent.visibility === "private" ? t("common.private") : t("common.public")}
+                  {agent.follower_count != null ? ` · ${agent.follower_count} ${t("agents.followers")}` : ""}
                 </p>
               </Link>
             ))}
@@ -343,7 +348,7 @@ export function UserProfileBody({
         (activity === null ? (
           <Loading />
         ) : activity.length === 0 ? (
-          <ProfileEmptyState text="暂无动态" />
+          <ProfileEmptyState text={t("activity.noActivity")} />
         ) : (
           <div className="surface-card">
             <ActivityList activities={activity} />
@@ -354,7 +359,7 @@ export function UserProfileBody({
         (followers === null ? (
           <Loading />
         ) : followers.length === 0 ? (
-          <ProfileEmptyState text="还没有关注者" />
+          <ProfileEmptyState text={locale === "zh-CN" ? "还没有关注者" : "No followers yet"} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
             {followers.map((u) => (
@@ -369,7 +374,7 @@ export function UserProfileBody({
         (following === null ? (
           <Loading />
         ) : following.length === 0 ? (
-          <ProfileEmptyState text="还没有关注任何人" />
+          <ProfileEmptyState text={locale === "zh-CN" ? "还没有关注任何人" : "Not following anyone yet"} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
             {following.map((u) => (
@@ -398,25 +403,26 @@ function OverviewTab({
   onSeeAllIdeas: () => void;
   onSeeAllActivity: () => void;
 }) {
+  const { t, locale } = useI18n();
   return (
     <div className="space-y-6">
       {/* 最新想法 */}
       <section className="surface-card">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--divider)]">
-          <h2 className="text-base font-semibold text-[var(--title)]">最新想法</h2>
+          <h2 className="text-base font-semibold text-[var(--title)]">{locale === "zh-CN" ? "最新想法" : "Latest ideas"}</h2>
           {ideas && ideas.length > 3 && (
             <button
               onClick={onSeeAllIdeas}
               className="text-sm text-[var(--primary)] hover:underline"
             >
-              查看全部
+              {t("common.viewAll")}
             </button>
           )}
         </div>
         {ideas === null ? (
           <Loading />
         ) : ideas.length === 0 ? (
-          <ProfileEmptyState text="还没有创建想法" />
+          <ProfileEmptyState text={locale === "zh-CN" ? "还没有创建想法" : "No ideas yet"} />
         ) : (
           <div className="p-4 space-y-4">
             {ideas.slice(0, 3).map((idea) => (
@@ -429,20 +435,20 @@ function OverviewTab({
       {/* 最近动态 */}
       <section className="surface-card">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--divider)]">
-          <h2 className="text-base font-semibold text-[var(--title)]">最近动态</h2>
+          <h2 className="text-base font-semibold text-[var(--title)]">{locale === "zh-CN" ? "最近动态" : "Recent activity"}</h2>
           {activity && activity.length > 5 && (
             <button
               onClick={onSeeAllActivity}
               className="text-sm text-[var(--primary)] hover:underline"
             >
-              查看全部
+              {t("common.viewAll")}
             </button>
           )}
         </div>
         {activity === null ? (
           <Loading />
         ) : activity.length === 0 ? (
-          <ProfileEmptyState text="暂无动态" />
+          <ProfileEmptyState text={t("activity.noActivity")} />
         ) : (
           <ActivityList activities={activity.slice(0, 5)} />
         )}
@@ -452,15 +458,16 @@ function OverviewTab({
 }
 
 function SessionsTab({ sessions }: { sessions: ChatSession[] | null }) {
+  const { t, locale } = useI18n();
   return (
     <section className="surface-card">
       <div className="px-5 py-4 border-b border-[var(--divider)]">
-        <h2 className="text-base font-semibold text-[var(--title)]">最近对话</h2>
+        <h2 className="text-base font-semibold text-[var(--title)]">{locale === "zh-CN" ? "最近对话" : "Recent conversations"}</h2>
       </div>
       {sessions === null ? (
         <Loading />
       ) : sessions.length === 0 ? (
-        <ProfileEmptyState text="还没有对话" />
+        <ProfileEmptyState text={locale === "zh-CN" ? "还没有对话" : "No conversations yet"} />
       ) : (
         <ul className="divide-y divide-[var(--divider)]">
           {sessions.map((s) => (
@@ -471,8 +478,8 @@ function SessionsTab({ sessions }: { sessions: ChatSession[] | null }) {
               >
                 <div className="text-sm font-medium text-[var(--title)]">{s.title}</div>
                 <div className="text-xs text-[var(--text-muted)] mt-1">
-                  {s.message_count} 条消息 ·{" "}
-                  {new Date(s.updated_at).toLocaleDateString("zh-CN")}
+                  {t("chat.messageCount", { count: s.message_count })} ·{" "}
+                  {new Date(s.updated_at).toLocaleDateString(locale)}
                 </div>
               </Link>
             </li>
@@ -495,6 +502,7 @@ function Loading() {
 // 用户可以通过 API Key 在本地 AI 工具中调用 MCP 工具创建想法、操作 idea。
 function ApiKeyTab() {
   const { apiKey, setApiKey, agentId, agentName, isReady } = useApiKey();
+  const { t } = useI18n();
   const [inputKey, setInputKey] = useState("");
   const [revealed, setRevealed] = useState(false);
 
@@ -508,16 +516,16 @@ function ApiKeyTab() {
   return (
     <section className="surface-card p-6 space-y-6">
       <div>
-        <h2 className="text-base font-semibold text-[var(--title)]">Agent API Key</h2>
+        <h2 className="text-base font-semibold text-[var(--title)]">{t("settings.apiKeyTitle")}</h2>
         <p className="text-sm text-[var(--text-muted)] mt-1">
-          通过 API Key 在本地 AI 工具（MCP）或你的代理 Agent（A2A）中调用系统能力。
+          {t("settings.apiKeyHint")}
         </p>
       </div>
 
       {isReady ? (
         <div className="space-y-4">
           <div className="rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)]/50 p-4">
-            <p className="text-sm text-[var(--text-muted)]">当前绑定的 Agent</p>
+            <p className="text-sm text-[var(--text-muted)]">{t("settings.boundAgent")}</p>
             <p className="text-base font-medium text-[var(--title)] mt-1">{agentName || "Agent"}</p>
             {agentId && (
               <p className="text-xs text-[var(--text-muted)] mt-1 font-mono">{agentId}</p>
@@ -536,7 +544,7 @@ function ApiKeyTab() {
                 onClick={() => setRevealed(!revealed)}
                 className="btn-default btn-sm"
               >
-                {revealed ? "隐藏" : "显示"}
+                {revealed ? t("settings.hide") : t("settings.show")}
               </button>
             </div>
           </div>
@@ -544,12 +552,12 @@ function ApiKeyTab() {
             onClick={() => setApiKey("")}
             className="btn-danger btn-sm"
           >
-            解除绑定
+            {t("settings.unbind")}
           </button>
         </div>
       ) : (
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-[var(--title)]">输入 Agent API Key</label>
+          <label className="block text-sm font-medium text-[var(--title)]">{t("settings.inputApiKey")}</label>
           <div className="max-w-md flex gap-2">
             <input
               type="password"
@@ -560,13 +568,13 @@ function ApiKeyTab() {
               className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm"
             />
             <button onClick={handleSet} className="btn-outline px-5 py-2 text-sm font-medium">
-              确认
+              {t("common.confirm")}
             </button>
           </div>
           <p className="text-xs text-[var(--text-muted)]">
-            还没有 API Key？
+            {t("settings.noKeyYet")}
             <Link href="/register" className="text-[var(--primary)] hover:underline ml-1">
-              注册 Agent
+              {t("settings.registerNew")}
             </Link>
           </p>
         </div>

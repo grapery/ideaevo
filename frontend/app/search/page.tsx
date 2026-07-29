@@ -8,6 +8,7 @@ import { SearchInput } from "@/components/search-input";
 import { SearchResultCard } from "@/components/search-result-card";
 import { getApiBase } from "@/lib/api-base";
 import { Idea, normalizeTags } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface SearchResult {
   idea: Idea;
@@ -15,21 +16,21 @@ interface SearchResult {
 }
 
 const statusFilters = [
-  { value: "", label: "全部状态" },
-  { value: "active", label: "活跃" },
-  { value: "implemented", label: "已实现" },
-  { value: "buried", label: "已埋没" },
+  { value: "", label: "market.statusAll" as const },
+  { value: "active", label: "market.active" as const },
+  { value: "implemented", label: "idea.implemented" as const },
+  { value: "buried", label: "market.buried" as const },
 ];
 
 const categories = [
-  { value: "", label: "全部分类" },
-  { value: "tool", label: "工具" },
-  { value: "service", label: "服务" },
-  { value: "integration", label: "MCP / 集成" },
-  { value: "automation", label: "自动化" },
-  { value: "creative", label: "创意" },
-  { value: "data", label: "数据" },
-  { value: "other", label: "其他" },
+  { value: "", label: "market.catAll" as const },
+  { value: "tool", label: "market.catTool" as const },
+  { value: "service", label: "market.catService" as const },
+  { value: "integration", label: "market.catIntegration" as const },
+  { value: "automation", label: "market.catAutomation" as const },
+  { value: "creative", label: "market.catCreative" as const },
+  { value: "data", label: "market.catData" as const },
+  { value: "other", label: "market.catOther" as const },
 ];
 
 const suggestedKeywords = ["MCP", "Agent", "自动化", "工具", "AI"];
@@ -42,6 +43,7 @@ function buildSearchParams(query: string, page: number, status: string, category
 }
 
 export default function SearchPage() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
@@ -133,7 +135,7 @@ export default function SearchPage() {
           <div>
             <p className="font-code text-[10px] text-[var(--accent-link)]">SEMANTIC RADAR / EVIDENCE SEARCH</p>
             <h1 className="font-display mt-2 text-[30px] font-bold tracking-[-0.025em] text-[var(--ink)]">
-              搜索问题，不只搜索关键词。
+              {t("search.title")}
             </h1>
           </div>
           <p className="font-code text-[9px] text-[var(--ink-faint)]">VECTOR + MYSQL FALLBACK</p>
@@ -143,12 +145,12 @@ export default function SearchPage() {
           <SearchInput
             variant="inline"
             id="search-q"
-            placeholder="例如：如何确认一个 MCP Agent idea 已经被实现？"
+            placeholder={t("search.placeholder")}
             value={query}
             onChange={setQuery}
             onSubmit={submitSearch}
             navigateOnSubmit={false}
-            submitLabel="搜索证据 →"
+            submitLabel={t("search.submit")}
             loading={loading}
             autoFocus
           />
@@ -181,7 +183,7 @@ export default function SearchPage() {
                         : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
                     }`}
                   >
-                    {filter.label}
+                    {t(filter.label)}
                   </button>
                 ))}
               </div>
@@ -201,7 +203,7 @@ export default function SearchPage() {
                       : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
                   }`}
                 >
-                  {category.label}
+                  {t(category.label)}
                 </button>
               ))}
             </div>
@@ -211,14 +213,14 @@ export default function SearchPage() {
             {!searched ? (
               <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[8px] border border-[var(--rule)] bg-white p-8 text-center">
                 <DeimosIcon name="semantic-search" className="h-7 w-7 text-[var(--accent-link)]" />
-                <p className="font-display mt-4 text-[18px] font-semibold text-[var(--ink)]">输入问题或机会</p>
-                <p className="mt-1 text-[12px] text-[var(--ink-faint)]">Deimos 会返回语义重叠、实现状态与证据来源。</p>
+                <p className="font-display mt-4 text-[18px] font-semibold text-[var(--ink)]">{t("search.inputQuestion")}</p>
+                <p className="mt-1 text-[12px] text-[var(--ink-faint)]">{t("search.desc")}</p>
               </div>
             ) : results.length === 0 ? (
               <div className="rounded-[8px] border border-[#ffb76a] bg-[#fff6ea] p-8 text-center">
                 <p className="font-code text-[10px] text-[#b75b00]">NO MATCH / EXPLORATION SPACE</p>
                 <p className="font-display mt-3 text-[18px] font-semibold text-[var(--ink)]">
-                  没有找到「{query}」的直接重叠
+                  {t("search.noMatch", { query })}
                 </p>
                 <div className="mt-5 flex flex-wrap justify-center gap-3">
                   {suggestedKeywords.map((keyword) => (

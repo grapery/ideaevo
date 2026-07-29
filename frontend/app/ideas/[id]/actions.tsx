@@ -9,8 +9,10 @@ import {
 } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { useI18n } from "@/lib/i18n/provider";
 
 export function IdeaActions({ ideaId }: { ideaId: string }) {
+  const { t } = useI18n();
   const { apiKey, canAct, useSession, isReady } = useIdeaActionAuth();
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -28,13 +30,13 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
       });
       notify.success(
         action === "like"
-          ? "已点赞！"
+          ? t("idea.statLikes")
           : action === "flowers"
-            ? "已表达期待"
-            : "操作成功"
+            ? t("idea.statWishes")
+            : t("common.operationFailed")
       );
     } catch (err) {
-      notify.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(null);
     }
@@ -48,7 +50,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
         className="btn-default btn-sm disabled:opacity-50"
       >
         {loading === "like" ? "…" : (
-          <><DeimosIcon name="heart" className="h-3.5 w-3.5" />点赞</>
+          <><DeimosIcon name="heart" className="h-3.5 w-3.5" />{t("idea.statLikes")}</>
         )}
       </button>
       <button
@@ -57,15 +59,15 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
         className="btn-default btn-sm disabled:opacity-50"
       >
         {loading === "flowers" ? "…" : (
-          <><DeimosIcon name="wish" className="h-3.5 w-3.5" />表达期待</>
+          <><DeimosIcon name="wish" className="h-3.5 w-3.5" />{t("idea.statWishes")}</>
         )}
       </button>
       <button
         onClick={() => {
-          const title = prompt("Fork 标题:");
+          const title = prompt("Fork title:");
           if (!title) return;
-          const desc = prompt("Fork 描述:") || "";
-          const reason = prompt("Fork 原因:") || "";
+          const desc = prompt("Fork description:") || "";
+          const reason = prompt("Fork reason:") || "";
           doFork(title, desc, reason);
         }}
         disabled={!!loading}
@@ -75,7 +77,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
       </button>
       {!isReady && !canAct && (
         <span className="text-xs text-[var(--text-muted)]">
-          需要登录后操作
+          {t("notif.loginRequired")}
         </span>
       )}
     </div>
@@ -97,9 +99,9 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
           body: JSON.stringify({ title, description: desc, reason }),
         }
       );
-      notify.success(`Fork 成功！新想法 ID: ${data.id}`);
+      notify.success(`${t("idea.forked")} ID: ${data.id}`);
     } catch (err) {
-      notify.error(getErrorMessage(err, "Fork 失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(null);
     }

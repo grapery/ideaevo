@@ -17,6 +17,7 @@ import { DeimosIcon } from "@/components/deimos-icon";
 import { SystemPageHeader } from "@/components/system-page-header";
 import { AccountSidebar } from "@/components/account-sidebar";
 import { useI18n } from "@/lib/i18n/provider";
+import type { TranslationKey } from "@/lib/i18n/messages";
 
 // 格式化最小货币单位为展示金额：1990 + CNY -> "¥19.90"，990 + USD -> "$9.90"
 function formatPrice(units: number, currency: string): string {
@@ -25,41 +26,27 @@ function formatPrice(units: number, currency: string): string {
   return `${symbol}${value}`;
 }
 
-// 格式化 token 数：10000 -> "1万"，10000000 -> "1000万"
-function formatTokens(n: number, zh: boolean): string {
+// 格式化 token 数：zh-CN 10000 -> "1万"；en 显示原始数字
+function formatTokens(n: number, locale: string): string {
+  const zh = locale === "zh-CN";
   if (zh && n >= 10000) {
     return `${Math.floor(n / 10000)}万`;
   }
   return new Intl.NumberFormat(zh ? "zh-CN" : "en").format(n);
 }
 
-function orderStatusText(status: string, zh: boolean): string {
-  switch (status) {
-    case "paid":
-      return zh ? "已支付" : "Paid";
-    case "pending":
-      return zh ? "待支付" : "Pending";
-    case "failed":
-      return zh ? "已取消" : "Cancelled";
-    case "refunded":
-      return zh ? "已退款" : "Refunded";
-    default:
-      return status;
-  }
-}
+const ORDER_STATUS_KEY: Record<string, TranslationKey> = {
+  paid: "billing.statusPaid",
+  pending: "billing.statusPending",
+  failed: "billing.statusCancelled",
+  refunded: "billing.statusRefunded",
+};
 
-function refundStatusText(status: string, zh: boolean): string {
-  switch (status) {
-    case "pending":
-      return zh ? "审批中" : "Under review";
-    case "approved":
-      return zh ? "已批准" : "Approved";
-    case "rejected":
-      return zh ? "已拒绝" : "Rejected";
-    default:
-      return status;
-  }
-}
+const REFUND_STATUS_KEY: Record<string, TranslationKey> = {
+  pending: "billing.statusReviewing",
+  approved: "billing.statusApproved",
+  rejected: "billing.statusRejected",
+};
 
 function PlanFeature({
   children,
@@ -84,8 +71,7 @@ function PlanFeature({
 }
 
 export default function BillingPage() {
-  const { locale } = useI18n();
-  const zh = locale === "zh-CN";
+  const { t, locale } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [plans, setPlans] = useState<PlansResponse | null>(null);
@@ -124,14 +110,12 @@ export default function BillingPage() {
       setLoadError(
         err instanceof ApiRequestError
           ? err.message
-          : zh
-            ? "账单数据加载失败，请稍后重试"
-            : "Unable to load billing data. Please try again.",
+          : t("common.operationFailed"),
       );
     } finally {
       setInitialLoading(false);
     }
-  }, [zh]);
+  }, [t]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -158,31 +142,21 @@ export default function BillingPage() {
       // mock 网关：不跳转，留在页面等待用户点「模拟支付」
       // 真实网关：跳转到支付页 / 展示二维码
       if (result.gateway === "mock") {
-        setPayMsg(
-          zh
-            ? "演示环境：点击下方按钮模拟支付完成"
-            : "Demo environment: complete the simulated payment below.",
-        );
+        setPayMsg(t("billing.mockPayDone"));
       } else if (result.payment_url) {
         // alipay / stripe 返回网页 URL，直接跳转
         if (result.gateway === "stripe" || result.gateway === "alipay") {
           window.location.href = result.payment_url;
         } else {
           // wechat 返回 code_url，需前端渲染二维码（这里提示）
-          setPayMsg(
-            (zh
-              ? "请使用微信扫描二维码完成支付："
-              : "Scan with WeChat to complete payment: ") + result.payment_url,
-          );
+          setPayMsg(result.payment_url);
         }
       }
     } catch (err) {
       const msg =
         err instanceof ApiRequestError
           ? err.message
-          : zh
-            ? "下单失败，请重试"
-            : "Unable to create the order. Please try again.";
+          : t("common.operationFailed");
       setError(msg);
     } finally {
       setLoading(false);
@@ -195,18 +169,14 @@ export default function BillingPage() {
     setError("");
     try {
       await billingApi.mockPay(pendingOrder.order.id);
-      setPayMsg(
-        zh ? "支付成功，会员已激活" : "Payment complete. Membership activated.",
-      );
+      setPayMsg(t("billing.mockPayDone"));
       setPendingOrder(null);
       await loadData(); // 刷新会员状态
     } catch (err) {
       const msg =
         err instanceof ApiRequestError
           ? err.message
-          : zh
-            ? "支付失败"
-            : "Payment failed";
+          : t("common.operationFailed");
       setError(msg);
     } finally {
       setLoading(false);
@@ -221,11 +191,7 @@ export default function BillingPage() {
     setRefundMsg("");
     try {
       await billingApi.requestRefund(refundOrderID, refundReason);
-      setRefundMsg(
-        zh
-          ? "退款申请已提交，等待管理员审批"
-          : "Refund request submitted for administrator review.",
-      );
+      setRefundMsg(t("billing.refundSubmittedHint"));
       setRefundOrderID("");
       setRefundReason("");
       await loadData(); // 刷新订单与退款列表
@@ -233,9 +199,7 @@ export default function BillingPage() {
       const msg =
         err instanceof ApiRequestError
           ? err.message
-          : zh
-            ? "申请失败"
-            : "Request failed";
+          : t("common.operationFailed");
       setRefundError(msg);
     } finally {
       setLoading(false);
@@ -274,12 +238,8 @@ export default function BillingPage() {
         <main className="min-w-0 flex-1 lg:max-w-[900px]">
           <SystemPageHeader
             eyebrow="ACCOUNT / BILLING"
-            title={zh ? "会员、用量与支付" : "Membership, usage, and billing"}
-            description={
-              zh
-                ? "额度由人类账户与执行任务的 Agent 共享。管理套餐、支付订单、发票状态和退款申请。"
-                : "Usage is shared by your account and executing Agents. Manage plans, payments, order status, and refund requests."
-            }
+            title={t("billing.title")}
+            description={t("billing.choosePlan")}
             icon="billing"
           />
 
@@ -291,7 +251,7 @@ export default function BillingPage() {
                 onClick={() => void loadData()}
                 className="btn-outline shrink-0"
               >
-                {zh ? "重试" : "Retry"}
+                {locale === "zh-CN" ? "重试" : "Retry"}
               </button>
             </div>
           )}
@@ -302,30 +262,26 @@ export default function BillingPage() {
               <div className="mb-6 flex items-start justify-between gap-4">
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/55">
-                    {zh ? "共享执行配额" : "SHARED EXECUTION QUOTA"}
+                    {t("billing.sharedQuota")}
                   </p>
                   <h2 className="mt-1 text-lg font-semibold">
-                    {zh ? "今日执行额度" : "Today’s execution quota"}
+                    {t("billing.dailyQuota")}
                   </h2>
                 </div>
                 <span className="rounded-full border border-white/20 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-white/80">
                   {membership.is_pro
-                    ? zh
-                      ? "Pro 会员"
-                      : "Pro member"
-                    : zh
-                      ? "免费用户"
-                      : "Free plan"}
+                    ? t("billing.proMember")
+                    : t("billing.freeUser")}
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-[1.35fr_1fr_1fr]">
                 <div>
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-2xl font-semibold">
-                      {formatTokens(membership.daily_quota.tokens_left, zh)}
+                      {formatTokens(membership.daily_quota.tokens_left, locale)}
                     </span>
                     <span className="font-mono text-[10px] text-white/55">
-                      {quotaPercent}% {zh ? "剩余" : "REMAINING"}
+                      {quotaPercent}% {t("billing.remaining")}
                     </span>
                   </div>
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15">
@@ -335,8 +291,8 @@ export default function BillingPage() {
                     />
                   </div>
                   <p className="mt-2 text-xs text-white/55">
-                    {zh ? "每日上限" : "Daily limit"}{" "}
-                    {formatTokens(membership.daily_quota.tokens_limit, zh)}{" "}
+                    {t("billing.dailyLimit")}{" "}
+                    {formatTokens(membership.daily_quota.tokens_limit, locale)}{" "}
                     Token
                   </p>
                 </div>
@@ -349,7 +305,7 @@ export default function BillingPage() {
                     </span>
                   </div>
                   <div className="mt-1 text-xs text-white/55">
-                    {zh ? "已创建 Agent" : "Agents created"}
+                    {t("billing.agentsCreated")}
                   </div>
                 </div>
                 <div className="border-t border-white/15 pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
@@ -359,15 +315,11 @@ export default function BillingPage() {
                       className="h-4 w-4 text-[#9aff39]"
                     />
                     {membership.is_pro
-                      ? zh
-                        ? "已启用"
-                        : "Enabled"
-                      : zh
-                        ? "受限"
-                        : "Limited"}
+                      ? t("billing.enabled")
+                      : t("billing.restricted")}
                   </div>
                   <div className="mt-1 text-xs text-white/55">
-                    {zh ? "MCP / Agent 权限" : "MCP / Agent access"}
+                    {t("billing.mcpAccess")}
                   </div>
                 </div>
               </div>
@@ -380,45 +332,41 @@ export default function BillingPage() {
               <div className="mb-3 flex items-end justify-between gap-4">
                 <div>
                   <p className="font-code text-[9px] text-[var(--accent-link)]">
-                    {zh ? "会员与配额" : "MEMBERSHIP & QUOTA"}
+                    {t("billing.membershipQuota")}
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-[var(--ink)]">
-                    {zh
-                      ? "选择适合执行强度的套餐"
-                      : "Choose a plan for your execution load"}
+                    {t("billing.choosePlan")}
                   </h2>
                 </div>
                 <span className="hidden font-code text-[9px] text-[var(--ink-faint)] sm:block">
-                  {zh ? "不自动续费" : "NO AUTO-RENEWAL"}
+                  {t("billing.noAutoRenew")}
                 </span>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {/* 免费版 */}
                 <div className="surface-card p-6">
                   <h3 className="text-lg font-semibold text-[var(--title)]">
-                    {zh ? "免费版" : "Free"}
+                    {t("billing.free")}
                   </h3>
                   <div className="mt-2 text-3xl font-bold text-[var(--title)]">
                     ¥0
                   </div>
                   <p className="mt-1 text-sm text-[var(--text-muted)]">
-                    {zh ? "永久免费" : "Free forever"}
+                    {t("billing.freeForever")}
                   </p>
                   <ul className="mt-4 space-y-2 text-sm">
                     <PlanFeature>
-                      {zh ? "每日" : "Daily"}{" "}
-                      {formatTokens(plans.free.daily_tokens, zh)} Token
+                      {t("billing.freePerDay")}{" "}
+                      {formatTokens(plans.free.daily_tokens, locale)} Token
                     </PlanFeature>
                     <PlanFeature>
-                      {zh
-                        ? "浏览想法、关注、点赞"
-                        : "Discover, follow, and like ideas"}
+                      {t("billing.freeFeatures")}
                     </PlanFeature>
                     <PlanFeature available={false}>
-                      {zh ? "不能创建 Agent" : "Agent creation unavailable"}
+                      {t("billing.freeNoAgent")}
                     </PlanFeature>
                     <PlanFeature available={false}>
-                      {zh ? "不能使用 MCP 服务" : "MCP access unavailable"}
+                      {t("billing.freeNoMcp")}
                     </PlanFeature>
                   </ul>
                 </div>
@@ -431,34 +379,32 @@ export default function BillingPage() {
                   >
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-[var(--title)]">
-                        {zh ? "Pro 会员" : "Pro membership"}
+                        {t("billing.pro")}
                       </h3>
                       <span className="badge-pill badge-active">
-                        {zh ? "推荐" : "Recommended"}
+                        {t("billing.recommended")}
                       </span>
                     </div>
                     <div className="mt-2 text-3xl font-bold text-[var(--title)]">
                       {formatPrice(plan.prices[currency] || 0, currency)}
                       <span className="text-sm font-normal text-[var(--text-muted)]">
                         {" "}
-                        / {plan.duration_days} {zh ? "天" : "days"}
+                        / {plan.duration_days} {locale === "zh-CN" ? "天" : "days"}
                       </span>
                     </div>
                     <ul className="mt-4 space-y-2 text-sm">
                       <PlanFeature>
-                        {zh ? "每日" : "Daily"}{" "}
-                        {formatTokens(plan.daily_tokens, zh)} Token
+                        {t("billing.perDay")}{" "}
+                        {formatTokens(plan.daily_tokens, locale)} Token
                       </PlanFeature>
                       <PlanFeature>
-                        {zh
-                          ? `可创建最多 ${plan.max_agents} 个 Agent`
-                          : `Create up to ${plan.max_agents} Agents`}
+                        {t("billing.proMaxAgents", { count: plan.max_agents })}
                       </PlanFeature>
                       <PlanFeature>
-                        {zh ? "可使用 MCP 服务" : "Full MCP access"}
+                        {t("billing.proMcp")}
                       </PlanFeature>
                       <PlanFeature>
-                        {zh ? "所有免费版功能" : "Everything in Free"}
+                        {t("billing.proAllFeatures")}
                       </PlanFeature>
                     </ul>
                   </div>
@@ -472,7 +418,7 @@ export default function BillingPage() {
             <div className="surface-card p-5">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-sm text-[var(--text-muted)]">
-                  {zh ? "支付币种" : "Billing currency"}
+                  {t("billing.currency")}
                 </span>
                 <div className="flex gap-1">
                   {plans.currencies.map((c) => (
@@ -486,13 +432,7 @@ export default function BillingPage() {
                           : "bg-[var(--rule)]/30 text-[var(--ink-soft)] hover:bg-[var(--rule)]/50"
                       }`}
                     >
-                      {c === "CNY"
-                        ? zh
-                          ? "人民币 ¥"
-                          : "CNY ¥"
-                        : zh
-                          ? "美元 $"
-                          : "USD $"}
+                      {c === "CNY" ? t("billing.cny") : t("billing.usd")}
                     </button>
                   ))}
                 </div>
@@ -514,10 +454,8 @@ export default function BillingPage() {
                   className="btn-primary w-full"
                 >
                   {loading
-                    ? zh
-                      ? "处理中..."
-                      : "Processing..."
-                    : `${zh ? "立即开通 Pro" : "Activate Pro"} · ${formatPrice(plans.plans[0].prices[currency] || 0, currency)}`}
+                    ? t("billing.processing")
+                    : `${t("billing.subscribeNow")} · ${formatPrice(plans.plans[0].prices[currency] || 0, currency)}`}
                 </button>
               ) : (
                 <div className="space-y-3">
@@ -534,15 +472,11 @@ export default function BillingPage() {
                       className="btn-primary w-full"
                     >
                       {loading ? (
-                        zh ? (
-                          "处理中..."
-                        ) : (
-                          "Processing..."
-                        )
+                        t("billing.processing")
                       ) : (
                         <>
                           <DeimosIcon name="check" className="h-4 w-4" />
-                          {zh ? "模拟支付完成" : "Complete simulated payment"}
+                          {t("billing.mockPayDone")}
                         </>
                       )}
                     </button>
@@ -552,15 +486,13 @@ export default function BillingPage() {
                     onClick={() => setPendingOrder(null)}
                     className="text-sm text-[var(--text-muted)] hover:text-[var(--ink)] w-full text-center"
                   >
-                    {zh ? "取消" : "Cancel"}
+                    {t("billing.cancel")}
                   </button>
                 </div>
               )}
 
               <p className="mt-3 text-xs text-[var(--text-muted)] text-center">
-                {zh
-                  ? "购买后 30 天内有效，到期需手动续期，不自动扣费"
-                  : "Valid for 30 days. Renew manually; no automatic charges."}
+                {t("billing.afterPurchase")}
               </p>
             </div>
           )}
@@ -571,24 +503,21 @@ export default function BillingPage() {
               <div className="mb-4 flex items-end justify-between gap-4 border-b border-[var(--divider)] pb-4">
                 <div>
                   <p className="font-code text-[9px] text-[var(--accent-link)]">
-                    {zh ? "订单与退款" : "ORDERS & REFUNDS"}
+                    {t("billing.ordersRefunds")}
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-[var(--ink)]">
-                    {zh ? "支付记录" : "Payment history"}
+                    {t("billing.paymentRecords")}
                   </h2>
                 </div>
                 <span className="font-code text-[9px] text-[var(--ink-faint)]">
-                  {orders.length}{" "}
-                  {zh ? "笔订单" : orders.length === 1 ? "ORDER" : "ORDERS"}
+                  {t("billing.orderCount", { count: orders.length })}
                 </span>
               </div>
               {orders.length === 0 ? (
                 <div className="flex min-h-32 items-center justify-center gap-3 text-sm text-[var(--text-muted)]">
                   <DeimosIcon name="document" className="h-5 w-5" />
                   <span>
-                    {zh
-                      ? "暂无订单，开通会员后会在这里显示。"
-                      : "No orders yet. New purchases will appear here."}
+                    {t("billing.noOrders")}
                   </span>
                 </div>
               ) : (
@@ -625,7 +554,7 @@ export default function BillingPage() {
                                   : ""
                             }`}
                           >
-                            {orderStatusText(order.status, zh)}
+                            {t(ORDER_STATUS_KEY[order.status] ?? "billing.statusPending")}
                           </span>
                           {canRefund && (
                             <button
@@ -633,7 +562,7 @@ export default function BillingPage() {
                               onClick={() => setRefundOrderID(order.id)}
                               className="text-xs text-[var(--accent-warning)] hover:underline"
                             >
-                              {zh ? "申请退款" : "Request refund"}
+                              {t("billing.requestRefund")}
                             </button>
                           )}
                           {orderRefund && (
@@ -646,8 +575,8 @@ export default function BillingPage() {
                                     : "badge-active"
                               }`}
                             >
-                              {zh ? "退款" : "Refund"}{" "}
-                              {refundStatusText(orderRefund.status, zh)}
+                              {t("billing.refund")}{" "}
+                              {t(REFUND_STATUS_KEY[orderRefund.status] ?? "billing.statusReviewing")}
                             </span>
                           )}
                         </div>
@@ -663,7 +592,7 @@ export default function BillingPage() {
           {refundOrderID && (
             <div className="mt-4 surface-card-elevated p-5">
               <h3 className="text-sm font-medium text-[var(--ink-soft)] mb-3">
-                {zh ? "申请退款" : "Request a refund"}
+                {t("billing.refundTitle")}
               </h3>
               {refundError && (
                 <div className="mb-3 text-sm text-[var(--accent-error)]">
@@ -678,9 +607,7 @@ export default function BillingPage() {
               <textarea
                 value={refundReason}
                 onChange={(e) => setRefundReason(e.target.value)}
-                placeholder={
-                  zh ? "请填写退款原因（选填）" : "Reason for refund (optional)"
-                }
+                placeholder={t("billing.refundPlaceholder")}
                 className="w-full text-sm p-2 rounded-md border border-[var(--rule)] bg-transparent text-[var(--title)] resize-none"
                 rows={3}
               />
@@ -691,13 +618,7 @@ export default function BillingPage() {
                   onClick={handleRequestRefund}
                   className="btn-primary flex-1"
                 >
-                  {loading
-                    ? zh
-                      ? "提交中..."
-                      : "Submitting..."
-                    : zh
-                      ? "提交退款申请"
-                      : "Submit refund request"}
+                  {loading ? t("billing.submitting") : t("billing.submitRefund")}
                 </button>
                 <button
                   type="button"
@@ -709,13 +630,11 @@ export default function BillingPage() {
                   }}
                   className="btn-outline"
                 >
-                  {zh ? "取消" : "Cancel"}
+                  {t("billing.cancel")}
                 </button>
               </div>
               <p className="mt-2 text-xs text-[var(--text-muted)]">
-                {zh
-                  ? "退款申请提交后需等待管理员审批。批准后将撤销该订单赋予的会员有效期。"
-                  : "Refunds require administrator review. Approval revokes the membership period granted by the order."}
+                {t("billing.refundSubmittedHint")}
               </p>
             </div>
           )}
@@ -724,7 +643,7 @@ export default function BillingPage() {
           {refunds.length > 0 && (
             <div className="mt-4 surface-card p-5">
               <h2 className="text-sm font-medium text-[var(--ink-soft)] mb-4">
-                {zh ? "退款记录" : "Refund history"}
+                {t("billing.refundRecords")}
               </h2>
               <div className="space-y-2">
                 {refunds.map((refund) => (
@@ -745,17 +664,17 @@ export default function BillingPage() {
                               : "badge-active"
                         }`}
                       >
-                        {refundStatusText(refund.status, zh)}
+                        {t(REFUND_STATUS_KEY[refund.status] ?? "billing.statusReviewing")}
                       </span>
                     </div>
                     {refund.reason && (
                       <div className="text-xs text-[var(--text-muted)] mt-1">
-                        {zh ? "原因" : "Reason"}：{refund.reason}
+                        {t("billing.reason")}：{refund.reason}
                       </div>
                     )}
                     {refund.admin_note && (
                       <div className="text-xs text-[var(--text-muted)] mt-1">
-                        {zh ? "审批备注" : "Review note"}：{refund.admin_note}
+                        {t("billing.reviewNote")}：{refund.admin_note}
                       </div>
                     )}
                     <div className="text-xs text-[var(--text-muted)] mt-0.5">
@@ -773,7 +692,7 @@ export default function BillingPage() {
               href={`/users/${user.id}`}
               className="text-sm text-[var(--text-muted)] hover:text-[var(--primary)]"
             >
-              {zh ? "查看我的主页会员状态" : "View membership on my profile"} →
+              {t("billing.viewMembership")}
             </AppLink>
           </div>
         </main>

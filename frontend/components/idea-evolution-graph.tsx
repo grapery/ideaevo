@@ -59,8 +59,7 @@ export function IdeaEvolutionGraph({
   branches: Idea[];
   stats: IdeaStats | null;
 }) {
-  const { locale } = useI18n();
-  const zh = locale === "zh-CN";
+  const { locale, t } = useI18n();
   const source = lineage?.source_idea;
   const branches = (lineage?.children?.length ? lineage.children : forkChildren).slice(0, 2);
   const totalForks = lineage?.stats.total_forks ?? idea.fork_count;
@@ -70,24 +69,22 @@ export function IdeaEvolutionGraph({
     <section id="evolution" className="scroll-mt-20 pt-8">
       <div className="mb-5 flex items-start justify-between gap-6">
         <div>
-          <p className="meta-label mb-2 text-[var(--accent-link)]">{zh ? "谱系 / 版本图" : "Lineage / Version graph"}</p>
-          <h2 className="page-title text-[30px]">{zh ? "Idea 演化图" : "Idea evolution graph"}</h2>
+          <p className="meta-label mb-2 text-[var(--accent-link)]">{t("idea.evolveGraphTitle")}</p>
+          <h2 className="page-title text-[30px]">{t("idea.evolveTitle")}</h2>
           <p className="mt-2 text-[13px] text-[var(--ink-soft)]">
-            {zh
-              ? "查看版本、Fork 分支、贡献者与实现状态如何沿时间演化。"
-              : "See how versions, fork branches, contributors, and implementation status evolve over time."}
+            See how versions, fork branches, contributors, and implementation status evolve over time.
           </p>
         </div>
         <DeimosIcon name="fork" className="h-8 w-8 text-[var(--accent-link)]" />
       </div>
 
       <div className="mb-5 flex h-12 items-center gap-7 rounded-md border border-[var(--rule)] bg-white px-4 font-code text-[10px] font-semibold uppercase text-[var(--ink-soft)]">
-        <span className="text-[var(--ink)]">{zh ? "关系图" : "Graph"}</span>
-        <span>{zh ? "时间线" : "Timeline"}</span>
-        <span>{zh ? "版本" : "Versions"}</span>
-        <span className="ml-auto hidden sm:inline">{zh ? "分支：全部" : "branch: all"}</span>
-        <span className="hidden sm:inline">{zh ? "状态：全部" : "status: all"}</span>
-        <span className="hidden md:inline">{zh ? "适应视图" : "fit view"}</span>
+        <span className="text-[var(--ink)]">{t("idea.graphView")}</span>
+        <span>{t("idea.timelineView")}</span>
+        <span>{t("idea.versionsView")}</span>
+        <span className="ml-auto hidden sm:inline">{t("idea.branchAll")}</span>
+        <span className="hidden sm:inline">{t("idea.statusAll")}</span>
+        <span className="hidden md:inline">{t("idea.fitView")}</span>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_296px]">
@@ -95,7 +92,7 @@ export function IdeaEvolutionGraph({
           <div className="mb-8 flex justify-between border-b border-[var(--rule)] pb-5 font-code text-[9px] uppercase text-[var(--ink-faint)]">
             <span>{dateLabel(source?.created_at || idea.created_at, locale)}</span>
             <span>{dateLabel(idea.updated_at, locale)}</span>
-            <span>{zh ? "今天" : "Today"}</span>
+            <span>{t("common.today")}</span>
           </div>
 
           <div className="relative">
@@ -112,15 +109,15 @@ export function IdeaEvolutionGraph({
               />
               <GraphNode
                 eyebrow={`VERSION / v${Math.max(1, currentVersion - 1)}`}
-                title={lineage?.source_version?.title || (zh ? "语义与证据补全" : "Semantic and evidence enrichment")}
-                detail={`${zh ? "活跃" : "ACTIVE"} · ${idea.agent?.name || "Agent"}`}
+                title={lineage?.source_version?.title || t("idea.semanticEvidence")}
+                detail={`${t("market.active")} · ${idea.agent?.name || "Agent"}`}
                 date={lineage?.source_version?.created_at || idea.created_at}
                 locale={locale}
               />
               <GraphNode
                 eyebrow={`CURRENT / v${currentVersion}`}
                 title={idea.title}
-                detail={`${(idea.impl_status || idea.status).toUpperCase()} · ${zh ? "当前分支" : "current branch"}`}
+                detail={`${(idea.impl_status || idea.status).toUpperCase()} · ${t("idea.currentBranchLabel")}`}
                 date={idea.updated_at}
                 href={`/ideas/${idea.id}`}
                 tone="current"
@@ -134,10 +131,10 @@ export function IdeaEvolutionGraph({
                   <div className={`absolute -top-20 left-1/2 hidden h-20 w-px md:block ${index === 0 ? "bg-[#ff8a00]" : "bg-[#a3e635]"}`} />
                   <GraphNode
                     eyebrow={index === 0
-                      ? (zh ? "FORK / 活跃分支" : "FORK / ACTIVE BRANCH")
-                      : (zh ? "FORK / 实现分支" : "FORK / IMPLEMENTATION")}
+                      ? t("idea.forkActive")
+                      : t("idea.forkImpl")}
                     title={branch.title}
-                    detail={`${branch.status.toUpperCase()} · ${branch.agent?.name || (zh ? "贡献者" : "contributor")}`}
+                    detail={`${branch.status.toUpperCase()} · ${branch.agent?.name || t("idea.contributorsLabel")}`}
                     date={branch.updated_at}
                     href={`/ideas/${branch.id}`}
                     tone={branch.status === "implemented" ? "implemented" : "human"}
@@ -147,10 +144,10 @@ export function IdeaEvolutionGraph({
               )) : (
                 <div className="col-span-2 rounded-lg border border-dashed border-[var(--rule-strong)] px-5 py-10 text-center">
                   <p className="font-code text-[10px] uppercase text-[var(--ink-faint)]">
-                    {zh ? "暂无派生分支" : "No derived branch yet"}
+                    {t("idea.noBranches")}
                   </p>
                   <p className="mt-2 text-sm text-[var(--ink-soft)]">
-                    {zh ? "Fork 后的分支会在这里形成可追溯的演化关系。" : "Forked branches will form a traceable evolution graph here."}
+                    Forked branches will form a traceable evolution graph here.
                   </p>
                 </div>
               )}
@@ -158,33 +155,31 @@ export function IdeaEvolutionGraph({
           </div>
 
           <p className="mt-16 font-code text-[9px] uppercase leading-5 text-[var(--ink-faint)]">
-            {zh
-              ? "节点 = idea/版本　连线 = 谱系　橙色 = 活跃 Fork　绿色 = 已实现分支"
-              : "NODE = idea/version　 LINE = lineage　 ORANGE = active fork　 GREEN = implemented branch"}
+            NODE = idea/version　 LINE = lineage　 ORANGE = active fork　 GREEN = implemented branch
           </p>
         </div>
 
         <aside className="space-y-3">
           <div className="rounded-lg bg-[#0a0a0a] p-4 text-white">
-            <p className="font-code text-[10px] text-white/60">{zh ? "已选择 / 当前" : "SELECTED / CURRENT"} v{currentVersion}</p>
+            <p className="font-code text-[10px] text-white/60">{t("idea.selected")} / {t("idea.currentBranch")} v{currentVersion}</p>
             <h3 className="mt-5 text-sm font-semibold">{idea.title}</h3>
             <p className="mt-1 font-code text-[10px] text-[#a3e635]">{(idea.impl_status || idea.status).toUpperCase()}</p>
             <dl className="mt-5 grid grid-cols-[72px_1fr] gap-y-2 font-code text-[10px] leading-4 text-white/65">
-              <dt>{zh ? "作者" : "Author"}</dt><dd>{idea.agent?.name || "—"}</dd>
-              <dt>{zh ? "更新" : "Updated"}</dt><dd>{dateLabel(idea.updated_at, locale)}</dd>
-              <dt>{zh ? "证据" : "Evidence"}</dt><dd>{stats?.reference_count || 0} {zh ? "条引用" : "references"}</dd>
-              <dt>{zh ? "版本" : "Versions"}</dt><dd>{currentVersion}</dd>
+              <dt>{t("idea.author")}</dt><dd>{idea.agent?.name || "—"}</dd>
+              <dt>{t("idea.updatedLabel")}</dt><dd>{dateLabel(idea.updated_at, locale)}</dd>
+              <dt>{t("idea.evidenceLabel")}</dt><dd>{t("idea.refsCount", { count: stats?.reference_count || 0 })}</dd>
+              <dt>{t("idea.versionLabel")}</dt><dd>{currentVersion}</dd>
             </dl>
           </div>
           <div className="rounded-lg border border-[var(--rule)] bg-white p-4">
-            <p className="font-code text-[10px] uppercase">{zh ? "谱系指标" : "Lineage metrics"}</p>
+            <p className="font-code text-[10px] uppercase">{t("idea.lineageMetrics")}</p>
             <dl className="mt-5 space-y-2 font-code text-[10px]">
               {[
-                [zh ? "Fork 总数" : "Total forks", totalForks],
-                [zh ? "活跃分支" : "Active branches", lineage?.stats.active_branches ?? branches.filter((b) => b.status === "active").length],
-                [zh ? "已实现" : "Implemented", branches.filter((b) => b.status === "implemented").length],
-                [zh ? "贡献者" : "Contributors", lineage?.stats.contributors ?? 0],
-                [zh ? "版本" : "Versions", currentVersion],
+                [t("idea.totalForkCount"), totalForks],
+                [t("idea.activeBranches", { count: lineage?.stats.active_branches ?? branches.filter((b) => b.status === "active").length }), lineage?.stats.active_branches ?? branches.filter((b) => b.status === "active").length],
+                [t("idea.implCount"), branches.filter((b) => b.status === "implemented").length],
+                [t("idea.contributors", { count: lineage?.stats.contributors ?? 0 }), lineage?.stats.contributors ?? 0],
+                [t("idea.statVersions"), currentVersion],
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-4">
                   <dt>{label}</dt><dd>{value}</dd>
@@ -193,10 +188,10 @@ export function IdeaEvolutionGraph({
             </dl>
           </div>
           <div className="rounded-lg border border-[#b7ceff] bg-[#eaf1ff] p-4 text-[#1f56d8]">
-            <p className="font-code text-[10px] uppercase">{zh ? "最近事件" : "Recent events"}</p>
+            <p className="font-code text-[10px] uppercase">{t("idea.recentEvents")}</p>
             <div className="mt-5 space-y-2 font-code text-[10px] leading-4">
-              <p>{dateLabel(idea.updated_at, locale)}　{zh ? "当前版本已更新" : "current version updated"}</p>
-              <p>{dateLabel(idea.created_at, locale)}　{zh ? "idea 已注册" : "idea registered"}</p>
+              <p>{dateLabel(idea.updated_at, locale)}　{t("idea.versionUpdated")}</p>
+              <p>{dateLabel(idea.created_at, locale)}　{t("idea.ideaRegistered")}</p>
               {branches.slice(0, 3).map((branch) => (
                 <p key={branch.id}>{dateLabel(branch.updated_at, locale)}　Fork · {branch.title}</p>
               ))}

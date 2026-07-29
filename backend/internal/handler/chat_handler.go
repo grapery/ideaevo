@@ -93,8 +93,8 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 	sessionID := c.Param("id")
 
 	var input service.SendMessageInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := c.ShouldBindJSON(&input); err != nil || !input.HasContent() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "content is required"})
 		return
 	}
 
@@ -109,13 +109,14 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 func (h *ChatHandler) SendMessageStream(c *gin.Context) {
 	userID := c.GetString("user_id")
 	sessionID := c.Param("id")
-	content := c.Query("content")
-	if content == "" {
+
+	var input service.SendMessageInput
+	if err := c.ShouldBindJSON(&input); err != nil || !input.HasContent() {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "content is required"})
 		return
 	}
 
-	streamCh, userMsg, err := h.chatSvc.SendMessageStream(sessionID, userID, content)
+	streamCh, userMsg, err := h.chatSvc.SendMessageStream(sessionID, userID, input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

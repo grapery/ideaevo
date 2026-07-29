@@ -2,6 +2,8 @@ import { AppLink as Link } from "@/components/app-link";
 import { IconGitFork, IconHeart, IconWish } from "@/components/icons";
 import { fetchPublic } from "@/lib/server-fetch";
 import { ActivityFeedTabs } from "@/components/activity-feed-tabs";
+import { getServerI18n } from "@/lib/i18n/server";
+import type { TranslationKey } from "@/lib/i18n/messages";
 import type { ActivityLog } from "@/components/activity-list";
 
 export const revalidate = 60;
@@ -66,13 +68,20 @@ function RankingCard({
   ideas,
   metric,
   icon: Icon,
+  t,
 }: {
   title: string;
   ideas: RankingIdea[];
   metric: "like_count" | "flower_count" | "fork_count";
   icon: React.ComponentType<{ className?: string }>;
+  t: (key: TranslationKey) => string;
 }) {
-  const metricLabel = metric === "like_count" ? "赞" : metric === "flower_count" ? "期待" : "Fork";
+  const metricLabelKey: TranslationKey =
+    metric === "like_count"
+      ? "activity.metricLike"
+      : metric === "flower_count"
+        ? "activity.metricWish"
+        : "activity.metricFork";
   return (
     <div className="rounded-[8px] border border-[var(--rule)] bg-white p-4">
       <h3 className="flex items-center gap-2 font-code text-[10px] text-[var(--ink)]">
@@ -80,7 +89,7 @@ function RankingCard({
         {title}
       </h3>
       {ideas.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">暂无数据</p>
+        <p className="text-sm text-[var(--text-muted)]">{t("common.noData")}</p>
       ) : (
         <ol className="mt-4 space-y-3">
           {ideas.map((idea, i) => (
@@ -95,7 +104,7 @@ function RankingCard({
                 {idea.title}
               </Link>
               <span className="shrink-0 font-code text-[9px] text-[var(--ink-faint)]">
-                {idea[metric]} {metricLabel}
+                {idea[metric]} {t(metricLabelKey)}
               </span>
             </li>
           ))}
@@ -106,6 +115,7 @@ function RankingCard({
 }
 
 export default async function ActivityFeedPage() {
+  const { t } = await getServerI18n();
   const { stats, activities, total_ideas: totalIdeas, rankings } = await getActivityFeed();
 
   return (
@@ -115,10 +125,10 @@ export default async function ActivityFeedPage() {
           <div>
             <p className="font-code text-[10px] text-[var(--accent-link)]">GLOBAL ACTIVITY / SIGNAL INDEX</p>
             <h1 className="font-display mt-2 text-[30px] font-bold tracking-[-0.025em] text-[var(--ink)]">
-              全站动态 & 排行榜
+              {t("activity.allActivity")}
             </h1>
             <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
-              观察发布、期待、Fork、实现与 Agent 执行轨迹。
+              {t("activity.desc")}
             </p>
           </div>
           <Link href="/ideas/new" className="btn-primary h-8 px-4 text-[11px]">+ PUBLISH IDEA</Link>
@@ -147,9 +157,9 @@ export default async function ActivityFeedPage() {
               <p>{stats.active_agents} Agents active</p>
               <p>{stats.total_actions} trace events</p>
             </section>
-            <RankingCard title="热门想法" ideas={rankings.popular} metric="like_count" icon={IconHeart} />
-            <RankingCard title="最多期待" ideas={rankings.flowers} metric="flower_count" icon={IconWish} />
-            <RankingCard title="最多 Fork" ideas={rankings.forks} metric="fork_count" icon={IconGitFork} />
+            <RankingCard title={t("activity.hotIdeas")} ideas={rankings.popular} metric="like_count" icon={IconHeart} t={t} />
+            <RankingCard title={t("activity.mostWished")} ideas={rankings.flowers} metric="flower_count" icon={IconWish} t={t} />
+            <RankingCard title={t("activity.mostForked")} ideas={rankings.forks} metric="fork_count" icon={IconGitFork} t={t} />
           </aside>
         </div>
       </div>

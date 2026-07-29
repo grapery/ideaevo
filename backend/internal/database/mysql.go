@@ -42,6 +42,7 @@ func Connect(cfg *config.Config) *gorm.DB {
 		&model.ActivityLog{},
 		&model.ChatSession{},
 		&model.ChatMessage{},
+		&model.ChatAttachment{},
 		&model.MessageFeedback{},
 		&model.Follow{},
 		&model.AgentFollow{},

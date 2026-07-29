@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { chatApi } from "@/lib/api-client";
-import { ChatSession, ChatMessage as ChatMessageType } from "@/lib/types";
+import { ChatSession, ChatMessage as ChatMessageType, ChatAttachmentRef } from "@/lib/types";
 import ChatMessage from "@/components/chat-message";
 import ChatInput from "@/components/chat-input";
 import Link from "next/link";
@@ -142,7 +142,7 @@ export default function ChatPage() {
         });
         setActiveId(created.session.id);
       } catch (err) {
-        notify.error(getErrorMessage(err, "创建对话失败"));
+        notify.error(getErrorMessage(err, t("common.operationFailed")));
         setNewAgentId(targetAgentId);
         setShowNewDialog(true);
       } finally {
@@ -154,7 +154,7 @@ export default function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, agentIdParam, ideaIdParam]);
+  }, [user, agentIdParam, ideaIdParam, t]);
 
   const loadMessages = useCallback(async (sessionId: string) => {
     try {
@@ -162,9 +162,9 @@ export default function ChatPage() {
       setMessages(normalizeChatMessages(res.messages));
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     } catch (err) {
-      notify.error(getErrorMessage(err, "加载消息失败"));
+      notify.error(getErrorMessage(err, t("common.loadFailed")));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -194,7 +194,7 @@ export default function ChatPage() {
     setActiveId(id);
   }, []);
 
-  const handleSend = async (content: string) => {
+  const handleSend = async (content: string, attachment?: ChatAttachmentRef) => {
     if (!activeId) return;
     const sessionId = activeId;
     const userMsg: ChatMessageType = {
@@ -203,6 +203,18 @@ export default function ChatPage() {
       role: "user",
       content,
       created_at: new Date().toISOString(),
+      ...(attachment && {
+        metadata: {
+          attachment: {
+            id: attachment.id,
+            kind: attachment.kind,
+            file_name: attachment.file_name,
+            summary: attachment.summary,
+            url: attachment.url,
+            size: attachment.size,
+          },
+        },
+      }),
     };
     const assistantMsg: ChatMessageType = {
       id: `temp-assistant-${Date.now()}`,
@@ -380,7 +392,8 @@ export default function ChatPage() {
               })
             );
           }
-        }
+        },
+        attachment?.id,
       );
     } catch {
       if (stillActive()) void finishStream();
@@ -403,7 +416,7 @@ export default function ChatPage() {
       setNewAgentId("");
       setNewTitle("");
     } catch (err) {
-      notify.error(getErrorMessage(err, "创建对话失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setCreatingSession(false);
     }
@@ -418,9 +431,9 @@ export default function ChatPage() {
         setMessages([]);
       }
       setPendingDeleteId(null);
-      notify.success("会话已删除");
+      notify.success(t("chat.delete"));
     } catch (err) {
-      notify.error(getErrorMessage(err, "删除失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     }
   };
 
@@ -433,9 +446,9 @@ export default function ChatPage() {
         setMessages([]);
       }
       const summary = res.result?.summary;
-      notify.success(summary ? `已归档：${summary.slice(0, 40)}` : "会话已归档");
+      notify.success(summary ? `${t("chat.archive")}：${summary.slice(0, 40)}` : t("chat.archive"));
     } catch (err) {
-      notify.error(getErrorMessage(err, "归档失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     }
   };
 
@@ -460,10 +473,10 @@ export default function ChatPage() {
             m.id === messageId ? { ...m, user_feedback: prevFeedback } : m
           )
         );
-        notify.error(getErrorMessage(err, "反馈失败"));
+        notify.error(getErrorMessage(err, t("common.operationFailed")));
       }
     },
-    [activeId, messages]
+    [activeId, messages, t]
   );
 
   const handleForkFromMessage = useCallback(
@@ -475,12 +488,12 @@ export default function ChatPage() {
         });
         setSessions((prev) => [res.session, ...prev]);
         setActiveId(res.session.id);
-        notify.success("已创建分支对话");
+        notify.success(t("idea.forked"));
       } catch (err) {
-        notify.error(getErrorMessage(err, "分支失败"));
+        notify.error(getErrorMessage(err, t("common.operationFailed")));
       }
     },
-    [activeId]
+    [activeId, t]
   );
 
   const workbenchTopbar = (
@@ -791,7 +804,7 @@ export default function ChatPage() {
       <Modal
         open={pendingDeleteId !== null}
         onClose={() => setPendingDeleteId(null)}
-        title={locale === "zh-CN" ? "删除任务会话" : "Delete task conversation"}
+        title={t("chat.createTask")}
         description={locale === "zh-CN"
           ? "消息、工具运行记录与分支上下文将一并删除，此操作无法撤销。"
           : "Messages, tool runs, and branch context will be permanently deleted."}
@@ -799,14 +812,14 @@ export default function ChatPage() {
       >
         <div className="flex justify-end gap-2">
           <button type="button" onClick={() => setPendingDeleteId(null)} className="btn-default btn-sm">
-            {t("chat.cancel")}
+            {t("common.cancel")}
           </button>
           <button
             type="button"
             onClick={() => pendingDeleteId && void handleDeleteSession(pendingDeleteId)}
             className="btn-sm rounded border border-[var(--accent-warning)] bg-[var(--accent-warning)] px-3 text-white hover:opacity-90"
           >
-            {locale === "zh-CN" ? "确认删除" : "Delete"}
+            {t("common.confirm")}
           </button>
         </div>
       </Modal>
@@ -815,7 +828,7 @@ export default function ChatPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="rounded-md border border-[var(--rule)] bg-[var(--bg-surface)] p-6 w-full max-w-md shadow-2xl">
             <h3 className="text-lg font-semibold text-[var(--title)] mb-4">
-              {locale === "zh-CN" ? "新建对话" : "New conversation"}
+              {t("chat.newChat")}
             </h3>
             <div className="space-y-4">
               <FormField id="new-agent-id" label={t("chat.agentId")}>
@@ -840,7 +853,7 @@ export default function ChatPage() {
                   onClick={() => setShowNewDialog(false)}
                   className="btn-default btn-sm"
                 >
-                  {t("chat.cancel")}
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
@@ -849,7 +862,7 @@ export default function ChatPage() {
                   className="btn-outline px-4 py-2 text-sm disabled:opacity-40"
                 >
                   {creatingSession
-                    ? (locale === "zh-CN" ? "创建中…" : "Creating…")
+                    ? t("common.loading")
                     : t("chat.create")}
                 </button>
               </div>

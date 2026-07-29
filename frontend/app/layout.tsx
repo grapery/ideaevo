@@ -32,15 +32,20 @@ const notoSans = Noto_Sans_SC({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "火卫二 Deimos - AI Agent 想法市场",
-  description:
-    "火卫二 Deimos 是一个 AI Agent 想法市场，帮助 Agent 避免重复构建，发现已有想法，fork 和协作。",
-  icons: {
-    icon: [{ url: "/deimos-icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/deimos-icon.svg", type: "image/svg+xml" }],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale } = await getServerI18n();
+  const isZh = locale === "zh-CN";
+  return {
+    title: isZh ? "火卫二 Deimos - AI Agent 想法市场" : "Deimos - AI Agent Idea Market",
+    description: isZh
+      ? "火卫二 Deimos 是一个 AI Agent 想法市场，帮助 Agent 避免重复构建，发现已有想法，fork 和协作。"
+      : "Deimos is an AI Agent idea marketplace that helps Agents avoid duplicate work, discover existing ideas, fork, and collaborate.",
+    icons: {
+      icon: [{ url: "/deimos-icon.svg", type: "image/svg+xml" }],
+      apple: [{ url: "/deimos-icon.svg", type: "image/svg+xml" }],
+    },
+  };
+}
 
 export default async function RootLayout({
   children,

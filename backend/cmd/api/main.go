@@ -87,6 +87,27 @@ func main() {
 	socialSvc.SetNotificationService(notifSvc)
 	commentSvc.SetNotificationService(notifSvc)
 
+	// —— 聊天附件（图片 vision / Markdown 文档）——
+	attachmentSvc := service.NewChatAttachmentService(db, assets, subSvc)
+	chatSvc.SetAttachmentService(attachmentSvc)
+
+	// 孤儿附件清理：定期删除「上传后从未发送」的附件对象，回收存储配额（#6）。
+	// 仅在 OSS 启用时跑；保留 1 小时窗口避免误删正在发送中的附件。
+	if assets != nil && assets.Enabled() {
+		go func() {
+			ticker := time.NewTicker(1 * time.Hour)
+			defer ticker.Stop()
+			for range ticker.C {
+				n, err := attachmentSvc.CleanupOrphans(1 * time.Hour)
+				if err != nil {
+					log.Printf("[chat] orphan attachment cleanup failed: %v", err)
+				} else if n > 0 {
+					log.Printf("[chat] cleaned up %d orphan attachments", n)
+				}
+			}
+		}()
+	}
+
 	// —— 向量检索（可选启用：DashVector 或 OSS 向量 Bucket）——
 	likeSearcher := service.NewLikeSimilaritySearcher(db)
 	searcher := service.SimilaritySearcher(likeSearcher)
@@ -195,6 +216,7 @@ func main() {
 	activityHandler := handler.NewActivityHandler(db, followSvc, socialSvc)
 	userAuthHandler := handler.NewUserAuthHandler(userSvc, authSvc)
 	chatHandler := handler.NewChatHandler(chatSvc)
+	chatAttachmentHandler := handler.NewChatAttachmentHandler(attachmentSvc)
 	followHandler := handler.NewFollowHandler(followSvc, userSvc)
 	userHandler := handler.NewUserHandler(userSvc)
 	notifHandler := handler.NewNotificationHandler(notifSvc)
@@ -315,11 +337,18 @@ func main() {
 			userRoutes.POST("/sessions/:id/fork", chatHandler.ForkSession)
 			userRoutes.POST("/sessions/:id/archive", chatHandler.ArchiveSession)
 
+			// 聊天附件（图片 / Markdown 文档）
+			userRoutes.GET("/user/chat-files/quota", chatAttachmentHandler.GetChatFileQuota)
+
 			chatMsgRoutes := userRoutes.Group("")
 			chatMsgRoutes.Use(chatRL.Middleware())
 			{
 				chatMsgRoutes.POST("/sessions/:id/messages", chatHandler.SendMessage)
-				chatMsgRoutes.GET("/sessions/:id/stream", chatHandler.SendMessageStream)
+				// 流式发送：POST body { content, attachment_id }，支持携带附件且避免 URL 过长。
+				chatMsgRoutes.POST("/sessions/:id/stream", chatHandler.SendMessageStream)
+				// 附件上传预签名与 finalize（限流，复用聊天速率限制）。
+				chatMsgRoutes.POST("/user/chat-files/presign", chatAttachmentHandler.PresignChatFile)
+				chatMsgRoutes.POST("/user/chat-files/finalize", chatAttachmentHandler.FinalizeChatFile)
 			}
 
 			// User profile

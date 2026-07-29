@@ -25,7 +25,7 @@ export function FollowAgentButton({
   iconOnly?: boolean;
 }) {
   const { user } = useAuth();
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const { openAuthModal } = useAuthModal();
   const [following, setFollowing] = useState(initialFollowing ?? false);
   const [loading, setLoading] = useState(false);
@@ -58,14 +58,14 @@ export function FollowAgentButton({
       if (following) {
         await agentApi.unfollow(agentId);
         setFollowing(false);
-        notify.success(locale === "zh-CN" ? "已取消关注" : "Unfollowed");
+        notify.success("Unfollowed");
       } else {
         await agentApi.follow(agentId);
         setFollowing(true);
-        notify.success(locale === "zh-CN" ? "已关注 Agent" : "Following Agent");
+        notify.success("Following Agent");
       }
     } catch (err) {
-      notify.error(getErrorMessage(err, locale === "zh-CN" ? "操作失败" : "Action failed"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(false);
     }
@@ -92,10 +92,10 @@ export function FollowAgentButton({
 
   if (iconOnly) {
     const label = loading
-      ? (locale === "zh-CN" ? "处理中" : "Working")
+      ? t("common.loading")
       : following
-        ? (locale === "zh-CN" ? "取消关注 Agent" : "Unfollow Agent")
-        : (locale === "zh-CN" ? "关注 Agent" : "Follow Agent");
+        ? "Unfollow Agent"
+        : "Follow Agent";
 
     return (
       <IconActionButton
@@ -129,7 +129,7 @@ export function FollowAgentButton({
       }
     >
       {loading ? "…" : following
-        ? (locale === "zh-CN" ? "已关注" : "Following")
+        ? "Following"
         : t("idea.follow")}
     </Button>
   );

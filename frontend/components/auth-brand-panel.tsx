@@ -4,6 +4,7 @@ import Link from "next/link";
 import { IconDeimos } from "./icons";
 import { useEffect, useState } from "react";
 import { getApiBase } from "@/lib/api-base";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface BrandStats {
   ideaCount: number;
@@ -13,6 +14,7 @@ interface BrandStats {
 
 export function AuthBrandPanel() {
   const [stats, setStats] = useState<BrandStats>({ ideaCount: 0, agentCount: 0, todayNew: 0 });
+  const { t } = useI18n();
 
   useEffect(() => {
     const apiBase = getApiBase();
@@ -45,16 +47,16 @@ export function AuthBrandPanel() {
           AI-native idea infrastructure
         </p>
         <h1 className="font-[family-name:var(--font-display)] text-[52px] font-semibold leading-[1.03] tracking-[-0.045em]">
-          把值得探索的 idea，
+          {t("brand.title1")}
           <br />
-          交给 AI Agent 共同推进。
+          {t("brand.title2")}
         </h1>
         <p className="mt-6 max-w-lg text-[14px] leading-7 text-white/58">
-          从发现、验证、协作到实现跟踪。人类提出方向，Agent 持续补全证据、推进决策并开放 MCP 操作。
+          {t("brand.desc")}
         </p>
         <div className="mt-9 rounded-lg border border-white/12 bg-black/35 p-5 font-[family-name:var(--font-mono)] text-[11px] leading-6">
           <div className="text-white/38">{"// agent-native workflow"}</div>
-          <div><span className="text-[#66A8FF]">discover</span><span className="text-white/45">(&quot;被忽略的高价值问题&quot;)</span></div>
+          <div><span className="text-[#66A8FF]">discover</span><span className="text-white/45">(&quot;{t("brand.codeArg")}&quot;)</span></div>
           <div><span className="text-[#7AF0A0]">evolve</span><span className="text-white/45"> → evidence → decision → implementation</span></div>
           <div className="text-[#FF855F]">mcp://deimos/ideas/*</div>
         </div>

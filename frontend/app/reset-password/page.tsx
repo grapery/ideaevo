@@ -5,6 +5,7 @@ import Link from "next/link";
 import { authApi } from "@/lib/api-client";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
+import { useI18n } from "@/lib/i18n/provider";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { DeimosIcon } from "@/components/deimos-icon";
@@ -24,6 +25,7 @@ function formatHMS(total: number) {
 }
 
 export default function ResetPasswordPage() {
+  const { t } = useI18n();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,21 +38,21 @@ export default function ResetPasswordPage() {
     : "";
 
   useEffect(() => {
-    const t = setInterval(() => setRemaining((r) => (r > 0 ? r - 1 : 0)), 1000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setRemaining((r) => (r > 0 ? r - 1 : 0)), 1000);
+    return () => clearInterval(timer);
   }, []);
 
   const rules = [
-    { ok: password.length >= 6, label: "至少 6 个字符" },
-    { ok: /[a-zA-Z]/.test(password) && /\d/.test(password), label: "包含字母和数字" },
-    { ok: password === confirmPassword && !!confirmPassword, label: "两次输入一致" },
+    { ok: password.length >= 6, label: t("auth.reqMinLength") },
+    { ok: /[a-zA-Z]/.test(password) && /\d/.test(password), label: t("auth.reqAlphanumeric") },
+    { ok: password === confirmPassword && !!confirmPassword, label: t("auth.reqMatch") },
   ];
 
   function validate() {
     const errs: Record<string, string> = {};
-    if (!password) errs.password = "请输入新密码";
-    else if (password.length < 6) errs.password = "密码至少 6 个字符";
-    if (password !== confirmPassword) errs.confirmPassword = "两次密码不一致";
+    if (!password) errs.password = t("auth.errPasswordRequired");
+    else if (password.length < 6) errs.password = t("auth.errPasswordShort");
+    if (password !== confirmPassword) errs.confirmPassword = t("auth.errPasswordMismatch");
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -59,16 +61,16 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     if (!validate()) return;
     if (!token) {
-      notify.error("无效的重置链接");
+      notify.error(t("auth.invalidLink"));
       return;
     }
     setLoading(true);
     try {
       await authApi.resetPassword(token, password);
       setDone(true);
-      notify.success("密码重置成功");
+      notify.success(t("auth.resetSuccess"));
     } catch (err) {
-      notify.error(getErrorMessage(err, "重置失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(false);
     }
@@ -82,15 +84,15 @@ export default function ResetPasswordPage() {
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] flex items-center justify-center text-[var(--accent-success)] mb-5">
             <DeimosIcon name="check" className="h-7 w-7" />
           </div>
-          <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">密码已重置</h2>
+          <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">{t("auth.resetSuccess")}</h2>
           <p className="text-sm text-[var(--text-muted)] mb-6">
-            请使用新密码登录你的账户
+            {t("auth.resetSuccessHint")}
           </p>
           <Link
             href="/login"
             className="inline-block btn-outline px-6 py-3 text-sm font-medium"
           >
-            去登录
+            {t("auth.goLogin")}
           </Link>
         </div>
       </div>
@@ -105,12 +107,12 @@ export default function ResetPasswordPage() {
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)] flex items-center justify-center text-[var(--accent-warning)] mb-5">
             <DeimosIcon name="decision" className="h-7 w-7" />
           </div>
-          <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">链接无效</h2>
+          <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">{t("auth.invalidLink")}</h2>
           <p className="text-sm text-[var(--text-muted)] mb-6">
-            重置链接缺失或已过期。请重新申请。
+            {t("auth.invalidLinkHint")}
           </p>
           <Link href="/forgot-password" className="inline-block btn-outline px-6 py-3 text-sm font-medium">
-            重新申请
+            {t("auth.reapply")}
           </Link>
         </div>
       </div>
@@ -122,19 +124,15 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md">
         <div className="mb-6">
           <p className="meta-label mb-3">AUTH RECOVERY / RESET CREDENTIAL</p>
-          <h1 className="page-title">设置新密码</h1>
+          <h1 className="page-title">{t("auth.resetTitle")}</h1>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
-            重置链接将在{" "}
-            <span className={`font-mono font-semibold ${remaining < 300 ? "text-[var(--coral)]" : "text-[var(--title)]"}`}>
-              {formatHMS(remaining)}
-            </span>{" "}
-            后失效
+            {t("auth.resetDesc", { expires: formatHMS(remaining) })}
           </p>
         </div>
 
         <div className="rounded-lg border border-[var(--rule)] bg-white p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
-            <FormField id="reset-password" label="新密码" error={errors.password}>
+            <FormField id="reset-password" label={t("auth.newPassword")} error={errors.password}>
               <PasswordInput
                 name="password"
                 autoComplete="new-password"
@@ -146,10 +144,10 @@ export default function ResetPasswordPage() {
                 hasError={!!errors.password}
                 required
                 minLength={6}
-                placeholder="至少 6 个字符"
+                placeholder={t("auth.newPasswordPlaceholder")}
               />
             </FormField>
-            <FormField id="reset-confirm" label="确认新密码" error={errors.confirmPassword}>
+            <FormField id="reset-confirm" label={t("auth.confirmNewPassword")} error={errors.confirmPassword}>
               <PasswordInput
                 name="confirm-password"
                 autoComplete="new-password"
@@ -161,12 +159,12 @@ export default function ResetPasswordPage() {
                 hasError={!!errors.confirmPassword}
                 required
                 minLength={6}
-                placeholder="再次输入新密码"
+                placeholder={t("auth.confirmPasswordPlaceholder")}
               />
             </FormField>
 
             <div className="rounded-lg bg-[var(--bg-subtle)] border border-[var(--divider)] p-3">
-              <p className="text-xs font-medium text-[var(--text-secondary)] mb-2">密码要求</p>
+              <p className="text-xs font-medium text-[var(--text-secondary)] mb-2">{t("auth.passwordRequirements")}</p>
               <ul className="space-y-1.5">
                 {rules.map((r) => (
                   <li key={r.label} className="flex items-center gap-2 text-xs">
@@ -186,21 +184,21 @@ export default function ResetPasswordPage() {
                 href="/login"
                 className="flex-1 btn-default py-2.5 text-center"
               >
-                取消
+                {t("common.cancel")}
               </Link>
               <button
                 type="submit"
                 disabled={loading || !rules.every((r) => r.ok)}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-[var(--ink)] py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? (<><ButtonSpinner /> 重置中…</>) : "重置密码"}
+                {loading ? (<><ButtonSpinner /> {t("auth.resetting")}</>) : t("auth.resetPassword")}
               </button>
             </div>
           </form>
 
           <div className="mt-5 text-center text-sm">
             <Link href="/login" className="text-[var(--primary)] hover:underline">
-              ← 返回登录页
+              {t("auth.backToLogin")}
             </Link>
           </div>
         </div>

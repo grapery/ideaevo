@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n/provider";
 import { DeimosIcon } from "@/components/deimos-icon";
 
 export default function OAuthResultPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const [remaining, setRemaining] = useState(3);
@@ -20,17 +22,17 @@ export default function OAuthResultPage() {
 
   useEffect(() => {
     if (error) return;
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       setRemaining((r) => {
         if (r <= 1) {
-          clearInterval(t);
+          clearInterval(timer);
           router.push("/");
           return 0;
         }
         return r - 1;
       });
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
   }, [router, error]);
 
   if (error) {
@@ -40,10 +42,10 @@ export default function OAuthResultPage() {
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)] flex items-center justify-center text-[var(--accent-warning)] mb-5">
             <DeimosIcon name="decision" className="h-7 w-7" />
           </div>
-          <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">登录失败</h2>
+          <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">{t("auth.loginFailed")}</h2>
           <p className="text-sm text-[var(--text-muted)] mb-6">{error}</p>
           <Link href="/login" className="inline-block btn-outline px-6 py-3 text-sm font-medium">
-            返回登录
+            {t("auth.backToLogin")}
           </Link>
         </div>
       </div>
@@ -55,7 +57,7 @@ export default function OAuthResultPage() {
       <div className="w-full max-w-md">
         <div className="mb-4">
           <span className="inline-block rounded-full bg-[var(--primary-soft)] px-3 py-1 text-xs font-medium text-[var(--primary)]">
-            {isWeChat ? "微信登录成功" : "Google 账号已绑定"}
+            {isWeChat ? t("auth.wechatLoginSuccess") : t("auth.googleBound")}
           </span>
         </div>
         <div className="surface-card p-8 text-center">
@@ -72,7 +74,7 @@ export default function OAuthResultPage() {
             )}
           </div>
           <h1 className="heading-sans text-xl mb-2">
-            {isWeChat ? "欢迎加入火卫二 Deimos" : "Google 账号已绑定"}
+            {isWeChat ? t("auth.welcomeJoin") : t("auth.googleBound")}
           </h1>
           <p className="text-sm text-[var(--text-muted)] mb-5">
             {isWeChat
@@ -82,10 +84,10 @@ export default function OAuthResultPage() {
 
           <ul className="text-left space-y-2.5 mb-6">
             {[
-              isWeChat && user?.phone_verified ? `手机 ${user.phone} 已验证` : null,
-              email ? `邮箱 ${email} 已验证` : null,
-              user ? `已与账号 ${user.name} 关联` : "已与本地账号关联",
-              "头像与个人资料已同步",
+              isWeChat && user?.phone_verified ? t("auth.phoneVerifiedStatus", { phone: user.phone ?? "" }) : null,
+              email ? t("auth.emailVerifiedStatus", { email }) : null,
+              user ? t("auth.accountLinked", { id: user.name }) : "已与本地账号关联",
+              t("auth.profileSynced"),
             ]
               .filter(Boolean)
               .map((line) => (
@@ -97,10 +99,10 @@ export default function OAuthResultPage() {
           </ul>
 
           <Link href="/" className="inline-block btn-outline px-6 py-2.5 text-sm font-medium">
-            进入 Deimos
+            {t("auth.enterDeimos")}
           </Link>
           <p className="mt-3 text-xs text-[var(--text-muted)]">
-            {remaining} 秒后自动跳转…
+            {t("auth.autoRedirect", { count: remaining })}
           </p>
         </div>
       </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Idea } from "@/lib/types";
 import { getApiBase } from "@/lib/api-base";
 import { IconGitFork } from "@/components/icons";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface ForkRecord {
   id: string;
@@ -384,6 +385,7 @@ export function ForkFlowGraph({
   const [ideaMap, setIdeaMap] = useState<Map<string, Idea>>(new Map());
   const [ancestors, setAncestors] = useState<FlowNode[]>([]);
   const apiBase = getApiBase();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (forks.length === 0) return;
@@ -441,11 +443,11 @@ export function ForkFlowGraph({
           }`}
         >
           <IconGitFork className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)]" />
-          Fork 谱系
+          {t("idea.forkLineageShort")}
         </h3>
         <span className="shrink-0 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
-          {forks.length} 个衍生
-          {ancestors.length > 0 && ` · ${ancestors.length} 层上游`}
+          {t("idea.forkCount", { count: forks.length })}
+          {ancestors.length > 0 && ` · ${t("idea.upstreamLayers", { count: ancestors.length })}`}
         </span>
       </div>
 
@@ -462,7 +464,7 @@ export function ForkFlowGraph({
         </div>
       ) : (
         <p className="text-[12px] leading-relaxed text-[var(--ink-faint)]">
-          暂无 Fork 记录，成为第一个衍生者
+          {t("idea.noForkRecords")}
         </p>
       )}
     </div>

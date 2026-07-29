@@ -20,13 +20,17 @@ import { getErrorMessage } from "@/lib/api-error";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Locale } from "@/lib/i18n/messages";
 
-function formatRelativeTime(dateStr: string, locale: Locale) {
+function formatRelativeTime(
+  dateStr: string,
+  locale: Locale,
+  t: (key: import("@/lib/i18n/messages").TranslationKey, values?: Record<string, string | number>) => string,
+) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (hours < 1) return locale === "zh-CN" ? "刚刚" : "Just now";
-  if (hours < 24) return locale === "zh-CN" ? `${hours} 小时前` : `${hours}h ago`;
+  if (hours < 1) return t("common.justNow");
+  if (hours < 24) return t("common.hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return locale === "zh-CN" ? `${days} 天前` : `${days}d ago`;
+  if (days < 30) return t("common.daysAgo", { count: days });
   return new Date(dateStr).toLocaleDateString(locale);
 }
 
@@ -80,7 +84,7 @@ export function IdeaCard({
   }
 
   function onEngagementItem(label: string) {
-    router.push(label === "评论" ? commentsHref : detailHref);
+    router.push(label === "comment" ? commentsHref : detailHref);
   }
 
   async function sendFlower(e: React.MouseEvent) {
@@ -98,10 +102,10 @@ export function IdeaCard({
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
-      notify.success("已表达期待");
+      notify.success(t("idea.wished"));
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, "表达期待失败"));
+      notify.error(getErrorMessage(err, t("idea.wishFailed")));
     } finally {
       setFlowering(false);
     }
@@ -122,10 +126,10 @@ export function IdeaCard({
       } else {
         await api.bookmarkIdea(idea.id);
         setBookmarked(true);
-        notify.success("已收藏");
+        notify.success(t("idea.bookmarked"));
       }
     } catch (err) {
-      notify.error(getErrorMessage(err, "收藏失败"));
+      notify.error(getErrorMessage(err, t("idea.bookmarkFailed")));
     } finally {
       setBookmarking(false);
     }
@@ -137,10 +141,10 @@ export function IdeaCard({
         type="button"
         onClick={toggleBookmark}
         disabled={bookmarking}
-        aria-label={bookmarked ? "取消收藏" : "收藏"}
+        aria-label={bookmarked ? t("idea.unbookmark") : t("idea.bookmark")}
         aria-pressed={bookmarked}
         className={`btn-icon h-8 w-8 disabled:opacity-50 ${bookmarked ? "text-[var(--primary)]" : ""}`}
-        title={bookmarked ? "取消收藏" : "收藏"}
+        title={bookmarked ? t("idea.unbookmark") : t("idea.bookmark")}
       >
         <IconBookmark filled={bookmarked} />
       </button>
@@ -148,9 +152,9 @@ export function IdeaCard({
         type="button"
         onClick={sendFlower}
         disabled={flowering}
-        aria-label="表达期待"
+        aria-label={t("idea.wishForThis")}
         className="btn-icon h-8 w-8 text-[var(--coral)] disabled:opacity-50"
-        title="表达期待"
+        title={t("idea.wishForThis")}
       >
         <IconWish />
       </button>
@@ -180,7 +184,7 @@ export function IdeaCard({
         tabIndex={0}
         onClick={goDetail}
         onKeyDown={onCardKeyDown}
-        aria-label={locale === "zh-CN" ? `查看想法：${idea.title}` : `View idea: ${idea.title}`}
+        aria-label={`${t("idea.body")}: ${idea.title}`}
         className={`group relative min-h-[170px] cursor-pointer overflow-hidden rounded-[8px] border bg-white px-5 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
           highlighted
             ? "min-h-[190px] border-[var(--rule-strong)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--accent-link)]"
@@ -193,7 +197,7 @@ export function IdeaCard({
             onClick={(event) => event.stopPropagation()}
             className={isPersonal ? "text-[#b75b00] hover:underline" : "text-[var(--accent-link)] hover:underline"}
           >
-            {isPersonal ? (locale === "zh-CN" ? "用户" : "HUMAN") : "AGENT"} · {creatorName}
+            {isPersonal ? "USER" : "AGENT"} · {creatorName}
           </Link>
           <span className={isPersonal ? "text-[#b75b00]" : "text-[var(--accent-link)]"}>
             {lifecycleLabel} / {implementationLabel}
@@ -226,11 +230,11 @@ export function IdeaCard({
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              onEngagementItem("点赞");
+              onEngagementItem("LIKE");
             }}
             className="hover:text-[var(--accent-link)]"
           >
-            {locale === "zh-CN" ? "点赞" : "LIKE"} {idea.like_count}
+            LIKE {idea.like_count}
           </button>
           <button
             type="button"
@@ -238,7 +242,7 @@ export function IdeaCard({
             disabled={flowering}
             className="hover:text-[var(--primary)] disabled:opacity-50"
           >
-            {locale === "zh-CN" ? "期待" : "WISH"} {idea.wish_count ?? idea.flower_count}
+            WISH {idea.wish_count ?? idea.flower_count}
           </button>
           <button
             type="button"
@@ -255,14 +259,14 @@ export function IdeaCard({
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                onEngagementItem("评论");
+                onEngagementItem("comment");
               }}
               className="hover:text-[var(--accent-link)]"
             >
-              {locale === "zh-CN" ? "评论" : "COMMENTS"} {idea.comment_count}
+              COMMENTS {idea.comment_count}
             </button>
           )}
-          <span className="ml-auto text-[var(--ink-faint)]">{formatRelativeTime(idea.created_at, locale)}</span>
+          <span className="ml-auto text-[var(--ink-faint)]">{formatRelativeTime(idea.created_at, locale, t)}</span>
         </div>
       </article>
     );
@@ -326,7 +330,7 @@ export function IdeaCard({
                 </span>
               )}
             </Link>
-            <span className="text-[var(--ink-faint)]">· {formatRelativeTime(idea.created_at, locale)}</span>
+            <span className="text-[var(--ink-faint)]">· {formatRelativeTime(idea.created_at, locale, t)}</span>
             {idea.status !== "active" ? (
               <StatusBadge status={idea.status} />
             ) : idea.impl_status ? (
@@ -382,7 +386,7 @@ export function IdeaCard({
       tabIndex={0}
       onClick={goDetail}
       onKeyDown={onCardKeyDown}
-      aria-label={`查看想法：${idea.title}`}
+      aria-label={`${t("idea.body")}: ${idea.title}`}
       className="group surface-card p-4 sm:p-5 cursor-pointer hover:border-[var(--rule-strong)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
     >
       {content}

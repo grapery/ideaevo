@@ -10,6 +10,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { AuthModalWeChatPhone } from "@/components/auth-modal-wechat-phone";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthModal } from "@/lib/auth-modal-context";
+import { useI18n } from "@/lib/i18n/provider";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 
@@ -37,6 +38,7 @@ function GoogleIcon() {
 }
 
 export function AuthModal() {
+  const { t } = useI18n();
   const router = useRouter();
   const { login, register, refreshUser } = useAuth();
   const {
@@ -72,7 +74,7 @@ export function AuthModal() {
 
   async function finishEmailAuth() {
     await refreshUser();
-    notify.success("登录成功");
+    notify.success(t("auth.loginSuccess"));
     const target = returnUrl;
     resetForm();
     closeAuthModal();
@@ -83,9 +85,9 @@ export function AuthModal() {
 
   function validateLogin() {
     const errs: Record<string, string> = {};
-    if (!email.trim()) errs.email = "请输入邮箱";
-    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = "邮箱格式不正确";
-    if (!password) errs.password = "请输入密码";
+    if (!email.trim()) errs.email = t("auth.errEmailRequired");
+    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = t("auth.errEmailInvalid");
+    if (!password) errs.password = t("auth.errPasswordRequired");
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -98,7 +100,7 @@ export function AuthModal() {
       await login(email, password);
       await finishEmailAuth();
     } catch (err) {
-      notify.error(getErrorMessage(err, "登录失败"));
+      notify.error(getErrorMessage(err, t("auth.loginFailed")));
     } finally {
       setLoading(false);
     }
@@ -106,12 +108,12 @@ export function AuthModal() {
 
   function validateRegister() {
     const errs: Record<string, string> = {};
-    if (!name.trim()) errs.name = "请输入姓名";
-    if (!email.trim()) errs.email = "请输入邮箱";
-    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = "邮箱格式不正确";
-    if (!password) errs.password = "请输入密码";
-    else if (password.length < 6) errs.password = "密码至少6个字符";
-    if (password !== confirmPassword) errs.confirmPassword = "两次密码不一致";
+    if (!name.trim()) errs.name = t("auth.errNameRequired");
+    if (!email.trim()) errs.email = t("auth.errEmailRequired");
+    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = t("auth.errEmailInvalid");
+    if (!password) errs.password = t("auth.errPasswordRequired");
+    else if (password.length < 6) errs.password = t("auth.errPasswordShort");
+    if (password !== confirmPassword) errs.confirmPassword = t("auth.errPasswordMismatch");
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -122,10 +124,10 @@ export function AuthModal() {
     setLoading(true);
     try {
       await register(name, email, password);
-      notify.success("注册成功，请查收验证邮件");
+      notify.success(t("auth.registerSuccess"));
       await finishEmailAuth();
     } catch (err) {
-      notify.error(getErrorMessage(err, "注册失败"));
+      notify.error(getErrorMessage(err, t("auth.registerFailed")));
     } finally {
       setLoading(false);
     }
@@ -134,8 +136,8 @@ export function AuthModal() {
   const titles: Record<string, string> = {
     method: "登录以继续",
     email_login: "邮箱登录",
-    email_register: "创建账户",
-    wechat_phone: "绑定手机号",
+    email_register: t("auth.createAccount"),
+    wechat_phone: t("auth.bindPhoneTitle"),
     oauth_waiting: "正在完成授权",
   };
 
@@ -159,8 +161,8 @@ export function AuthModal() {
             onClick={() => startOAuthPopup("wechat")}
             className="w-full btn-outline"
           >
-            <span className="font-semibold text-[#07C160]">微</span>
-            使用微信扫码登录
+            <span className="font-semibold text-[#07C160]">{t("auth.wechat")}</span>
+            {t("auth.wechatScanLogin")}
           </button>
           <button
             type="button"
@@ -168,7 +170,7 @@ export function AuthModal() {
             className="w-full btn-outline"
           >
             <GoogleIcon />
-            使用 Google 账号继续
+            {t("auth.googleContinue")}
           </button>
 
           <div className="relative my-2">
@@ -176,7 +178,7 @@ export function AuthModal() {
               <div className="w-full border-t border-[var(--divider)]" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-3 text-[var(--text-muted)]">或使用邮箱</span>
+              <span className="bg-white px-3 text-[var(--text-muted)]">{t("auth.or")}</span>
             </div>
           </div>
 
@@ -186,21 +188,21 @@ export function AuthModal() {
               onClick={() => setStep("email_login")}
               className="btn-outline py-2.5 text-sm"
             >
-              邮箱登录
+              {t("auth.login")}
             </button>
             <button
               type="button"
               onClick={() => setStep("email_register")}
               className="btn-default py-2.5 text-sm"
             >
-              注册账号
+              {t("auth.register")}
             </button>
           </div>
 
           <p className="text-center text-[11px] text-[var(--text-muted)]">
-            也可前往{" "}
+            {t("auth.welcomeBack")}{" "}
             <Link href="/login" className="text-[var(--primary)] hover:underline" onClick={handleClose}>
-              登录页
+              {t("auth.login")}
             </Link>
           </p>
         </div>
@@ -208,7 +210,7 @@ export function AuthModal() {
 
       {step === "email_login" && (
         <form onSubmit={handleLogin} className="space-y-4">
-          <FormField id="modal-login-email" label="邮箱" error={errors.email}>
+          <FormField id="modal-login-email" label={t("auth.email")} error={errors.email}>
             <Input
               name="email"
               type="email"
@@ -219,10 +221,10 @@ export function AuthModal() {
                 setErrors((p) => ({ ...p, email: "" }));
               }}
               hasError={!!errors.email}
-              placeholder="your@email.com"
+              placeholder={t("auth.emailPlaceholder")}
             />
           </FormField>
-          <FormField id="modal-login-password" label="密码" error={errors.password}>
+          <FormField id="modal-login-password" label={t("auth.password")} error={errors.password}>
             <PasswordInput
               name="password"
               autoComplete="current-password"
@@ -232,7 +234,7 @@ export function AuthModal() {
                 setErrors((p) => ({ ...p, password: "" }));
               }}
               hasError={!!errors.password}
-              placeholder="输入密码"
+              placeholder={t("auth.passwordPlaceholder")}
             />
           </FormField>
           <button
@@ -242,10 +244,10 @@ export function AuthModal() {
           >
             {loading ? (
               <>
-                <ButtonSpinner /> 登录中…
+                <ButtonSpinner /> {t("auth.loggingIn")}
               </>
             ) : (
-              "登录"
+              t("auth.loginShort")
             )}
           </button>
           <button
@@ -253,14 +255,14 @@ export function AuthModal() {
             onClick={() => setStep("method")}
             className="w-full text-sm text-[var(--text-muted)] hover:text-[var(--title)]"
           >
-            返回
+            {t("auth.back")}
           </button>
         </form>
       )}
 
       {step === "email_register" && (
         <form onSubmit={handleRegister} className="space-y-4">
-          <FormField id="modal-reg-name" label="姓名" error={errors.name}>
+          <FormField id="modal-reg-name" label={t("auth.name")} error={errors.name}>
             <Input
               name="name"
               value={name}
@@ -269,10 +271,10 @@ export function AuthModal() {
                 setErrors((p) => ({ ...p, name: "" }));
               }}
               hasError={!!errors.name}
-              placeholder="你的昵称"
+              placeholder={t("auth.namePlaceholder")}
             />
           </FormField>
-          <FormField id="modal-reg-email" label="邮箱" error={errors.email}>
+          <FormField id="modal-reg-email" label={t("auth.email")} error={errors.email}>
             <Input
               name="email"
               type="email"
@@ -283,10 +285,10 @@ export function AuthModal() {
                 setErrors((p) => ({ ...p, email: "" }));
               }}
               hasError={!!errors.email}
-              placeholder="your@email.com"
+              placeholder={t("auth.emailPlaceholder")}
             />
           </FormField>
-          <FormField id="modal-reg-password" label="密码" error={errors.password}>
+          <FormField id="modal-reg-password" label={t("auth.password")} error={errors.password}>
             <PasswordInput
               name="password"
               autoComplete="new-password"
@@ -296,10 +298,10 @@ export function AuthModal() {
                 setErrors((p) => ({ ...p, password: "" }));
               }}
               hasError={!!errors.password}
-              placeholder="至少 6 位"
+              placeholder={t("auth.newPasswordPlaceholder")}
             />
           </FormField>
-          <FormField id="modal-reg-confirm" label="确认密码" error={errors.confirmPassword}>
+          <FormField id="modal-reg-confirm" label={t("auth.confirmPassword")} error={errors.confirmPassword}>
             <PasswordInput
               name="confirmPassword"
               autoComplete="new-password"
@@ -309,7 +311,7 @@ export function AuthModal() {
                 setErrors((p) => ({ ...p, confirmPassword: "" }));
               }}
               hasError={!!errors.confirmPassword}
-              placeholder="再次输入密码"
+              placeholder={t("auth.confirmPasswordPlaceholder")}
             />
           </FormField>
           <button
@@ -319,10 +321,10 @@ export function AuthModal() {
           >
             {loading ? (
               <>
-                <ButtonSpinner /> 注册中…
+                <ButtonSpinner /> {t("auth.registering")}
               </>
             ) : (
-              "注册"
+              t("auth.registerShort")
             )}
           </button>
           <button
@@ -330,7 +332,7 @@ export function AuthModal() {
             onClick={() => setStep("method")}
             className="w-full text-sm text-[var(--text-muted)] hover:text-[var(--title)]"
           >
-            返回
+            {t("auth.back")}
           </button>
         </form>
       )}
@@ -340,7 +342,7 @@ export function AuthModal() {
           <AuthModalWeChatPhone
             onSuccess={async () => {
               await refreshUser();
-              notify.success("登录成功");
+              notify.success(t("auth.loginSuccess"));
               const target = returnUrl;
               resetForm();
               closeAuthModal();
@@ -349,7 +351,7 @@ export function AuthModal() {
               }
             }}
             onSessionExpired={() => {
-              notify.error("验证会话已过期，请重新使用微信扫码登录");
+              notify.error(t("auth.sessionExpiredHint"));
               setStep("method");
             }}
           />
@@ -358,7 +360,7 @@ export function AuthModal() {
             onClick={() => setStep("method")}
             className="mt-4 w-full text-sm text-[var(--text-muted)] hover:text-[var(--title)]"
           >
-            返回
+            {t("auth.back")}
           </button>
         </div>
       )}
@@ -372,7 +374,7 @@ export function AuthModal() {
             onClick={cancelOAuthWaiting}
             className="mt-4 text-sm text-[var(--text-muted)] hover:text-[var(--title)]"
           >
-            取消
+            {t("common.cancel")}
           </button>
         </div>
       )}

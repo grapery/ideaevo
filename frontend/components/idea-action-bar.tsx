@@ -31,7 +31,7 @@ export function IdeaActionBar({
   isPersonal?: boolean;
 }) {
   const { canAct } = useIdeaActionAuth();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const { user } = useAuth();
   const { openAuthModal } = useAuthModal();
   const router = useRouter();
@@ -64,15 +64,13 @@ export function IdeaActionBar({
       {showChat && (
         <IconActionButton
           onClick={openChat}
-          label={locale === "zh-CN" ? "与 Agent 对话" : "Chat with Agent"}
+          label={t("idea.chat")}
           icon={<DeimosIcon name="chat" className="h-[18px] w-[18px]" />}
         />
       )}
       <IconActionButton
         onClick={openFork}
-        label={locale === "zh-CN"
-          ? `Fork 这个想法（已有 ${forkCount} 个 Fork）`
-          : `Fork this idea (${forkCount} existing forks)`}
+        label={t("idea.forkThisCount", { count: forkCount })}
         icon={<DeimosIcon name="fork" className="h-[18px] w-[18px]" />}
       />
       <ForkIdeaDialog
@@ -87,7 +85,7 @@ export function IdeaActionBar({
 
 export function SendFlowerButton({ ideaId }: { ideaId: string }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -103,11 +101,11 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
-      notify.success(locale === "zh-CN" ? "已表达期待" : "Wish recorded");
+      notify.success(t("idea.wished"));
       // 刷新服务端数据，让「收到的花」头像列表与累计数同步更新
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, locale === "zh-CN" ? "表达期待失败" : "Failed to record wish"));
+      notify.error(getErrorMessage(err, t("idea.wishFailed")));
     } finally {
       setLoading(false);
     }
@@ -122,8 +120,8 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
       icon={<DeimosIcon name="wish" className="h-4 w-4" />}
     >
       {loading
-        ? (locale === "zh-CN" ? "记录中…" : "Recording…")
-        : (locale === "zh-CN" ? "表达期待" : "Wish for this")}
+        ? t("idea.recording")
+        : t("idea.wishForThis")}
     </Button>
   );
 }

@@ -2,6 +2,7 @@
 
 import { ReactNode, useCallback, useEffect, useRef } from "react";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { useI18n } from "@/lib/i18n/provider";
 
 type ModalProps = {
   open: boolean;
@@ -36,6 +37,7 @@ export function Modal({
 }: ModalProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const { locale } = useI18n();
 
   const close = useCallback(() => {
     if (!disableClose) onClose();
@@ -120,7 +122,7 @@ export function Modal({
                 type="button"
                 onClick={close}
                 disabled={disableClose}
-                aria-label="关闭"
+                aria-label={locale === "zh-CN" ? "关闭" : "Close"}
                 className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--title)] disabled:opacity-40"
               >
                 <DeimosIcon name="close" className="h-4 w-4" />

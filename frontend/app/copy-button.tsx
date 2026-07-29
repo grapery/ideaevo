@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { useI18n } from "@/lib/i18n/provider";
 
 export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
+  const { t } = useI18n();
 
   const handleCopy = async () => {
     try {
@@ -21,7 +23,7 @@ export function CopyButton({ text }: { text: string }) {
       type="button"
       onClick={handleCopy}
       className="ml-auto p-1.5 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
-      aria-label="复制链接"
+      aria-label={t("chat.copy")}
     >
       <DeimosIcon
         name={copied ? "check" : "copy"}

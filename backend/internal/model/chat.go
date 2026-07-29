@@ -92,3 +92,35 @@ func (m *ChatMessage) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+// 聊天附件类型。
+const (
+	AttachmentKindImage    = "image"    // 图片（支持多模态 vision）
+	AttachmentKindDocument = "document" // Markdown 文档
+)
+
+// ChatAttachment 记录聊天附件的元数据与简述。
+//
+// 设计目标：消息列表只加载 summary/缩略信息（写在 message.metadata 里），
+// 原图/全文仅在发送消息注入对话上下文时按需从 OSS 读取，节省带宽与渲染开销。
+type ChatAttachment struct {
+	ID          string    `gorm:"primaryKey;size:36" json:"id"`
+	UserID      string    `gorm:"size:36;index;not null" json:"user_id"`
+	SessionID   string    `gorm:"size:36;index" json:"session_id,omitempty"` // nullable，presign 阶段尚未绑定
+	MessageID   string    `gorm:"size:36;index" json:"message_id,omitempty"` // nullable，发送时绑定
+	Kind        string    `gorm:"size:16;not null" json:"kind"`              // image | document
+	FileName    string    `gorm:"size:255" json:"file_name"`
+	ContentType string    `gorm:"size:64;not null" json:"content_type"`
+	Size        int64     `gorm:"not null" json:"size"`
+	ObjectKey   string    `gorm:"size:500;not null" json:"-"` // OSS key，不直接暴露
+	URL         string    `gorm:"size:500;not null" json:"url"` // public/CDN URL
+	Summary     string    `gorm:"type:text" json:"summary"`     // 图片: 占位; 文档: 启发式摘要
+	CreatedAt   time.Time `gorm:"index" json:"created_at"`
+}
+
+func (a *ChatAttachment) BeforeCreate(tx *gorm.DB) error {
+	if a.ID == "" {
+		a.ID = uuid.New().String()
+	}
+	return nil
+}

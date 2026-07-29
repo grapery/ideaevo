@@ -7,6 +7,7 @@ import { getErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { IconActionButton } from "@/components/ui/icon-action-button";
+import { useI18n } from "@/lib/i18n/provider";
 
 export default function FollowButton({
   userId,
@@ -23,6 +24,7 @@ export default function FollowButton({
 }) {
   const [following, setFollowing] = useState(initialFollowing);
   const [loading, setLoading] = useState(false);
+  const { t } = useI18n();
 
   if (isSelf) return null;
 
@@ -37,7 +39,7 @@ export default function FollowButton({
       setFollowing(!following);
       onChange?.(!following);
     } catch (err) {
-      notify.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(false);
     }
@@ -48,7 +50,7 @@ export default function FollowButton({
       <IconActionButton
         onClick={toggle}
         disabled={loading}
-        label={following ? "取消关注" : "关注"}
+        label={following ? "Unfollow" : t("idea.follow")}
         tone={following ? "active" : "default"}
         icon={
           <DeimosIcon
@@ -73,7 +75,7 @@ export default function FollowButton({
         )
       }
     >
-      {following ? "已关注" : "关注"}
+      {following ? "Following" : t("idea.follow")}
     </Button>
   );
 }

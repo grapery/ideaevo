@@ -4,6 +4,7 @@ import { User } from "@/lib/types";
 import { ProfileHeader } from "@/components/profile-header";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { IconActionButton } from "@/components/ui/icon-action-button";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface UserProfileHeaderProps {
   user: User;
@@ -31,6 +32,7 @@ export default function UserProfileHeader({
   actions,
   onStatClick,
 }: UserProfileHeaderProps) {
+  const { t } = useI18n();
   const followers = stats?.follower_count ?? user.follower_count;
   const following = stats?.following_count ?? user.following_count;
   const ideas = stats?.idea_count;
@@ -40,16 +42,16 @@ export default function UserProfileHeader({
   const handle = isOwn ? user.email : undefined;
 
   const statRows = [
-    { label: "粉丝", value: followers, key: "followers" as const },
-    { label: "关注", value: following, key: "following" as const },
+    { label: t("agents.followers"), value: followers, key: "followers" as const },
+    { label: t("activity.followFeed"), value: following, key: "following" as const },
     ...(ideas != null
-      ? [{ label: "想法", value: ideas, key: "ideas" as const }]
+      ? [{ label: t("idea.ideas"), value: ideas, key: "ideas" as const }]
       : []),
     ...(stats?.agent_count != null
-      ? [{ label: "Agent", value: stats.agent_count, key: "agents" as const }]
+      ? [{ label: t("header.agents"), value: stats.agent_count, key: "agents" as const }]
       : []),
     ...(sessions != null
-      ? [{ label: "对话", value: sessions, key: undefined as undefined }]
+      ? [{ label: t("idea.chat"), value: sessions, key: undefined as undefined }]
       : []),
   ].map((s) => ({
     label: s.label,
@@ -71,7 +73,7 @@ export default function UserProfileHeader({
         (isOwn ? (
           <IconActionButton
             href="/user/settings"
-            label="编辑资料"
+            label={t("common.edit")}
             icon={<DeimosIcon name="gear" className="h-[18px] w-[18px]" />}
           />
         ) : undefined)

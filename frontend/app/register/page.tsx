@@ -9,6 +9,7 @@ import { notify } from "@/components/ui/notify";
 import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 import { getApiBase } from "@/lib/api-base";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { useI18n } from "@/lib/i18n/provider";
 
 const TEMPLATES = [
   { id: "code", name: "代码生成与重构专家", desc: "擅长代码补全、重构建议、单元测试生成", capabilities: ["code", "refactor"] },
@@ -26,6 +27,7 @@ const CAPABILITY_CHIPS = [
 ];
 
 export default function RegisterPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -86,7 +88,7 @@ export default function RegisterPage() {
 
   async function handleRegister() {
     if (!name.trim() || !description.trim()) {
-      notify.error("请填写 Agent 名称和描述");
+      notify.error(t("register.errNameDesc"));
       return;
     }
     setLoading(true);
@@ -109,13 +111,13 @@ export default function RegisterPage() {
         }),
       });
       if (!res.ok) {
-        throw new Error(await parseResponseError(res, "注册失败"));
+        throw new Error(await parseResponseError(res, t("register.failed")));
       }
       const data = await res.json();
       setResult(data);
-      notify.success("Agent 注册成功！");
+      notify.success(t("register.success"));
     } catch (err) {
-      notify.error(getErrorMessage(err, "注册失败"));
+      notify.error(getErrorMessage(err, t("register.failed")));
     } finally {
       setLoading(false);
     }
@@ -139,9 +141,9 @@ export default function RegisterPage() {
               <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] flex items-center justify-center text-[var(--accent-success)] mb-4">
                 <DeimosIcon name="check" className="h-7 w-7" />
               </div>
-              <h1 className="page-title text-2xl">注册成功！</h1>
+              <h1 className="page-title text-2xl">{t("register.successTitle")}</h1>
               <p className="mt-2 text-sm text-[var(--text-muted)]">
-                你的 Agent 已接入 Deimos 市场
+                {t("register.successDesc")}
               </p>
             </div>
             <div className="mb-6 rounded-md border border-[var(--rule)] bg-[#f7f8f9] p-6">
@@ -151,14 +153,14 @@ export default function RegisterPage() {
                   <code className="text-xs bg-white/60 px-2 py-1 rounded">{result.agent.id}</code>
                 </div>
                 <div>
-                  <p className="text-[var(--text-muted)] mb-1">Agent 名称</p>
+                  <p className="text-[var(--text-muted)] mb-1">{t("register.agentName")}</p>
                   <p className="font-semibold text-[var(--title)]">{result.agent.name}</p>
                 </div>
               </div>
               <div className="mt-4">
                 <p className="flex items-center gap-1.5 text-sm font-medium text-[var(--title)] mb-2">
                   <DeimosIcon name="key" className="h-4 w-4 text-[var(--accent-link)]" />
-                  你的 API Key（仅显示一次，请妥善保管）
+                  {t("register.apiKeyLabel")}
                 </p>
                 <code className="block rounded-lg bg-[var(--bg-subtle)] p-3 text-xs break-all border border-[var(--divider)]">
                   {result.api_key}
@@ -166,7 +168,7 @@ export default function RegisterPage() {
               </div>
             </div>
             <div className="mb-6 rounded-md border border-white/10 bg-[#101112] p-5 text-xs text-white">
-              <p className="mb-2 font-[family-name:var(--font-mono)] text-[#7AF0A0]">{"// MCP 配置示例"}</p>
+              <p className="mb-2 font-[family-name:var(--font-mono)] text-[#7AF0A0]">{t("register.mcpConfig")}</p>
               <pre className="overflow-x-auto font-[family-name:var(--font-mono)] text-white/68">
                 {JSON.stringify(mcpConfig, null, 2)}
               </pre>
@@ -176,18 +178,18 @@ export default function RegisterPage() {
                 type="button"
                 onClick={() => {
                   navigator.clipboard?.writeText(result.api_key);
-                  notify.success("API Key 已复制");
+                  notify.success(t("register.apiKeyCopied"));
                 }}
                 className="btn-default px-5 py-2.5"
               >
-                复制 API Key
+                {t("register.copyApiKey")}
               </button>
               <button
                 type="button"
                 onClick={() => router.push(`/agents/${result.agent.id}`)}
                 className="btn-outline px-5 py-2.5 text-sm font-medium"
               >
-                查看 Agent 主页
+                {t("register.viewAgent")}
               </button>
             </div>
           </div>
@@ -210,8 +212,8 @@ export default function RegisterPage() {
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--rule)] pb-6">
           <div>
             <p className="meta-label mb-2">AGENT ONBOARDING / 04 STEPS</p>
-            <h1 className="page-title">接入一个新 Agent</h1>
-            <p className="mt-2 max-w-xl text-[13px] leading-6 text-[var(--text-muted)]">配置身份、能力、权限与 MCP 工具边界，让 Agent 成为想法市场中的可观察执行者。</p>
+            <h1 className="page-title">{t("register.title")}</h1>
+            <p className="mt-2 max-w-xl text-[13px] leading-6 text-[var(--text-muted)]">{t("register.desc")}</p>
           </div>
           {/* Step progress */}
           <div className="flex items-center gap-3">
@@ -243,10 +245,10 @@ export default function RegisterPage() {
           <aside className="w-full">
             <nav className="rounded-lg border border-[var(--rule)] bg-white p-2">
               {[
-                { n: 1, label: "Agent 身份", hint: "名称 / 描述" },
-                { n: 2, label: "能力声明", hint: "capabilities" },
-                { n: 3, label: "外观与可见性", hint: "avatar / visibility" },
-                { n: 4, label: "Agent 配置", hint: "人设 / 模型 / 工具" },
+                { n: 1, label: t("register.stepIdentity"), hint: t("register.stepName") },
+                { n: 2, label: t("register.stepCaps"), hint: "capabilities" },
+                { n: 3, label: t("register.stepAppearance"), hint: "avatar / visibility" },
+                { n: 4, label: t("register.stepConfig"), hint: t("register.stepPersona") },
               ].map((s) => (
                 <button
                   key={s.n}
@@ -272,7 +274,7 @@ export default function RegisterPage() {
             {step === 1 && (
               <div className="rounded-lg border border-[var(--rule)] bg-white p-6">
                 <p className="meta-label mb-2">01 / IDENTITY</p>
-                <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">选择模板</h2>
+                <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">{t("register.selectTemplate")}</h2>
                 <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {TEMPLATES.map((t) => (
                     <button
@@ -290,9 +292,9 @@ export default function RegisterPage() {
                     </button>
                   ))}
                 </div>
-                <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">基本信息</h2>
+                <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">{t("register.basicInfo")}</h2>
                 <div className="space-y-4">
-                  <FormField id="reg-agent-name" label="Agent 名称" required>
+                  <FormField id="reg-agent-name" label={t("register.agentName")} required>
                     <Input
                       name="agent-name"
                       value={name}
@@ -302,9 +304,9 @@ export default function RegisterPage() {
                   </FormField>
                   <FormField
                     id="reg-agent-desc"
-                    label="描述"
+                    label={t("register.descLabel")}
                     required
-                    hint={'建议 30-200 字，使用 "擅长 X / 关注 Y" 的格式'}
+                    hint={t("register.descLabel")}
                   >
                     <Textarea
                       name="agent-description"
@@ -321,9 +323,9 @@ export default function RegisterPage() {
             {step === 2 && (
               <div className="rounded-lg border border-[var(--rule)] bg-white p-6">
                 <p className="meta-label mb-2">02 / CAPABILITIES</p>
-                <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">能力声明</h2>
+                <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">{t("register.capabilities")}</h2>
                 <p className="mb-4 text-sm text-[var(--text-muted)]">
-                  勾选你的 Agent 擅长的能力，便于其他用户搜索到
+                  {t("register.capHint")}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {CAPABILITY_CHIPS.map((c) => {
@@ -345,7 +347,7 @@ export default function RegisterPage() {
                   })}
                 </div>
                 <p className="mt-4 text-xs text-[var(--text-muted)]">
-                  已选 {capabilities.length} 项能力
+                  {t("register.capSelected", { count: capabilities.length })}
                 </p>
               </div>
             )}
@@ -354,11 +356,11 @@ export default function RegisterPage() {
               <div className="space-y-6 rounded-lg border border-[var(--rule)] bg-white p-6">
                 <p className="meta-label">03 / GOVERNANCE</p>
                 <div>
-                  <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">可见性</h2>
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">{t("register.visibility")}</h2>
                   <div className="space-y-2">
                     {[
-                      { v: "public", label: "公开", desc: "任何人都能在市场看到你的 Agent" },
-                      { v: "private", label: "私密", desc: "只有你能调用此 Agent" },
+                      { v: "public", label: t("register.public") },
+                      { v: "private", label: t("register.private") },
                     ].map((opt) => (
                       <label
                         key={opt.v}
@@ -377,7 +379,6 @@ export default function RegisterPage() {
                         />
                         <div>
                           <div className="text-sm font-medium text-[var(--title)]">{opt.label}</div>
-                          <div className="text-xs text-[var(--text-muted)]">{opt.desc}</div>
                         </div>
                       </label>
                     ))}
@@ -385,12 +386,11 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">权限设置</h2>
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">{t("register.permissions")}</h2>
                   <div className="space-y-3">
                     <label className="flex cursor-pointer items-center justify-between rounded-md border border-[var(--divider)] p-4">
                       <div>
-                        <div className="text-sm font-medium text-[var(--title)]">允许他人关注</div>
-                        <div className="text-xs text-[var(--text-muted)]">关闭后，他人无法关注你的 Agent</div>
+                        <div className="text-sm font-medium text-[var(--title)]">{t("register.allowFollow")}</div>
                       </div>
                       <input
                         type="checkbox"
@@ -401,8 +401,7 @@ export default function RegisterPage() {
                     </label>
                     <label className="flex cursor-pointer items-center justify-between rounded-md border border-[var(--divider)] p-4">
                       <div>
-                        <div className="text-sm font-medium text-[var(--title)]">允许他人发起对话</div>
-                        <div className="text-xs text-[var(--text-muted)]">关闭后，他人无法与你的 Agent 对话或下发任务</div>
+                        <div className="text-sm font-medium text-[var(--title)]">{t("register.allowChat")}</div>
                       </div>
                       <input
                         type="checkbox"
@@ -420,7 +419,7 @@ export default function RegisterPage() {
               <div className="space-y-6 rounded-lg border border-[var(--rule)] bg-white p-6">
                 <p className="meta-label">04 / RUNTIME</p>
                 <div>
-                  <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">System Prompt（人设指令）</h2>
+                  <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">{t("register.systemPrompt")}</h2>
                   <p className="mb-3 text-sm text-[var(--text-muted)]">
                     定义 Agent 的行为模式、语气和专业领域。留空则使用平台默认。
                   </p>
@@ -434,7 +433,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <h2 className="mb-3 text-lg font-semibold text-[var(--title)]">LLM 模型</h2>
+                  <h2 className="mb-3 text-lg font-semibold text-[var(--title)]">{t("register.llmModel")}</h2>
                   <div className="grid grid-cols-2 gap-2">
                     {LLM_MODELS.map((m) => (
                       <button
@@ -455,7 +454,7 @@ export default function RegisterPage() {
 
                 <div>
                   <h2 className="mb-3 text-lg font-semibold text-[var(--title)]">
-                    温度 <span className="text-sm font-normal text-[var(--text-muted)]">（创造性 vs 确定性）</span>
+                    {t("register.temperature")}
                   </h2>
                   <div className="flex items-center gap-4">
                     <input
@@ -474,9 +473,9 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">工具集</h2>
+                  <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">{t("register.toolset")}</h2>
                   <p className="mb-3 text-sm text-[var(--text-muted)]">
-                    选择此 Agent 可以调用的平台工具。空选 = 全部可用。
+                    {t("register.toolsetHint")}
                   </p>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {AVAILABLE_TOOLS.map((t) => {
@@ -519,7 +518,7 @@ export default function RegisterPage() {
                 disabled={step === 1}
                 className="btn-default px-5 py-2.5 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                ← 上一步
+                {t("register.prevStep")}
               </button>
               {step < 4 ? (
                 <button
@@ -528,7 +527,7 @@ export default function RegisterPage() {
                   disabled={!stepValid[step - 1]}
                   className="rounded-md bg-[var(--ink)] px-6 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  下一步 →
+                  {t("register.nextStep")}
                 </button>
               ) : (
                 <button
@@ -537,7 +536,7 @@ export default function RegisterPage() {
                   disabled={loading || !stepValid[0]}
                   className="rounded-md bg-[var(--primary)] px-6 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {loading ? "注册中…" : "完成注册"}
+                  {loading ? t("common.loading") : t("register.completing")}
                 </button>
               )}
             </div>
@@ -546,10 +545,10 @@ export default function RegisterPage() {
           <aside className="space-y-4">
             <div className="rounded-lg border border-[var(--rule)] bg-white p-4">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[var(--title)]">
-                <DeimosIcon name="decision" className="h-3.5 w-3.5" />配置建议
+                <DeimosIcon name="decision" className="h-3.5 w-3.5" />{t("register.configAdvice")}
               </p>
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                描述和能力声明会出现在公开主页与语义搜索结果中，直接影响 Agent 的可发现性。
+                {t("register.configAdviceHint")}
               </p>
             </div>
             <div className="rounded-lg bg-[#101112] p-4 font-[family-name:var(--font-mono)] text-[10px] leading-5 text-white/55">

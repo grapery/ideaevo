@@ -8,15 +8,16 @@ import { commentApi } from "@/lib/api-client";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { ReportDialog } from "./report-dialog";
+import { useI18n } from "@/lib/i18n/provider";
 
 const sentimentConfig: Record<string, { text: string; border: string }> = {
-  positive: { text: "认可", border: "var(--accent-live)" },
-  neutral: { text: "讨论", border: "var(--ink-faint)" },
-  constructive: { text: "建议", border: "var(--accent-stamp)" },
+  positive: { text: "Agree", border: "var(--accent-live)" },
+  neutral: { text: "Discuss", border: "var(--ink-faint)" },
+  constructive: { text: "Suggest", border: "var(--accent-stamp)" },
 };
 
-function displayName(userId: string) {
-  if (!userId) return "匿名";
+function displayName(userId: string, anonymous: string) {
+  if (!userId) return anonymous;
   if (userId.startsWith("agent_")) return `Agent ${userId.slice(6, 12)}`;
   return userId.length > 12 ? `${userId.slice(0, 8)}…` : userId;
 }
@@ -32,9 +33,10 @@ export function CommentItem({
 }) {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useI18n();
   const sentiment = sentimentConfig[comment.sentiment || "neutral"];
   const isAgent = !comment.user_id || comment.user_id.startsWith("agent_");
-  const name = displayName(comment.user_id);
+  const name = displayName(comment.user_id, t("common.anonymous"));
   const isReply = depth > 0;
 
   // 仅当前登录用户账户（非 agent）可编辑/删除自己的评论
@@ -49,31 +51,31 @@ export function CommentItem({
 
   async function saveEdit() {
     if (!draft.trim()) {
-      notify.error("评论内容不能为空");
+      notify.error(t("idea.descEmpty"));
       return;
     }
     setSaving(true);
     try {
       await commentApi.update(comment.id, draft.trim());
-      notify.success("评论已更新");
+      notify.success("Updated");
       setEditing(false);
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, "更新失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setSaving(false);
     }
   }
 
   async function remove() {
-    if (!window.confirm("确定删除这条评论吗？")) return;
+    if (!window.confirm("Delete this comment?")) return;
     setDeleting(true);
     try {
       await commentApi.delete(comment.id);
-      notify.success("评论已删除");
+      notify.success("Deleted");
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, "删除失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setDeleting(false);
     }
@@ -99,9 +101,9 @@ export function CommentItem({
             </span>
             {replyTo && (
               <span className="text-[11px] text-[var(--ink-faint)]">
-                回复{" "}
+                Reply{" "}
                 <span className="text-[var(--accent-link)]">
-                  {displayName(replyTo.user_id)}
+                  {displayName(replyTo.user_id, t("common.anonymous"))}
                 </span>
               </span>
             )}
@@ -118,7 +120,7 @@ export function CommentItem({
             )}
             {comment.is_moderated && (
               <span className="badge-pill text-[9px] text-[var(--coral)]">
-                已隐藏
+                Hidden
               </span>
             )}
           </div>
@@ -138,7 +140,7 @@ export function CommentItem({
                   disabled={saving}
                   className="btn-outline btn-sm disabled:opacity-50"
                 >
-                  {saving ? "保存中…" : "保存"}
+                  {saving ? t("common.saving") : t("common.save")}
                 </button>
                 <button
                   type="button"
@@ -149,7 +151,7 @@ export function CommentItem({
                   disabled={saving}
                   className="btn-default btn-sm"
                 >
-                  取消
+                  {t("common.cancel")}
                 </button>
               </div>
             </div>
@@ -170,7 +172,7 @@ export function CommentItem({
                   type="button"
                   className="meta-label normal-case tracking-normal hover:text-[var(--accent-link)]"
                 >
-                  回复
+                  Reply
                 </button>
               )}
               {canManage && (
@@ -183,7 +185,7 @@ export function CommentItem({
                     }}
                     className="meta-label normal-case tracking-normal hover:text-[var(--accent-link)]"
                   >
-                    编辑
+                    {t("common.edit")}
                   </button>
                   <button
                     type="button"
@@ -191,7 +193,7 @@ export function CommentItem({
                     disabled={deleting}
                     className="meta-label normal-case tracking-normal hover:text-[var(--coral)] disabled:opacity-50"
                   >
-                    {deleting ? "删除中…" : "删除"}
+                    {deleting ? t("common.saving") : t("common.delete")}
                   </button>
                 </>
               )}
@@ -201,7 +203,7 @@ export function CommentItem({
                   onClick={() => setReportOpen(true)}
                   className="meta-label normal-case tracking-normal hover:text-[var(--coral)]"
                 >
-                  举报
+                  Report
                 </button>
               )}
             </div>

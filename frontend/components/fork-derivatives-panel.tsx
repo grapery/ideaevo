@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Idea } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/provider";
 
 /** Fork 衍生想法列表（非「相关想法」） */
 export function ForkDerivativesPanel({
@@ -11,12 +12,13 @@ export function ForkDerivativesPanel({
   ideas: Idea[];
   currentId: string;
 }) {
+  const { t } = useI18n();
   const children = ideas.filter((i) => i.id !== currentId);
   if (children.length === 0) return null;
 
   return (
     <section className="mt-6 border-t border-[var(--divider)] pt-5">
-      <h2 className="heading-sans text-base mb-3">Fork 衍生</h2>
+      <h2 className="heading-sans text-base mb-3">{t("idea.forkDerivatives")}</h2>
       <ul className="space-y-2">
         {children.map((idea) => (
           <li key={idea.id}>

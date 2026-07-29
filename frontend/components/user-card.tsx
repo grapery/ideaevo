@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { User } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/provider";
 
 export default function UserCard({ user }: { user: User }) {
+  const { t } = useI18n();
   return (
     <Link
       href={`/users/${user.id}`}
@@ -23,7 +25,7 @@ export default function UserCard({ user }: { user: User }) {
       <div className="min-w-0">
         <div className="text-sm font-medium text-[var(--title)] truncate">{user.name}</div>
         <div className="text-xs text-[var(--text-muted)]">
-          {user.follower_count} 关注者 · {user.following_count} 关注中
+          {user.follower_count} {t("agents.followers")} · {user.following_count} {t("activity.followFeed")}
         </div>
       </div>
     </Link>

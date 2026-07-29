@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { authApi } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n/provider";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
@@ -17,6 +18,7 @@ export function AuthModalWeChatPhone({
   onSuccess,
   onSessionExpired,
 }: AuthModalWeChatPhoneProps) {
+  const { t } = useI18n();
   const { refreshUser } = useAuth();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -41,36 +43,36 @@ export function AuthModalWeChatPhone({
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    const t = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(timer);
   }, [cooldown]);
 
   const sendCode = useCallback(async () => {
     const trimmed = phone.trim();
     if (!trimmed) {
-      setErrors((p) => ({ ...p, phone: "请输入手机号" }));
+      setErrors((p) => ({ ...p, phone: t("auth.errPhoneRequired") }));
       return;
     }
     setErrors((p) => ({ ...p, phone: "" }));
     setSending(true);
     try {
       await authApi.sendPhoneCode(trimmed);
-      notify.success("验证码已发送");
+      notify.success(t("auth.codeSent"));
       setCooldown(60);
     } catch (err) {
-      const msg = getErrorMessage(err, "发送失败");
+      const msg = getErrorMessage(err, t("auth.sendFailed"));
       setErrors((p) => ({ ...p, phone: msg }));
     } finally {
       setSending(false);
     }
-  }, [phone]);
+  }, [phone, t]);
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = phone.trim();
     const errs: Record<string, string> = {};
-    if (!trimmed) errs.phone = "请输入手机号";
-    if (!code.trim()) errs.code = "请输入验证码";
+    if (!trimmed) errs.phone = t("auth.errPhoneRequired");
+    if (!code.trim()) errs.code = t("auth.errPhoneRequired");
     if (Object.keys(errs).length) {
       setErrors(errs);
       return;
@@ -80,10 +82,10 @@ export function AuthModalWeChatPhone({
     try {
       await authApi.verifyPhone(trimmed, code.trim());
       await refreshUser();
-      notify.success("手机验证成功");
+      notify.success(t("auth.phoneVerified"));
       await onSuccess();
     } catch (err) {
-      setErrors({ code: getErrorMessage(err, "验证失败") });
+      setErrors({ code: getErrorMessage(err, t("auth.phoneVerifyFailed")) });
     } finally {
       setVerifying(false);
     }
@@ -100,7 +102,7 @@ export function AuthModalWeChatPhone({
   if (sessionOk === false) {
     return (
       <div className="py-4 text-center">
-        <p className="text-sm text-[var(--text-muted)]">验证会话已过期，请重新使用微信扫码登录。</p>
+        <p className="text-sm text-[var(--text-muted)]">{t("auth.sessionExpiredHint")}</p>
       </div>
     );
   }
@@ -109,16 +111,16 @@ export function AuthModalWeChatPhone({
     <div>
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#07C160]/15 text-[#07C160] text-xl">
-          微
+          {t("auth.wechat")}
         </div>
         <div>
-          <p className="text-sm font-medium text-[var(--title)]">绑定手机号</p>
-          <p className="text-xs text-[var(--text-muted)]">微信登录需验证手机号后方可使用</p>
+          <p className="text-sm font-medium text-[var(--title)]">{t("auth.bindPhoneTitle")}</p>
+          <p className="text-xs text-[var(--text-muted)]">{t("auth.bindPhoneDesc")}</p>
         </div>
       </div>
 
       <form onSubmit={handleVerify} className="space-y-4">
-        <FormField id="modal-wx-phone" label="手机号" error={errors.phone}>
+        <FormField id="modal-wx-phone" label={t("auth.phone")} error={errors.phone}>
           <Input
             name="phone"
             type="tel"
@@ -129,10 +131,10 @@ export function AuthModalWeChatPhone({
               setErrors((p) => ({ ...p, phone: "" }));
             }}
             hasError={!!errors.phone}
-            placeholder="13800138000"
+            placeholder={t("auth.phonePlaceholder")}
           />
         </FormField>
-        <FormField id="modal-wx-code" label="验证码" error={errors.code}>
+        <FormField id="modal-wx-code" label={t("auth.smsCode")} error={errors.code}>
           <Input
             name="code"
             type="text"
@@ -144,7 +146,7 @@ export function AuthModalWeChatPhone({
               setErrors((p) => ({ ...p, code: "" }));
             }}
             hasError={!!errors.code}
-            placeholder="6 位数字"
+            placeholder={t("auth.smsPlaceholder")}
           />
         </FormField>
         <button
@@ -153,7 +155,7 @@ export function AuthModalWeChatPhone({
           disabled={sending || cooldown > 0}
           className="w-full btn-default py-2.5 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {cooldown > 0 ? `${cooldown}s 后可重新获取` : sending ? "发送中…" : "获取验证码"}
+          {cooldown > 0 ? t("auth.codeCooldown", { count: cooldown }) : sending ? t("auth.sendingCode") : t("auth.getCode")}
         </button>
         <button
           type="submit"
@@ -162,10 +164,10 @@ export function AuthModalWeChatPhone({
         >
           {verifying ? (
             <>
-              <ButtonSpinner /> 验证中…
+              <ButtonSpinner /> {t("auth.verifyingPhone")}
             </>
           ) : (
-            "完成验证并登录"
+            t("auth.verifyAndLogin")
           )}
         </button>
       </form>

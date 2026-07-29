@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { notify } from "@/components/ui/notify";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { IconGitFork } from "./icons";
+import { useI18n } from "@/lib/i18n/provider";
 
 type ForkIdeaDialogProps = {
   open: boolean;
@@ -22,14 +23,6 @@ type ForkIdeaDialogProps = {
 };
 
 const TITLE_MAX = 120;
-
-function validateTitle(v: string): string {
-  const t = v.trim();
-  if (!t) return "请为新想法填写标题";
-  if (t.length > TITLE_MAX)
-    return `标题最多 ${TITLE_MAX} 字，当前 ${t.length} 字`;
-  return "";
-}
 
 export function ForkIdeaDialog(props: ForkIdeaDialogProps) {
   if (!props.open) return null;
@@ -42,11 +35,10 @@ function ForkIdeaDialogContent({
   ideaId,
   sourceTitle,
 }: ForkIdeaDialogProps) {
+  const { t } = useI18n();
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const router = useRouter();
 
-  // 默认沿用原标题，不再追加 " (Fork)" 后缀——fork 关系由标签/谱系呈现，
-  // 避免多次 fork 导致标题堆叠成 "标题 (Fork) (Fork) (Fork)"。
   const defaultTitle = sourceTitle;
   const [title, setTitle] = useState(defaultTitle);
   const [description, setDescription] = useState("");
@@ -59,6 +51,14 @@ function ForkIdeaDialogContent({
   }>({});
   const [loading, setLoading] = useState(false);
 
+  function validateTitle(v: string): string {
+    const trimmed = v.trim();
+    if (!trimmed) return t("fork.errTitleRequired");
+    if (trimmed.length > TITLE_MAX)
+      return t("fork.errTitleTooLong", { max: TITLE_MAX, len: trimmed.length });
+    return "";
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canAct) {
@@ -67,8 +67,8 @@ function ForkIdeaDialogContent({
     }
 
     const titleErr = validateTitle(title);
-    const descErr = description.trim() ? "" : "请填写新想法的描述";
-    const reasonErr = reason.trim() ? "" : "请说明你 fork 这个想法的原因";
+    const descErr = description.trim() ? "" : t("fork.errDescRequired");
+    const reasonErr = reason.trim() ? "" : t("fork.errReasonRequired");
     const nextErrors = {
       title: titleErr || undefined,
       description: descErr || undefined,
@@ -92,18 +92,16 @@ function ForkIdeaDialogContent({
           }),
         },
       );
-      notify.success("已基于该想法创建你的新想法", {
+      notify.success(t("fork.created"), {
         action: {
-          label: "前往查看",
+          label: t("fork.viewIt"),
           onClick: () => router.push(`/ideas/${data.id}`),
         },
       });
       onClose();
-      // 刷新以更新 fork 计数 / fork 树。
       router.refresh();
     } catch (err) {
-      const msg = getErrorMessage(err, "Fork 失败");
-      // 重复 fork 等服务端错误归到表单级提示。
+      const msg = getErrorMessage(err, t("fork.failed"));
       setErrors({ form: msg });
     } finally {
       setLoading(false);
@@ -118,7 +116,7 @@ function ForkIdeaDialogContent({
         disabled={loading}
         className="btn-default px-4 py-2 text-sm disabled:opacity-50"
       >
-        取消
+        {t("fork.cancel")}
       </button>
       <button
         type="submit"
@@ -129,12 +127,12 @@ function ForkIdeaDialogContent({
         {loading ? (
           <>
             <ButtonSpinner className="h-4 w-4" />
-            Fork 中…
+            {t("fork.forking")}
           </>
         ) : (
           <>
             <IconGitFork className="h-4 w-4" />
-            确认 Fork
+            {t("fork.confirmFork")}
           </>
         )}
       </button>
@@ -149,18 +147,17 @@ function ForkIdeaDialogContent({
       title={
         <span className="inline-flex items-center gap-2">
           <IconGitFork className="h-5 w-5 text-[var(--primary)]" />
-          Fork 这个想法
+          {t("fork.title")}
         </span>
       }
-      description="基于这个想法创建属于你的新想法，可以自由修改。"
+      description={t("fork.desc")}
       footer={footer}
     >
-      {/* 原想法上下文 */}
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-[var(--divider)] bg-[var(--bg-subtle)] px-4 py-3">
         <IconGitFork className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" />
         <div className="min-w-0">
           <div className="text-xs text-[var(--text-muted)]">
-            将基于此想法创建 Fork
+            {t("fork.basedOn")}
           </div>
           <div className="mt-0.5 line-clamp-2 text-sm font-medium text-[var(--title)]">
             {sourceTitle}
@@ -171,7 +168,7 @@ function ForkIdeaDialogContent({
       <form id="fork-idea-form" onSubmit={handleSubmit} className="space-y-4">
         <FormField
           id="fork-title"
-          label="标题"
+          label={t("fork.titleLabel")}
           required
           error={errors.title}
           hint={`${title.length}/${TITLE_MAX}`}
@@ -184,14 +181,14 @@ function ForkIdeaDialogContent({
               if (errors.title) setErrors((p) => ({ ...p, title: undefined }));
             }}
             hasError={!!errors.title}
-            placeholder="给新想法起一个清晰的标题"
+            placeholder={t("fork.titlePlaceholder")}
             maxLength={TITLE_MAX}
           />
         </FormField>
 
         <FormField
           id="fork-description"
-          label="描述"
+          label={t("fork.descLabel")}
           required
           error={errors.description}
         >
@@ -204,17 +201,17 @@ function ForkIdeaDialogContent({
                 setErrors((p) => ({ ...p, description: undefined }));
             }}
             hasError={!!errors.description}
-            placeholder="详细说明这个新想法的内容、目标或要解决的问题…"
+            placeholder={t("fork.descPlaceholder")}
             rows={4}
           />
         </FormField>
 
         <FormField
           id="fork-reason"
-          label="Fork 原因"
+          label={t("fork.reasonLabel")}
           required
           error={errors.reason}
-          hint="会记录在 fork 关系中，便于追溯演变"
+          hint={t("fork.reasonHint")}
         >
           <Textarea
             id="fork-reason"
@@ -226,7 +223,7 @@ function ForkIdeaDialogContent({
                 setErrors((p) => ({ ...p, reason: undefined }));
             }}
             hasError={!!errors.reason}
-            placeholder="例如：想在原想法基础上增加 XX 功能 / 调整实现方向…"
+            placeholder={t("fork.reasonPlaceholder")}
             rows={3}
           />
         </FormField>

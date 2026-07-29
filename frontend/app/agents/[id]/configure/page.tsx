@@ -9,6 +9,7 @@ import { IconLeaf } from "@/components/icons";
 import { agentApi } from "@/lib/api-client";
 import { AgentApiKeyPanel } from "@/components/agent-api-key-panel";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
+import { useI18n } from "@/lib/i18n/provider";
 
 const LLM_MODELS = [
   { value: "", label: "全局默认" },
@@ -49,6 +50,7 @@ interface AgentConfig {
 }
 
 export default function AgentConfigurePage({ params }: { params: Promise<{ id: string }> }) {
+  const { t } = useI18n();
   const { user } = useAuth();
   const [agentId, setAgentId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -81,10 +83,10 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
         setLoading(false);
       })
       .catch(() => {
-        notify.error("加载 Agent 失败");
+        notify.error(t("common.loadFailed"));
         setLoading(false);
       });
-  }, [agentId]);
+  }, [agentId, t]);
 
   async function handleSave() {
     if (!agent) return;
@@ -104,9 +106,9 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
         }),
       });
       if (!res.ok) throw new Error(await res.text());
-      notify.success("配置已保存");
+      notify.success(t("settings.saved"));
     } catch (err) {
-      notify.error(err instanceof Error ? err.message : "保存失败");
+      notify.error(err instanceof Error ? err.message : t("settings.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -118,9 +120,9 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
     try {
       const res = await agentApi.resetAvatar(agentId);
       setAgent((prev) => (prev ? { ...prev, avatar_url: res.avatar_url } : prev));
-      notify.success("已恢复默认头像");
+      notify.success(t("settings.avatarReset"));
     } catch (err) {
-      notify.error(err instanceof Error ? err.message : "重置失败");
+      notify.error(err instanceof Error ? err.message : t("settings.saveFailed"));
     } finally {
       setUploading(false);
     }
@@ -132,9 +134,9 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
     try {
       const res = await agentApi.resetBackground(agentId);
       setAgent((prev) => (prev ? { ...prev, background_url: res.background_url } : prev));
-      notify.success("已恢复默认背景图");
+      notify.success(t("settings.bgReset"));
     } catch (err) {
-      notify.error(err instanceof Error ? err.message : "重置失败");
+      notify.error(err instanceof Error ? err.message : t("settings.saveFailed"));
     } finally {
       setUploading(false);
     }
@@ -147,12 +149,12 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
     try {
       const presign = await agentApi.presignUpload(agentId, kind, file.type);
       const putRes = await fetch(presign.upload_url, { method: "PUT", body: file });
-      if (!putRes.ok) throw new Error("上传失败");
+      if (!putRes.ok) throw new Error(t("settings.uploadFailed"));
       await agentApi.updateAgent(agentId, { [kind === "avatar" ? "avatar_url" : "background_url"]: presign.public_url });
       setAgent((prev) => (prev ? { ...prev, [kind === "avatar" ? "avatar_url" : "background_url"]: presign.public_url } : prev));
-      notify.success(kind === "avatar" ? "头像已更新" : "背景图已更新");
+      notify.success(kind === "avatar" ? t("settings.avatarUpdated") : t("settings.bgUpdated"));
     } catch (err) {
-      notify.error(err instanceof Error ? err.message : "上传失败");
+      notify.error(err instanceof Error ? err.message : t("settings.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -170,9 +172,9 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center">
         <IconLeaf className="h-10 w-10 mx-auto mb-4 text-[var(--text-muted)]" aria-hidden="true" />
-        <p className="text-[var(--text-muted)]">Agent 不存在</p>
+        <p className="text-[var(--text-muted)]">{t("idea.agentNotFound")}</p>
         <Link href="/" className="mt-4 inline-block text-[var(--primary)] hover:underline">
-          返回首页
+          {t("common.backHome")}
         </Link>
       </div>
     );
@@ -193,10 +195,10 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--rule)] pb-6">
           <div>
             <p className="meta-label mb-2">AGENT CONTROL PLANE / {agentId.slice(0, 8)}</p>
-            <h1 className="page-title">配置 Agent — {agent.name}</h1>
+            <h1 className="page-title">{t("agents.configure")} — {agent.name}</h1>
           </div>
           <Link href={`/agents/${agentId}`} className="btn-default">
-            ← 返回
+            {t("common.back")}
           </Link>
         </div>
 
@@ -206,7 +208,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
           <div className="space-y-4">
             {/* 背景图预览 + 上传 */}
             <div>
-              <label className="block text-sm font-medium text-[var(--title)] mb-2">背景图</label>
+              <label className="block text-sm font-medium text-[var(--title)] mb-2">{t("settings.background")}</label>
               <div className="relative h-32 overflow-hidden rounded-md border border-[var(--divider)] bg-[var(--primary-soft)]">
                 {agent.background_url ? (
                   <Image src={agent.background_url} alt="" fill unoptimized className="object-cover" />
@@ -216,7 +218,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <label className={`inline-block btn-default btn-sm cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-                  {uploading ? "上传中…" : "更换背景图"}
+                  {uploading ? t("settings.uploading") : t("settings.uploadImage")}
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -235,7 +237,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                     disabled={uploading}
                     className="btn-outline btn-sm disabled:opacity-50"
                   >
-                    恢复默认
+                    {t("settings.resetDefault")}
                   </button>
                 )}
               </div>
@@ -251,7 +253,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                 size={64}
               />
               <label className={`btn-default btn-sm cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-                更换头像
+                {t("settings.avatar")}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -269,7 +271,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                 disabled={uploading}
                 onClick={() => void resetAvatar()}
               >
-                恢复默认
+                {t("settings.resetDefault")}
               </button>
             </div>
           </div>
@@ -277,7 +279,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
           {/* System Prompt */}
           <div>
             <label htmlFor="cfg-sysprompt" className="block text-sm font-medium text-[var(--title)] mb-2">
-              System Prompt（人设指令）
+              {t("register.systemPrompt")}
             </label>
             <textarea
               id="cfg-sysprompt"
@@ -292,7 +294,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
 
           {/* LLM Model */}
           <div>
-            <label className="block text-sm font-medium text-[var(--title)] mb-2">LLM 模型</label>
+            <label className="block text-sm font-medium text-[var(--title)] mb-2">{t("register.llmModel")}</label>
             <div className="grid grid-cols-2 gap-2">
               {LLM_MODELS.map((m) => (
                 <button
@@ -314,7 +316,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
           {/* Temperature */}
           <div>
             <label className="block text-sm font-medium text-[var(--title)] mb-2">
-              温度 <span className="font-normal text-[var(--text-muted)]">（0=精确, 2=创意）</span>
+              {t("register.temperature")}
             </label>
             <div className="flex items-center gap-4">
               <input
@@ -334,12 +336,11 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
 
           {/* 权限设置 */}
           <div>
-            <h3 className="text-sm font-medium text-[var(--title)] mb-3">隐私与权限</h3>
+            <h3 className="text-sm font-medium text-[var(--title)] mb-3">{t("register.permissions")}</h3>
             <div className="space-y-3">
               <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-3.5 cursor-pointer">
                 <div>
-                  <div className="text-sm font-medium text-[var(--title)]">公开可见</div>
-                  <div className="text-xs text-[var(--text-muted)]">关闭后，该 Agent 不出现在市场列表中</div>
+                  <div className="text-sm font-medium text-[var(--title)]">{t("register.public")}</div>
                 </div>
                 <input
                   type="checkbox"
@@ -350,8 +351,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               </label>
               <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-3.5 cursor-pointer">
                 <div>
-                  <div className="text-sm font-medium text-[var(--title)]">允许他人关注</div>
-                  <div className="text-xs text-[var(--text-muted)]">关闭后，他人主页不显示关注按钮</div>
+                  <div className="text-sm font-medium text-[var(--title)]">{t("register.allowFollow")}</div>
                 </div>
                 <input
                   type="checkbox"
@@ -362,8 +362,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               </label>
               <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-3.5 cursor-pointer">
                 <div>
-                  <div className="text-sm font-medium text-[var(--title)]">允许他人发起对话</div>
-                  <div className="text-xs text-[var(--text-muted)]">关闭后，他人无法与你的 Agent 对话或下发任务</div>
+                  <div className="text-sm font-medium text-[var(--title)]">{t("register.allowChat")}</div>
                 </div>
                 <input
                   type="checkbox"
@@ -377,16 +376,16 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
 
           {/* 可用工具列表（只读展示） */}
           <div>
-            <h3 className="text-sm font-medium text-[var(--title)] mb-2">可用工具</h3>
+            <h3 className="text-sm font-medium text-[var(--title)] mb-2">{t("register.toolset")}</h3>
             <div className="flex flex-wrap gap-2">
-              {AVAILABLE_TOOLS.map((t) => (
-                <span key={t.name} className="tag-pill text-xs">
-                  {t.name}
+              {AVAILABLE_TOOLS.map((tool) => (
+                <span key={tool.name} className="tag-pill text-xs">
+                  {tool.name}
                 </span>
               ))}
             </div>
             <p className="mt-2 text-xs text-[var(--text-muted)]">
-              工具集在注册时配置，暂不支持在线修改。
+              {t("register.toolsetHint")}
             </p>
           </div>
 
@@ -396,7 +395,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               href={`/agents/${agentId}`}
               className="btn-default px-5 py-2"
             >
-              取消
+              {t("common.cancel")}
             </Link>
             <button
               type="button"
@@ -404,7 +403,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               disabled={saving}
               className="rounded-md bg-[var(--primary)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-40"
             >
-              {saving ? "保存中…" : "保存配置"}
+              {saving ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </div>

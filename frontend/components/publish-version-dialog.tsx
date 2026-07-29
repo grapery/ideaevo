@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/ui/form-field";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
+import { useI18n } from "@/lib/i18n/provider";
 
 /**
  * PublishVersionButton — 仅 idea 所属 Agent 的 owner 可见，对接 POST /ideas/:id/versions。
@@ -19,6 +20,7 @@ import { getErrorMessage } from "@/lib/api-error";
 export function PublishVersionButton({ idea }: { idea: Idea }) {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -37,7 +39,7 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
 
   async function submit() {
     if (!title.trim() || !description.trim() || !category.trim() || !changelog.trim()) {
-      notify.error("标题、描述、分类、更新日志均为必填");
+      notify.error("Title, description, category, and changelog are all required");
       return;
     }
     setSaving(true);
@@ -51,7 +53,7 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
           changelog: changelog.trim(),
           tags: tagsRaw
             .split(/[,，]/)
-            .map((t) => t.trim())
+            .map((tg) => tg.trim())
             .filter(Boolean),
           repo_url: repoUrl.trim() || undefined,
           demo_url: demoUrl.trim() || undefined,
@@ -59,11 +61,11 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
         },
         { useSession: true }
       );
-      notify.success("新版本已发布");
+      notify.success("New version published");
       setOpen(false);
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, "发布失败"));
+      notify.error(getErrorMessage(err, t("idea.publishFailed")));
     } finally {
       setSaving(false);
     }
@@ -76,15 +78,15 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
         onClick={() => setOpen(true)}
         className="btn-outline btn-sm"
       >
-        + 发布新版本
+        + Publish new version
       </button>
 
       <Modal
         open={open}
         onClose={() => !saving && setOpen(false)}
         disableClose={saving}
-        title="发布新版本"
-        description="以当前内容为基础创建一个新版本，更新日志将记录在版本历史中。"
+        title="Publish new version"
+        description="Create a new version based on the current content. The changelog will be recorded in version history."
         footer={
           <>
             <button
@@ -93,7 +95,7 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
               disabled={saving}
               className="btn-default px-4 py-2 text-sm disabled:opacity-50"
             >
-              取消
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -101,16 +103,16 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
               disabled={saving}
               className="btn-outline px-4 py-2 text-sm disabled:opacity-50"
             >
-              {saving ? "发布中…" : "发布版本"}
+              {saving ? t("idea.publishing") : "Publish version"}
             </button>
           </>
         }
       >
         <div className="space-y-4">
-          <FormField id="pv-title" label="标题">
+          <FormField id="pv-title" label="Title">
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </FormField>
-          <FormField id="pv-desc" label="描述">
+          <FormField id="pv-desc" label="Description">
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -119,16 +121,16 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
             />
           </FormField>
           <div className="grid grid-cols-2 gap-3">
-            <FormField id="pv-category" label="分类">
+            <FormField id="pv-category" label="Category">
               <Input value={category} onChange={(e) => setCategory(e.target.value)} />
             </FormField>
-            <FormField id="pv-status" label="实现状态">
+            <FormField id="pv-status" label={t("idea.implStatus")}>
               <select
                 value={implStatus}
                 onChange={(e) => setImplStatus(e.target.value as IdeaImplStatus)}
                 className="w-full rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm text-[var(--text-secondary)]"
               >
-                <option value="">不变</option>
+                <option value="">Unchanged</option>
                 {Object.entries(IDEA_IMPL_STATUS_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>
                     {v}
@@ -137,23 +139,23 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
               </select>
             </FormField>
           </div>
-          <FormField id="pv-tags" label="标签（逗号分隔）">
+          <FormField id="pv-tags" label="Tags (comma separated)">
             <Input value={tagsRaw} onChange={(e) => setTagsRaw(e.target.value)} />
           </FormField>
           <div className="grid grid-cols-2 gap-3">
-            <FormField id="pv-repo" label="仓库 URL">
+            <FormField id="pv-repo" label="Repository URL">
               <Input value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} />
             </FormField>
             <FormField id="pv-demo" label="Demo URL">
               <Input value={demoUrl} onChange={(e) => setDemoUrl(e.target.value)} />
             </FormField>
           </div>
-          <FormField id="pv-changelog" label="更新日志" hint="必填，描述本次版本的变更">
+          <FormField id="pv-changelog" label="Changelog" hint="Required. Describe the changes in this version.">
             <Textarea
               value={changelog}
               onChange={(e) => setChangelog(e.target.value)}
               rows={3}
-              placeholder="例如：补充实现方案，修正分类标签"
+              placeholder="e.g. Add implementation plan, fix category tags"
               className="resize-none"
             />
           </FormField>

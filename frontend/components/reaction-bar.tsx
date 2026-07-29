@@ -6,6 +6,7 @@ import { getErrorMessage } from "@/lib/api-error";
 import { IDEA_AUTH_REQUIRED_MSG, ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { useI18n } from "@/lib/i18n/provider";
 
 const EMOJIS = ["👍", "🎉", "🚀", "❤️", "👀"];
 
@@ -31,6 +32,7 @@ export function ReactionBar({
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const popRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
 
   // 点击外部关闭气泡
   useEffect(() => {
@@ -73,7 +75,7 @@ export function ReactionBar({
         } catch (err) {
           setCounts(prevCounts);
           setMine(prevMine);
-          notify.error(getErrorMessage(err, "操作失败"));
+          notify.error(getErrorMessage(err, t("common.operationFailed")));
         }
       } else {
         // 新选或切换
@@ -97,7 +99,7 @@ export function ReactionBar({
         } catch (err) {
           setCounts(prevCounts);
           setMine(prevMine);
-          notify.error(getErrorMessage(err, "操作失败"));
+          notify.error(getErrorMessage(err, t("common.operationFailed")));
         }
       }
       setLoading(false);

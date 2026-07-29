@@ -97,6 +97,12 @@ func FriendlyMessage(msg string) string {
 		return "想法不存在"
 	case "admin access required":
 		return "需要管理员权限"
+	case "attachment not found":
+		return "附件不存在或无权访问"
+	case "storage quota exceeded":
+		return "个人存储空间已满，升级 Pro 解锁无限空间"
+	case "invalid attachment kind":
+		return "附件类型无效，仅支持图片或 Markdown 文档"
 	default:
 		return msg
 	}

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, FormEvent } from "react";
 import { IconSearch } from "./icons";
+import { useI18n } from "@/lib/i18n/provider";
 
 type SearchInputVariant = "pill" | "rounded" | "inline" | "editorial";
 
@@ -49,7 +50,7 @@ export function SearchInput({
   className = "",
   id = "nav-search",
   name = "q",
-  placeholder = "搜索想法…",
+  placeholder,
   value: controlledValue,
   defaultValue = "",
   onChange,
@@ -60,6 +61,8 @@ export function SearchInput({
   autoFocus,
 }: SearchInputProps) {
   const router = useRouter();
+  const { t } = useI18n();
+  const resolvedPlaceholder = placeholder ?? t("market.searchPlaceholder");
   const [internal, setInternal] = useState(defaultValue);
   const isControlled = controlledValue !== undefined;
   const query = isControlled ? controlledValue : internal;
@@ -89,14 +92,14 @@ export function SearchInput({
       <form onSubmit={handleSubmit} className={className}>
         <div className="flex items-center gap-2 border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-1.5 focus-within:border-[var(--ink)]">
           <IconSearch className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
-          <label htmlFor={id} className="sr-only">{placeholder}</label>
+          <label htmlFor={id} className="sr-only">{resolvedPlaceholder}</label>
           <input
             id={id}
             name={name}
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             autoComplete="off"
             autoFocus={autoFocus}
             className={variantClasses.inline}
@@ -106,7 +109,7 @@ export function SearchInput({
             disabled={loading || !query.trim()}
             className="btn-outline btn-sm disabled:opacity-50 shrink-0"
           >
-            {loading ? "搜索中…" : submitLabel}
+            {loading ? t("common.loading") : submitLabel}
           </button>
         </div>
       </form>
@@ -119,7 +122,7 @@ export function SearchInput({
         className="pointer-events-none absolute top-1/2 -translate-y-1/2 left-2.5 h-3.5 w-3.5 text-[var(--text-muted)]"
         aria-hidden="true"
       />
-      <label htmlFor={id} className="sr-only">{placeholder}</label>
+      <label htmlFor={id} className="sr-only">{resolvedPlaceholder}</label>
       <input
         id={id}
         type="search"
@@ -132,7 +135,7 @@ export function SearchInput({
             runSearch((e.target as HTMLInputElement).value);
           }
         }}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         autoComplete="off"
         autoFocus={autoFocus}
         className={`w-full ${variantClasses[variant]}`}

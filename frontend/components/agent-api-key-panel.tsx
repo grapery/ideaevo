@@ -7,6 +7,7 @@ import { useApiKey } from "@/lib/api-key-context";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { Modal } from "@/components/ui/modal";
+import { useI18n } from "@/lib/i18n/provider";
 
 type Props = {
   agentId: string;
@@ -16,6 +17,7 @@ type Props = {
 
 export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props) {
   const { apiKey, setApiKey, agentId: boundAgentId } = useApiKey();
+  const { t } = useI18n();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,9 +32,9 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
       setRevealedKey(res.api_key);
       setShowKey(true);
       setConfirmOpen(false);
-      notify.success("API Key 已重新生成");
+      notify.success("API Key regenerated");
     } catch (err) {
-      notify.error(getErrorMessage(err, "重新生成失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(false);
     }
@@ -41,7 +43,7 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
   function handleUseInBrowser() {
     if (!revealedKey) return;
     setApiKey(revealedKey);
-    notify.success(`已将 ${agentName} 设为浏览器默认 Key`);
+    notify.success(`Set ${agentName} as the browser default key`);
   }
 
   if (compact) {
@@ -64,7 +66,7 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
       <div>
         <h4 className="text-sm font-medium text-[var(--ink)]">API Key</h4>
         <p className="text-xs text-[var(--text-muted)] mt-1">
-          用于 MCP / REST 以该 Agent 身份调用。Key 仅在注册或重新生成时显示一次，请妥善保存。
+          Used to call MCP / REST as this Agent. The key is shown only once on registration or regeneration — keep it safe.
         </p>
       </div>
 
@@ -78,41 +80,41 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
               className="flex-1 border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-xs font-mono"
             />
             <button type="button" className="btn-outline btn-sm" onClick={() => setShowKey((v) => !v)}>
-              {showKey ? "隐藏" : "显示"}
+              {showKey ? t("settings.hide") : t("settings.show")}
             </button>
             <button
               type="button"
               className="btn-outline btn-sm"
               onClick={() => {
                 navigator.clipboard?.writeText(revealedKey);
-                notify.success("已复制");
+                notify.success(t("chat.copied"));
               }}
             >
-              复制
+              {t("chat.copy")}
             </button>
           </div>
           {!isBound && (
             <button type="button" className="btn-default btn-sm" onClick={handleUseInBrowser}>
-              设为浏览器默认 Key
+              Set as browser default key
             </button>
           )}
           {isBound && (
-            <p className="text-xs text-[var(--text-muted)]">已是当前浏览器绑定的 Agent Key</p>
+            <p className="text-xs text-[var(--text-muted)]">This is the currently bound Agent key for the browser</p>
           )}
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" className="btn-outline btn-sm" onClick={() => setConfirmOpen(true)}>
-            重新生成 API Key
+            Regenerate API Key
           </button>
           {isBound && (
-            <span className="text-xs text-[var(--text-muted)]">浏览器已绑定此 Agent 的 Key</span>
+            <span className="text-xs text-[var(--text-muted)]">This Agent&apos;s key is already bound in the browser</span>
           )}
         </div>
       )}
 
       <p className="text-xs text-[var(--text-muted)]">
-        MCP 配置见 <Link href="/docs/mcp" className="text-[var(--primary)] hover:underline">文档</Link>
+        For MCP configuration see the <Link href="/docs/mcp" className="text-[var(--primary)] hover:underline">docs</Link>
       </p>
 
       {renderModals()}
@@ -124,8 +126,8 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
       <Modal
         open={confirmOpen}
         onClose={() => !loading && setConfirmOpen(false)}
-        title="重新生成 API Key"
-        description="旧 Key 将立即失效。使用旧 Key 的 MCP 客户端需更新配置。"
+        title="Regenerate API Key"
+        description="The old key will be invalidated immediately. MCP clients using the old key must update their configuration."
         footer={
           <>
             <button
@@ -134,7 +136,7 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
               disabled={loading}
               onClick={() => setConfirmOpen(false)}
             >
-              取消
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -142,13 +144,13 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
               disabled={loading}
               onClick={() => void handleRotate()}
             >
-              {loading ? "生成中…" : "确认重新生成"}
+              {loading ? t("common.loading") : "Confirm regenerate"}
             </button>
           </>
         }
       >
         <p className="text-sm text-[var(--text-muted)]">
-          Agent：<span className="font-medium text-[var(--ink)]">{agentName}</span>
+          Agent: <span className="font-medium text-[var(--ink)]">{agentName}</span>
         </p>
       </Modal>
     );

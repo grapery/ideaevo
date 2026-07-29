@@ -19,10 +19,40 @@ type LLMMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 
+	// 多模态 content parts（图片）。非空时优先于 Content，组装成 OpenAI 风格的
+	// [{type:text,...},{type:image_url,...}] 数组发给 LLM，实现 vision 能力。
+	Parts []LLMContentPart `json:"-"`
+
 	// 工具调用相关（用于多轮 tool use 对话）
 	ToolCalls    []ToolCall `json:"tool_calls,omitempty"`   // role=assistant 且 LLM 请求工具时
 	ToolCallID   string     `json:"tool_call_id,omitempty"` // role=tool 时关联的调用 ID
 	ToolName     string     `json:"name,omitempty"`         // role=tool 时工具名
+}
+
+// LLMContentPart 是 OpenAI 兼容的多模态 content part。
+type LLMContentPart struct {
+	Type     string      `json:"type"`               // "text" | "image_url"
+	Text     string      `json:"text,omitempty"`     // type=text 时
+	ImageURL *LLMImageURL `json:"image_url,omitempty"` // type=image_url 时
+}
+
+// LLMImageURL 是 image_url content part 的载荷。
+type LLMImageURL struct {
+	URL string `json:"url"`
+}
+
+// HasParts 判断消息是否携带多模态 content parts。
+func (m LLMMessage) HasParts() bool { return len(m.Parts) > 0 }
+
+// LLMMessageWithImage 构造一条带图片的多模态用户消息（文字 + image_url）。
+func LLMMessageWithImage(text, imageURL string) LLMMessage {
+	return LLMMessage{
+		Role: "user",
+		Parts: []LLMContentPart{
+			{Type: "text", Text: text},
+			{Type: "image_url", ImageURL: &LLMImageURL{URL: imageURL}},
+		},
+	}
 }
 
 type LLMResponse struct {
@@ -86,10 +116,22 @@ type chatRequest struct {
 
 type chatMsg struct {
 	Role       string         `json:"role"`
-	Content    string         `json:"content,omitempty"`
+	Content    json.RawMessage `json:"content,omitempty"` // string 或 content parts 数组
 	ToolCalls  []chatToolCall `json:"tool_calls,omitempty"`
 	ToolCallID string         `json:"tool_call_id,omitempty"`
 	Name       string         `json:"name,omitempty"`
+}
+
+// encodeChatContent 把 LLMMessage 的内容编码为 OpenAI 兼容的 JSON：
+// 有 Parts 时输出 content parts 数组（多模态），否则输出纯字符串。
+func encodeChatContent(m LLMMessage) (json.RawMessage, error) {
+	if m.HasParts() {
+		return json.Marshal(m.Parts)
+	}
+	if m.Content == "" {
+		return nil, nil
+	}
+	return json.Marshal(m.Content)
 }
 
 type chatTool struct {
@@ -131,12 +173,17 @@ type chatResponse struct {
 	} `json:"usage"`
 }
 
-func (s *LLMService) buildMessages(systemPrompt string, messages []LLMMessage) []chatMsg {
-	msgs := []chatMsg{{Role: "system", Content: systemPrompt}}
+func (s *LLMService) buildMessages(systemPrompt string, messages []LLMMessage) ([]chatMsg, error) {
+	sysContent, _ := json.Marshal(systemPrompt)
+	msgs := []chatMsg{{Role: "system", Content: sysContent}}
 	for _, m := range messages {
+		content, err := encodeChatContent(m)
+		if err != nil {
+			return nil, fmt.Errorf("encode message content: %w", err)
+		}
 		cm := chatMsg{
 			Role:       m.Role,
-			Content:    m.Content,
+			Content:    content,
 			ToolCallID: m.ToolCallID,
 			Name:       m.ToolName,
 		}
@@ -151,7 +198,7 @@ func (s *LLMService) buildMessages(systemPrompt string, messages []LLMMessage) [
 		}
 		msgs = append(msgs, cm)
 	}
-	return msgs
+	return msgs, nil
 }
 
 func (s *LLMService) toHuoshanMessages(systemPrompt string, messages []LLMMessage) []huoshan.ChatMessage {
@@ -162,6 +209,17 @@ func (s *LLMService) toHuoshanMessages(systemPrompt string, messages []LLMMessag
 			Content:    m.Content,
 			ToolCallID: m.ToolCallID,
 			ToolName:   m.ToolName,
+		}
+		// 多模态 parts 透传到 huoshan 层。
+		if m.HasParts() {
+			hm.Parts = make([]huoshan.ContentPart, 0, len(m.Parts))
+			for _, p := range m.Parts {
+				hp := huoshan.ContentPart{Type: p.Type, Text: p.Text}
+				if p.ImageURL != nil {
+					hp.ImageURL = &huoshan.ImageURL{URL: p.ImageURL.URL}
+				}
+				hm.Parts = append(hm.Parts, hp)
+			}
 		}
 		for _, tc := range m.ToolCalls {
 			hm.ToolCalls = append(hm.ToolCalls, huoshan.ToolCall{
@@ -245,9 +303,13 @@ func (s *LLMService) chatWithToolsArk(systemPrompt string, messages []LLMMessage
 }
 
 func (s *LLMService) chatWithToolsHTTP(systemPrompt string, messages []LLMMessage, tools []OpenAITool) (*ChatWithToolsResult, error) {
+	msgs, err := s.buildMessages(systemPrompt, messages)
+	if err != nil {
+		return nil, err
+	}
 	req := chatRequest{
 		Model:    s.model,
-		Messages: s.buildMessages(systemPrompt, messages),
+		Messages: msgs,
 	}
 	if len(tools) > 0 {
 		rawTools := make([]chatTool, 0, len(tools))
@@ -356,9 +418,14 @@ func (s *LLMService) ChatStream(systemPrompt string, messages []LLMMessage) (<-c
 		return ch, nil
 	}
 
+	msgs, err := s.buildMessages(systemPrompt, messages)
+	if err != nil {
+		close(ch)
+		return nil, err
+	}
 	body, _ := json.Marshal(chatRequest{
 		Model:    s.model,
-		Messages: s.buildMessages(systemPrompt, messages),
+		Messages: msgs,
 		Stream:   true,
 	})
 

@@ -5,6 +5,7 @@ import { getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/lib/auth-context";
 import { ActivityList, ActivityLog } from "@/components/activity-list";
 import { AppLink as Link } from "@/components/app-link";
+import { useI18n } from "@/lib/i18n/provider";
 
 type Tab = "global" | "following";
 
@@ -18,15 +19,16 @@ export function ActivityFeedTabs({
   initialGlobal: ActivityLog[];
 }) {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("global");
   const [global, setGlobal] = useState<ActivityLog[]>(initialGlobal);
   const [following, setFollowing] = useState<ActivityLog[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   const loadFollowing = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setError(false);
     try {
       const res = await fetch(`${getApiBase()}/activity/following?limit=30`, {
         credentials: "include",
@@ -35,7 +37,7 @@ export function ActivityFeedTabs({
       const data: FeedResponse = await res.json();
       setFollowing(data.activities ?? []);
     } catch {
-      setError("加载关注动态失败");
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -53,14 +55,14 @@ export function ActivityFeedTabs({
       {/* tab 切换 */}
       <div className="flex border-b border-[var(--divider)]">
         <TabButton active={tab === "global"} onClick={() => setTab("global")}>
-          全站动态
+          {t("activity.allFeed")}
         </TabButton>
         <TabButton
           active={tab === "following"}
           onClick={() => user && setTab("following")}
           disabled={!user}
         >
-          关注
+          {t("activity.followFeed")}
         </TabButton>
       </div>
 
@@ -70,11 +72,11 @@ export function ActivityFeedTabs({
         (user ? (
           loading ? (
             <div className="p-8 text-center text-[var(--text-muted)]">
-              加载中…
+              {t("common.loading")}
             </div>
           ) : error ? (
             <div className="p-8 text-center text-[var(--text-muted)]">
-              {error}
+              {t("activity.feedLoadFailed")}
             </div>
           ) : (
             <ActivityList activities={following ?? []} />
@@ -86,9 +88,9 @@ export function ActivityFeedTabs({
                 href="/login"
                 className="text-[var(--primary)] hover:underline"
               >
-                登录
+                {t("auth.loginShort")}
               </Link>{" "}
-              后查看你关注的 Agent / 用户的动态
+              {t("activity.loginToView")}
             </p>
           </div>
         ))}

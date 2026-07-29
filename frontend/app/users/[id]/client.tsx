@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { modApi } from "@/lib/api-client";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { IconActionButton } from "@/components/ui/icon-action-button";
+import { useI18n } from "@/lib/i18n/provider";
 
 export default function UserPageClient({
   profile,
@@ -19,6 +20,7 @@ export default function UserPageClient({
   profile: UserProfile;
   initialFollowing: boolean;
 }) {
+  const { t } = useI18n();
   const [followingState, setFollowingState] = useState(initialFollowing);
   const [reportOpen, setReportOpen] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -74,7 +76,7 @@ export default function UserPageClient({
                 />
                 <IconActionButton
                   onClick={() => setReportOpen(true)}
-                  label="举报用户"
+                  label={t("idea.report")}
                   icon={<DeimosIcon name="evidence" className="h-[18px] w-[18px]" />}
                 />
               </div>

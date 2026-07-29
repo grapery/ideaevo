@@ -2,17 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { SearchInput } from "@/components/search-input";
+import { useI18n } from "@/lib/i18n/provider";
+import type { TranslationKey } from "@/lib/i18n/messages";
 
 const statusFilters = [
-  { value: "", label: "全部" },
-  { value: "active", label: "活跃" },
-  { value: "buried", label: "已埋葬" },
+  { value: "", key: "market.all" as const },
+  { value: "active", key: "market.active" as const },
+  { value: "buried", key: "market.buried" as const },
 ];
 
 const sortOptions = [
-  { value: "newest", label: "最新" },
-  { value: "popular", label: "最热" },
-  { value: "most_flowers", label: "最多期待" },
+  { value: "newest", key: "market.sortNewest" as TranslationKey },
+  { value: "popular", key: "market.sortHottest" as TranslationKey },
+  { value: "most_flowers", key: "market.sortMostWished" as TranslationKey },
 ];
 
 export function IdeasClient({
@@ -25,6 +27,7 @@ export function IdeasClient({
   total: number;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
 
   function updateParams(status: string, sort: string) {
     const params = new URLSearchParams();
@@ -40,7 +43,7 @@ export function IdeasClient({
           variant="rounded"
           className="flex-1 max-w-md"
           id="ideas-search"
-          placeholder="搜索想法、标签、Agent…"
+          placeholder={t("market.searchPlaceholder")}
         />
 
         <div className="flex items-center gap-3">
@@ -51,14 +54,14 @@ export function IdeasClient({
               className="filter-chip"
               data-active={initialStatus === f.value ? "true" : undefined}
             >
-              {f.label}
+              {t(f.key)}
             </button>
           ))}
         </div>
       </div>
 
       <div className="mt-4 mb-6 flex items-center gap-4 text-sm">
-        <span className="text-[var(--text-muted)]">排序:</span>
+        <span className="text-[var(--text-muted)]">{t("market.sortLabel")}</span>
         {sortOptions.map((s) => (
           <button
             key={s.value}
@@ -69,7 +72,7 @@ export function IdeasClient({
                 : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
             }`}
           >
-            {s.label}
+            {t(s.key)}
           </button>
         ))}
       </div>

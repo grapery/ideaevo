@@ -404,6 +404,8 @@ export interface ChatMessageActivityMeta {
 export interface ChatMessageMetadata {
   display_kind?: "activity" | "llm_only";
   activity?: ChatMessageActivityMeta;
+  /** 消息携带的附件轻量信息（图片/文档），消息列表只加载简述，不含原文/全量 base64。 */
+  attachment?: ChatMessageAttachmentMeta;
   /** @deprecated legacy SSE-only shape; prefer activity */
   type?: string;
   tool?: string;
@@ -412,6 +414,56 @@ export interface ChatMessageMetadata {
   target_agent_id?: string;
   task?: string;
   a2a_completed?: boolean;
+}
+
+/** 聊天附件类型。 */
+export type ChatAttachmentKind = "image" | "document";
+
+/** 消息列表里暴露的附件轻量信息（后端写在 message.metadata.attachment）。 */
+export interface ChatMessageAttachmentMeta {
+  id: string;
+  kind: ChatAttachmentKind;
+  file_name: string;
+  summary: string;
+  url: string; // image: 原图 URL（浏览器按需加载）；document: md 下载 URL
+  size: number;
+}
+
+/** 上传完成后用于前端暂存 + 发送时回传给后端的附件引用。 */
+export interface ChatAttachmentRef {
+  id: string;
+  kind: ChatAttachmentKind;
+  file_name: string;
+  summary: string;
+  url: string;
+  size: number;
+}
+
+/** 预签名上传结果。 */
+export interface ChatFilePresignResult {
+  upload_url: string;
+  public_url: string;
+  key: string;
+  expires_in: number;
+}
+
+/** finalize 后返回的附件视图。 */
+export interface ChatFileAttachmentView {
+  id: string;
+  user_id: string;
+  kind: ChatAttachmentKind;
+  file_name: string;
+  content_type: string;
+  size: number;
+  url: string;
+  summary: string;
+  created_at: string;
+}
+
+/** 个人存储空间用量。 */
+export interface ChatFileQuota {
+  used: number;
+  limit: number; // -1 表示付费用户不限
 }
 
 export interface ChatMessage {

@@ -16,6 +16,10 @@ import {
   UserDevice,
   PublishIdeaVersionInput,
   ChatArchiveResult,
+  ChatAttachmentKind,
+  ChatFilePresignResult,
+  ChatFileAttachmentView,
+  ChatFileQuota,
   PlansResponse,
   MembershipView,
   CreateOrderResult,
@@ -519,7 +523,11 @@ export const chatApi = {
       method: "DELETE",
     }),
 
-  sendMessage: (sessionId: string, content: string) =>
+  sendMessage: (
+    sessionId: string,
+    content: string,
+    attachmentId?: string,
+  ) =>
     requestWithAuth<{
       user_message: ChatMessage;
       assistant_message: ChatMessage;
@@ -533,7 +541,11 @@ export const chatApi = {
       tokens_used?: number;
     }>(`/sessions/${sessionId}/messages`, {
       method: "POST",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify(
+        attachmentId
+          ? { content, attachment_id: attachmentId }
+          : { content },
+      ),
     }),
 
   sendMessageStream: async (
@@ -543,10 +555,20 @@ export const chatApi = {
     onDone: (fullContent: string) => void,
     onError: (err: Error) => void,
     onEvent?: (type: string, data: unknown) => void,
+    attachmentId?: string,
   ) => {
-    const url = `${getApiBase()}/sessions/${sessionId}/stream?content=${encodeURIComponent(content)}`;
+    const url = `${getApiBase()}/sessions/${sessionId}/stream`;
 
-    const res = await fetch(url, { credentials: "include" });
+    const res = await fetch(url, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        attachmentId
+          ? { content, attachment_id: attachmentId }
+          : { content },
+      ),
+    });
     if (!res.ok) {
       onError(new Error(await parseResponseError(res, "消息发送失败")));
       return;
@@ -691,6 +713,74 @@ export const chatApi = {
     requestWithAuth<ChatArchiveResult>(`/sessions/${sessionId}/archive`, {
       method: "POST",
     }),
+
+  // —— 聊天附件（图片 / Markdown 文档）——
+
+  /** 预签名一个聊天附件上传 URL（浏览器直传 OSS）。 */
+  presignChatFile: (
+    kind: ChatAttachmentKind,
+    contentType: string,
+    fileSize: number,
+    fileName?: string,
+  ) =>
+    requestWithAuth<ChatFilePresignResult>("/user/chat-files/presign", {
+      method: "POST",
+      body: JSON.stringify({
+        kind,
+        content_type: contentType,
+        file_size: fileSize,
+        file_name: fileName ?? "",
+      }),
+    }),
+
+  /** 校验已上传对象并落库附件元数据（含摘要），返回附件视图。 */
+  finalizeChatFile: (
+    key: string,
+    kind: ChatAttachmentKind,
+    fileName?: string,
+  ) =>
+    requestWithAuth<{ attachment: ChatFileAttachmentView }>(
+      "/user/chat-files/finalize",
+      {
+        method: "POST",
+        body: JSON.stringify({ key, kind, file_name: fileName ?? "" }),
+      },
+    ),
+
+  /** 查询个人存储空间用量与上限（付费用户 limit=-1）。 */
+  getChatFileQuota: () =>
+    requestWithAuth<ChatFileQuota>("/user/chat-files/quota"),
+
+  /** 一站式上传聊天文件：presign → PUT → finalize。返回附件引用。 */
+  uploadChatFile: async (
+    file: File,
+    kind: ChatAttachmentKind,
+  ): Promise<ChatFileAttachmentView> => {
+    const contentType =
+      kind === "document"
+        ? file.type || "text/markdown"
+        : file.type;
+    const presign = await chatApi.presignChatFile(
+      kind,
+      contentType,
+      file.size,
+      file.name,
+    );
+    const putRes = await fetch(presign.upload_url, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": contentType },
+    });
+    if (!putRes.ok) {
+      throw new Error(`文件上传失败 (HTTP ${putRes.status})`);
+    }
+    const { attachment } = await chatApi.finalizeChatFile(
+      presign.key,
+      kind,
+      file.name,
+    );
+    return attachment;
+  },
 };
 
 export const userApi = {

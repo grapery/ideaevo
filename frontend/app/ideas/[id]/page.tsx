@@ -104,7 +104,7 @@ export default async function IdeaDetailPage({
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
         <IconLeaf className="mx-auto mb-4 h-10 w-10 text-[var(--text-muted)]" aria-hidden="true" />
         <p className="text-[var(--text-muted)]">
-          {locale === "zh-CN" ? "想法不存在或已被删除" : "This idea does not exist or has been deleted."}
+          {t("idea.notFound")}
         </p>
       </div>
     );
@@ -151,12 +151,15 @@ export default async function IdeaDetailPage({
       : idea.status === "buried"
         ? t("market.buried")
         : t("market.active");
-  const activeTab = tab === "evolution" || tab === "comments" ? tab : "overview";
+  const activeTab =
+    tab === "evolution" || tab === "comments" || tab === "more"
+      ? tab
+      : "overview";
   const tabClass = (value: typeof activeTab) =>
-    `relative flex h-full items-center whitespace-nowrap border-b-2 px-1 transition-colors ${
+    `flex w-full items-center whitespace-nowrap border-l-2 px-4 py-3 text-sm font-semibold transition-colors ${
       activeTab === value
-        ? "border-[var(--ink)] text-[var(--ink)]"
-        : "border-transparent text-[var(--ink-soft)] hover:text-[var(--ink)]"
+        ? "border-[var(--ink)] bg-[var(--bg-subtle,#f3f5f7)] text-[var(--ink)]"
+        : "border-transparent text-[var(--ink-soft)] hover:bg-[var(--bg-subtle,#f3f5f7)] hover:text-[var(--ink)]"
     }`;
 
   return (
@@ -170,28 +173,25 @@ export default async function IdeaDetailPage({
         </nav>
 
         <nav
-          className="mb-5 flex h-12 items-center gap-7 overflow-x-auto rounded-md border border-[var(--rule)] bg-white px-4 text-[12px] font-semibold"
-          aria-label={locale === "zh-CN" ? "Idea 详情内容" : "Idea detail content"}
+          className="mb-5 flex flex-col gap-1 rounded-md border border-[var(--rule)] bg-white p-2"
+          aria-label="Idea detail content"
         >
           <Link href={`/ideas/${id}?tab=overview`} className={tabClass("overview")}>
             {t("idea.body")}
           </Link>
           <Link href={`/ideas/${id}?tab=evolution`} className={tabClass("evolution")}>
-            {t("idea.evolution")}
-            <span className="ml-1.5 font-code text-[9px] text-[var(--ink-faint)]">
+            <span>{t("idea.evolution")}</span>
+            <span className="ml-2 text-xs font-normal text-[var(--ink-faint)]">
               v{currentVersion} · {idea.fork_count} Fork
             </span>
           </Link>
           <Link href={`/ideas/${id}?tab=comments`} className={tabClass("comments")}>
-            {t("idea.comments")}
-            <span className="ml-1.5 font-code text-[9px] text-[var(--ink-faint)]">{comments.length}</span>
+            <span>{t("idea.comments")}</span>
+            <span className="ml-2 text-xs font-normal text-[var(--ink-faint)]">{comments.length}</span>
           </Link>
-          <Link
-            href={`/ideas/${id}?tab=overview#evidence`}
-            className="relative flex h-full items-center whitespace-nowrap border-b-2 border-transparent px-1 text-[var(--ink-soft)] transition-colors hover:text-[var(--ink)]"
-          >
-            {t("idea.evidence")}
-            <span className="ml-1.5 font-code text-[9px] text-[var(--ink-faint)]">{totalReferences}</span>
+          <Link href={`/ideas/${id}?tab=more`} className={tabClass("more")}>
+            <span>{t("idea.moreInfo")}</span>
+            <span className="ml-2 text-xs font-normal text-[var(--ink-faint)]">{totalReferences}</span>
           </Link>
         </nav>
 
@@ -269,19 +269,6 @@ export default async function IdeaDetailPage({
               </div>
             )}
 
-            <section id="evidence" className="mt-5 scroll-mt-20 rounded-md border border-[#b7ceff] bg-[#eaf1ff] p-4 text-[#1f56d8]">
-              <p className="font-code text-[10px] font-semibold uppercase">{t("idea.implementationEvidence")} / {totalReferences}</p>
-              <div className="mt-4 space-y-2 font-code text-[10px] leading-5">
-                {evidence.length > 0 ? evidence.slice(0, 6).map((item, index) => (
-                  <a key={`${item.url}-${index}`} href={item.url} target="_blank" rel="noopener noreferrer" className="block hover:underline">
-                    {String(index + 1).padStart(2, "0")}　{item.label} · {item.detail}
-                  </a>
-                )) : (
-                  <p className="text-[#4d73c7]">{t("idea.noEvidence")}</p>
-                )}
-              </div>
-            </section>
-
             <ForkDerivativesPanel ideas={forkChildren} currentId={id} />
 
             <div className="mt-5">
@@ -300,17 +287,17 @@ export default async function IdeaDetailPage({
               <p className="uppercase text-[var(--ink)]">{t("idea.forkLineage")}</p>
               <div className="mt-5 space-y-1 text-[var(--ink-soft)]">
                 {lineage?.source_idea && (
-                  <p>{locale === "zh-CN" ? "源 idea" : "Source"}　· <Link href={`/ideas/${lineage.source_idea.id}`} className="text-[var(--accent-link)]">{lineage.source_idea.title}</Link></p>
+                  <p>{t("idea.sourceIdea")}　· <Link href={`/ideas/${lineage.source_idea.id}`} className="text-[var(--accent-link)]">{lineage.source_idea.title}</Link></p>
                 )}
-                <p>{locale === "zh-CN" ? "当前" : "Current"} · {idea.title}</p>
+                <p>{t("idea.currentBranch")} · {idea.title}</p>
               </div>
               <div className="mt-5 space-y-1">
-                <p>{lineage?.stats.total_forks ?? idea.fork_count} {locale === "zh-CN" ? "个 Fork" : "total forks"}</p>
-                <p>{lineage?.stats.active_branches ?? forkChildren.filter((item) => item.status === "active").length} {locale === "zh-CN" ? "个活跃分支" : "active branches"}</p>
-                <p>{lineage?.stats.contributors ?? 0} {locale === "zh-CN" ? "位贡献者" : "contributors"}</p>
+                <p>{t("idea.totalForks", { count: lineage?.stats.total_forks ?? idea.fork_count })}</p>
+                <p>{t("idea.activeBranches", { count: lineage?.stats.active_branches ?? forkChildren.filter((item) => item.status === "active").length })}</p>
+                <p>{t("idea.contributors", { count: lineage?.stats.contributors ?? 0 })}</p>
               </div>
               <Link href={`/ideas/${id}?tab=evolution`} className="mt-5 inline-block text-[var(--accent-link)]">
-                {locale === "zh-CN" ? "查看关系图" : "View graph"} →
+                {t("idea.viewGraph")} →
               </Link>
             </section>
 
@@ -319,15 +306,13 @@ export default async function IdeaDetailPage({
 
             <section className="rounded-lg bg-[#0a0a0a] p-4 text-white">
               <p className="font-code text-[10px] uppercase text-white/60">
-                {locale === "zh-CN" ? "最新版本" : "Latest version"} / v{currentVersion}
+                {t("idea.latestVersionShort", { version: currentVersion })}
               </p>
               <p className="mt-2 font-code text-[10px] text-white/55">
-                {new Date(idea.updated_at).toLocaleDateString(locale)} · {idea.agent?.name || (locale === "zh-CN" ? "创建者" : "owner")}
+                {new Date(idea.updated_at).toLocaleDateString(locale)} · {idea.agent?.name || t("idea.creator")}
               </p>
               <p className="mt-5 text-xs leading-5 text-white/70">
-                {locale === "zh-CN"
-                  ? "当前标题、描述、实现状态与证据引用构成可追溯版本快照。"
-                  : "The current title, description, implementation status, and evidence form a traceable snapshot."}
+                {t("idea.versionSnapshot")}
               </p>
               <div className="mt-5"><PublishVersionButton idea={idea} /></div>
             </section>
@@ -343,17 +328,15 @@ export default async function IdeaDetailPage({
         <section id="comments" className="mt-8 scroll-mt-20 rounded-lg border border-[var(--rule-strong)] bg-white p-5 sm:p-6">
           <div className="mb-5 flex items-center gap-2">
             <p className="meta-label text-[var(--accent-link)]">
-              {locale === "zh-CN" ? "讨论 / 证据评审" : "Discussion / Evidence review"}
+              {t("idea.discussionReview")}
             </p>
             <span className="font-code text-[10px] text-[var(--text-muted)]">{comments.length}</span>
           </div>
           <h2 className="page-title text-[26px]">
-            {locale === "zh-CN" ? "讨论与版本协作" : "Discussion and version collaboration"}
+            {t("idea.discussionCollab")}
           </h2>
           <p className="mt-2 text-[13px] text-[var(--ink-soft)]">
-            {locale === "zh-CN"
-              ? "评论可以提出证据、Fork 建议与版本变更。"
-              : "Use comments to propose evidence, forks, and version changes."}
+            {t("idea.discussionHint")}
           </p>
 
           <div className="mt-6"><CommentForm ideaId={id} /></div>
@@ -361,7 +344,7 @@ export default async function IdeaDetailPage({
           <div className="mt-6">
             {comments.length === 0 ? (
               <p className="py-4 text-sm text-[var(--text-muted)]">
-                {locale === "zh-CN" ? "暂无评论，来发表第一条吧" : "No comments yet. Start the discussion."}
+                {t("idea.noComments")}
               </p>
             ) : (
               <CommentList comments={comments.slice(0, 5)} />
@@ -370,9 +353,44 @@ export default async function IdeaDetailPage({
 
           {comments.length > 5 && (
             <Link href={`/ideas/${id}/comments`} className="mt-5 block text-center text-sm text-[var(--accent-link)] hover:underline">
-              {locale === "zh-CN" ? `查看全部 ${comments.length} 条评论` : `View all ${comments.length} comments`} →
+              {t("idea.viewAllComments", { count: comments.length })} →
             </Link>
           )}
+        </section>
+        )}
+
+        {activeTab === "more" && (
+        <section id="more" className="scroll-mt-20 rounded-lg border border-[var(--rule-strong)] bg-white p-5 sm:p-6">
+          <div className="mb-5 flex items-center gap-2">
+            <p className="meta-label text-[var(--accent-link)]">
+              {t("idea.implementationEvidence")}
+            </p>
+            <span className="text-sm text-[var(--text-muted)]">{totalReferences}</span>
+          </div>
+          <p className="text-sm text-[var(--ink-soft)]">
+            {t("idea.evidenceSectionHint")}
+          </p>
+          <div className="mt-5 space-y-3">
+            {evidence.length > 0 ? evidence.map((item, index) => (
+              <a
+                key={`${item.url}-${index}`}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-md border border-[var(--rule)] px-4 py-3 text-sm leading-6 hover:border-[var(--accent-link)] hover:bg-[var(--bg-subtle,#f3f5f7)]"
+              >
+                <span className="font-code text-xs text-[var(--ink-faint)]">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="ml-2 font-medium text-[var(--ink)]">{item.label}</span>
+                <span className="ml-2 text-[var(--ink-soft)]">· {item.detail}</span>
+              </a>
+            )) : (
+              <p className="rounded-md border border-dashed border-[var(--rule)] px-4 py-6 text-center text-sm text-[var(--text-muted)]">
+                {t("idea.noEvidence")}
+              </p>
+            )}
+          </div>
         </section>
         )}
       </div>

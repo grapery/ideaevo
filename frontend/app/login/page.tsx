@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n/provider";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { AuthBrandPanel } from "@/components/auth-brand-panel";
@@ -12,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const { login, loginWithGoogle, loginWithWeChat, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,23 +29,23 @@ export default function LoginPage() {
   const oauthError = searchParams.get("error");
   useEffect(() => {
     if (oauthError) {
-      const messages: Record<string, string> = {
-        oauth_state: "OAuth 验证失败，请重试",
-        oauth_failed: "Google 登录失败，请重试",
-        oauth_conflict: "该邮箱已用密码注册，请使用密码登录",
-        oauth_token: "登录令牌生成失败，请重试",
-        wechat_oauth_failed: "微信登录失败，请重试",
-        wechat_not_configured: "微信登录未配置",
+      const map: Record<string, string> = {
+        oauth_state: t("auth.oauthStateError"),
+        oauth_failed: t("auth.oauthFailedError"),
+        oauth_conflict: t("auth.oauthConflictError"),
+        oauth_token: t("auth.oauthTokenError"),
+        wechat_oauth_failed: t("auth.wechatFailedError"),
+        wechat_not_configured: t("auth.wechatNotConfiguredError"),
       };
-      notify.error(messages[oauthError] || "登录失败");
+      notify.error(map[oauthError] || t("auth.loginFailed"));
     }
-  }, [oauthError]);
+  }, [oauthError, t]);
 
   function validate() {
     const errs: Record<string, string> = {};
-    if (!email.trim()) errs.email = "请输入邮箱";
-    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = "邮箱格式不正确";
-    if (!password) errs.password = "请输入密码";
+    if (!email.trim()) errs.email = t("auth.errEmailRequired");
+    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = t("auth.errEmailInvalid");
+    if (!password) errs.password = t("auth.errPasswordRequired");
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -54,10 +56,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      notify.success("登录成功");
+      notify.success(t("auth.loginSuccess"));
       router.push("/dashboard");
     } catch (err) {
-      notify.error(getErrorMessage(err, "登录失败"));
+      notify.error(getErrorMessage(err, t("auth.loginFailed")));
     } finally {
       setLoading(false);
     }
@@ -71,25 +73,25 @@ export default function LoginPage() {
         <div className="w-full max-w-[400px]">
           <div className="rounded-lg border border-[var(--rule)] bg-white p-8 shadow-[0_18px_50px_rgba(20,24,32,.07)]">
             <p className="meta-label mb-3">ACCESS / DEIMOS</p>
-            <h2 className="font-[family-name:var(--font-display)] text-[28px] font-semibold tracking-[-0.03em]">欢迎回来</h2>
+            <h2 className="font-[family-name:var(--font-display)] text-[28px] font-semibold tracking-[-0.03em]">{t("auth.welcomeBack")}</h2>
             <p className="mt-2 text-[13px] leading-6 text-[var(--text-secondary)]">
-              登录后继续推进 idea、处理 Agent 决策与查看执行证据。
+              {t("auth.loginDesc")}
             </p>
 
             <div className="mt-6 flex border-b border-[var(--rule)]">
               <span className="flex-1 border-b-2 border-[var(--ink)] py-2.5 text-center font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase">
-                登录
+                {t("auth.login")}
               </span>
               <Link
                 href="/signup"
                 className="flex-1 py-2.5 text-center font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--text-muted)] hover:text-[var(--title)]"
               >
-                注册
+                {t("auth.register")}
               </Link>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              <FormField id="login-email" label="邮箱" error={errors.email}>
+              <FormField id="login-email" label={t("auth.email")} error={errors.email}>
                 <Input
                   name="email"
                   type="email"
@@ -98,22 +100,22 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: "" })); }}
                   hasError={!!errors.email}
-                  placeholder="your@email.com"
+                  placeholder={t("auth.emailPlaceholder")}
                 />
               </FormField>
-              <FormField id="login-password" label="密码" error={errors.password}>
+              <FormField id="login-password" label={t("auth.password")} error={errors.password}>
                 <PasswordInput
                   name="password"
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: "" })); }}
                   hasError={!!errors.password}
-                  placeholder="输入密码"
+                  placeholder={t("auth.passwordPlaceholder")}
                 />
               </FormField>
               <div className="flex justify-end">
                 <Link href="/forgot-password" className="text-sm text-[var(--primary)] hover:underline">
-                  忘记密码？
+                  {t("auth.forgotPassword")}
                 </Link>
               </div>
               <button
@@ -121,7 +123,7 @@ export default function LoginPage() {
                 disabled={loading}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--ink)] py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? (<><ButtonSpinner /> 登录中…</>) : "登录"}
+                {loading ? (<><ButtonSpinner /> {t("auth.loggingIn")}</>) : t("auth.loginShort")}
               </button>
             </form>
 
@@ -130,7 +132,7 @@ export default function LoginPage() {
                 <div className="w-full border-t border-[var(--divider)]" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-white px-3 text-[var(--text-muted)]">或</span>
+                <span className="bg-white px-3 text-[var(--text-muted)]">{t("auth.or")}</span>
               </div>
             </div>
 
@@ -139,8 +141,8 @@ export default function LoginPage() {
               onClick={loginWithWeChat}
               className="w-full btn-outline mb-3"
             >
-              <span className="text-[#07C160] font-semibold">微</span>
-              使用微信扫码登录
+              <span className="text-[#07C160] font-semibold">{t("auth.wechat")}</span>
+              {t("auth.wechatScanLogin")}
             </button>
 
             <button
@@ -149,18 +151,18 @@ export default function LoginPage() {
               className="w-full btn-outline"
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-              使用 Google 账号继续
+              {t("auth.googleContinue")}
             </button>
 
             <p className="mt-6 text-center text-[12px] text-[var(--text-muted)]">
-              还没有账号？{" "}
+              {t("auth.noAccount")}{" "}
               <Link href="/signup" className="text-[var(--primary)] hover:underline font-medium">
-                立即注册 →
+                {t("auth.registerNow")}
               </Link>
             </p>
             <p className="mt-4 text-center text-[11px] text-[var(--text-muted)]">
-              继续即表示同意《用户协议》和
-              <Link href="/privacy" className="text-[var(--primary)] hover:underline">《隐私政策》</Link>
+              {t("auth.agreePrefix")}
+              <Link href="/privacy" className="text-[var(--primary)] hover:underline">{t("auth.privacyPolicy")}</Link>
             </p>
           </div>
         </div>

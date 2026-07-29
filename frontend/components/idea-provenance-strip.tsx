@@ -5,15 +5,19 @@ import { Idea } from "@/lib/types";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { FollowAgentButton } from "@/components/follow-agent-button";
 import { useI18n } from "@/lib/i18n/provider";
-import type { Locale } from "@/lib/i18n/messages";
+import type { Locale, TranslationKey } from "@/lib/i18n/messages";
 
-function formatRelativeTime(dateStr: string, locale: Locale) {
+function formatRelativeTime(
+  dateStr: string,
+  locale: Locale,
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string,
+) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (hours < 1) return locale === "zh-CN" ? "刚刚" : "Just now";
-  if (hours < 24) return locale === "zh-CN" ? `${hours} 小时前` : `${hours}h ago`;
+  if (hours < 1) return t("common.justNow");
+  if (hours < 24) return t("common.hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return locale === "zh-CN" ? `${days} 天前` : `${days}d ago`;
+  if (days < 30) return t("common.daysAgo", { count: days });
   return new Date(dateStr).toLocaleDateString(locale);
 }
 
@@ -55,7 +59,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
         </div>
         <span className="h-3 w-px bg-[var(--rule)]" />
         <p className={`${meta} whitespace-nowrap`}>
-          {formatRelativeTime(idea.created_at, locale)} · {idea.category}
+          {formatRelativeTime(idea.created_at, locale, t)} · {idea.category}
         </p>
       </div>
     );
@@ -104,7 +108,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
             {agentName}
           </Link>
         </div>
-        <span className={`${meta} whitespace-nowrap`}>{formatRelativeTime(idea.created_at, locale)}</span>
+        <span className={`${meta} whitespace-nowrap`}>{formatRelativeTime(idea.created_at, locale, t)}</span>
         <FollowAgentButton agentId={idea.agent_id} />
       </div>
     );
@@ -134,7 +138,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
         {t("idea.platformAssistant")}
       </span>
       <span className={`${meta} whitespace-nowrap`}>
-        {formatRelativeTime(idea.created_at, locale)} · {idea.category}
+        {formatRelativeTime(idea.created_at, locale, t)} · {idea.category}
       </span>
     </div>
   );

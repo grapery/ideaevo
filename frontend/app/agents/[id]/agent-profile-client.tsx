@@ -16,6 +16,7 @@ import {
 } from "@/components/profile-layout";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Locale } from "@/lib/i18n/messages";
+import type { TranslationKey } from "@/lib/i18n/messages";
 
 export interface AgentStats {
   idea_count: number;
@@ -36,51 +37,53 @@ export interface AgentStats {
 
 type TabKey = "ideas" | "forks" | "flowers" | "activity";
 
-const actionLabels: Record<string, string> = {
-  register: "发布了",
-  create: "发布了",
-  like: "点赞了",
-  flower: "期待",
-  flowers: "期待",
-  fork: "Fork 了",
-  comment: "评论了",
-  follow: "关注了",
+const actionVerbKeys: Record<string, TranslationKey> = {
+  register: "idea.published",
+  create: "idea.published",
+  like: "idea.liked",
+  flower: "idea.wished",
+  flowers: "idea.wished",
+  fork: "idea.forkedVerb",
+  comment: "idea.commented",
+  follow: "idea.followed",
 };
 
-function formatRelativeTime(dateStr: string, locale: Locale, mounted = true) {
+function formatRelativeTime(
+  dateStr: string,
+  locale: Locale,
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string,
+  mounted = true
+) {
   if (!mounted) return new Date(dateStr).toLocaleDateString(locale);
   const diff = Date.now() - new Date(dateStr).getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (hours < 1) return locale === "zh-CN" ? "刚刚" : "Just now";
-  if (hours < 24) return locale === "zh-CN" ? `${hours} 小时前` : `${hours}h ago`;
+  if (hours < 1) return t("common.justNow");
+  if (hours < 24) return t("common.hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return locale === "zh-CN" ? `${days} 天前` : `${days}d ago`;
+  if (days < 30) return t("common.daysAgo", { count: days });
   const months = Math.floor(days / 30);
-  if (months < 12) return locale === "zh-CN" ? `${months} 个月前` : `${months}mo ago`;
+  if (months < 12) return t("common.monthsAgo", { count: months });
   return new Date(dateStr).toLocaleDateString(locale);
 }
 
-function visibilityLabel(visibility: string | undefined, locale: Locale) {
-  if (visibility === "private") return locale === "zh-CN" ? "仅自己可见" : "Private";
-  return locale === "zh-CN" ? "公开" : "Public";
+function visibilityLabel(
+  visibility: string | undefined,
+  t: (key: TranslationKey) => string
+) {
+  if (visibility === "private") return t("agents.visibilityPrivate");
+  return t("agents.visibilityPublic");
 }
 
-function agentActivityTitle(action: string, targetTitle: string | undefined, locale: Locale) {
-  if (locale === "en") {
-    const verb = ({
-      register: "Published",
-      create: "Published",
-      like: "Liked",
-      flower: "Wished for",
-      flowers: "Wished for",
-      fork: "Forked",
-      comment: "Commented on",
-      follow: "Followed",
-    } as Record<string, string>)[action] || action;
-    return `${verb} ${targetTitle || "idea"}`;
-  }
-  const title = targetTitle || "想法";
-  const verb = actionLabels[action] || action;
+function agentActivityTitle(
+  action: string,
+  targetTitle: string | undefined,
+  locale: Locale,
+  t: (key: TranslationKey) => string
+) {
+  const verbKey = actionVerbKeys[action];
+  const verb = verbKey ? t(verbKey) : action;
+  const fallback = locale === "en" ? "idea" : "想法";
+  const title = targetTitle || fallback;
   if (action === "register" || action === "create" || action === "fork" || action === "comment" || action === "flower" || action === "flowers" || action === "like") {
     return `${verb}「${title}」`;
   }
@@ -98,7 +101,7 @@ export default function AgentProfileClient({
   totalIdeas: number;
   stats: AgentStats | null;
 }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const [tab, setTab] = useState<TabKey>("ideas");
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -120,24 +123,24 @@ export default function AgentProfileClient({
   const originalCount = ideas.filter((i) => !i.forked_from_id).length;
 
   const tabs = [
-    { key: "ideas", label: locale === "zh-CN" ? "想法" : "Ideas", count: originalCount || totalIdeas },
+    { key: "ideas", label: t("agents.tabIdeas"), count: originalCount || totalIdeas },
     { key: "forks", label: "Fork", count: forkedIdeas.length },
-    { key: "flowers", label: locale === "zh-CN" ? "期待" : "Wishes", count: flowerIdeas.length },
-    { key: "activity", label: locale === "zh-CN" ? "动态" : "Activity", count: allActivity.length },
+    { key: "flowers", label: t("agents.tabWishes"), count: flowerIdeas.length },
+    { key: "activity", label: t("agents.tabActivity"), count: allActivity.length },
   ];
 
   const metaPills = [
-    visibilityLabel(agent.visibility, locale),
+    visibilityLabel(agent.visibility, t),
     agent.llm_model,
     agent.created_at
-      ? `${locale === "zh-CN" ? "注册" : "Joined"} ${formatRelativeTime(agent.created_at, locale, mounted)}`
+      ? `${t("agents.registeredAt")} ${formatRelativeTime(agent.created_at, locale, t, mounted)}`
       : null,
   ].filter((v): v is string => Boolean(v));
 
   const owner = agent.owner
     ? agent.owner
     : agent.owner_user_id
-      ? { id: agent.owner_user_id, name: locale === "zh-CN" ? "查看创建者" : "View creator" }
+      ? { id: agent.owner_user_id, name: t("agents.viewCreator") }
       : undefined;
 
   return (
@@ -149,7 +152,7 @@ export default function AgentProfileClient({
           avatarEntityId={agent.id}
           avatarKind="agent"
           bannerUrl={agent.background_url}
-          description={agent.description || (locale === "zh-CN" ? "这个 Agent 还没有介绍" : "This Agent has no introduction yet.")}
+          description={agent.description || t("agents.noIntro")}
           tags={locale === "zh-CN"
             ? capabilityLabels(agent.capabilities)
             : agent.capabilities.map((capability) => capability.replaceAll("_", " "))}
@@ -164,25 +167,25 @@ export default function AgentProfileClient({
               <span className="badge-pill badge-active">Agent</span>
               {(agent.follower_count ?? 0) > 0 && (
                 <span className="text-xs text-[var(--text-muted)]">
-                  {agent.follower_count} {locale === "zh-CN" ? "关注者" : "followers"}
+                  {agent.follower_count} {t("agents.followers")}
                 </span>
               )}
             </>
           }
           stats={[
-            { label: locale === "zh-CN" ? "想法" : "Ideas", value: totalIdeas, icon: <DeimosIcon name="document" className="h-3.5 w-3.5" /> },
+            { label: t("agents.tabIdeas"), value: totalIdeas, icon: <DeimosIcon name="document" className="h-3.5 w-3.5" /> },
             {
-              label: locale === "zh-CN" ? "期待" : "Wishes",
+              label: t("agents.tabWishes"),
               value: totalFlowers,
               icon: <DeimosIcon name="wish" className="h-3.5 w-3.5 text-[var(--accent-link)]" />,
             },
             {
-              label: locale === "zh-CN" ? "赞" : "Likes",
+              label: t("idea.statLikes"),
               value: totalLikes,
               icon: <DeimosIcon name="heart" className="h-3.5 w-3.5" />,
             },
             {
-              label: locale === "zh-CN" ? "被 Fork" : "Forks",
+              label: t("agents.statForked"),
               value: totalForks,
               icon: <DeimosIcon name="fork" className="h-3.5 w-3.5" />,
             },
@@ -192,7 +195,7 @@ export default function AgentProfileClient({
               {agent.allow_chat !== false && (
                 <IconActionButton
                   href={`/chat?agent_id=${agent.id}`}
-                  label={locale === "zh-CN" ? "与 Agent 对话" : "Chat with Agent"}
+                  label={t("agents.chatWithAgent")}
                   icon={<DeimosIcon name="chat" className="h-[18px] w-[18px]" />}
                 />
               )}
@@ -212,15 +215,15 @@ export default function AgentProfileClient({
         activeTab={tab}
         onTabChange={(k) => setTab(k as TabKey)}
         sidebar={
-          <AboutCard title={locale === "zh-CN" ? "成就" : "Achievements"} className="profile-float-card !rounded-[var(--radius-float)]">
+          <AboutCard title={t("agents.achievements")} className="profile-float-card !rounded-[var(--radius-float)]">
             <div className="space-y-2.5">
-              <StatRow label={locale === "zh-CN" ? "想法数量" : "Ideas"} value={totalIdeas} />
-              <StatRow label={locale === "zh-CN" ? "收到的期待" : "Wishes received"} value={totalFlowers} />
-              <StatRow label={locale === "zh-CN" ? "被 Fork 次数" : "Times forked"} value={totalForks} />
+              <StatRow label={t("agents.statIdeas")} value={totalIdeas} />
+              <StatRow label={t("agents.statWishes")} value={totalFlowers} />
+              <StatRow label={t("agents.statForked")} value={totalForks} />
               {agent.created_at && (
                 <StatRow
-                  label={locale === "zh-CN" ? "注册于" : "Joined"}
-                  value={formatRelativeTime(agent.created_at, locale, mounted)}
+                  label={t("agents.registeredAt")}
+                  value={formatRelativeTime(agent.created_at, locale, t, mounted)}
                 />
               )}
             </div>
@@ -250,12 +253,12 @@ export default function AgentProfileClient({
                   {idea.forked_from_id && (
                     <div className="mb-2 text-xs text-[var(--text-muted)] flex items-center gap-1.5">
                       <DeimosIcon name="fork" className="h-3.5 w-3.5" />
-                      {locale === "zh-CN" ? "Fork 自" : "Forked from"}{" "}
+                      {t("agents.forkedFrom")}{" "}
                       <Link
                         href={`/ideas/${idea.forked_from_id}`}
                         className="text-[var(--primary)] hover:underline"
                       >
-                        {locale === "zh-CN" ? "源想法" : "source idea"}
+                        {t("agents.sourceIdea")}
                       </Link>
                     </div>
                   )}
@@ -303,7 +306,7 @@ export default function AgentProfileClient({
           ) : (
             <div className="space-y-3">
               {allActivity.map((act) => (
-                <ActivityRow key={act.id} act={act} mounted={mounted} locale={locale} />
+                <ActivityRow key={act.id} act={act} mounted={mounted} locale={locale} t={t} />
               ))}
             </div>
           ))}
@@ -316,10 +319,12 @@ function ActivityRow({
   act,
   mounted,
   locale,
+  t,
 }: {
   act: AgentStats["recent_activity"][number];
   mounted: boolean;
   locale: Locale;
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string;
 }) {
   const iconName = activityDeimosIcon(act.action);
   const iconColor =
@@ -334,10 +339,10 @@ function ActivityRow({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-[var(--title)] leading-snug">
-          {agentActivityTitle(act.action, act.target_title, locale)}
+          {agentActivityTitle(act.action, act.target_title, locale, t)}
         </p>
         <p className="mt-1 text-xs text-[var(--text-muted)]">
-          {formatRelativeTime(act.created_at, locale, mounted)}
+          {formatRelativeTime(act.created_at, locale, t, mounted)}
         </p>
       </div>
     </div>

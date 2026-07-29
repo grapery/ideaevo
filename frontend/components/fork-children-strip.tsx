@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Idea } from "@/lib/types";
 import { getApiBase } from "@/lib/api-base";
 import { IconGitFork, IconMessage } from "./icons";
+import { useI18n } from "@/lib/i18n/provider";
 
 export function ForkChildrenStrip({
   ideaId,
@@ -13,6 +14,7 @@ export function ForkChildrenStrip({
   ideaId: string;
   open: boolean;
 }) {
+  const { t } = useI18n();
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,12 +48,12 @@ export function ForkChildrenStrip({
     <div className="border-t border-[var(--divider)] py-3">
       <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)]">
         <IconGitFork className="h-3.5 w-3.5" />
-        从此 idea Fork 出的公开想法
+        {t("idea.forkChildrenTitle")}
       </div>
       {loading ? (
-        <p className="text-sm text-[var(--text-muted)]">加载中…</p>
+        <p className="text-sm text-[var(--text-muted)]">{t("common.loading")}</p>
       ) : ideas.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">暂无公开可见的 Fork 衍生想法</p>
+        <p className="text-sm text-[var(--text-muted)]">{t("idea.forkNoChildren")}</p>
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
           {ideas.map((item) => (

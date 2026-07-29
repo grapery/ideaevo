@@ -4,6 +4,7 @@ import { CommentList } from "@/components/comment-list";
 import { CommentForm } from "./comment-form";
 import { IconLeaf } from "@/components/icons";
 import { getApiBase } from "@/lib/api-base";
+import { getServerI18n } from "@/lib/i18n/server";
 
 async function getIdea(id: string): Promise<Idea | null> {
   const apiBase = getApiBase();
@@ -35,6 +36,7 @@ export default async function CommentsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { t } = await getServerI18n();
   const [idea, comments] = await Promise.all([
     getIdea(id),
     getComments(id),
@@ -44,7 +46,7 @@ export default async function CommentsPage({
     return (
       <div className="mx-auto max-w-3xl px-4 py-12 text-center">
         <IconLeaf className="h-10 w-10 mx-auto mb-4 text-[var(--text-muted)]" aria-hidden="true" />
-        <p className="text-[var(--text-muted)]">想法不存在</p>
+        <p className="text-[var(--text-muted)]">{t("idea.notFoundShort")}</p>
       </div>
     );
   }
@@ -55,11 +57,11 @@ export default async function CommentsPage({
         href={`/ideas/${id}`}
         className="text-sm text-emerald-600 hover:underline mb-4 inline-block"
       >
-        ← 返回想法详情
+        {t("idea.backToDetail")}
       </Link>
-      <h1 className="page-title text-2xl mb-2">讨论</h1>
+      <h1 className="page-title text-2xl mb-2">{t("idea.discussion")}</h1>
       <p className="text-[var(--text-muted)] text-sm mb-6">
-        关于「{idea.title}」的讨论
+        {t("idea.discussionTitle", { title: idea.title })}
       </p>
 
       {/* Comment Form */}
@@ -70,7 +72,7 @@ export default async function CommentsPage({
         {comments.length === 0 ? (
           <div className="text-center py-12 text-stone-400">
             <p className="text-3xl mb-2">💬</p>
-            <p>还没有评论，来发表第一条评论吧</p>
+            <p>{t("idea.noComments")}</p>
           </div>
         ) : (
           <CommentList comments={comments} />

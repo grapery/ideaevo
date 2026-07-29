@@ -16,6 +16,7 @@ import { ReportDialog } from "./report-dialog";
 import { IconBookmark, IconShare } from "./icons";
 import { DeimosIcon } from "./deimos-icon";
 import { CountButton } from "./ui/count-button";
+import { useI18n } from "@/lib/i18n/provider";
 
 export function IdeaDetailEngagement({
   ideaId,
@@ -36,6 +37,7 @@ export function IdeaDetailEngagement({
 }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const { user } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
   const [likes, setLikes] = useState(initialLikes);
   const [flowers, setFlowers] = useState(initialFlowers);
@@ -96,10 +98,10 @@ export function IdeaDetailEngagement({
       } else {
         await api.bookmarkIdea(ideaId);
         setBookmarked(true);
-        notify.success("已收藏");
+        notify.success(t("idea.bookmarked"));
       }
     } catch (err) {
-      notify.error(getErrorMessage(err, "收藏失败"));
+      notify.error(getErrorMessage(err, t("idea.bookmarkFailed")));
     } finally {
       setLoading(null);
     }
@@ -128,10 +130,10 @@ export function IdeaDetailEngagement({
         });
         setLiked(true);
         setLikes((n) => n + 1);
-        notify.success("已点赞");
+        notify.success(t("idea.liked"));
       }
     } catch (err) {
-      notify.error(getErrorMessage(err, "点赞失败"));
+      notify.error(getErrorMessage(err, t("idea.likeFailed")));
     } finally {
       setLoading(null);
     }
@@ -150,11 +152,11 @@ export function IdeaDetailEngagement({
         useSession,
       });
       setFlowers((n) => n + 1);
-      notify.success("已表达期待");
+      notify.success(t("idea.wished"));
       // 刷新服务端数据，让「收到的花」头像列表与累计数同步更新
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, "表达期待失败"));
+      notify.error(getErrorMessage(err, t("idea.wishFailed")));
     } finally {
       setLoading(null);
     }
@@ -174,11 +176,11 @@ export function IdeaDetailEngagement({
       } else {
         await navigator.clipboard.writeText(url);
         shared = true;
-        notify.success("链接已复制");
+        notify.success(t("idea.linkCopied"));
       }
     } catch {
       // 用户取消分享 (AbortError) 也会进这里，不计为分享成功
-      notify.error("分享失败");
+      notify.error(t("idea.shareFailed"));
     }
     // 分享/复制成功后，向后端落库一次分享计数（fire-and-forget）
     if (shared && canAct) {
@@ -204,7 +206,7 @@ export function IdeaDetailEngagement({
           tone="coral"
           onClick={toggleLike}
           disabled={loading === "like"}
-          ariaLabel="点赞"
+          ariaLabel={t("idea.statLikes")}
         />
 
         <CountButton
@@ -215,7 +217,7 @@ export function IdeaDetailEngagement({
           tone="coral"
           onClick={sendFlower}
           disabled={loading === "flower"}
-          ariaLabel="表达期待"
+          ariaLabel={t("idea.statWishes")}
         />
 
         <CountButton
@@ -226,7 +228,7 @@ export function IdeaDetailEngagement({
           tone="primary"
           onClick={() => onForkListToggle?.()}
           disabled={!onForkListToggle}
-          ariaLabel="查看 Fork 衍生想法"
+          ariaLabel={t("idea.viewForkDerivatives")}
         />
 
         <CountButton
@@ -234,37 +236,37 @@ export function IdeaDetailEngagement({
           icon={<DeimosIcon name="comment" className="h-3.5 w-3.5" />}
           count={comments}
           onClick={scrollToComments}
-          ariaLabel="查看评论"
+          ariaLabel={t("idea.viewComments")}
         />
 
         {user && (
           <CountButton
             variant="soft"
             icon={<IconBookmark filled={bookmarked} className="h-3.5 w-3.5" />}
-            label="收藏"
+            label={t("idea.bookmark")}
             active={bookmarked}
             tone="primary"
             onClick={toggleBookmark}
             disabled={loading === "bookmark"}
-            ariaLabel="收藏"
+            ariaLabel={t("idea.bookmark")}
           />
         )}
 
         <CountButton
           variant="soft"
           icon={<IconShare className="h-3.5 w-3.5" />}
-          label="分享"
+          label={t("idea.share")}
           onClick={shareIdea}
-          ariaLabel="分享"
+          ariaLabel={t("idea.share")}
           className="ml-auto"
         />
 
         {user && (
           <CountButton
             variant="soft"
-            label="举报"
+            label={t("idea.report")}
             onClick={() => setReportOpen(true)}
-            ariaLabel="举报这个想法"
+            ariaLabel={t("idea.reportIdea")}
           />
         )}
       </div>

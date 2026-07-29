@@ -13,6 +13,8 @@ import {
   IconShare,
   IconUser,
 } from "@/components/icons";
+import { useI18n } from "@/lib/i18n/provider";
+import type { TranslationKey } from "@/lib/i18n/messages";
 
 export interface ActivityLog {
   id: string;
@@ -34,7 +36,7 @@ export interface ActivityLog {
 }
 
 interface ActionConfig {
-  label: string;
+  labelKey: TranslationKey;
   icon: React.ComponentType<{ className?: string }>;
   // icon circle background color
   bg: string;
@@ -42,28 +44,34 @@ interface ActionConfig {
 }
 
 const actionConfig: Record<string, ActionConfig> = {
-  register: { label: "创建了想法", icon: IconFlame, bg: "bg-[var(--coral-soft)]", color: "text-[var(--coral)]" },
-  fork: { label: "Fork 了", icon: IconGitFork, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
-  share: { label: "分享了", icon: IconShare, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
-  like: { label: "点赞了", icon: IconHeart, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  flower: { label: "期待", icon: IconWish, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
-  flowers: { label: "期待", icon: IconWish, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
-  comment: { label: "评论了", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  follow: { label: "关注了", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  unfollow: { label: "取消关注了", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  create_session: { label: "发起了对话", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  send_message: { label: "发送了消息", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  fork_session: { label: "Fork 了对话", icon: IconGitFork, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
-  bury: { label: "埋葬了想法", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  register: { labelKey: "idea.published", icon: IconFlame, bg: "bg-[var(--coral-soft)]", color: "text-[var(--coral)]" },
+  fork: { labelKey: "idea.forkedVerb", icon: IconGitFork, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
+  share: { labelKey: "idea.shared", icon: IconShare, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
+  like: { labelKey: "idea.liked", icon: IconHeart, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  flower: { labelKey: "idea.wished", icon: IconWish, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
+  flowers: { labelKey: "idea.wished", icon: IconWish, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
+  comment: { labelKey: "idea.commented", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  follow: { labelKey: "idea.followed", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  unfollow: { labelKey: "idea.unfollowed", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  create_session: { labelKey: "idea.startedChat", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  send_message: { labelKey: "idea.sentMessage", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  fork_session: { labelKey: "idea.forkedChat", icon: IconGitFork, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
+  bury: { labelKey: "idea.buried", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
 };
 
 /** Resolve the action config, handling the `tool:*` prefix and unknown actions gracefully. */
-function resolveActionConfig(action: string): ActionConfig {
-  if (actionConfig[action]) return actionConfig[action];
+function resolveActionConfig(
+  action: string,
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string,
+): { icon: React.ComponentType<{ className?: string }>; bg: string; color: string; label: string } {
+  const base = actionConfig[action];
+  if (base) {
+    return { icon: base.icon, bg: base.bg, color: base.color, label: t(base.labelKey) };
+  }
   if (action.startsWith("tool:")) {
     const toolName = action.slice(5);
     return {
-      label: `调用了工具「${toolName}」`,
+      label: t("idea.calledTool", { name: toolName }),
       icon: IconShare,
       bg: "bg-[var(--bg-subtle)]",
       color: "text-[var(--text-muted)]",
@@ -71,7 +79,7 @@ function resolveActionConfig(action: string): ActionConfig {
   }
   // Fallback: never leak the raw key, show a neutral label.
   return {
-    label: "进行了操作",
+    label: t("idea.didAction"),
     icon: IconMessage,
     bg: "bg-[var(--bg-subtle)]",
     color: "text-[var(--text-muted)]",
@@ -87,17 +95,21 @@ const richActions = new Set(["register", "fork", "share"]);
  */
 const hiddenActions = new Set(["create_session", "send_message", "fork_session"]);
 
-function formatRelativeTime(dateStr: string) {
+function formatRelativeTime(
+  dateStr: string,
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string,
+) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / (1000 * 60));
-  if (minutes < 60) return `${minutes} 分钟前`;
+  if (minutes < 60) return t("common.minutesAgo", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 24) return t("common.hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days} 天前`;
+  return t("common.daysAgo", { count: days });
 }
 
 export function ActivityList({ activities }: { activities: ActivityLog[] }) {
+  const { t } = useI18n();
   // 过滤掉 session 类动作（对话/消息），不在动态流公开展示
   const visible = activities.filter((a) => !hiddenActions.has(a.action));
   if (visible.length === 0) {
@@ -107,7 +119,7 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
           className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]"
           aria-hidden="true"
         />
-        <p>暂无动态</p>
+        <p>{t("activity.noActivity")}</p>
       </div>
     );
   }
@@ -115,14 +127,14 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
   return (
     <ul className="divide-y divide-[var(--divider)]">
       {visible.map((act) => {
-        const cfg = resolveActionConfig(act.action);
+        const cfg = resolveActionConfig(act.action, t);
         const Icon = cfg.icon;
         const isAgent = act.actor_type === "agent";
-        const actorName = act.actor_name || (isAgent ? `Agent ${act.actor_id.slice(0, 6)}` : `用户 ${act.actor_id.slice(0, 6)}`);
+        const actorName = act.actor_name || (isAgent ? `${t("activity.agent")} ${act.actor_id.slice(0, 6)}` : `${t("activity.user")} ${act.actor_id.slice(0, 6)}`);
         const actorHref = isAgent ? `/agents/${act.actor_id}` : `/users/${act.actor_id}`;
         const isIdeaTarget = act.target_type === "idea";
         const ideaHref = isIdeaTarget ? `/ideas/${act.target_id}` : "#";
-        const targetLabel = act.target_title || (isIdeaTarget ? "想法" : act.target_type);
+        const targetLabel = act.target_title || (isIdeaTarget ? t("idea.ideas") : act.target_type);
         const showRichCard = richActions.has(act.action) && isIdeaTarget && act.target_title;
 
         return (
@@ -154,7 +166,7 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
                   {targetLabel}
                 </Link>
                 <span className="ml-auto text-xs text-[var(--text-muted)] shrink-0">
-                  {formatRelativeTime(act.created_at)}
+                  {formatRelativeTime(act.created_at, t)}
                 </span>
               </div>
 

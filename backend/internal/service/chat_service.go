@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/wanye/ideaevo/internal/llm"
@@ -22,7 +23,13 @@ type CreateSessionInput struct {
 }
 
 type SendMessageInput struct {
-	Content string `json:"content" binding:"required"`
+	Content      string  `json:"content"`                   // 可空（当携带附件时）
+	AttachmentID *string `json:"attachment_id,omitempty"` // 可选：聊天附件 ID（图片或文档）
+}
+
+// HasContent 判断是否有可发送内容（文字或附件）。
+func (in SendMessageInput) HasContent() bool {
+	return strings.TrimSpace(in.Content) != "" || (in.AttachmentID != nil && *in.AttachmentID != "")
 }
 
 type SendMessageResult struct {
@@ -54,6 +61,7 @@ type ChatService struct {
 	toolNames     []string             // 给 LLM 暴露的工具白名单（空=全部）
 	subSvc        *SubscriptionService // 可选，启用后对 LLM token 做每日额度计量
 	modSvc        *ModerationService
+	attachmentSvc *ChatAttachmentService // 可选，启用后支持聊天附件（图片/文档）
 }
 
 func NewChatService(db *gorm.DB, ideaSvc *IdeaService, agentSvc *AgentService, llm *LLMService) *ChatService {
@@ -80,6 +88,11 @@ func (s *ChatService) SetTools(executor *ToolExecutor, toolNames []string) {
 // 未注入时（subSvc==nil）不计量，行为与改造前一致。
 func (s *ChatService) SetSubscription(subSvc *SubscriptionService) {
 	s.subSvc = subSvc
+}
+
+// SetAttachmentService 注入附件服务以支持聊天附件（图片 vision / 文档注入）。
+func (s *ChatService) SetAttachmentService(attachmentSvc *ChatAttachmentService) {
+	s.attachmentSvc = attachmentSvc
 }
 
 func (s *ChatService) SetModerationService(modSvc *ModerationService) {
@@ -216,6 +229,39 @@ func (s *ChatService) newAssistantMessage(session *model.ChatSession, contentTyp
 	}
 }
 
+// applyAttachment 把附件绑定到用户消息，仅写入元信息（不污染 Content）：
+//   - 图片：附件元信息写入 Metadata；发送给 LLM 时由 chatMessageToLLMMessage
+//     还原为多模态 content parts（vision，用预签名 URL 保证私有 bucket 可读）。
+//   - 文档：附件元信息写入 Metadata；全文仅在「本次发送」「历史重建」时按需从 OSS
+//     读取并注入到 LLMMessage，不落库到 Content（避免污染用户消息气泡 / 消息列表）。
+//
+// 调用方负责在成功后把 userMsg 落库（本方法只改内存对象，不写 DB）。
+func (s *ChatService) applyAttachment(userMsg *model.ChatMessage, userID, sessionID, attachmentID string) (*model.ChatAttachment, error) {
+	if s.attachmentSvc == nil {
+		return nil, nil
+	}
+	att, err := s.attachmentSvc.BindToMessage(attachmentID, userID, sessionID, userMsg.ID)
+	if err != nil {
+		return nil, err
+	}
+	meta := parseMessageMeta(userMsg.Metadata)
+	meta.Attachment = AttachmentMetaForMessage(att)
+	userMsg.Metadata = marshalMessageMeta(meta)
+	return att, nil
+}
+
+// injectDocumentIntoLLMMessage 把文档全文拼进 LLM 消息的文本部分（仅用于发给 LLM，不落库）。
+func injectDocumentIntoLLMMessage(msg LLMMessage, fileName, fullContent string) LLMMessage {
+	header := fmt.Sprintf("【上传文档：%s】\n", fileName)
+	body := header + strings.TrimSpace(fullContent)
+	prompt := strings.TrimSpace(msg.Content)
+	if prompt != "" {
+		body += "\n\n" + prompt
+	}
+	msg.Content = body
+	return msg
+}
+
 func (s *ChatService) assistantFromLLM(session *model.ChatSession, raw string) model.ChatMessage {
 	contentType, content := ParseAssistantResponse(raw)
 	return s.newAssistantMessage(session, contentType, content)
@@ -307,6 +353,8 @@ func (s *ChatService) updateActivityMessage(msgID, content string, activity map[
 
 // chatMessageToLLMMessage 把持久化的 ChatMessage 还原为 LLM 可用的 LLMMessage，
 // 从 Metadata 恢复 tool_calls / tool_call_id / tool_name（OpenAI 协议格式）。
+// 附件（图片/文档）的注入由 ChatService.enrichLLMMessageWithAttachment 处理
+// （需要 ObjectStore 做预签名 / 读全文），此函数保持纯函数便于单测。
 func chatMessageToLLMMessage(m model.ChatMessage) LLMMessage {
 	msg := LLMMessage{Role: m.Role, Content: m.Content}
 	if m.Metadata == "" || m.Metadata == "{}" {
@@ -319,6 +367,36 @@ func chatMessageToLLMMessage(m model.ChatMessage) LLMMessage {
 	msg.ToolCalls = meta.ToolCalls
 	msg.ToolCallID = meta.ToolCallID
 	msg.ToolName = meta.ToolName
+	return msg
+}
+
+// enrichLLMMessageWithAttachment 在已还原的 LLMMessage 上注入附件上下文：
+//   - 图片：组装多模态 content parts（text + image_url），URL 用预签名 GET（私有 bucket 可读）。
+//   - 文档：读全文注入文本部分（仅用于发给 LLM，不落库）。
+//
+// fullContent 为文档全文（调用方批量读取后传入，避免每条消息各读一次）。
+func (s *ChatService) enrichLLMMessageWithAttachment(msg LLMMessage, meta messageAttachment, fullContent string) LLMMessage {
+	switch meta.Kind {
+	case model.AttachmentKindImage:
+		imageURL := meta.URL
+		if s.attachmentSvc != nil && s.attachmentSvc.assets != nil {
+			if u := s.attachmentSvc.assets.PresignGetURLOrFallback(meta.ObjectKeyOrURL()); u != "" {
+				imageURL = u
+			}
+		}
+		text := strings.TrimSpace(msg.Content)
+		if text == "" {
+			text = "（用户上传了一张图片）"
+		}
+		msg.Parts = []LLMContentPart{
+			{Type: "text", Text: text},
+			{Type: "image_url", ImageURL: &LLMImageURL{URL: imageURL}},
+		}
+	case model.AttachmentKindDocument:
+		if fullContent != "" {
+			msg = injectDocumentIntoLLMMessage(msg, meta.FileName, fullContent)
+		}
+	}
 	return msg
 }
 
@@ -407,7 +485,18 @@ func (s *ChatService) DeleteSession(sessionID, userID string) error {
 		return fmt.Errorf("session not found")
 	}
 
-	return tx.Commit().Error
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	// 会话删除成功后，级联清理该会话的附件对象与 DB 行，回收存储配额（#6）。
+	// 放在事务外：OSS 删除不应阻塞会话删除，失败由孤儿清理兜底。
+	if s.attachmentSvc != nil {
+		if err := s.attachmentSvc.DeleteBySession(sessionID); err != nil {
+			log.Printf("[chat] cleanup attachments for session %s failed: %v", sessionID, err)
+		}
+	}
+	return nil
 }
 
 func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInput) (*SendMessageResult, error) {
@@ -430,8 +519,32 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 	}
 
 	userMsg := s.newUserMessage(session, userID, input.Content)
+
+	// 先处理附件（仅写元信息到内存对象，不污染 Content）。
+	// 这样 applyAttachment 失败时用户消息尚未落库，不会产生孤儿消息（#7）。
+	var currentAttachment *model.ChatAttachment
+	if input.AttachmentID != nil && *input.AttachmentID != "" {
+		att, aerr := s.applyAttachment(&userMsg, userID, sessionID, *input.AttachmentID)
+		if aerr != nil {
+			return nil, aerr
+		}
+		currentAttachment = att
+	}
+
 	if err := s.db.Create(&userMsg).Error; err != nil {
 		return nil, fmt.Errorf("failed to save user message: %w", err)
+	}
+
+	// 本轮发给 LLM 的内容：文档附件需注入全文（仅用于本次对话，不落库到 Content）。
+	conversationContent := input.Content
+	if currentAttachment != nil && currentAttachment.Kind == model.AttachmentKindDocument {
+		full, rerr := s.attachmentSvc.ReadFullContent(currentAttachment.ObjectKey)
+		if rerr != nil {
+			return nil, fmt.Errorf("读取文档失败: %w", rerr)
+		}
+		tmp := LLMMessage{Role: "user", Content: conversationContent}
+		tmp = injectDocumentIntoLLMMessage(tmp, currentAttachment.FileName, full)
+		conversationContent = tmp.Content
 	}
 
 	principal, err := s.buildPrincipal(session, userID, sessionID)
@@ -439,7 +552,7 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 		return nil, err
 	}
 
-	assistantMsg, toolResults, tokensUsed, err := s.runConversation(session, input.Content, principal)
+	assistantMsg, toolResults, tokensUsed, err := s.runConversation(session, conversationContent, principal)
 	if err != nil {
 		s.persistConversationFailure(session, err)
 		return nil, err
@@ -730,7 +843,7 @@ func (s *ChatService) persistToolActivity(p Principal, results []ToolCallResult)
 // tool_call / tool_result / assistant_message 事件给前端（最后整体 done）。
 //
 // 这样保持流式端点对 tool use 的完整支持（P0 #1 + P1 #5）。
-func (s *ChatService) SendMessageStream(sessionID, userID, content string) (<-chan StreamChunk, *model.ChatMessage, error) {
+func (s *ChatService) SendMessageStream(sessionID, userID string, input SendMessageInput) (<-chan StreamChunk, *model.ChatMessage, error) {
 	session, err := s.GetSession(sessionID, userID)
 	if err != nil {
 		return nil, nil, err
@@ -748,9 +861,33 @@ func (s *ChatService) SendMessageStream(sessionID, userID, content string) (<-ch
 		}
 	}
 
-	userMsg := s.newUserMessage(session, userID, content)
+	userMsg := s.newUserMessage(session, userID, input.Content)
+
+	// 先处理附件（仅写元信息到内存对象，不污染 Content）。
+	// applyAttachment 失败时用户消息尚未落库，不会产生孤儿消息（#7）。
+	var currentAttachment *model.ChatAttachment
+	if input.AttachmentID != nil && *input.AttachmentID != "" {
+		att, aerr := s.applyAttachment(&userMsg, userID, sessionID, *input.AttachmentID)
+		if aerr != nil {
+			return nil, nil, aerr
+		}
+		currentAttachment = att
+	}
+
 	if err := s.db.Create(&userMsg).Error; err != nil {
 		return nil, nil, fmt.Errorf("failed to save user message: %w", err)
+	}
+
+	// 本轮发给 LLM 的内容：文档附件需注入全文（仅用于本次对话，不落库到 Content）。
+	content := input.Content
+	if currentAttachment != nil && currentAttachment.Kind == model.AttachmentKindDocument {
+		full, rerr := s.attachmentSvc.ReadFullContent(currentAttachment.ObjectKey)
+		if rerr != nil {
+			return nil, nil, fmt.Errorf("读取文档失败: %w", rerr)
+		}
+		tmp := LLMMessage{Role: "user", Content: content}
+		tmp = injectDocumentIntoLLMMessage(tmp, currentAttachment.FileName, full)
+		content = tmp.Content
 	}
 
 	principal, err := s.buildPrincipal(session, userID, sessionID)
@@ -1266,9 +1403,27 @@ func (s *ChatService) buildMessageHistory(sessionID string) []LLMMessage {
 	}
 
 	result := make([]LLMMessage, 0, len(messages))
+	// 文档全文缓存：同一文档在历史里只读一次（按 object key 去重）。
+	docCache := map[string]string{}
 	for _, m := range messages {
 		// 从 Metadata 恢复 tool_calls / tool_call_id / tool_name（OpenAI 协议格式）
-		result = append(result, chatMessageToLLMMessage(m))
+		msg := chatMessageToLLMMessage(m)
+		// 附件注入（图片预签名 / 文档全文）。
+		if meta := parseMessageMeta(m.Metadata); meta.Attachment != nil {
+			full := ""
+			if meta.Attachment.Kind == model.AttachmentKindDocument && meta.Attachment.ObjectKey != "" {
+				if cached, ok := docCache[meta.Attachment.ObjectKey]; ok {
+					full = cached
+				} else if s.attachmentSvc != nil {
+					if raw, err := s.attachmentSvc.ReadFullContent(meta.Attachment.ObjectKey); err == nil {
+						docCache[meta.Attachment.ObjectKey] = raw
+						full = raw
+					}
+				}
+			}
+			msg = s.enrichLLMMessageWithAttachment(msg, *meta.Attachment, full)
+		}
+		result = append(result, msg)
 	}
 	return result
 }

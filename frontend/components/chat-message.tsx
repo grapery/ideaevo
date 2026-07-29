@@ -164,6 +164,74 @@ function MessageBody({
   return <span className="whitespace-pre-wrap">{content}</span>;
 }
 
+/** 格式化字节数为可读字符串。 */
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+/** 渲染消息附件：图片显示原图（懒加载），文档显示卡片+摘要。 */
+function MessageAttachment({
+  kind,
+  fileName,
+  summary,
+  url,
+  size,
+  isUser,
+}: {
+  kind: "image" | "document";
+  fileName: string;
+  summary: string;
+  url: string;
+  size: number;
+  isUser: boolean;
+}) {
+  const { t } = useI18n();
+  if (kind === "image") {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={fileName || t("chat.imageAlt")}
+        loading="lazy"
+        className="mt-2 max-h-60 max-w-full rounded border border-white/20 object-contain"
+      />
+    );
+  }
+  // document
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      download={fileName || undefined}
+      className={`mt-2 flex items-center gap-2.5 rounded border px-3 py-2 text-sm transition-colors ${
+        isUser
+          ? "border-white/30 bg-white/10 hover:bg-white/20"
+          : "border-[var(--rule)] bg-[var(--bg-surface)] hover:border-[var(--accent-link)]"
+      }`}
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center">
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+        </svg>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium">{fileName || t("chat.markdownDoc")}</span>
+        {summary && (
+          <span className={`block truncate text-xs ${isUser ? "text-white/70" : "text-[var(--text-muted)]"}`}>
+            {summary}
+          </span>
+        )}
+        <span className={`text-xs ${isUser ? "text-white/60" : "text-[var(--text-muted)]"}`}>
+          {formatSize(size)} · {t("chat.clickDownload")}
+        </span>
+      </span>
+    </a>
+  );
+}
+
 function ActionButton({
   label,
   active,
@@ -223,7 +291,7 @@ function MessageActions({
       notify.success(t("chat.copied"));
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      notify.error(locale === "zh-CN" ? "复制失败" : "Copy failed");
+      notify.error(t("chat.copyFailed"));
     }
   };
 
@@ -311,6 +379,7 @@ export default function ChatMessage({
   const isToolInProgress =
     isActivity && activity?.type === "tool_call" && !activity?.is_a2a;
   const contentType = resolveContentType(message);
+  const attachment = normalizeMessageMetadata(message.metadata)?.attachment;
 
   if (isA2ADelegation) {
     const targetAgentName = activity?.target_agent_name ?? "Agent";
@@ -438,6 +507,16 @@ export default function ChatMessage({
               contentType={contentType}
               isUser={isUser}
             />
+            {attachment && (
+              <MessageAttachment
+                kind={attachment.kind}
+                fileName={attachment.file_name}
+                summary={attachment.summary}
+                url={attachment.url}
+                size={attachment.size}
+                isUser={isUser}
+              />
+            )}
           </div>
           <MessageActions
             message={message}

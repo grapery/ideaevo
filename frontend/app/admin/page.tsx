@@ -8,6 +8,7 @@ import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 import { getApiBase } from "@/lib/api-base";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { SystemPageHeader } from "@/components/system-page-header";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Comment {
   id: string;
@@ -25,6 +26,7 @@ interface AdminCommentsResponse {
 }
 
 export default function AdminPage() {
+  const { t, locale } = useI18n();
   const [token, setToken] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -43,18 +45,18 @@ export default function AdminPage() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      if (!res.ok) throw new Error(await parseResponseError(res, "加载评论失败"));
+      if (!res.ok) throw new Error(await parseResponseError(res, t("common.operationFailed")));
       const data = (await res.json()) as AdminCommentsResponse;
       setComments(data.comments ?? []);
       setTotal(data.total ?? data.comments?.length ?? 0);
     } catch (err) {
-      notify.error(getErrorMessage(err, "加载评论失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
       setComments([]);
       setTotal(0);
     } finally {
       setLoadingComments(false);
     }
-  }, [apiBase, token]);
+  }, [apiBase, token, t]);
 
   useEffect(() => {
     if (authenticated) {
@@ -81,12 +83,12 @@ export default function AdminPage() {
           body: JSON.stringify({ moderated: hide }),
         }
       );
-      if (!res.ok) throw new Error(await parseResponseError(res, "操作失败"));
-      notify.success(hide ? "评论已拒绝" : "评论已通过");
+      if (!res.ok) throw new Error(await parseResponseError(res, t("common.operationFailed")));
+      notify.success(hide ? t("admin.commentRejected") : t("admin.commentApproved"));
       setComments((prev) => prev.filter((c) => c.id !== commentId));
       setTotal((prev) => Math.max(0, prev - 1));
     } catch (err) {
-      notify.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     }
   }
 
@@ -95,11 +97,11 @@ export default function AdminPage() {
       <div className="mx-auto max-w-3xl px-4 py-10">
         <SystemPageHeader
           eyebrow="ADMIN / OPERATIONS"
-          title="管理后台"
-          description="处理社区审核与平台操作队列。所有决策都应保留执行者身份、目标对象和可追踪的处理结果。"
+          title={t("admin.title")}
+          description={t("admin.desc")}
           icon="decision"
           backHref="/"
-          backLabel="返回首页"
+          backLabel={t("admin.backHome")}
         />
         <div className="grid gap-4 md:grid-cols-[1fr_1.35fr]">
           <div className="rounded-[var(--radius-card)] bg-[var(--ink)] p-5 text-white">
@@ -108,7 +110,7 @@ export default function AdminPage() {
               Protected surface
             </p>
             <p className="mt-2 text-sm leading-6 text-white/75">
-              管理 Token 只用于当前会话，不会写入浏览器的 Agent Key 绑定。
+              {t("admin.tokenHint")}
             </p>
           </div>
           <div className="surface-card p-6">
@@ -116,7 +118,7 @@ export default function AdminPage() {
             Admin Token
           </label>
           <p className="mb-4 text-xs leading-5 text-[var(--text-muted)]">
-            输入具有审核权限的 JWT Token 以载入待处理队列。
+            {t("admin.tokenPlaceholder")}
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <PasswordInput
@@ -132,7 +134,7 @@ export default function AdminPage() {
               onClick={handleLogin}
               className="btn-outline px-4 py-2 text-sm font-medium"
             >
-              登录
+              {t("admin.signIn")}
             </button>
           </div>
         </div>
@@ -145,20 +147,20 @@ export default function AdminPage() {
     <div className="mx-auto max-w-4xl px-4 py-8">
       <SystemPageHeader
         eyebrow="ADMIN / OPERATIONS"
-        title="平台操作队列"
-        description="集中处理需要人工判断的评论、退款与安全事件；每次操作都会即时更新对应队列。"
+        title={t("admin.queue")}
+        description={t("admin.queueDesc")}
         icon="decision"
         actions={
           <div className="flex items-center gap-2">
             <Link href="/admin/refunds" className="btn-outline btn-sm">
               <DeimosIcon name="evidence" className="h-3.5 w-3.5" />
-              退款审批
+              {t("admin.refundReview")}
             </Link>
             <button
               onClick={() => setAuthenticated(false)}
               className="btn-default btn-sm"
             >
-              退出
+              {t("admin.exit")}
             </button>
           </div>
         }
@@ -167,31 +169,31 @@ export default function AdminPage() {
       <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="surface-card p-4 text-center">
           <div className="text-2xl font-semibold text-[var(--title)]">{total}</div>
-          <div className="text-xs text-[var(--text-muted)]">待审核评论</div>
+          <div className="text-xs text-[var(--text-muted)]">{t("admin.pendingComments")}</div>
         </div>
         <div className="surface-card p-4 text-center">
           <div className="text-2xl font-semibold text-[var(--title)]">-</div>
-          <div className="text-xs text-[var(--text-muted)]">活跃想法</div>
+          <div className="text-xs text-[var(--text-muted)]">{t("admin.activeIdeas")}</div>
         </div>
         <div className="surface-card p-4 text-center">
           <div className="text-2xl font-semibold text-[var(--title)]">-</div>
-          <div className="text-xs text-[var(--text-muted)]">注册 Agent</div>
+          <div className="text-xs text-[var(--text-muted)]">{t("admin.registeredAgents")}</div>
         </div>
       </div>
 
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-[var(--title)]">待审核评论</h2>
+        <h2 className="text-lg font-semibold text-[var(--title)]">{t("admin.pendingComments")}</h2>
         <button
           onClick={() => void loadComments()}
           disabled={loadingComments}
           className="text-sm text-[var(--primary)] hover:opacity-80 disabled:opacity-50"
         >
-          {loadingComments ? "加载中…" : "刷新"}
+          {loadingComments ? t("common.loading") : locale === "zh-CN" ? "刷新" : "Refresh"}
         </button>
       </div>
       {loadingComments && comments.length === 0 ? (
         <div className="surface-card p-8 text-center">
-          <p className="text-[var(--text-muted)]">加载中…</p>
+          <p className="text-[var(--text-muted)]">{t("common.loading")}</p>
         </div>
       ) : comments.length === 0 ? (
         <div className="surface-card p-8 text-center">
@@ -199,8 +201,8 @@ export default function AdminPage() {
             name="evidence"
             className="mx-auto mb-3 h-7 w-7 text-[var(--text-muted)]"
           />
-          <p className="font-medium text-[var(--ink)]">审核队列已清空</p>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">暂无待审核评论</p>
+          <p className="font-medium text-[var(--ink)]">{t("admin.queueCleared")}</p>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">{t("admin.noPending")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -221,13 +223,13 @@ export default function AdminPage() {
                     onClick={() => moderateComment(comment.id, false)}
                     className="rounded-lg bg-[var(--teal-soft)] px-3 py-1.5 text-xs font-medium text-[var(--teal)] hover:opacity-80"
                   >
-                    通过
+                    {t("admin.approve")}
                   </button>
                   <button
                     onClick={() => moderateComment(comment.id, true)}
                     className="rounded-lg bg-[var(--coral-soft)] px-3 py-1.5 text-xs font-medium text-[var(--coral)] hover:opacity-80"
                   >
-                    拒绝
+                    {t("admin.reject")}
                   </button>
                 </div>
               </div>

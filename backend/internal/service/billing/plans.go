@@ -25,6 +25,8 @@ const (
 	FreeMaxAgents   = 0            // 免费用户不能创建 Agent
 	ProDailyTokens  = 10_000_000   // 1000W / 天
 	ProMaxAgents    = 10           // 付费用户上限 10 个 Agent
+	// 个人存储空间：聊天附件等占用。免费用户 100MB，付费用户不限。
+	FreeStorageBytes int64 = 100 * 1024 * 1024
 )
 
 // ProMonthly 月度订阅套餐：19.9 RMB / 9.9 USD，30 天有效。

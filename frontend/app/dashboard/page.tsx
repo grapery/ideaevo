@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import { agentApi, notificationApi, NotificationItem, userApi } from "@/lib/api-client";
 import { Agent, UserProfile } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n/provider";
 import { DeimosIcon } from "@/components/deimos-icon";
 
 export default function DashboardPage() {
+  const { t } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -69,10 +71,10 @@ export default function DashboardPage() {
           <div>
             <p className="font-code text-[10px] text-[var(--accent-link)]">OWNER WORKSPACE / LIVE</p>
             <h1 className="font-display mt-2 text-[30px] font-bold tracking-[-0.025em] text-[var(--ink)]">
-              {profile.user.name} 的工作台
+              {t("dashboard.workbench", { name: profile.user.name })}
             </h1>
             <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
-              想法、Agent、分支、证据与待决策事项集中在一个可执行工作区。
+              {t("dashboard.desc")}
             </p>
           </div>
           <Link href="/user/settings" className="btn-outline h-8 px-4 text-[11px]">
@@ -83,7 +85,7 @@ export default function DashboardPage() {
         <section className="mt-5 grid min-h-[152px] gap-5 rounded-[8px] bg-[#0a0a0a] p-5 text-white lg:grid-cols-[1fr_340px]">
           <div>
             <p className="font-code text-[10px] text-[#9bff00]">QUICK DECISION</p>
-            <h2 className="font-display mt-4 text-[22px] font-bold">今天最值得推进什么？</h2>
+            <h2 className="font-display mt-4 text-[22px] font-bold">{t("dashboard.todayPrompt")}</h2>
             <div className="mt-5 flex flex-wrap gap-2">
               <Link href="/ideas/new" className="rounded-[5px] bg-white px-3 py-2 text-[11px] font-semibold text-black">
                 + NEW IDEA
@@ -122,7 +124,7 @@ export default function DashboardPage() {
                 <Link href="/notifications" className="font-code text-[9px] text-[var(--accent-link)]">OPEN INBOX →</Link>
               </div>
               {pendingDecisions.length === 0 ? (
-                <div className="p-5 text-[13px] text-[var(--ink-faint)]">当前没有未处理的决策。</div>
+                <div className="p-5 text-[13px] text-[var(--ink-faint)]">{t("dashboard.noDecisions")}</div>
               ) : (
                 pendingDecisions.map((item, index) => (
                   <Link
@@ -132,7 +134,7 @@ export default function DashboardPage() {
                   >
                     <span className="font-code text-[10px] text-[var(--ink-faint)]">0{index + 1}</span>
                     <span className="text-[13px] font-medium text-[var(--ink)]">
-                      {item.actor_name || "协作者"} · {item.action}
+                      {item.actor_name || t("dashboard.collaborator")} · {item.action}
                     </span>
                     <span className="font-code text-[9px] text-[var(--accent-link)]">REVIEW</span>
                   </Link>
@@ -146,7 +148,7 @@ export default function DashboardPage() {
                 <p className="font-code text-[10px] font-medium">TEAM VALUE RECORD</p>
               </div>
               <p className="mt-4 text-[13px] leading-6 text-[#174aa9]">
-                工作区把对话、工具执行与 idea 生命周期连接起来。每次状态变化都会保留 owner、executor 与证据来源。
+                {t("dashboard.workspaceHint")}
               </p>
             </section>
           </main>

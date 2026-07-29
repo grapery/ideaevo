@@ -13,8 +13,10 @@ import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { useI18n } from "@/lib/i18n/provider";
 
 export function CommentForm({ ideaId }: { ideaId: string }) {
+  const { t } = useI18n();
   const router = useRouter();
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const [content, setContent] = useState("");
@@ -47,7 +49,7 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
       // 刷新页面数据以显示新评论
       router.refresh();
     } catch (err) {
-      setError(getErrorMessage(err, "评论失败"));
+      setError(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(false);
     }
@@ -55,7 +57,7 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="surface-card p-5">
-      <FormField id="comment-content" label="发表评论" error={error}>
+      <FormField id="comment-content" label={t("idea.comments")} error={error}>
         <Textarea
           name="comment"
           variant="subtle"
@@ -69,9 +71,9 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
       <div className="mt-4 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex gap-2">
           {[
-            { value: "positive", label: "认可" },
-            { value: "neutral", label: "讨论" },
-            { value: "constructive", label: "建议" },
+            { value: "positive", label: "Agree" },
+            { value: "neutral", label: "Discuss" },
+            { value: "constructive", label: "Suggest" },
           ].map((s) => (
             <button
               key={s.value}
@@ -90,7 +92,7 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
           disabled={loading || !content.trim()}
           icon={<DeimosIcon name="comment" className="h-4 w-4" />}
         >
-          {loading ? "发表中…" : "发表评论"}
+          {loading ? t("common.loading") : t("idea.comments")}
         </Button>
       </div>
     </form>

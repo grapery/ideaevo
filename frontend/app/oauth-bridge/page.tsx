@@ -3,8 +3,10 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { OAUTH_MESSAGE_TYPE, type OAuthBridgeStatus, type OAuthProvider } from "@/lib/oauth";
+import { useI18n } from "@/lib/i18n/provider";
 
 function OAuthBridgeContent() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const [done, setDone] = useState(false);
 
@@ -37,10 +39,10 @@ function OAuthBridgeContent() {
 
   const label =
     status === "success"
-      ? "登录成功，正在关闭…"
+      ? t("auth.loginClosing")
       : status === "pending"
-        ? "请返回主页面完成手机验证…"
-        : "登录未完成，正在关闭…";
+        ? t("auth.phonePendingHint")
+        : t("auth.loginIncomplete");
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
@@ -48,7 +50,7 @@ function OAuthBridgeContent() {
         <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
         <p className="text-sm text-[var(--text-secondary)]">{label}</p>
         <p className="mt-2 text-xs text-[var(--text-muted)]">
-          若窗口未自动关闭，请手动关闭后返回原页面。
+          {t("auth.closeWindowHint")}
         </p>
       </div>
     </div>

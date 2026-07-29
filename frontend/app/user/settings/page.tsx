@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n/provider";
 import {
   userApi,
   notificationApi,
@@ -39,6 +40,7 @@ const DEFAULT_NOTIF_PREFS: NotificationPreferences = {
 
 export default function SettingsPage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const [section, setSection] = useState<Section>("profile");
 
@@ -125,11 +127,11 @@ export default function SettingsPage() {
     try {
       await modApi.unblockUser(userId);
       setBlockedUsers((prev) => prev.filter((u) => u.id !== userId));
-      notify.success("已取消屏蔽");
+      notify.success(t("settings.unblocked"));
     } catch (err) {
-      notify.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (user) {
@@ -143,20 +145,20 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (deleteSmsCooldown <= 0) return;
-    const t = setInterval(
+    const timer = setInterval(
       () => setDeleteSmsCooldown((c) => Math.max(0, c - 1)),
       1000,
     );
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
   }, [deleteSmsCooldown]);
 
   useEffect(() => {
     if (changeCooldown <= 0) return;
-    const t = setInterval(
+    const timer = setInterval(
       () => setChangeCooldown((c) => Math.max(0, c - 1)),
       1000,
     );
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
   }, [changeCooldown]);
 
   // 从服务端加载通知偏好
@@ -195,7 +197,7 @@ export default function SettingsPage() {
 
   const saveProfile = useCallback(async () => {
     if (!name.trim()) {
-      setProfileErrors({ name: "显示名不能为空" });
+      setProfileErrors({ name: t("settings.errNameEmpty") });
       return;
     }
     setProfileErrors({});
@@ -208,23 +210,23 @@ export default function SettingsPage() {
         background_url: backgroundUrl.trim() || undefined,
       });
       if (res.user) await refreshUser();
-      notify.success("资料已更新");
+      notify.success(t("settings.saved"));
     } catch (err) {
-      notify.error(getErrorMessage(err, "更新失败"));
+      notify.error(getErrorMessage(err, t("settings.saveFailed")));
     } finally {
       setSavingProfile(false);
     }
-  }, [name, avatarUrl, backgroundUrl, bio, refreshUser]);
+  }, [name, avatarUrl, backgroundUrl, bio, refreshUser, t]);
 
   const uploadImage = useCallback(
     async (kind: "avatar" | "background", file: File) => {
       const allowed = ["image/jpeg", "image/png", "image/webp"];
       if (!allowed.includes(file.type)) {
-        notify.error("仅支持 JPEG、PNG、WebP 图片");
+        notify.error(t("idea.imageOnlyTypes"));
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        notify.error("图片不能超过 5MB");
+        notify.error(t("settings.imageMaxSize"));
         return;
       }
       const setUploading =
@@ -237,7 +239,7 @@ export default function SettingsPage() {
           body: file,
           headers: { "Content-Type": file.type },
         });
-        if (!putRes.ok) throw new Error("上传失败");
+        if (!putRes.ok) throw new Error(t("settings.uploadFailed"));
         const patch: Parameters<typeof userApi.updateMyProfile>[0] = {
           ...(kind === "avatar"
             ? { avatar_url: presign.public_url, avatar_source: "upload" }
@@ -247,14 +249,14 @@ export default function SettingsPage() {
         if (kind === "avatar") setAvatarUrl(presign.public_url);
         else setBackgroundUrl(presign.public_url);
         if (res.user) await refreshUser();
-        notify.success(kind === "avatar" ? "头像已更新" : "背景已更新");
+        notify.success(kind === "avatar" ? t("settings.avatarUpdated") : t("settings.bgUpdated"));
       } catch (err) {
-        notify.error(getErrorMessage(err, "上传失败"));
+        notify.error(getErrorMessage(err, t("settings.uploadFailed")));
       } finally {
         setUploading(false);
       }
     },
-    [refreshUser],
+    [refreshUser, t],
   );
 
   const resetAvatar = useCallback(async () => {
@@ -262,36 +264,36 @@ export default function SettingsPage() {
       const res = await userApi.resetAvatar();
       if (res.user?.avatar_url) setAvatarUrl(res.user.avatar_url);
       await refreshUser();
-      notify.success("已恢复默认头像");
+      notify.success(t("settings.avatarReset"));
     } catch (err) {
-      notify.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     }
-  }, [refreshUser]);
+  }, [refreshUser, t]);
 
   const resetBackground = useCallback(async () => {
     try {
       const res = await userApi.resetBackground();
       if (res.user?.background_url) setBackgroundUrl(res.user.background_url);
       await refreshUser();
-      notify.success("已恢复默认背景");
+      notify.success(t("settings.bgReset"));
     } catch (err) {
-      notify.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     }
-  }, [refreshUser]);
+  }, [refreshUser, t]);
 
   const sendDeleteSms = useCallback(async () => {
     if (!deletePhone.trim()) {
-      notify.error("请输入手机号");
+      notify.error(t("settings.errPhoneRequired"));
       return;
     }
     try {
       await authApi.sendPhoneCode(deletePhone.trim(), "account_delete");
-      notify.success("验证码已发送");
+      notify.success(t("auth.codeSent"));
       setDeleteSmsCooldown(60);
     } catch (err) {
-      notify.error(getErrorMessage(err, "发送失败"));
+      notify.error(getErrorMessage(err, t("auth.sendFailed")));
     }
-  }, [deletePhone]);
+  }, [deletePhone, t]);
 
   const deleteAccount = useCallback(async () => {
     if (!user) return;
@@ -300,21 +302,21 @@ export default function SettingsPage() {
       const payload: Parameters<typeof userApi.deleteAccount>[0] = {};
       if (user.auth_provider === "email") {
         if (!deletePwd) {
-          notify.error("请输入密码确认");
+          notify.error(t("settings.errPasswordConfirm"));
           setDeleting(false);
           return;
         }
         payload.password = deletePwd;
       } else if (user.auth_provider === "google") {
         if (deleteConfirm !== "DELETE") {
-          notify.error("请输入 DELETE 确认");
+          notify.error(t("settings.deleteTypeConfirm"));
           setDeleting(false);
           return;
         }
         payload.confirm_text = deleteConfirm;
       } else if (user.auth_provider === "wechat") {
         if (!deletePhone || !deleteSmsCode) {
-          notify.error("请完成手机验证");
+          notify.error(t("settings.errPhoneVerifyRequired"));
           setDeleting(false);
           return;
         }
@@ -322,32 +324,32 @@ export default function SettingsPage() {
         payload.sms_code = deleteSmsCode;
       }
       await userApi.deleteAccount(payload);
-      notify.success("账号已注销");
+      notify.success(t("settings.accountDeleted"));
       window.location.href = "/";
     } catch (err) {
-      notify.error(getErrorMessage(err, "注销失败"));
+      notify.error(getErrorMessage(err, t("settings.deleteFailed")));
     } finally {
       setDeleting(false);
     }
-  }, [user, deletePwd, deleteConfirm, deletePhone, deleteSmsCode]);
+  }, [user, deletePwd, deleteConfirm, deletePhone, deleteSmsCode, t]);
 
   const sendChangePhoneCode = useCallback(async () => {
     if (!changePhone.trim()) {
-      notify.error("请输入新手机号");
+      notify.error(t("settings.errPhoneRequired"));
       return;
     }
     try {
       await authApi.sendPhoneCode(changePhone.trim(), "change_phone");
-      notify.success("验证码已发送");
+      notify.success(t("auth.codeSent"));
       setChangeCooldown(60);
     } catch (err) {
-      notify.error(getErrorMessage(err, "发送失败"));
+      notify.error(getErrorMessage(err, t("auth.sendFailed")));
     }
-  }, [changePhone]);
+  }, [changePhone, t]);
 
   const verifyChangePhone = useCallback(async () => {
     if (!changePhone.trim() || !changeCode.trim()) {
-      notify.error("请填写手机号和验证码");
+      notify.error(t("settings.errPhoneAndCode"));
       return;
     }
     setChangingPhone(true);
@@ -356,18 +358,18 @@ export default function SettingsPage() {
       await refreshUser();
       setChangePhone("");
       setChangeCode("");
-      notify.success("手机号已更新");
+      notify.success(t("settings.phoneUpdated"));
     } catch (err) {
-      notify.error(getErrorMessage(err, "验证失败"));
+      notify.error(getErrorMessage(err, t("settings.phoneVerifyFailed")));
     } finally {
       setChangingPhone(false);
     }
-  }, [changePhone, changeCode, refreshUser]);
+  }, [changePhone, changeCode, refreshUser, t]);
 
   const changePwd = useCallback(async () => {
     const errs: Record<string, string> = {};
-    if (newPwd.length < 6) errs.newPwd = "新密码至少 6 个字符";
-    if (newPwd !== confirmPwd) errs.confirmPwd = "两次新密码不一致";
+    if (newPwd.length < 6) errs.newPwd = t("settings.errNewPasswordShort");
+    if (newPwd !== confirmPwd) errs.confirmPwd = t("settings.errPasswordMismatch");
     if (Object.keys(errs).length) {
       setPwdErrors(errs);
       return;
@@ -376,35 +378,35 @@ export default function SettingsPage() {
     setSavingPwd(true);
     try {
       await userApi.changePassword(oldPwd, newPwd);
-      notify.success("密码已修改");
+      notify.success(t("settings.passwordChanged"));
       setOldPwd("");
       setNewPwd("");
       setConfirmPwd("");
     } catch (err) {
-      setPwdErrors({ oldPwd: getErrorMessage(err, "修改失败") });
+      setPwdErrors({ oldPwd: getErrorMessage(err, t("settings.changeFailed")) });
     } finally {
       setSavingPwd(false);
     }
-  }, [oldPwd, newPwd, confirmPwd]);
+  }, [oldPwd, newPwd, confirmPwd, t]);
 
   const savePrefs = useCallback(async () => {
     setPrefsSaving(true);
     try {
       await prefsApi.update(prefs);
       setPrefsSaved(true);
-      notify.success("通知偏好已保存");
+      notify.success(t("settings.notifSaved"));
       setTimeout(() => setPrefsSaved(false), 2000);
     } catch (err) {
-      notify.error(getErrorMessage(err, "保存失败"));
+      notify.error(getErrorMessage(err, t("settings.saveFailed")));
     } finally {
       setPrefsSaving(false);
     }
-  }, [prefs]);
+  }, [prefs, t]);
 
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center text-[var(--text-muted)]">
-        加载中…
+        {t("common.loading")}
       </div>
     );
   }
@@ -414,16 +416,16 @@ export default function SettingsPage() {
       <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
         <div className="surface-card max-w-md w-full p-10 text-center">
           <h2 className="text-xl font-semibold text-[var(--title)] mb-2">
-            请先登录
+            {t("settings.loginRequired")}
           </h2>
           <p className="text-sm text-[var(--text-muted)] mb-4">
-            登录后管理你的账号设置
+            {t("settings.loginHint")}
           </p>
           <Link
             href="/login"
             className="inline-block btn-outline px-6 py-2.5 text-sm font-medium"
           >
-            前往登录
+            {t("settings.goLogin")}
           </Link>
         </div>
       </div>
@@ -476,7 +478,7 @@ export default function SettingsPage() {
                     </div>
                   )}
                   <div className="mt-1 text-xs text-[var(--text-muted)]">
-                    关注 {user.following_count} · 粉丝 {user.follower_count}
+                    {t("settings.followingFollowers", { following: user.following_count, followers: user.follower_count })}
                     {user.phone_verified && user.phone && ` · ${user.phone}`}
                   </div>
                 </div>
@@ -486,16 +488,16 @@ export default function SettingsPage() {
             {section === "profile" && (
               <div className="surface-card p-6">
                 <h2 className="text-base font-semibold text-[var(--title)] mb-4">
-                  基本信息
+                  {t("settings.basicInfo")}
                 </h2>
                 <div className="space-y-5">
                   <div>
                     <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                      头像
+                      {t("settings.avatar")}
                     </label>
                     <div className="flex flex-wrap items-center gap-3">
                       <label className="btn-outline px-4 py-2 text-sm font-medium cursor-pointer">
-                        {uploadingAvatar ? "上传中…" : "上传图片"}
+                        {uploadingAvatar ? t("settings.uploading") : t("settings.uploadImage")}
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp"
@@ -513,17 +515,17 @@ export default function SettingsPage() {
                         onClick={resetAvatar}
                         className="btn-default btn-sm"
                       >
-                        恢复默认
+                        {t("settings.resetDefault")}
                       </button>
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                      背景图
+                      {t("settings.background")}
                     </label>
                     <div className="flex flex-wrap items-center gap-3">
                       <label className="btn-outline px-4 py-2 text-sm font-medium cursor-pointer">
-                        {uploadingBackground ? "上传中…" : "上传图片"}
+                        {uploadingBackground ? t("settings.uploading") : t("settings.uploadImage")}
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp"
@@ -541,13 +543,13 @@ export default function SettingsPage() {
                         onClick={resetBackground}
                         className="btn-default btn-sm"
                       >
-                        恢复默认
+                        {t("settings.resetDefault")}
                       </button>
                     </div>
                   </div>
                   <FormField
                     id="set-name"
-                    label="显示名"
+                    label={t("settings.displayName")}
                     error={profileErrors.name}
                   >
                     <Input
@@ -563,8 +565,8 @@ export default function SettingsPage() {
                   </FormField>
                   <FormField
                     id="set-bio"
-                    label="简介"
-                    hint={`${bio.length} / 500 字符`}
+                    label={t("settings.bio")}
+                    hint={t("common.characters", { count: bio.length, max: 500 })}
                   >
                     <Textarea
                       name="bio"
@@ -572,7 +574,7 @@ export default function SettingsPage() {
                       onChange={(e) => setBio(e.target.value)}
                       rows={3}
                       maxLength={500}
-                      placeholder="一句话介绍自己 (例如：AI 研究者 / Agent 工具开发)"
+                      placeholder={t("settings.bioPlaceholder")}
                       className="resize-none"
                     />
                   </FormField>
@@ -584,7 +586,7 @@ export default function SettingsPage() {
                     disabled={savingProfile}
                     className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
                   >
-                    {savingProfile ? "保存中…" : "保存"}
+                    {savingProfile ? t("common.saving") : t("settings.save")}
                   </button>
                 </div>
               </div>
@@ -593,14 +595,14 @@ export default function SettingsPage() {
             {section === "security" && (
               <div className="surface-card p-6">
                 <h2 className="text-base font-semibold text-[var(--title)] mb-4">
-                  账号安全
+                  {t("settings.security")}
                 </h2>
 
                 {user.email && user.auth_provider !== "wechat" && (
                   <div className="mb-6 rounded-lg border border-[var(--divider)] p-4 flex items-center justify-between">
                     <div>
                       <div className="text-sm font-medium text-[var(--title)]">
-                        邮箱验证
+                        {t("settings.emailVerify")}
                       </div>
                       <div className="text-xs text-[var(--text-muted)] mt-0.5">
                         {user.email}
@@ -612,11 +614,11 @@ export default function SettingsPage() {
                           name="check"
                           className="mr-1 inline-block h-3 w-3"
                         />
-                        已验证
+                        {t("settings.verified")}
                       </span>
                     ) : (
                       <span className="rounded-full bg-[var(--coral)]/15 px-3 py-1 text-xs font-medium text-[var(--coral)]">
-                        未验证
+                        {t("settings.unverified")}
                       </span>
                     )}
                   </div>
@@ -624,40 +626,39 @@ export default function SettingsPage() {
 
                 {user.auth_provider === "google" ? (
                   <div className="rounded-lg bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
-                    你使用 Google 账号登录，无需设置密码。如需修改密码请前往
-                    Google 账号管理。
+                    {t("settings.googleLoginHint")}
                   </div>
                 ) : user.auth_provider === "wechat" ? (
                   <div className="space-y-4">
                     <div className="rounded-lg bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
-                      你使用微信扫码登录。
+                      {t("settings.wechatLoginHint")}
                       {user.phone_verified && user.phone
-                        ? ` 已绑定手机 ${user.phone}`
-                        : " 请完成手机验证以使用完整功能。"}
+                        ? ` ${t("settings.phoneBound", { phone: user.phone })}`
+                        : ` ${t("settings.phoneVerifyHint")}`}
                     </div>
                     {user.phone_verified && (
                       <div className="rounded-lg border border-[var(--divider)] p-4 space-y-3 max-w-md">
                         <div className="text-sm font-medium text-[var(--title)]">
-                          更换绑定手机
+                          {t("settings.changePhone")}
                         </div>
-                        <FormField id="change-phone" label="新手机号">
+                        <FormField id="change-phone" label={t("settings.newPhone")}>
                           <Input
                             type="tel"
                             value={changePhone}
                             onChange={(e) => setChangePhone(e.target.value)}
-                            placeholder="新手机号"
+                            placeholder={t("settings.newPhone")}
                           />
                         </FormField>
                         <div className="flex gap-2 items-end">
                           <FormField
                             id="change-code"
-                            label="短信验证码"
+                            label={t("settings.smsCode")}
                             className="flex-1"
                           >
                             <Input
                               value={changeCode}
                               onChange={(e) => setChangeCode(e.target.value)}
-                              placeholder="短信验证码"
+                              placeholder={t("settings.smsCode")}
                             />
                           </FormField>
                           <button
@@ -668,7 +669,7 @@ export default function SettingsPage() {
                           >
                             {changeCooldown > 0
                               ? `${changeCooldown}s`
-                              : "获取验证码"}
+                              : t("settings.getCode")}
                           </button>
                         </div>
                         <button
@@ -677,7 +678,7 @@ export default function SettingsPage() {
                           disabled={changingPhone}
                           className="btn-outline px-4 py-2 text-sm font-medium disabled:opacity-50"
                         >
-                          {changingPhone ? "更新中…" : "确认更换"}
+                          {changingPhone ? t("settings.updating") : t("settings.confirmChange")}
                         </button>
                       </div>
                     )}
@@ -686,7 +687,7 @@ export default function SettingsPage() {
                   <div className="space-y-4">
                     <FormField
                       id="set-old-pwd"
-                      label="当前密码"
+                      label={t("settings.currentPassword")}
                       error={pwdErrors.oldPwd}
                     >
                       <PasswordInput
@@ -702,7 +703,7 @@ export default function SettingsPage() {
                     </FormField>
                     <FormField
                       id="set-new-pwd"
-                      label="新密码"
+                      label={t("settings.newPassword")}
                       error={pwdErrors.newPwd}
                     >
                       <PasswordInput
@@ -718,7 +719,7 @@ export default function SettingsPage() {
                     </FormField>
                     <FormField
                       id="set-confirm-pwd"
-                      label="确认新密码"
+                      label={t("settings.confirmNewPassword")}
                       error={pwdErrors.confirmPwd}
                     >
                       <PasswordInput
@@ -739,7 +740,7 @@ export default function SettingsPage() {
                         disabled={savingPwd || !oldPwd || !newPwd}
                         className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
                       >
-                        {savingPwd ? "修改中…" : "修改密码"}
+                        {savingPwd ? t("settings.changing") : t("settings.changePassword")}
                       </button>
                     </div>
                   </div>
@@ -747,18 +748,18 @@ export default function SettingsPage() {
 
                 <div className="mt-6 pt-6 border-t border-[var(--divider)]">
                   <h3 className="text-sm font-semibold text-[var(--coral)] mb-2">
-                    危险区域
+                    {t("settings.dangerZone")}
                   </h3>
                   <p className="text-sm text-[var(--text-muted)] mb-4">
-                    注销账号后，个人资料将被匿名化且无法恢复。
+                    {t("settings.deleteHint")}
                   </p>
                   {user.auth_provider === "email" && (
                     <div className="space-y-3 max-w-md">
-                      <FormField id="delete-pwd" label="输入密码确认">
+                      <FormField id="delete-pwd" label={t("settings.deleteConfirmPlaceholder")}>
                         <PasswordInput
                           value={deletePwd}
                           onChange={(e) => setDeletePwd(e.target.value)}
-                          placeholder="输入密码确认"
+                          placeholder={t("settings.deleteConfirmPlaceholder")}
                           autoComplete="current-password"
                         />
                       </FormField>
@@ -766,7 +767,7 @@ export default function SettingsPage() {
                   )}
                   {user.auth_provider === "google" && (
                     <div className="space-y-3 max-w-md">
-                      <FormField id="delete-confirm" label="输入 DELETE 确认">
+                      <FormField id="delete-confirm" label={t("settings.deleteTypeConfirm")}>
                         <Input
                           value={deleteConfirm}
                           onChange={(e) => setDeleteConfirm(e.target.value)}
@@ -777,24 +778,24 @@ export default function SettingsPage() {
                   )}
                   {user.auth_provider === "wechat" && (
                     <div className="space-y-3 max-w-md">
-                      <FormField id="delete-phone" label="已绑定的手机号">
+                      <FormField id="delete-phone" label={t("settings.boundPhone")}>
                         <Input
                           type="tel"
                           value={deletePhone}
                           onChange={(e) => setDeletePhone(e.target.value)}
-                          placeholder="已绑定的手机号"
+                          placeholder={t("settings.boundPhone")}
                         />
                       </FormField>
                       <div className="flex gap-2 items-end">
                         <FormField
                           id="delete-sms"
-                          label="短信验证码"
+                          label={t("settings.smsCode")}
                           className="flex-1"
                         >
                           <Input
                             value={deleteSmsCode}
                             onChange={(e) => setDeleteSmsCode(e.target.value)}
-                            placeholder="短信验证码"
+                            placeholder={t("settings.smsCode")}
                           />
                         </FormField>
                         <button
@@ -805,7 +806,7 @@ export default function SettingsPage() {
                         >
                           {deleteSmsCooldown > 0
                             ? `${deleteSmsCooldown}s`
-                            : "获取验证码"}
+                            : t("settings.getCode")}
                         </button>
                       </div>
                     </div>
@@ -816,7 +817,7 @@ export default function SettingsPage() {
                     disabled={deleting}
                     className="mt-4 btn-danger px-5 py-2 disabled:opacity-50"
                   >
-                    {deleting ? "注销中…" : "注销账号"}
+                    {deleting ? t("settings.deleting") : t("settings.deleteAccount")}
                   </button>
                 </div>
               </div>
@@ -826,20 +827,20 @@ export default function SettingsPage() {
               <div className="surface-card p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-base font-semibold text-[var(--title)]">
-                    我的会话
+                    {t("settings.mySessions")}
                   </h2>
                   <span className="text-xs text-[var(--text-muted)]">
-                    共 {sessionTotal} 个
+                    {t("settings.sessionCount", { count: sessionTotal })}
                   </span>
                 </div>
                 {loadingSessions ? (
                   <div className="py-8 text-center text-[var(--text-muted)]">
-                    加载中…
+                    {t("common.loading")}
                   </div>
                 ) : sessions.length === 0 ? (
                   <div className="py-8 text-center text-[var(--text-muted)]">
                     <DeimosIcon name="chat" className="mx-auto mb-3 h-8 w-8" />
-                    暂无会话
+                    {t("settings.noSessions")}
                   </div>
                 ) : (
                   <ul className="divide-y divide-[var(--divider)]">
@@ -850,10 +851,10 @@ export default function SettingsPage() {
                       >
                         <Link href={`/chat/${s.id}`} className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-[var(--title)] truncate hover:text-[var(--primary)]">
-                            {s.title || "未命名会话"}
+                            {s.title || t("settings.unnamedSession")}
                           </div>
                           <div className="text-xs text-[var(--text-muted)] mt-0.5">
-                            {s.message_count} 条消息 ·{" "}
+                            {t("chat.messageCount", { count: s.message_count })} ·{" "}
                             {new Date(s.updated_at).toLocaleString("zh-CN")}
                           </div>
                         </Link>
@@ -867,37 +868,37 @@ export default function SettingsPage() {
             {section === "notifications" && (
               <div className="surface-card p-6">
                 <h2 className="text-base font-semibold text-[var(--title)] mb-1">
-                  通知偏好
+                  {t("settings.notifPrefs")}
                 </h2>
                 <p className="text-sm text-[var(--text-muted)] mb-4">
-                  选择你希望在哪些事件发生时收到通知
+                  {t("settings.notifPrefsHint")}
                 </p>
                 <ul className="divide-y divide-[var(--divider)]">
                   {[
                     {
                       key: "email_on_follow",
-                      label: "有人关注我",
-                      desc: "新粉丝通知",
+                      label: t("settings.notifNewFollower"),
+                      desc: t("settings.notifNewFollowerDesc"),
                     },
                     {
                       key: "email_on_comment",
-                      label: "我的想法被评论",
-                      desc: "评论通知",
+                      label: t("settings.notifComment"),
+                      desc: t("settings.notifCommentDesc"),
                     },
                     {
                       key: "email_on_flower",
-                      label: "我的想法收到期待",
-                      desc: "期待通知",
+                      label: t("settings.notifWish"),
+                      desc: t("settings.notifWishDesc"),
                     },
                     {
                       key: "email_on_mention",
-                      label: "@ 提及我",
-                      desc: "评论中 @ 我",
+                      label: t("settings.notifMention"),
+                      desc: t("settings.notifMentionDesc"),
                     },
                     {
                       key: "email_weekly_digest",
-                      label: "每周精选摘要",
-                      desc: "每周一封邮件汇总",
+                      label: t("settings.notifWeekly"),
+                      desc: t("settings.notifWeeklyDesc"),
                     },
                   ].map((row) => (
                     <li
@@ -925,7 +926,7 @@ export default function SettingsPage() {
                 </ul>
                 <div className="mt-5 flex items-center justify-end gap-3">
                   {prefsSaved && (
-                    <span className="text-xs text-[var(--teal)]">已保存</span>
+                    <span className="text-xs text-[var(--teal)]">{t("settings.saved")}</span>
                   )}
                   <button
                     type="button"
@@ -934,10 +935,10 @@ export default function SettingsPage() {
                     className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
                   >
                     {prefsSaving
-                      ? "保存中…"
+                      ? t("common.saving")
                       : !prefsLoaded
-                        ? "加载中…"
-                        : "保存偏好"}
+                        ? t("common.loading")
+                        : t("settings.save")}
                   </button>
                 </div>
               </div>
@@ -946,14 +947,14 @@ export default function SettingsPage() {
             {section === "blocks" && (
               <div className="surface-card p-6">
                 <h2 className="text-base font-semibold text-[var(--title)] mb-1">
-                  屏蔽管理
+                  {t("settings.blockManage")}
                 </h2>
                 <p className="text-sm text-[var(--text-muted)] mb-4">
-                  被屏蔽的用户无法与你互动，也不会出现在你的内容流中。
+                  {t("settings.blockHint")}
                 </p>
                 {!blocksLoaded ? (
                   <div className="py-8 text-center text-[var(--text-muted)]">
-                    加载中…
+                    {t("common.loading")}
                   </div>
                 ) : blockedUsers.length === 0 ? (
                   <div className="py-8 text-center text-[var(--text-muted)]">
@@ -961,7 +962,7 @@ export default function SettingsPage() {
                       name="shield"
                       className="mx-auto mb-2 h-7 w-7"
                     />
-                    还没有屏蔽任何用户
+                    {t("settings.noBlocked")}
                   </div>
                 ) : (
                   <ul className="divide-y divide-[var(--divider)]">
@@ -1001,7 +1002,7 @@ export default function SettingsPage() {
                           onClick={() => void unblock(u.id)}
                           className="shrink-0 btn-outline btn-sm"
                         >
-                          取消屏蔽
+                          {t("settings.unblock")}
                         </button>
                       </li>
                     ))}
@@ -1015,34 +1016,31 @@ export default function SettingsPage() {
                 <div className="surface-card p-6">
                   <div className="flex items-center justify-between mb-2">
                     <h2 className="text-base font-semibold text-[var(--title)]">
-                      浏览器 API Key
+                      {t("settings.apiKeyTitle")}
                     </h2>
                   </div>
                   <p className="text-sm text-[var(--text-muted)] mb-4">
-                    在浏览器中 Fork、点赞等操作时使用的 Agent
-                    Key（存于本地）。各 Agent 的独立 Key 请在「我的
-                    Agent」中管理。
+                    {t("settings.apiKeyHint")}
                   </p>
                   <ApiKeyBrowserBinding />
                 </div>
                 <div className="surface-card p-6">
                   <h2 className="text-base font-semibold text-[var(--title)] mb-2">
-                    管理各 Agent 的 Key
+                    {t("settings.manageAgentKeys")}
                   </h2>
                   <p className="text-sm text-[var(--text-muted)] mb-4">
-                    注册或重新生成后 Key 仅显示一次。用于 MCP、REST 或 A2A
-                    接入。
+                    {t("settings.apiKeyRegenHint")}
                   </p>
                   <Link href="/user/agents" className="btn-outline btn-sm">
-                    前往我的 Agent
+                    {t("settings.goMyAgents")}
                   </Link>
                   <p className="mt-3 text-xs text-[var(--text-muted)]">
-                    MCP 配置见{" "}
+                    {t("settings.mcpDocsLabel")}{" "}
                     <Link
                       href="/docs/mcp"
                       className="text-[var(--primary)] hover:underline"
                     >
-                      文档
+                      {t("settings.docsLink")}
                     </Link>
                   </p>
                 </div>
@@ -1071,13 +1069,14 @@ function Toggle({
 
 function ApiKeyBrowserBinding() {
   const { apiKey, setApiKey, agentId, agentName, isReady } = useApiKey();
+  const { t } = useI18n();
   const [inputKey, setInputKey] = useState("");
   const [revealed, setRevealed] = useState(false);
 
   return isReady ? (
     <div className="space-y-4">
       <div className="rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)]/50 p-4">
-        <p className="text-sm text-[var(--text-muted)]">当前绑定的 Agent</p>
+        <p className="text-sm text-[var(--text-muted)]">{t("settings.boundAgent")}</p>
         <p className="text-base font-medium text-[var(--title)] mt-1">
           {agentName || "Agent"}
         </p>
@@ -1103,7 +1102,7 @@ function ApiKeyBrowserBinding() {
             onClick={() => setRevealed(!revealed)}
             className="btn-default btn-sm"
           >
-            {revealed ? "隐藏" : "显示"}
+            {revealed ? t("settings.hide") : t("settings.show")}
           </button>
         </div>
       </div>
@@ -1112,13 +1111,13 @@ function ApiKeyBrowserBinding() {
         onClick={() => setApiKey("")}
         className="btn-danger btn-sm"
       >
-        解除绑定
+        {t("settings.unbind")}
       </button>
     </div>
   ) : (
     <div className="space-y-3">
       <label className="block text-sm font-medium text-[var(--title)]">
-        输入 Agent API Key
+        {t("settings.inputApiKey")}
       </label>
       <div className="max-w-md flex gap-2">
         <input
@@ -1144,23 +1143,23 @@ function ApiKeyBrowserBinding() {
           }}
           className="btn-outline px-5 py-2 text-sm font-medium"
         >
-          确认
+          {t("common.confirm")}
         </button>
       </div>
       <p className="text-xs text-[var(--text-muted)]">
-        还没有 Key？在{" "}
+        {t("settings.noKeyYet")}{" "}
         <Link
           href="/user/agents"
           className="text-[var(--primary)] hover:underline"
         >
-          我的 Agent
+          {t("settings.myAgents")}
         </Link>{" "}
-        重新生成，或{" "}
+        {t("settings.regenKey")} {t("settings.or")}{" "}
         <Link
           href="/register"
           className="text-[var(--primary)] hover:underline"
         >
-          注册新 Agent
+          {t("settings.registerNew")}
         </Link>
       </p>
     </div>

@@ -91,6 +91,22 @@ type ChatMessage struct {
 	ToolCalls  []ToolCall
 	ToolCallID string
 	ToolName   string
+
+	// Parts 是多模态 content parts（图片等）。非空时优先于 Content，
+	// 映射到 Ark SDK 的 Content.ListValue，启用 vision。
+	Parts []ContentPart
+}
+
+// ContentPart 是 OpenAI 兼容的多模态 content part。
+type ContentPart struct {
+	Type     string    // "text" | "image_url"
+	Text     string    // type=text 时
+	ImageURL *ImageURL // type=image_url 时
+}
+
+// ImageURL 是 image_url content part 的载荷。
+type ImageURL struct {
+	URL string
 }
 
 type ToolCall struct {
@@ -185,6 +201,20 @@ func toArkMessages(messages []ChatMessage) []*arkmodel.ChatCompletionMessage {
 		}
 		if m.Content != "" {
 			msg.Content = &arkmodel.ChatCompletionMessageContent{StringValue: &m.Content}
+		}
+		// 多模态：有 Parts 时用 ListValue 覆盖（图片 vision）。
+		if len(m.Parts) > 0 {
+			parts := make([]*arkmodel.ChatCompletionMessageContentPart, 0, len(m.Parts))
+			for _, p := range m.Parts {
+				part := &arkmodel.ChatCompletionMessageContentPart{Type: arkmodel.ChatCompletionMessageContentPartType(p.Type)}
+				if p.Type == "text" {
+					part.Text = p.Text
+				} else if p.ImageURL != nil {
+					part.ImageURL = &arkmodel.ChatMessageImageURL{URL: p.ImageURL.URL}
+				}
+				parts = append(parts, part)
+			}
+			msg.Content = &arkmodel.ChatCompletionMessageContent{ListValue: parts}
 		}
 		if len(m.ToolCalls) > 0 {
 			msg.ToolCalls = make([]*arkmodel.ToolCall, 0, len(m.ToolCalls))

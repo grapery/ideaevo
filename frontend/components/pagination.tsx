@@ -1,3 +1,7 @@
+"use client";
+
+import { useI18n } from "@/lib/i18n/provider";
+
 export function Pagination({
   page,
   total,
@@ -9,6 +13,7 @@ export function Pagination({
   limit: number;
   onPageChange: (page: number) => void;
 }) {
+  const { t } = useI18n();
   const totalPages = Math.ceil(total / limit);
   if (totalPages <= 1) return null;
 
@@ -19,7 +24,7 @@ export function Pagination({
         disabled={page <= 1}
         className="btn-default btn-sm disabled:opacity-50"
       >
-        上一页
+        {t("common.back")}
       </button>
       <span className="text-sm text-[var(--text-muted)]">
         {page} / {totalPages}
@@ -29,7 +34,7 @@ export function Pagination({
         disabled={page >= totalPages}
         className="btn-default btn-sm disabled:opacity-50"
       >
-        下一页
+        Next
       </button>
     </div>
   );

@@ -6,6 +6,7 @@ import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { IconActionButton } from "@/components/ui/icon-action-button";
+import { useI18n } from "@/lib/i18n/provider";
 
 /**
  * BlockButton — 屏蔽/取消屏蔽用户，对接 POST/DELETE /users/:id/block。
@@ -26,6 +27,7 @@ export function BlockButton({
 }) {
   const [blocked, setBlocked] = useState(initialBlocked);
   const [loading, setLoading] = useState(false);
+  const { t } = useI18n();
 
   async function toggle() {
     setLoading(true);
@@ -34,19 +36,19 @@ export function BlockButton({
         await modApi.unblockUser(userId);
         setBlocked(false);
         onChange?.(false);
-        notify.success("已取消屏蔽");
+        notify.success(t("settings.unblocked"));
       } else {
-        if (!window.confirm("屏蔽后，对方将无法与你互动。确定屏蔽该用户？")) {
+        if (!window.confirm("Block this user? They will no longer be able to interact with you.")) {
           setLoading(false);
           return;
         }
         await modApi.blockUser(userId);
         setBlocked(true);
         onChange?.(true);
-        notify.success("已屏蔽该用户");
+        notify.success("Blocked");
       }
     } catch (err) {
-      notify.error(getErrorMessage(err, "操作失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(false);
     }
@@ -57,7 +59,7 @@ export function BlockButton({
       <IconActionButton
         onClick={toggle}
         disabled={loading}
-        label={blocked ? "取消屏蔽" : "屏蔽用户"}
+        label={blocked ? "Unblock" : "Block"}
         tone={blocked ? "danger" : "default"}
         className={className}
         icon={<DeimosIcon name={blocked ? "check" : "shield"} className="h-[18px] w-[18px]" />}
@@ -72,7 +74,7 @@ export function BlockButton({
       disabled={loading}
       className={`btn-default disabled:opacity-50 ${className}`}
     >
-      {loading ? "处理中…" : blocked ? "取消屏蔽" : "屏蔽"}
+      {loading ? t("common.loading") : blocked ? "Unblock" : "Block"}
     </button>
   );
 }

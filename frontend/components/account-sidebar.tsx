@@ -3,6 +3,7 @@
 import { AppLink } from "@/components/app-link";
 import { DeimosIcon, type DeimosIconName } from "@/components/deimos-icon";
 import { useI18n } from "@/lib/i18n/provider";
+import type { TranslationKey } from "@/lib/i18n/messages";
 
 export type AccountSettingsSection =
   "profile" | "security" | "sessions" | "notifications" | "blocks" | "apikey";
@@ -10,76 +11,69 @@ export type AccountSettingsSection =
 type SettingsItem = {
   section: AccountSettingsSection;
   icon: DeimosIconName;
-  zh: string;
-  en: string;
+  label?: TranslationKey;
+  literal?: string;
 };
 
 type LinkItem = {
   href: string;
   icon: DeimosIconName;
-  zh: string;
-  en: string;
+  label?: TranslationKey;
+  literal?: string;
   match?: "exact" | "prefix";
 };
 
 type AccountNavItem = SettingsItem | LinkItem;
 
-const GROUPS: { zh: string; en: string; items: AccountNavItem[] }[] = [
+type Group = { title?: TranslationKey; literalTitle?: string; items: AccountNavItem[] };
+
+const GROUPS: Group[] = [
   {
-    zh: "账户",
-    en: "ACCOUNT",
+    title: "settings.title",
     items: [
-      { section: "profile", icon: "profile", zh: "个人资料", en: "Profile" },
-      { section: "security", icon: "lock", zh: "账号安全", en: "Security" },
-      { section: "sessions", icon: "chat", zh: "我的会话", en: "Sessions" },
+      { section: "profile", icon: "profile", label: "settings.basicInfo" },
+      { section: "security", icon: "lock", label: "settings.security" },
+      { section: "sessions", icon: "chat", label: "settings.mySessions" },
       {
         section: "notifications",
         icon: "bell",
-        zh: "通知偏好",
-        en: "Notifications",
+        label: "settings.notifPrefs",
       },
       {
         section: "blocks",
         icon: "shield",
-        zh: "屏蔽管理",
-        en: "Blocked users",
+        label: "settings.blockManage",
       },
     ],
   },
   {
-    zh: "开发者",
-    en: "DEVELOPER",
+    literalTitle: "Developer",
     items: [
       {
         href: "/user/agents",
         icon: "agent",
-        zh: "我的 Agent",
-        en: "My Agents",
+        label: "settings.myAgents",
       },
       {
         section: "apikey",
         icon: "key",
-        zh: "Agent API Key",
-        en: "Agent API Key",
+        literal: "Agent API Key",
       },
     ],
   },
   {
-    zh: "账单",
-    en: "BILLING",
+    title: "billing.title",
     items: [
       {
         href: "/billing",
         icon: "billing",
-        zh: "会员与配额",
-        en: "Membership & quota",
+        label: "billing.membershipQuota",
         match: "exact",
       },
       {
         href: "/billing#orders",
         icon: "document",
-        zh: "订单与退款",
-        en: "Orders & refunds",
+        label: "billing.ordersRefunds",
       },
     ],
   },
@@ -100,8 +94,7 @@ export function AccountSidebar({
   sessionCount = 0,
   emailVerified = true,
 }: AccountSidebarProps) {
-  const { locale } = useI18n();
-  const zh = locale === "zh-CN";
+  const { t } = useI18n();
 
   const itemClass = (active: boolean) =>
     `flex min-h-10 w-full shrink-0 items-center justify-between rounded-[6px] px-3 py-2 text-left text-[13px] transition-colors ${
@@ -110,31 +103,32 @@ export function AccountSidebar({
         : "border border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
     }`;
 
+  const itemLabel = (item: AccountNavItem) =>
+    item.label ? t(item.label) : item.literal ?? "";
+
   return (
     <aside className="w-full shrink-0 lg:w-[240px]">
       <div className="mb-4">
         <h1 className="heading-sans text-[22px]">
-          {zh ? "账户控制中心" : "Account control center"}
+          {t("settings.title")}
         </h1>
         <p className="mt-0.5 text-sm text-[var(--text-muted)]">
-          {zh
-            ? "管理身份、Agent 与账单"
-            : "Manage identity, Agents, and billing"}
+          {t("settings.loginHint")}
         </p>
       </div>
 
       <nav
         className="surface-card grid grid-cols-2 gap-1 p-2 sm:grid-cols-3 lg:block lg:space-y-4"
-        aria-label={zh ? "账户设置导航" : "Account settings navigation"}
+        aria-label={t("settings.title")}
       >
         {GROUPS.map((group) => (
-          <div key={group.en} className="contents lg:block">
+          <div key={group.title ?? group.literalTitle} className="contents lg:block">
             <p className="mb-1 hidden px-3 font-code text-[9px] tracking-[0.12em] text-[var(--ink-faint)] lg:block">
-              {zh ? group.zh : group.en}
+              {group.title ? t(group.title) : group.literalTitle}
             </p>
             <div className="contents lg:block lg:space-y-0.5">
               {group.items.map((item) => {
-                const label = zh ? item.zh : item.en;
+                const label = itemLabel(item);
 
                 if ("section" in item) {
                   const active = activeSection === item.section;
@@ -144,9 +138,7 @@ export function AccountSidebar({
                       : item.section === "apikey"
                         ? "Agent"
                         : item.section === "security" && !emailVerified
-                          ? zh
-                            ? "未验证"
-                            : "Unverified"
+                          ? t("settings.unverified")
                           : null;
 
                   const content = (

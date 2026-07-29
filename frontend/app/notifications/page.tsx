@@ -9,97 +9,88 @@ import { notify } from "@/components/ui/notify";
 import { DeimosIcon, type DeimosIconName } from "@/components/deimos-icon";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { useI18n } from "@/lib/i18n/provider";
+import type { TranslationKey } from "@/lib/i18n/messages";
 
-const TABS = [
-  { value: "all", zh: "全部", en: "All", filter: () => true },
+const TABS: ReadonlyArray<{
+  value: string;
+  labelKey: TranslationKey;
+  filter: (n: NotificationItem) => boolean;
+}> = [
+  { value: "all", labelKey: "notif.tabAll", filter: () => true },
   {
     value: "mention",
-    zh: "@ 提及",
-    en: "Mentions",
+    labelKey: "notif.tabMention",
     filter: (n: NotificationItem) => n.action === "mention",
   },
   {
     value: "wish",
-    zh: "期待",
-    en: "Wishes",
+    labelKey: "notif.tabWish",
     filter: (n: NotificationItem) =>
       n.action === "wish" || n.action === "flower",
   },
   {
     value: "comment",
-    zh: "评论",
-    en: "Comments",
+    labelKey: "notif.tabComment",
     filter: (n: NotificationItem) => n.action === "comment",
   },
   {
     value: "follow",
-    zh: "关注",
-    en: "Follows",
+    labelKey: "notif.tabFollow",
     filter: (n: NotificationItem) => n.action === "follow",
   },
   {
     value: "like",
-    zh: "点赞",
-    en: "Likes",
+    labelKey: "notif.tabLike",
     filter: (n: NotificationItem) => n.action === "like",
   },
   {
     value: "fork",
-    zh: "Fork",
-    en: "Forks",
+    labelKey: "notif.tabFork",
     filter: (n: NotificationItem) => n.action === "fork",
   },
-] as const;
+];
 
 const actionMeta: Record<
   string,
-  { zh: string; en: string; icon: DeimosIconName; color: string }
+  { labelKey: TranslationKey; icon: DeimosIconName; color: string }
 > = {
   like: {
-    zh: "赞了你的想法",
-    en: "liked your idea",
+    labelKey: "notif.notifLiked",
     icon: "heart",
     color: "text-[var(--accent-warning)]",
   },
   wish: {
-    zh: "对你的想法表达期待",
-    en: "wished for your idea",
+    labelKey: "notif.notifWished",
     icon: "wish",
     color: "text-[var(--primary)]",
   },
   flower: {
-    zh: "对你的想法表达期待",
-    en: "wished for your idea",
+    labelKey: "notif.notifWished",
     icon: "wish",
     color: "text-[var(--primary)]",
   },
   fork: {
-    zh: "Fork 了你的想法",
-    en: "forked your idea",
+    labelKey: "notif.notifForked",
     icon: "fork",
     color: "text-[var(--accent-link)]",
   },
   comment: {
-    zh: "评论了你的想法",
-    en: "commented on your idea",
+    labelKey: "notif.notifCommented",
     icon: "comment",
     color: "text-[var(--ink)]",
   },
   follow: {
-    zh: "关注了你",
-    en: "followed you",
+    labelKey: "notif.notifFollowed",
     icon: "follow",
     color: "text-[var(--ink)]",
   },
   mention: {
-    zh: "在评论中 @ 提及了你",
-    en: "mentioned you in a comment",
+    labelKey: "notif.notifMentioned",
     icon: "mention",
     color: "text-[var(--accent-link)]",
   },
   decision: {
-    zh: "请求你确认一个决定",
-    en: "requested your decision",
+    labelKey: "notif.notifDecision",
     icon: "decision",
     color: "text-[var(--accent-warning)]",
   },
@@ -111,33 +102,40 @@ function startOfDay(d: Date) {
   return x.getTime();
 }
 
-function groupByDay(items: NotificationItem[], zh: boolean) {
+function groupByDay(
+  items: NotificationItem[],
+  t: (key: TranslationKey) => string,
+) {
   const today = startOfDay(new Date());
   const yesterday = today - 24 * 3600 * 1000;
   const groups: { label: string; items: NotificationItem[] }[] = [
-    { label: zh ? "今天" : "Today", items: [] },
-    { label: zh ? "昨天" : "Yesterday", items: [] },
-    { label: zh ? "更早" : "Earlier", items: [] },
+    { label: t("common.today"), items: [] },
+    { label: t("common.yesterday"), items: [] },
+    { label: t("common.earlier"), items: [] },
   ];
   for (const it of items) {
-    const t = startOfDay(new Date(it.created_at));
-    if (t === today) groups[0].items.push(it);
-    else if (t === yesterday) groups[1].items.push(it);
+    const ts = startOfDay(new Date(it.created_at));
+    if (ts === today) groups[0].items.push(it);
+    else if (ts === yesterday) groups[1].items.push(it);
     else groups[2].items.push(it);
   }
   return groups.filter((g) => g.items.length > 0);
 }
 
-function formatTime(dateStr: string, zh: boolean) {
+function formatTime(
+  dateStr: string,
+  locale: string,
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string,
+) {
   const d = new Date(dateStr);
   const now = Date.now();
   const diff = now - d.getTime();
   const minutes = Math.floor(diff / (1000 * 60));
-  if (minutes < 1) return zh ? "刚刚" : "Just now";
-  if (minutes < 60) return zh ? `${minutes} 分钟前` : `${minutes}m ago`;
+  if (minutes < 1) return t("common.justNow");
+  if (minutes < 60) return t("common.minutesAgo", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return zh ? `${hours} 小时前` : `${hours}h ago`;
-  return d.toLocaleDateString(zh ? "zh-CN" : "en", {
+  if (hours < 24) return t("common.hoursAgo", { count: hours });
+  return d.toLocaleDateString(locale === "zh-CN" ? "zh-CN" : "en", {
     month: "numeric",
     day: "numeric",
   });
@@ -153,8 +151,7 @@ function notificationTargetHref(notification: NotificationItem) {
 }
 
 export default function NotificationsPage() {
-  const { locale } = useI18n();
-  const zh = locale === "zh-CN";
+  const { t, locale } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -180,18 +177,13 @@ export default function NotificationsPage() {
           setTotal(0);
           setUnread(0);
         }
-        notify.error(
-          getErrorMessage(
-            err,
-            zh ? "加载通知失败" : "Unable to load notifications",
-          ),
-        );
+        notify.error(getErrorMessage(err, t("notif.loadFailed")));
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [zh],
+    [t],
   );
 
   useEffect(() => {
@@ -200,19 +192,19 @@ export default function NotificationsPage() {
   }, [user, load]);
 
   const counts = useMemo(() => {
-    return TABS.reduce<Record<string, number>>((acc, t) => {
-      acc[t.value] = items.filter(t.filter).length;
+    return TABS.reduce<Record<string, number>>((acc, tab) => {
+      acc[tab.value] = items.filter(tab.filter).length;
       return acc;
     }, {});
   }, [items]);
 
   const filtered = useMemo(() => {
-    const tab = TABS.find((t) => t.value === activeTab);
+    const tab = TABS.find((tb) => tb.value === activeTab);
     if (!tab) return items;
     return items.filter(tab.filter);
   }, [items, activeTab]);
 
-  const groups = useMemo(() => groupByDay(filtered, zh), [filtered, zh]);
+  const groups = useMemo(() => groupByDay(filtered, t), [filtered, t]);
 
   const todayItems = items.filter(
     (item) => startOfDay(new Date(item.created_at)) === startOfDay(new Date()),
@@ -237,18 +229,11 @@ export default function NotificationsPage() {
       await notificationApi.markAllRead();
       setItems((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnread(0);
-      notify.success(
-        zh ? "已全部标记为已读" : "All notifications marked as read",
-      );
+      notify.success(t("notif.allMarkedRead"));
     } catch (err) {
-      notify.error(
-        getErrorMessage(
-          err,
-          zh ? "操作失败" : "Unable to update notifications",
-        ),
-      );
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     }
-  }, [zh]);
+  }, [t]);
 
   const markOneRead = useCallback(
     async (id: string) => {
@@ -261,21 +246,16 @@ export default function NotificationsPage() {
         );
         setUnread((u) => Math.max(0, u - 1));
       } catch (err) {
-        notify.error(
-          getErrorMessage(
-            err,
-            zh ? "无法标记为已读" : "Unable to mark as read",
-          ),
-        );
+        notify.error(getErrorMessage(err, t("notif.markReadFailed")));
       }
     },
-    [items, zh],
+    [items, t],
   );
 
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center text-[var(--text-muted)]">
-        {zh ? "加载中…" : "Loading…"}
+        {t("common.loading")}
       </div>
     );
   }
@@ -289,18 +269,16 @@ export default function NotificationsPage() {
             className="mx-auto mb-4 h-8 w-8 text-[var(--accent-link)]"
           />
           <h2 className="text-xl font-semibold text-[var(--title)] mb-2">
-            {zh ? "请先登录" : "Sign in required"}
+            {t("notif.loginRequired")}
           </h2>
           <p className="text-sm text-[var(--text-muted)] mb-4">
-            {zh
-              ? "登录后查看与你相关的通知"
-              : "Sign in to view notifications related to you."}
+            {t("notif.loginHint")}
           </p>
           <Link
             href="/login"
             className="inline-block btn-outline px-6 py-2.5 text-sm font-medium"
           >
-            {zh ? "前往登录" : "Sign in"}
+            {t("settings.goLogin")}
           </Link>
         </div>
       </div>
@@ -314,14 +292,12 @@ export default function NotificationsPage() {
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-[var(--rule)] pb-6">
           <div>
             <p className="meta-label mb-2">SIGNAL INBOX / LAST 7 DAYS</p>
-            <h1 className="page-title">{zh ? "通知中心" : "Decision inbox"}</h1>
+            <h1 className="page-title">{t("notif.center")}</h1>
             <p className="mt-2 text-[13px] text-[var(--text-muted)]">
-              {zh
-                ? "最近 7 天 · 把期待、评论、Fork 与 Agent 协作转成需要处理的决定"
-                : "Last 7 days · Turn wishes, comments, forks, and Agent collaboration into decisions"}
+              {t("notif.recentHint")}
               {unread > 0 && (
                 <span className="ml-2 rounded-full bg-[var(--coral)]/15 px-2 py-0.5 text-xs font-medium text-[var(--coral)]">
-                  {unread} {zh ? "条未读" : "unread"}
+                  {t("notif.unreadCount", { count: unread })}
                 </span>
               )}
             </p>
@@ -334,41 +310,41 @@ export default function NotificationsPage() {
               className="btn-default disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <DeimosIcon name="check" className="h-3.5 w-3.5" />
-              {zh ? "全部标记为已读" : "Mark all read"}
+              {t("notif.markAllRead")}
             </button>
             <Link
               href="/user/settings?section=notifications"
               className="btn-default"
             >
               <DeimosIcon name="gear" className="h-3.5 w-3.5" />
-              {zh ? "通知设置" : "Notification settings"}
+              {t("notif.settings")}
             </Link>
           </div>
         </div>
 
         {/* Tabs */}
         <div className="mb-6 flex flex-wrap border-b border-[var(--divider)]">
-          {TABS.map((t) => (
+          {TABS.map((tab) => (
             <button
-              key={t.value}
+              key={tab.value}
               type="button"
-              onClick={() => setActiveTab(t.value)}
+              onClick={() => setActiveTab(tab.value)}
               className={`inline-flex items-center gap-2 border-b-2 px-4 py-2.5 font-[family-name:var(--font-mono)] text-[10px] font-semibold uppercase transition-colors ${
-                activeTab === t.value
+                activeTab === tab.value
                   ? "border-[var(--ink)] text-[var(--ink)]"
                   : "border-transparent text-[var(--text-muted)] hover:text-[var(--ink)]"
               }`}
             >
-              {zh ? t.zh : t.en}
-              {counts[t.value] > 0 && (
+              {t(tab.labelKey)}
+              {counts[tab.value] > 0 && (
                 <span
                   className={`rounded-full px-1.5 text-xs ${
-                    activeTab === t.value
+                    activeTab === tab.value
                       ? "bg-[var(--ink)] text-white"
                       : "bg-white"
                   }`}
                 >
-                  {counts[t.value]}
+                  {counts[tab.value]}
                 </span>
               )}
             </button>
@@ -380,7 +356,7 @@ export default function NotificationsPage() {
           <main className="flex-1 min-w-0">
             {loading ? (
               <div className="surface-card p-12 text-center text-[var(--text-muted)]">
-                {zh ? "加载中…" : "Loading…"}
+                {t("common.loading")}
               </div>
             ) : groups.length === 0 ? (
               <div className="surface-card p-12 text-center text-[var(--text-muted)]">
@@ -389,12 +365,10 @@ export default function NotificationsPage() {
                   className="mx-auto mb-3 h-9 w-9 text-[var(--ink-faint)]"
                 />
                 <p className="font-medium text-[var(--ink-soft)]">
-                  {zh ? "暂无通知" : "No notifications"}
+                  {t("notif.empty")}
                 </p>
                 <p className="mt-1 text-xs">
-                  {zh
-                    ? "新的期待、评论、Fork 和协作决定会显示在这里。"
-                    : "New wishes, comments, forks, and decisions will appear here."}
+                  {t("notif.emptyHint")}
                 </p>
               </div>
             ) : (
@@ -405,8 +379,7 @@ export default function NotificationsPage() {
                     <div className="divide-y divide-[var(--divider)] rounded-lg border border-[var(--rule)] bg-white">
                       {group.items.map((n) => {
                         const meta = actionMeta[n.action] || {
-                          zh: n.action,
-                          en: n.action,
+                          labelKey: "notif.center" as TranslationKey,
                           icon: "bell" as DeimosIconName,
                           color: "text-[var(--text-muted)]",
                         };
@@ -415,7 +388,8 @@ export default function NotificationsPage() {
                             ? `/agents/${n.actor_id}`
                             : `/users/${n.actor_id}`;
                         const actorName =
-                          n.actor_name || `用户 ${n.actor_id.slice(0, 6)}`;
+                          n.actor_name ||
+                          `${t("activity.user")} ${n.actor_id.slice(0, 6)}`;
                         return (
                           <div
                             key={n.id}
@@ -447,7 +421,7 @@ export default function NotificationsPage() {
                                   name={meta.icon}
                                   className={`mx-0.5 inline h-3.5 w-3.5 ${meta.color}`}
                                 />
-                                {zh ? meta.zh : meta.en}
+                                {t(meta.labelKey)}
                                 {n.target_type === "idea" && (
                                   <>
                                     {" "}
@@ -456,8 +430,7 @@ export default function NotificationsPage() {
                                       onClick={() => void markOneRead(n.id)}
                                       className="text-[var(--accent-link)] hover:underline"
                                     >
-                                      {n.target_title ||
-                                        (zh ? "查看想法" : "View idea")}
+                                      {n.target_title || t("notif.viewIdea")}
                                     </Link>
                                   </>
                                 )}
@@ -469,7 +442,7 @@ export default function NotificationsPage() {
                               )}
                               <div className="mt-1.5 flex items-center gap-3">
                                 <span className="text-xs text-[var(--text-muted)]">
-                                  {formatTime(n.created_at, zh)}
+                                  {formatTime(n.created_at, locale, t)}
                                 </span>
                                 {!n.read && (
                                   <button
@@ -477,7 +450,7 @@ export default function NotificationsPage() {
                                     onClick={() => void markOneRead(n.id)}
                                     className="text-xs text-[var(--text-muted)] hover:text-[var(--primary)]"
                                   >
-                                    {zh ? "标为已读" : "Mark as read"}
+                                    {t("notif.markRead")}
                                   </button>
                                 )}
                                 <Link
@@ -485,7 +458,7 @@ export default function NotificationsPage() {
                                   onClick={() => void markOneRead(n.id)}
                                   className="inline-flex items-center gap-1 text-xs text-[var(--accent-link)] hover:underline"
                                 >
-                                  {zh ? "处理" : "Open"}
+                                  {t("notif.handle")}
                                   <DeimosIcon
                                     name="chevron-right"
                                     className="h-3 w-3"
@@ -507,12 +480,8 @@ export default function NotificationsPage() {
                     className="btn-default mx-auto flex"
                   >
                     {loadingMore
-                      ? zh
-                        ? "加载中…"
-                        : "Loading…"
-                      : zh
-                        ? `加载更多（剩余 ${total - items.length} 条）`
-                        : `Load more (${total - items.length} remaining)`}
+                      ? t("common.loading")
+                      : t("notif.loadMore", { count: total - items.length })}
                   </button>
                 )}
               </div>
@@ -526,45 +495,49 @@ export default function NotificationsPage() {
                 LIVE SIGNALS
               </p>
               <h3 className="mb-4 text-sm font-semibold">
-                {zh ? "今日概览" : "Today overview"}
+                {t("notif.todayOverview")}
               </h3>
               <div className="space-y-2 text-sm">
-                {[
-                  {
-                    zh: "新点赞",
-                    en: "New likes",
-                    value: todayItems.filter((a) => a.action === "like").length,
-                    icon: "heart" as DeimosIconName,
-                  },
-                  {
-                    zh: "新期待",
-                    en: "New wishes",
-                    value: todayItems.filter(
-                      (a) => a.action === "wish" || a.action === "flower",
-                    ).length,
-                    icon: "wish" as DeimosIconName,
-                  },
-                  {
-                    zh: "新评论",
-                    en: "New comments",
-                    value: todayItems.filter((a) => a.action === "comment")
-                      .length,
-                    icon: "comment" as DeimosIconName,
-                  },
-                  {
-                    zh: "新 Fork",
-                    en: "New forks",
-                    value: todayItems.filter((a) => a.action === "fork").length,
-                    icon: "fork" as DeimosIconName,
-                  },
-                ].map((row) => (
+                {(
+                  [
+                    {
+                      id: "likes",
+                      labelKey: "notif.statNewLikes" as TranslationKey,
+                      value: todayItems.filter((a) => a.action === "like")
+                        .length,
+                      icon: "heart" as DeimosIconName,
+                    },
+                    {
+                      id: "wishes",
+                      labelKey: "notif.statNewWishes" as TranslationKey,
+                      value: todayItems.filter(
+                        (a) => a.action === "wish" || a.action === "flower",
+                      ).length,
+                      icon: "wish" as DeimosIconName,
+                    },
+                    {
+                      id: "comments",
+                      labelKey: "notif.statNewComments" as TranslationKey,
+                      value: todayItems.filter((a) => a.action === "comment")
+                        .length,
+                      icon: "comment" as DeimosIconName,
+                    },
+                    {
+                      id: "forks",
+                      labelKey: "notif.statNewForks" as TranslationKey,
+                      value: todayItems.filter((a) => a.action === "fork")
+                        .length,
+                      icon: "fork" as DeimosIconName,
+                    },
+                  ]
+                ).map((row) => (
                   <div
-                    key={row.en}
+                    key={row.id}
                     className="flex items-center justify-between"
                   >
                     <span className="flex items-center gap-2 text-white/55">
                       <DeimosIcon name={row.icon} className="h-3.5 w-3.5" />
-                      {zh ? row.zh : row.en}
+                      {t(row.labelKey)}
                     </span>
                     <span className="font-semibold text-white">
                       {row.value}
@@ -580,16 +553,14 @@ export default function NotificationsPage() {
                   name="pulse"
                   className="h-3.5 w-3.5 text-[var(--accent-link)]"
                 />
-                {zh ? "本周热门互动者" : "Top interactors this week"}
+                {t("notif.weeklyTop")}
               </h3>
               <p className="text-xs text-[var(--text-muted)] mt-1 mb-3">
-                {zh
-                  ? "按最近 7 天互动次数排序"
-                  : "Ranked by interactions in the last 7 days"}
+                {t("notif.weeklyHint")}
               </p>
               {weeklyTop.length === 0 ? (
                 <p className="text-xs text-[var(--text-muted)]">
-                  {zh ? "暂无数据" : "No data"}
+                  {t("common.noData")}
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -597,7 +568,7 @@ export default function NotificationsPage() {
                     const isAgent = a.actor_type === "agent";
                     const name =
                       a.actor_name ||
-                      `${zh ? "用户" : "User"} ${a.actor_id.slice(0, 6)}`;
+                      `${t("activity.user")} ${a.actor_id.slice(0, 6)}`;
                     return (
                       <li key={`${a.actor_type}:${a.actor_id}`}>
                         <Link
@@ -622,8 +593,7 @@ export default function NotificationsPage() {
                             {name}
                           </span>
                           <span className="ml-auto font-code text-[10px] text-[var(--accent-link)]">
-                            {count}{" "}
-                            {zh ? "次" : count === 1 ? "event" : "events"}
+                            {count} {t("notif.times")}
                           </span>
                         </Link>
                       </li>

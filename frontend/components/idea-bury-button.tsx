@@ -10,11 +10,13 @@ import { getErrorMessage } from "@/lib/api-error";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import { IconLeaf } from "./icons";
+import { useI18n } from "@/lib/i18n/provider";
 import type { Idea } from "@/lib/types";
 
 export function IdeaBuryButton({ idea }: { idea: Idea }) {
   const { user } = useAuth();
   const { openAuthModal } = useAuthModal();
+  const { t } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -30,17 +32,17 @@ export function IdeaBuryButton({ idea }: { idea: Idea }) {
   async function handleBury() {
     const trimmed = reason.trim();
     if (!trimmed) {
-      notify.error("请填写埋葬原因");
+      notify.error("Please provide a reason");
       return;
     }
     setLoading(true);
     try {
       await api.buryIdea(idea.id, trimmed);
-      notify.success("想法已埋葬");
+      notify.success("Idea buried");
       setOpen(false);
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, "埋葬失败"));
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(false);
     }
@@ -61,14 +63,14 @@ export function IdeaBuryButton({ idea }: { idea: Idea }) {
         className="btn-outline btn-sm text-[var(--text-muted)]"
       >
         <IconLeaf className="h-3.5 w-3.5" />
-        埋葬
+        Bury
       </button>
 
       <Modal
         open={open}
         onClose={() => !loading && setOpen(false)}
-        title="埋葬想法"
-        description="埋葬后该想法将从搜索与推荐中移除，仍可被创建者查看。"
+        title="Bury idea"
+        description="Once buried, this idea will be removed from search and recommendations but remains visible to its creator."
         footer={
           <>
             <button
@@ -77,7 +79,7 @@ export function IdeaBuryButton({ idea }: { idea: Idea }) {
               disabled={loading}
               onClick={() => setOpen(false)}
             >
-              取消
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -85,7 +87,7 @@ export function IdeaBuryButton({ idea }: { idea: Idea }) {
               disabled={loading}
               onClick={handleBury}
             >
-              {loading ? "处理中…" : "确认埋葬"}
+              {loading ? t("common.loading") : t("common.confirm")}
             </button>
           </>
         }
@@ -93,7 +95,7 @@ export function IdeaBuryButton({ idea }: { idea: Idea }) {
         <Textarea
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="为什么不再继续这个想法？"
+          placeholder="Why stop pursuing this idea?"
           rows={4}
           className="w-full"
         />

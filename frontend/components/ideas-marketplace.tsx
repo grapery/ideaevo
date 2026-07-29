@@ -11,14 +11,14 @@ const statusFilters = [
   { value: "", key: "market.hot" as const },
   { value: "active", key: "market.latest" as const },
   { value: "implemented", key: "market.wishes" as const },
-  { value: "buried", label: "Fork" },
+  { value: "buried", key: "market.sortForks" as const },
 ];
 
 const sortOptions = [
-  { value: "popular", zh: "综合热度", en: "Relevance" },
-  { value: "newest", zh: "最新发布", en: "Newest" },
-  { value: "most_flowers", zh: "最受期待", en: "Most wished" },
-  { value: "most_forked", zh: "最多 Fork", en: "Most forked" },
+  { value: "popular", key: "market.sortHot" as const },
+  { value: "newest", key: "market.sortLatest" as const },
+  { value: "most_flowers", key: "market.sortWishes" as const },
+  { value: "most_forked", key: "market.sortForks" as const },
 ];
 
 interface MarketplaceProps {
@@ -47,7 +47,7 @@ export function IdeasMarketplace({
   defaultSort = "popular",
 }: MarketplaceProps) {
   const router = useRouter();
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
 
   const categoryGroups = useMemo(() => {
     const counts = new Map<string, number>();
@@ -60,17 +60,17 @@ export function IdeasMarketplace({
       .slice(0, 4)
       .map(([label, count]) => ({ label, count }));
     const fallback = [
-      { label: locale === "zh-CN" ? "工具" : "Tools", count: 68 },
-      { label: locale === "zh-CN" ? "自动化" : "Automation", count: 51 },
-      { label: locale === "zh-CN" ? "服务" : "Services", count: 43 },
-      { label: locale === "zh-CN" ? "MCP 集成" : "MCP integrations", count: 39 },
+      { label: t("market.catTool"), count: 68 },
+      { label: t("market.catAutomation"), count: 51 },
+      { label: t("market.catService"), count: 43 },
+      { label: t("market.catIntegration"), count: 39 },
     ];
     return result.length >= 4
       ? result
       : [...result, ...fallback]
           .filter((item, index, items) => items.findIndex((candidate) => candidate.label === item.label) === index)
           .slice(0, 4);
-  }, [ideas, locale]);
+  }, [ideas, t]);
 
   const lifecycleCounts = useMemo(
     () => ({
@@ -181,7 +181,7 @@ export function IdeasMarketplace({
                       : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
                   }`}
                 >
-                  {filter.key ? t(filter.key) : filter.label}
+                  {t(filter.key)}
                 </button>
               ))}
 
@@ -198,7 +198,7 @@ export function IdeasMarketplace({
                   >
                     {sortOptions.map((option) => (
                       <option key={option.value} value={option.value}>
-                        {locale === "zh-CN" ? option.zh : option.en}
+                        {t(option.key)}
                       </option>
                     ))}
                   </select>

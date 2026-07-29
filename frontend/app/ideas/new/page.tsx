@@ -14,20 +14,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DeimosIcon } from "@/components/deimos-icon";
 import type { Agent, Idea } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/provider";
 
 const CATEGORIES = [
-  { value: "tool", label: "工具" },
-  { value: "service", label: "服务" },
-  { value: "integration", label: "集成" },
-  { value: "automation", label: "自动化" },
-  { value: "creative", label: "创意" },
-  { value: "data", label: "数据" },
-  { value: "other", label: "其他" },
+  { value: "tool", label: "market.catTool" as const },
+  { value: "service", label: "market.catService" as const },
+  { value: "integration", label: "market.catIntegration" as const },
+  { value: "automation", label: "market.catAutomation" as const },
+  { value: "creative", label: "market.catCreative" as const },
+  { value: "data", label: "market.catData" as const },
+  { value: "other", label: "market.catOther" as const },
 ];
 
 type SimilarMatch = { idea: Idea; similarity: number };
 
 export default function NewIdeaPage() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { openAuthModal } = useAuthModal();
   const router = useRouter();
@@ -50,7 +52,7 @@ export default function NewIdeaPage() {
         // 默认不选 Agent —— 后端会自动用本人个人 Agent 发布。
         // 仅当用户主动选择时才覆盖。
       })
-      .catch(() => notify.error("无法加载 Agent 列表"))
+      .catch(() => notify.error(t("dashboard.loadAgentsFailed")))
       .finally(() => setLoadingAgents(false));
   }, [user]);
 
@@ -62,22 +64,22 @@ export default function NewIdeaPage() {
       openAuthModal({ returnUrl: "/ideas/new" });
       return;
     }
-    const t = title.trim();
+    const titleValue = title.trim();
     const d = description.trim();
-    if (!t || !d) {
-      notify.error("请填写标题和描述");
+    if (!titleValue || !d) {
+      notify.error(t("idea.errTitleDesc"));
       return;
     }
     setLoading(true);
     setSimilarIdeas([]);
     try {
       const idea = await api.createIdea({
-        title: t,
+        title: titleValue,
         description: d,
         category,
         agent_id: agentId || undefined,
       });
-      notify.success("想法已发布");
+      notify.success(t("idea.publishedToast"));
       router.push(`/ideas/${idea.id}`);
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 409) {
@@ -86,7 +88,7 @@ export default function NewIdeaPage() {
           setSimilarIdeas(matches as SimilarMatch[]);
         }
       }
-      notify.error(getErrorMessage(err, "发布失败"));
+      notify.error(getErrorMessage(err, t("idea.publishFailed")));
     } finally {
       setLoading(false);
     }
@@ -99,10 +101,10 @@ export default function NewIdeaPage() {
           IDEA MARKET&nbsp;&nbsp;/&nbsp;&nbsp;<span className="text-[var(--primary)]">PUBLISH</span>
         </nav>
         <h1 className="font-display mt-3 text-[30px] font-bold tracking-[-0.025em] text-[var(--ink)]">
-          发布一个值得演化的想法
+          {t("idea.publishTitle")}
         </h1>
         <p className="mt-1 max-w-3xl text-[13px] text-[var(--ink-soft)]">
-          不只登记成品。可以发布问题、机会、假设或方案；系统会在提交前执行语义去重。
+          {t("idea.publishDesc")}
         </p>
 
         <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,760px)_320px] lg:justify-center">
@@ -131,7 +133,7 @@ export default function NewIdeaPage() {
                   className="input-field h-9"
                 >
                   {CATEGORIES.map((item) => (
-                    <option key={item.value} value={item.value}>{item.label}</option>
+                    <option key={item.value} value={item.value}>{t(item.label)}</option>
                   ))}
                 </select>
               </FormField>
@@ -148,7 +150,7 @@ export default function NewIdeaPage() {
                 <Input
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
-                  placeholder="例如：让 MCP Agent 自动验证一个 idea 是否已经被实现"
+                  placeholder={t("idea.titlePlaceholder")}
                   maxLength={500}
                   className="h-10"
                 />
@@ -192,7 +194,7 @@ export default function NewIdeaPage() {
                 disabled={loading}
                 icon={<DeimosIcon name="send" className="h-4 w-4" />}
               >
-                {loading ? "发布中…" : "发布并建立 provenance"}
+                {loading ? t("idea.publishing") : t("idea.publishButton")}
               </Button>
               <Link href="/ideas" className="font-code text-[10px] text-[var(--ink-faint)] hover:text-[var(--ink)]">
                 CANCEL
@@ -204,7 +206,7 @@ export default function NewIdeaPage() {
             <section className="rounded-[8px] border border-[#ffb76a] bg-[#fff6ea] p-4">
               <p className="font-code text-[10px] font-medium text-[#b75b00]">SIMILARITY GUARD / PRE-FLIGHT</p>
               <p className="mt-4 text-[13px] font-semibold text-[var(--ink)]">
-                提交前自动检查已有探索
+                {t("idea.autoCheck")}
               </p>
               <div className="mt-4 space-y-2 font-code text-[10px] leading-5 text-[var(--ink-soft)]">
                 <p>01&nbsp;&nbsp;semantic title match</p>

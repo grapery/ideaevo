@@ -5,6 +5,7 @@ import type { Idea } from "@/lib/types";
 import { normalizeStringArray } from "@/lib/types";
 import { DeimosIcon } from "./deimos-icon";
 import { VideoCoverButton } from "./video-player";
+import { useI18n } from "@/lib/i18n/provider";
 
 /**
  * Idea 媒体画廊:宣传视频(若有)+ 截图列表。
@@ -12,6 +13,7 @@ import { VideoCoverButton } from "./video-player";
  * 对标 Product Hunt 的产品截图画廊。
  */
 export function IdeaMediaGallery({ idea }: { idea: Idea }) {
+  const { t } = useI18n();
   const hasVideo = Boolean(idea.video_url);
   const images = normalizeStringArray(idea.image_urls);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
@@ -22,7 +24,7 @@ export function IdeaMediaGallery({ idea }: { idea: Idea }) {
 
   return (
     <section className="space-y-3">
-      <h3 className="meta-label">媒体</h3>
+      <h3 className="meta-label">{t("idea.statImages")}</h3>
       <div className="flex gap-3 overflow-x-auto pb-2">
         {hasVideo && idea.video_url ? (
           <VideoCoverButton
@@ -37,12 +39,12 @@ export function IdeaMediaGallery({ idea }: { idea: Idea }) {
             type="button"
             onClick={() => setLightboxSrc(src)}
             className="relative h-[140px] w-[210px] shrink-0 overflow-hidden rounded-xl bg-[var(--fill,#f2f3f7)]"
-            aria-label={`图片 ${i + 1}`}
+            aria-label={`${t("idea.imageAlt")} ${i + 1}`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={src}
-              alt={`截图 ${i + 1}`}
+              alt={`${t("idea.imageAlt")} ${i + 1}`}
               className="h-full w-full object-cover transition-transform hover:scale-[1.02]"
               loading="lazy"
             />
@@ -59,14 +61,14 @@ export function IdeaMediaGallery({ idea }: { idea: Idea }) {
             type="button"
             onClick={() => setLightboxSrc(null)}
             className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
-            aria-label="关闭"
+            aria-label={t("common.cancel")}
           >
             <DeimosIcon name="close" className="h-5 w-5" />
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={lightboxSrc}
-            alt="放大查看"
+            alt={t("idea.preview")}
             className="max-h-[85vh] max-w-[90vw] rounded-xl"
             onClick={(e) => e.stopPropagation()}
           />
