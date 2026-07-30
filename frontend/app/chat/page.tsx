@@ -98,6 +98,16 @@ export default function ChatPage() {
     });
   }, [activeId]);
 
+  // 滚动到消息列表底部。用 requestAnimationFrame + 双重 rAF 确保 DOM 更新后再滚动，
+  // 解决 React 批量更新导致 scrollIntoView 在渲染前执行、看不到新内容的问题。
+  const scrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      });
+    });
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     chatApi.listSessions().then((res) => setSessions(res.sessions));
@@ -160,7 +170,7 @@ export default function ChatPage() {
     try {
       const res = await chatApi.getMessages(sessionId);
       setMessages(normalizeChatMessages(res.messages));
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+      setTimeout(() => scrollToBottom(), 50);
     } catch (err) {
       notify.error(getErrorMessage(err, t("common.loadFailed")));
     }
@@ -226,6 +236,7 @@ export default function ChatPage() {
     };
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setStreaming(true);
+    scrollToBottom();
 
     let assistantContent = "";
     const stillActive = () => mountedRef.current && activeId === sessionId;
@@ -241,6 +252,7 @@ export default function ChatPage() {
         const res = await chatApi.getMessages(sessionId);
         if (stillActive()) {
           setMessages(normalizeChatMessages(res.messages));
+          scrollToBottom();
         }
         const sessionsRes = await chatApi.listSessions();
         if (stillActive()) setSessions(sessionsRes.sessions);
@@ -257,7 +269,7 @@ export default function ChatPage() {
           if (!stillActive()) return;
           assistantContent += chunk;
           updateLastAssistant(assistantContent);
-          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          scrollToBottom();
         },
         (fullContent) => {
           void finishStream(fullContent || assistantContent);
@@ -328,7 +340,7 @@ export default function ChatPage() {
               created_at: payload.created_at ?? new Date().toISOString(),
             };
             setMessages((prev) => upsertChatMessage(prev, assistant));
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            scrollToBottom();
             return;
           }
 
