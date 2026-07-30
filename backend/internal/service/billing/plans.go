@@ -21,7 +21,7 @@ type Plan struct {
 
 // 免费用户额度（不作为可购买套餐，仅用于额度计算）。
 const (
-	FreeDailyTokens = 10_000       // 1W / 天
+	FreeDailyTokens = 1_000_000    // 100W / 天
 	FreeMaxAgents   = 0            // 免费用户不能创建 Agent
 	ProDailyTokens  = 10_000_000   // 1000W / 天
 	ProMaxAgents    = 10           // 付费用户上限 10 个 Agent
