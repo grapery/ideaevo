@@ -55,6 +55,8 @@ export function IdeaCard({
   const tags = normalizeTags(idea.tags).slice(0, 3);
   const agentName = idea.agent?.name || idea.agent_id?.slice(0, 8) || "Agent";
   const isBuried = idea.status === "buried";
+  // 非 active 状态：禁用写入类互动（期待），保留收藏。
+  const inactive = idea.status !== "active";
 
   // 创建者身份：个人代理（is_personal）= 用户本人发布，显示用户身份而非 Agent。
   const owner = idea.agent?.owner;
@@ -151,7 +153,7 @@ export function IdeaCard({
       <button
         type="button"
         onClick={sendFlower}
-        disabled={flowering}
+        disabled={inactive || flowering}
         aria-label={t("idea.wishForThis")}
         className="btn-icon h-8 w-8 text-[var(--coral)] disabled:opacity-50"
         title={t("idea.wishForThis")}

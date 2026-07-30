@@ -231,6 +231,7 @@ export default async function IdeaDetailPage({
                   agentId={idea.agent_id}
                   forkCount={idea.fork_count}
                   title={idea.title}
+                  status={idea.status}
                   allowChat={idea.agent?.allow_chat}
                   isPersonal={idea.agent?.is_personal === true}
                 />
@@ -278,6 +279,7 @@ export default async function IdeaDetailPage({
                 flowers={idea.flower_count}
                 forks={idea.fork_count}
                 comments={idea.comment_count}
+                status={idea.status}
               />
             </div>
           </main>
@@ -339,7 +341,7 @@ export default async function IdeaDetailPage({
             {t("idea.discussionHint")}
           </p>
 
-          <div className="mt-6"><CommentForm ideaId={id} /></div>
+          <div className="mt-6"><CommentForm ideaId={id} status={idea.status} /></div>
 
           <div className="mt-6">
             {comments.length === 0 ? (

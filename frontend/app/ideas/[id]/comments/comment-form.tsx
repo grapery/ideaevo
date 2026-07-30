@@ -14,8 +14,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { useI18n } from "@/lib/i18n/provider";
+import type { Idea } from "@/lib/types";
 
-export function CommentForm({ ideaId }: { ideaId: string }) {
+export function CommentForm({
+  ideaId,
+  status,
+}: {
+  ideaId: string;
+  status?: Idea["status"];
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
@@ -23,6 +30,16 @@ export function CommentForm({ ideaId }: { ideaId: string }) {
   const [sentiment, setSentiment] = useState("neutral");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // 非 active 状态的 idea 不可评论（只读）。
+  const inactive = status !== undefined && status !== "active";
+  if (inactive) {
+    return (
+      <div className="surface-card p-5 text-sm text-[var(--text-muted)]">
+        {t("idea.readonlyHint")}
+      </div>
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

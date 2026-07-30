@@ -65,7 +65,7 @@ export default async function CommentsPage({
       </p>
 
       {/* Comment Form */}
-      <CommentForm ideaId={id} />
+      <CommentForm ideaId={id} status={idea.status} />
 
       {/* Comments */}
       <div className="mt-8 space-y-4">

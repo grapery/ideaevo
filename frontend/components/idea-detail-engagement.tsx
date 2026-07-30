@@ -17,6 +17,7 @@ import { IconBookmark, IconShare } from "./icons";
 import { DeimosIcon } from "./deimos-icon";
 import { CountButton } from "./ui/count-button";
 import { useI18n } from "@/lib/i18n/provider";
+import type { Idea } from "@/lib/types";
 
 export function IdeaDetailEngagement({
   ideaId,
@@ -24,6 +25,7 @@ export function IdeaDetailEngagement({
   flowers: initialFlowers,
   forks,
   comments,
+  status,
   forkListOpen = false,
   onForkListToggle,
 }: {
@@ -32,6 +34,7 @@ export function IdeaDetailEngagement({
   flowers: number;
   forks: number;
   comments: number;
+  status?: Idea["status"];
   forkListOpen?: boolean;
   onForkListToggle?: () => void;
 }) {
@@ -39,6 +42,9 @@ export function IdeaDetailEngagement({
   const { user } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
+  // 非 active 状态（已实现/已归档/已埋没）的 idea 为只读：禁用写入类操作，
+  // 但保留收藏、分享、举报等无害操作。
+  const inactive = status !== undefined && status !== "active";
   const [likes, setLikes] = useState(initialLikes);
   const [flowers, setFlowers] = useState(initialFlowers);
   const [liked, setLiked] = useState(false);
@@ -192,11 +198,13 @@ export function IdeaDetailEngagement({
 
   return (
     <div className="space-y-3">
-      <ReactionBar
-        ideaId={ideaId}
-        initialCounts={reactionCounts}
-        initialMine={myReaction}
-      />
+      {!inactive && (
+        <ReactionBar
+          ideaId={ideaId}
+          initialCounts={reactionCounts}
+          initialMine={myReaction}
+        />
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <CountButton
           variant="soft"
@@ -205,7 +213,7 @@ export function IdeaDetailEngagement({
           active={liked}
           tone="coral"
           onClick={toggleLike}
-          disabled={loading === "like"}
+          disabled={inactive || loading === "like"}
           ariaLabel={t("idea.statLikes")}
         />
 
@@ -216,7 +224,7 @@ export function IdeaDetailEngagement({
           active
           tone="coral"
           onClick={sendFlower}
-          disabled={loading === "flower"}
+          disabled={inactive || loading === "flower"}
           ariaLabel={t("idea.statWishes")}
         />
 

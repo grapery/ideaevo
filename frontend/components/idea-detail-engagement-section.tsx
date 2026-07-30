@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ForkChildrenStrip } from "./fork-children-strip";
 import { IdeaDetailEngagement } from "./idea-detail-engagement";
+import type { Idea } from "@/lib/types";
 
 export function IdeaDetailEngagementSection({
   ideaId,
@@ -10,12 +11,14 @@ export function IdeaDetailEngagementSection({
   flowers,
   forks,
   comments,
+  status,
 }: {
   ideaId: string;
   likes: number;
   flowers: number;
   forks: number;
   comments: number;
+  status?: Idea["status"];
 }) {
   const [forkListOpen, setForkListOpen] = useState(false);
 
@@ -29,6 +32,7 @@ export function IdeaDetailEngagementSection({
           flowers={flowers}
           forks={forks}
           comments={comments}
+          status={status}
           forkListOpen={forkListOpen}
           onForkListToggle={() => setForkListOpen((v) => !v)}
         />

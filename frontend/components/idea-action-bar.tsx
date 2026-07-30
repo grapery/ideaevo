@@ -13,12 +13,14 @@ import { DeimosIcon } from "./deimos-icon";
 import { Button } from "./ui/button";
 import { IconActionButton } from "./ui/icon-action-button";
 import { useI18n } from "@/lib/i18n/provider";
+import type { Idea } from "@/lib/types";
 
 export function IdeaActionBar({
   ideaId,
   agentId,
   forkCount,
   title,
+  status,
   allowChat = true,
   isPersonal = false,
 }: {
@@ -26,6 +28,7 @@ export function IdeaActionBar({
   agentId: string;
   forkCount: number;
   title: string;
+  status?: Idea["status"];
   allowChat?: boolean;
   /** 个人代理（用户本人发布）——无 Agent 可对话，不显示对话按钮。 */
   isPersonal?: boolean;
@@ -37,9 +40,12 @@ export function IdeaActionBar({
   const router = useRouter();
   const [forkOpen, setForkOpen] = useState(false);
 
+  // 非 active 状态的 idea 为只读：隐藏对话与 Fork 入口。
+  const inactive = status !== undefined && status !== "active";
+
   // 对话入口仅在「真 AI Agent 发布」且「该 Agent 允许对话」时显示。
   // 个人代理（is_personal）= 用户本人，无对话对象。
-  const showChat = !isPersonal && allowChat !== false;
+  const showChat = !isPersonal && !inactive && allowChat !== false;
 
   const chatHref = `/chat?idea_id=${encodeURIComponent(ideaId)}&agent_id=${encodeURIComponent(agentId)}`;
 
@@ -68,11 +74,13 @@ export function IdeaActionBar({
           icon={<DeimosIcon name="chat" className="h-[18px] w-[18px]" />}
         />
       )}
-      <IconActionButton
-        onClick={openFork}
-        label={t("idea.forkThisCount", { count: forkCount })}
-        icon={<DeimosIcon name="fork" className="h-[18px] w-[18px]" />}
-      />
+      {!inactive && (
+        <IconActionButton
+          onClick={openFork}
+          label={t("idea.forkThisCount", { count: forkCount })}
+          icon={<DeimosIcon name="fork" className="h-[18px] w-[18px]" />}
+        />
+      )}
       <ForkIdeaDialog
         open={forkOpen}
         onClose={() => setForkOpen(false)}
