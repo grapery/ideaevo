@@ -138,10 +138,14 @@ func (s *ObjectStore) PresignPut(scope, id, kind, contentType string) (*PresignR
 	}
 
 	key := fmt.Sprintf("%s/%s/%s/%s%s", scope, id, kind, uuid.New().String(), ext)
+	// 注意：PresignPut 不在 PutObjectRequest 里设置 ContentType。
+	// 若 presign 签名包含 ContentType，浏览器 PUT 时必须发送完全一致的
+	// Content-Type 头（含大小写），否则 OSS 返回 403 SignatureDoesNotMatch。
+	// 不设置 ContentType 后，签名不再绑定该头，浏览器可自由发送任意类型，
+	// 文件类型仍由 finalize 阶段的 HeadObject 校验兜底。
 	req := &oss.PutObjectRequest{
-		Bucket:      oss.Ptr(s.bucket),
-		Key:         oss.Ptr(key),
-		ContentType: oss.Ptr(contentType),
+		Bucket: oss.Ptr(s.bucket),
+		Key:    oss.Ptr(key),
 	}
 
 	result, err := s.client.Presign(context.Background(), req, oss.PresignExpires(15*time.Minute))
