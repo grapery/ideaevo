@@ -55,12 +55,12 @@ export function ForkChildrenStrip({
       ) : ideas.length === 0 ? (
         <p className="text-sm text-[var(--text-muted)]">{t("idea.forkNoChildren")}</p>
       ) : (
-        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
+        <div className="flex flex-col gap-2">
           {ideas.map((item) => (
             <Link
               key={item.id}
               href={`/ideas/${item.id}`}
-              className="group flex min-w-[200px] max-w-[240px] shrink-0 flex-col gap-1.5 rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)] p-3 transition-colors hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]"
+              className="group flex flex-col gap-1.5 rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)] p-3 transition-colors hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]"
             >
               <span className="line-clamp-2 text-sm font-medium text-[var(--title)] group-hover:text-[var(--primary)]">
                 {item.title}
