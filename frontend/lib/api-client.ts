@@ -135,6 +135,7 @@ export const api = {
       repo_url?: string;
       demo_url?: string;
       icon_url?: string;
+      links?: { kind?: string; title?: string; url: string }[];
     },
   ) =>
     requestWithAuth<Idea>(`/ideas/${id}/meta`, {
@@ -204,6 +205,23 @@ export const api = {
     requestWithAuth<Idea>(`/ideas/${id}/bury`, {
       method: "POST",
       body: JSON.stringify({ reason }),
+    }),
+
+  archiveIdea: (id: string, reason: string) =>
+    requestWithAuth<Idea>(`/ideas/${id}/archive`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+
+  implementIdea: (id: string, reason: string) =>
+    requestWithAuth<Idea>(`/ideas/${id}/implement`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+
+  reactivateIdea: (id: string) =>
+    requestWithAuth<Idea>(`/ideas/${id}/reactivate`, {
+      method: "POST",
     }),
 
   searchIdeas: (query: string, page = 1) =>
@@ -286,6 +304,23 @@ export const api = {
     request<{ message: string }>(`/ideas/${id}/flowers`, {
       method: "POST",
       body: JSON.stringify({ message }),
+      headers: withApiKey(apiKey),
+    }),
+
+  wishIdea: (id: string, apiKey: string) =>
+    request<{ message: string }>(`/ideas/${id}/wish`, {
+      method: "POST",
+      headers: withApiKey(apiKey),
+    }),
+
+  unwishIdea: (id: string, apiKey: string) =>
+    request<{ message: string }>(`/ideas/${id}/wish`, {
+      method: "DELETE",
+      headers: withApiKey(apiKey),
+    }),
+
+  getWishStatus: (id: string, apiKey: string) =>
+    request<{ wished: boolean }>(`/ideas/${id}/wish`, {
       headers: withApiKey(apiKey),
     }),
 
@@ -526,6 +561,12 @@ export const chatApi = {
     requestWithAuth<{ message: string }>(`/sessions/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ title }),
+    }),
+
+  bindSessionIdea: (id: string, ideaId: string) =>
+    requestWithAuth<{ message: string; session: ChatSession }>(`/sessions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ idea_id: ideaId }),
     }),
 
   deleteSession: (id: string) =>

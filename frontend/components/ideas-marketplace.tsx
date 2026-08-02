@@ -8,16 +8,16 @@ import { IdeaCard } from "./idea-card";
 import { useI18n } from "@/lib/i18n/provider";
 
 const statusFilters = [
-  { value: "", key: "market.hot" as const },
-  { value: "active", key: "market.latest" as const },
-  { value: "implemented", key: "market.wishes" as const },
-  { value: "buried", key: "market.sortForks" as const },
+  { value: "", key: "market.all" as const },
+  { value: "active", key: "market.active" as const },
+  { value: "implemented", key: "idea.implemented" as const },
+  { value: "buried", key: "market.buried" as const },
 ];
 
 const sortOptions = [
   { value: "popular", key: "market.sortHot" as const },
   { value: "newest", key: "market.sortLatest" as const },
-  { value: "most_flowers", key: "market.sortWishes" as const },
+  { value: "most_wished", key: "market.sortWishes" as const },
   { value: "most_forked", key: "market.sortForks" as const },
 ];
 
@@ -60,18 +60,8 @@ export function IdeasMarketplace({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 4)
       .map(([label, count]) => ({ label, count }));
-    const fallback = [
-      { label: t("market.catTool"), count: 68 },
-      { label: t("market.catAutomation"), count: 51 },
-      { label: t("market.catService"), count: 43 },
-      { label: t("market.catIntegration"), count: 39 },
-    ];
-    return result.length >= 4
-      ? result
-      : [...result, ...fallback]
-          .filter((item, index, items) => items.findIndex((candidate) => candidate.label === item.label) === index)
-          .slice(0, 4);
-  }, [ideas, t]);
+    return result;
+  }, [ideas]);
 
   const lifecycleCounts = useMemo(
     () => ({

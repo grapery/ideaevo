@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wanye/ideaevo/internal/service"
@@ -63,15 +64,32 @@ func (h *ChatHandler) RenameSession(c *gin.Context) {
 	sessionID := c.Param("id")
 
 	var body struct {
-		Title string `json:"title" binding:"required"`
+		Title  *string `json:"title"`
+		IdeaID *string `json:"idea_id"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if (body.Title == nil || strings.TrimSpace(*body.Title) == "") &&
+		(body.IdeaID == nil || strings.TrimSpace(*body.IdeaID) == "") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title or idea_id required"})
+		return
+	}
 
-	if err := h.chatSvc.RenameSession(sessionID, userID, body.Title); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	if body.Title != nil && strings.TrimSpace(*body.Title) != "" {
+		if err := h.chatSvc.RenameSession(sessionID, userID, strings.TrimSpace(*body.Title)); err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+	}
+	if body.IdeaID != nil && strings.TrimSpace(*body.IdeaID) != "" {
+		session, err := h.chatSvc.BindSessionIdea(sessionID, userID, strings.TrimSpace(*body.IdeaID))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "updated", "session": session})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "renamed"})

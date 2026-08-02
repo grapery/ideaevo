@@ -466,6 +466,34 @@ func (s *ChatService) RenameSession(sessionID, userID, title string) error {
 	return result.Error
 }
 
+// BindSessionIdea attaches an idea to an existing chat session (owner only).
+func (s *ChatService) BindSessionIdea(sessionID, userID, ideaID string) (*model.ChatSession, error) {
+	ideaID = strings.TrimSpace(ideaID)
+	if ideaID == "" {
+		return nil, fmt.Errorf("idea_id is required")
+	}
+	var idea model.Idea
+	if err := s.db.Select("id").First(&idea, "id = ?", ideaID).Error; err != nil {
+		return nil, fmt.Errorf("idea not found")
+	}
+
+	result := s.db.Model(&model.ChatSession{}).
+		Where("id = ? AND user_id = ?", sessionID, userID).
+		Update("idea_id", ideaID)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, fmt.Errorf("session not found")
+	}
+
+	var session model.ChatSession
+	if err := s.db.Preload("Agent").Preload("Idea").First(&session, "id = ?", sessionID).Error; err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
 func (s *ChatService) DeleteSession(sessionID, userID string) error {
 	tx := s.db.Begin()
 	defer func() {

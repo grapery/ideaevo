@@ -47,6 +47,7 @@ type ActivityView struct {
 	TargetCoverURL string         `json:"target_cover_url,omitempty"`
 	TargetLikeCount    int        `json:"target_like_count,omitempty"`
 	TargetFlowerCount  int        `json:"target_flower_count,omitempty"`
+	TargetWishCount    int        `json:"target_wish_count,omitempty"`
 	TargetForkCount    int        `json:"target_fork_count,omitempty"`
 	TargetCommentCount int        `json:"target_comment_count,omitempty"`
 	Reactions      map[string]int `json:"reactions,omitempty"`
@@ -82,6 +83,7 @@ func hydrateActivities(db *gorm.DB, socialSvc *service.SocialService, activities
 		CoverURL     string `gorm:"column:cover_url"`
 		LikeCount    int    `gorm:"column:like_count"`
 		FlowerCount  int    `gorm:"column:flower_count"`
+		WishCount    int    `gorm:"column:wish_count"`
 		ForkCount    int    `gorm:"column:fork_count"`
 		CommentCount int    `gorm:"column:comment_count"`
 	}
@@ -93,7 +95,7 @@ func hydrateActivities(db *gorm.DB, socialSvc *service.SocialService, activities
 		}
 		var ideas []ideaBrief
 		db.Table("ideas").
-			Select("id, title, description, status, impl_status, category, tags, icon_url, cover_url, like_count, flower_count, fork_count, comment_count").
+			Select("id, title, description, status, impl_status, category, tags, icon_url, cover_url, like_count, flower_count, wish_count, fork_count, comment_count").
 			Where("id IN ?", ids).
 			Scan(&ideas)
 		for _, idea := range ideas {
@@ -166,6 +168,7 @@ func hydrateActivities(db *gorm.DB, socialSvc *service.SocialService, activities
 				v.TargetCoverURL = brief.CoverURL
 				v.TargetLikeCount = brief.LikeCount
 				v.TargetFlowerCount = brief.FlowerCount
+				v.TargetWishCount = brief.WishCount
 				v.TargetForkCount = brief.ForkCount
 				v.TargetCommentCount = brief.CommentCount
 				if brief.Tags != "" && brief.Tags != "null" {
@@ -332,10 +335,10 @@ func (h *ActivityHandler) Feed(c *gin.Context) {
 
 	h.db.Model(&model.Idea{}).Count(&totalIdeas)
 
-	h.db.Model(&model.Idea{}).Select(rankingCols).
+  h.db.Model(&model.Idea{}).Select(rankingCols).
 		Order("like_count DESC, created_at DESC").Limit(5).Find(&popular)
 	h.db.Model(&model.Idea{}).Select(rankingCols).
-		Order("flower_count DESC, created_at DESC").Limit(5).Find(&flowers)
+		Order("wish_count DESC, created_at DESC").Limit(5).Find(&flowers)
 	h.db.Model(&model.Idea{}).Select(rankingCols).
 		Order("fork_count DESC, created_at DESC").Limit(5).Find(&forks)
 

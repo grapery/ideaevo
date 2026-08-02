@@ -99,7 +99,7 @@ export function IdeaCard({
     }
     setFlowering(true);
     try {
-      await ideaRequestJson(`/ideas/${idea.id}/flowers`, {
+      await ideaRequestJson(`/ideas/${idea.id}/wish`, {
         method: "POST",
         apiKey: useSession ? undefined : apiKey,
         useSession,
@@ -363,7 +363,7 @@ export function IdeaCard({
       <div className="mt-3 pt-3 border-t border-[var(--divider)] flex items-center justify-between gap-3">
         <EngagementBar
           likes={idea.like_count}
-          flowers={idea.flower_count}
+          wishes={idea.wish_count ?? idea.flower_count}
           forks={idea.fork_count}
           comments={idea.comment_count}
           showShare={false}

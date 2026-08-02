@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/wanye/ideaevo/internal/model"
 )
@@ -503,9 +504,9 @@ func (t *ArchiveIdeaTool) Parameters() json.RawMessage {
 		"type": "object",
 		"properties": map[string]any{
 			"idea_id": stringProp("ID of your idea to archive"),
-			"reason":  stringProp("Why you are archiving it (optional)"),
+			"reason":  stringProp("Short note explaining why this idea is paused/archived"),
 		},
-		"required": []string{"idea_id"},
+		"required": []string{"idea_id", "reason"},
 	})
 }
 func (t *ArchiveIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
@@ -513,7 +514,11 @@ func (t *ArchiveIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
-	_, err = t.ideaSvc.Archive(ToolStr(in, "idea_id"), authorID, ToolStr(in, "reason"))
+	reason := ToolStr(in, "reason")
+	if reason == "" {
+		return &ToolResult{OK: false, Error: "reason is required"}, nil
+	}
+	_, err = t.ideaSvc.Archive(ToolStr(in, "idea_id"), authorID, reason)
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
@@ -539,8 +544,9 @@ func (t *ImplementIdeaTool) Parameters() json.RawMessage {
 		"type": "object",
 		"properties": map[string]any{
 			"idea_id": stringProp("ID of your idea to mark as implemented"),
+			"reason":  stringProp("Short note explaining what was delivered / why it counts as implemented"),
 		},
-		"required": []string{"idea_id"},
+		"required": []string{"idea_id", "reason"},
 	})
 }
 func (t *ImplementIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
@@ -548,7 +554,11 @@ func (t *ImplementIdeaTool) Execute(ctx context.Context, p Principal, in ToolInp
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
-	_, err = t.ideaSvc.MarkImplemented(ToolStr(in, "idea_id"), authorID)
+	reason := ToolStr(in, "reason")
+	if reason == "" {
+		return &ToolResult{OK: false, Error: "reason is required"}, nil
+	}
+	_, err = t.ideaSvc.MarkImplemented(ToolStr(in, "idea_id"), authorID, reason)
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
@@ -568,18 +578,20 @@ func NewUpdateIdeaMetaTool(ideaSvc *IdeaService, assets *ObjectStore) *UpdateIde
 func (t *UpdateIdeaMetaTool) Name() string { return "update_idea_meta" }
 func (t *UpdateIdeaMetaTool) Description() string {
 	return "Update optional metadata for one of YOUR OWN ideas: implementation status, " +
-		"GitHub/repo URL, live demo URL, or icon URL (from prior upload). " +
+		"GitHub/repo URL, live demo URL, icon URL (from prior upload), or append an evidence link. " +
 		"All fields are optional; omit a field to leave it unchanged, pass empty string to clear."
 }
 func (t *UpdateIdeaMetaTool) Parameters() json.RawMessage {
 	return rawJSON(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"idea_id":     stringProp("ID of your idea"),
-			"impl_status": stringEnumProp("Implementation progress", "concept", "in_progress", "implemented", "paused"),
-			"repo_url":    stringProp("Optional source repo URL (e.g. GitHub)"),
-			"demo_url":    stringProp("Optional live demo URL after implementation"),
-			"icon_url":    stringProp("Optional icon URL from allowed storage"),
+			"idea_id":         stringProp("ID of your idea"),
+			"impl_status":     stringEnumProp("Implementation progress", "concept", "in_progress", "implemented", "paused"),
+			"repo_url":        stringProp("Optional source repo URL (e.g. GitHub)"),
+			"demo_url":        stringProp("Optional live demo URL after implementation"),
+			"icon_url":        stringProp("Optional icon URL from allowed storage"),
+			"evidence_url":    stringProp("Optional evidence / reference URL to append as a link"),
+			"evidence_title":  stringProp("Optional title for the evidence link"),
 		},
 		"required": []string{"idea_id"},
 	})
@@ -610,6 +622,23 @@ func (t *UpdateIdeaMetaTool) Execute(ctx context.Context, p Principal, in ToolIn
 	}
 	if v, ok := in["icon_url"].(string); ok {
 		input.IconURL = &v
+	}
+
+	evidenceURL := strings.TrimSpace(ToolStr(in, "evidence_url"))
+	if evidenceURL != "" {
+		if err := validateHTTPURL(evidenceURL); err != nil {
+			return &ToolResult{OK: false, Error: err.Error()}, nil
+		}
+		var existing []IdeaLink
+		if idea.Links != "" {
+			_ = json.Unmarshal([]byte(idea.Links), &existing)
+		}
+		title := strings.TrimSpace(ToolStr(in, "evidence_title"))
+		if title == "" {
+			title = "evidence"
+		}
+		existing = append(existing, IdeaLink{Kind: "reference", Title: title, URL: evidenceURL})
+		input.Links = &existing
 	}
 
 	updated, err := t.ideaSvc.UpdateMeta(ideaID, input, t.assets)

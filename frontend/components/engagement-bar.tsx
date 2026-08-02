@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/i18n/provider";
 
 export function EngagementBar({
   likes,
+  wishes,
   flowers,
   forks,
   comments,
@@ -15,7 +16,10 @@ export function EngagementBar({
   onItemClick,
 }: {
   likes: number;
-  flowers: number;
+  /** Primary community value signal. */
+  wishes?: number;
+  /** @deprecated Prefer `wishes` (maps from wish_count). */
+  flowers?: number;
   forks: number;
   comments: number;
   showShare?: boolean;
@@ -23,6 +27,7 @@ export function EngagementBar({
   onItemClick?: (key: string) => void;
 }) {
   const { t } = useI18n();
+  const wishCount = wishes ?? flowers ?? 0;
   const items: {
     icon: ReactNode;
     value: number;
@@ -32,8 +37,8 @@ export function EngagementBar({
     active?: boolean;
   }[] = [
     { icon: <DeimosIcon name="heart" className="h-3.5 w-3.5" />, value: likes, key: "like", label: t("idea.statLikes") },
-    { icon: <DeimosIcon name="wish" className="h-3.5 w-3.5" />, value: flowers, key: "wish", label: t("idea.statWishes"), tone: "link" },
-    { icon: <DeimosIcon name="fork" className="h-3.5 w-3.5" />, value: forks, key: "fork", label: "Fork" },
+    { icon: <DeimosIcon name="wish" className="h-3.5 w-3.5" />, value: wishCount, key: "wish", label: t("idea.statWishes"), tone: "link" },
+    { icon: <DeimosIcon name="fork" className="h-3.5 w-3.5" />, value: forks, key: "fork", label: t("agents.tabForks") },
     { icon: <DeimosIcon name="comment" className="h-3.5 w-3.5" />, value: comments, key: "comment", label: t("idea.statComments") },
   ];
 

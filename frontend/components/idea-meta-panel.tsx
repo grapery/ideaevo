@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { ImplStatusBadge } from "@/components/impl-status-badge";
-import { IdeaBuryButton } from "@/components/idea-bury-button";
+import { IdeaStatusActions } from "@/components/idea-status-actions";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -240,9 +240,9 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
             {saving ? t("common.saving") : t("common.save")}
           </button>
 
-          {idea.status === "active" && (
+          {canEdit && (
             <div className="border-t border-[var(--divider)] pt-3">
-              <IdeaBuryButton idea={idea} />
+              <IdeaStatusActions idea={idea} />
             </div>
           )}
         </div>
@@ -295,9 +295,9 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
               );
             })}
           </div>
-          {canEdit && idea.status === "active" && (
+          {canEdit && (
             <div className="pt-2">
-              <IdeaBuryButton idea={idea} />
+              <IdeaStatusActions idea={idea} />
             </div>
           )}
         </div>
@@ -319,7 +319,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
               {t("idea.implStatusHint")}
             </p>
           )}
-          {canEdit && idea.status === "active" && <IdeaBuryButton idea={idea} />}
+          {canEdit && <IdeaStatusActions idea={idea} />}
         </div>
       )}
     </div>

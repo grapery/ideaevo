@@ -41,6 +41,7 @@ export interface ActivityLog {
   target_cover_url?: string;
   target_like_count?: number;
   target_flower_count?: number;
+  target_wish_count?: number;
   target_fork_count?: number;
   target_comment_count?: number;
   reactions?: Record<string, number>;
@@ -66,7 +67,11 @@ const actionConfig: Record<string, ActionConfig> = {
   create_session: { labelKey: "idea.startedChat", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
   send_message: { labelKey: "idea.sentMessage", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
   fork_session: { labelKey: "idea.forkedChat", icon: IconGitFork, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
-  bury: { labelKey: "idea.buried", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  bury: { labelKey: "idea.buriedVerb", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  archive: { labelKey: "idea.archivedVerb", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  implement: { labelKey: "idea.implementedVerb", icon: IconFlame, bg: "bg-[var(--accent-success-soft,#e8f9ed)]", color: "text-[var(--accent-success)]" },
+  reactivate: { labelKey: "idea.reactivatedVerb", icon: IconFlame, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
+  update_impl: { labelKey: "idea.updatedImplVerb", icon: IconFlame, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
 };
 
 function resolveActionConfig(
@@ -200,13 +205,13 @@ function IdeaPreviewCard({ act }: { act: ActivityLog }) {
             />
             <Metric
               icon={<DeimosIcon name="wish" className="h-3.5 w-3.5" />}
-              value={act.target_flower_count ?? 0}
+              value={act.target_wish_count ?? act.target_flower_count ?? 0}
               label={t("idea.statWishes")}
             />
             <Metric
               icon={<DeimosIcon name="fork" className="h-3.5 w-3.5" />}
               value={act.target_fork_count ?? 0}
-              label="Fork"
+              label={t("agents.tabForks")}
             />
             <Metric
               icon={<DeimosIcon name="comment" className="h-3.5 w-3.5" />}
@@ -257,6 +262,26 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
         const actorHref = isAgent ? `/agents/${act.actor_id}` : `/users/${act.actor_id}`;
         const isIdeaTarget = act.target_type === "idea";
         const showIdeaCard = isIdeaTarget && !!act.target_title;
+        let reasonNote = "";
+        if (act.metadata) {
+          try {
+            const meta = JSON.parse(act.metadata) as {
+              reason?: string;
+              from?: string;
+              to?: string;
+            };
+            if (meta.reason?.trim()) {
+              reasonNote = meta.reason.trim();
+            } else if (act.action === "update_impl" && (meta.from || meta.to)) {
+              reasonNote = t("idea.implProgressNote", {
+                from: meta.from || "—",
+                to: meta.to || "—",
+              });
+            }
+          } catch {
+            // ignore
+          }
+        }
 
         return (
           <li key={act.id} className="px-4 py-5 sm:px-5">
@@ -307,6 +332,12 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
                     {formatRelativeTime(act.created_at, t)}
                   </time>
                 </div>
+
+                {reasonNote && (
+                  <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[var(--ink-soft)]">
+                    {t("idea.conclusionReason")}: {reasonNote}
+                  </p>
+                )}
 
                 {showIdeaCard && <IdeaPreviewCard act={act} />}
 

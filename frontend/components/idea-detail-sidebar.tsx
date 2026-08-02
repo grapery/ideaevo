@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Idea, FlowerDonor, IdeaLineage, IdeaStats } from "@/lib/types";
+import { Idea, FlowerSender, IdeaLineage, IdeaStats } from "@/lib/types";
 import { SendFlowerButton } from "./idea-action-bar";
 import { ForkFlowGraph } from "./fork-flow-graph";
 import { WireframeAvatar } from "./wireframe-avatar";
@@ -59,24 +59,25 @@ export function ForkTreePanel({
   );
 }
 
-function donorProfileHref(donor: FlowerDonor): string | undefined {
-  if (donor.user_id) return `/users/${donor.user_id}`;
-  if (donor.agent_id) return `/agents/${donor.agent_id}`;
+function senderProfileHref(sender: FlowerSender): string | undefined {
+  if (sender.user_id) return `/users/${sender.user_id}`;
+  if (sender.agent_id) return `/agents/${sender.agent_id}`;
   return undefined;
 }
 
+/** 送花面板：计数 + 送花者头像名单 + 送花按钮。 */
 export function FlowersPanel({
   ideaId,
   flowerCount,
-  initialDonors = [],
+  initialSenders = [],
 }: {
   ideaId: string;
   flowerCount: number;
-  initialDonors?: FlowerDonor[];
+  initialSenders?: FlowerSender[];
 }) {
-  const { t } = useI18n();
-  const [donors, setDonors] = useState<FlowerDonor[]>(initialDonors);
-  const [loaded, setLoaded] = useState(initialDonors.length > 0 || flowerCount === 0);
+  const { locale, t } = useI18n();
+  const [senders, setSenders] = useState<FlowerSender[]>(initialSenders);
+  const [loaded, setLoaded] = useState(initialSenders.length > 0 || flowerCount === 0);
   const [loadFailed, setLoadFailed] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
   const [listOpen, setListOpen] = useState(false);
@@ -89,12 +90,13 @@ export function FlowersPanel({
         return r.json();
       })
       .then((data) => {
-        if (!cancelled) setDonors(data.donors || []);
+        // 后端字段仍为 donors，前端按送花者展示
+        if (!cancelled) setSenders(data.donors || []);
       })
       .catch(() => {
         if (!cancelled) {
           setLoadFailed(true);
-          if (initialDonors.length === 0) setDonors([]);
+          if (initialSenders.length === 0) setSenders([]);
         }
       })
       .finally(() => {
@@ -103,54 +105,54 @@ export function FlowersPanel({
     return () => {
       cancelled = true;
     };
-  }, [ideaId, flowerCount, initialDonors.length, retryToken]);
+  }, [ideaId, flowerCount, initialSenders.length, retryToken]);
 
-  const displayDonors = donors.slice(0, 12);
-  const hiddenDonorCount = Math.max(0, donors.length - displayDonors.length);
-  const canExpand = donors.length > 0;
+  const displaySenders = senders.slice(0, 12);
+  const hiddenCount = Math.max(0, senders.length - displaySenders.length);
+  const canExpand = senders.length > 0;
 
   return (
     <div className="rounded-lg border border-[#ffb45a] bg-[#fff4e6] p-5 text-[#914700]">
       <h3 className="mb-3 border-b border-[#ffcf93] pb-2 font-code text-[10px] font-semibold uppercase">
-        <DeimosIcon name="wish" className="mr-1 inline-block h-3.5 w-3.5 text-[#ff8a00]" />
-        {t("idea.wishSignals")} / {t("idea.wishCount", { count: flowerCount })}
+        <DeimosIcon name="flower" className="mr-1 inline-block h-3.5 w-3.5 text-[#ff8a00]" />
+        {t("idea.flowerSignals")} / {t("idea.flowerCountLabel", { count: flowerCount })}
       </h3>
       {!loaded ? (
         <p className="mb-2.5 text-sm text-[var(--text-muted)]">{t("common.loading")}</p>
-      ) : displayDonors.length > 0 ? (
+      ) : displaySenders.length > 0 ? (
         <button
           type="button"
           onClick={() => setListOpen(true)}
-          className="mb-2.5 flex flex-wrap items-center gap-2 rounded-md p-1 -m-1 text-left transition-colors hover:bg-[var(--bg-subtle)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ink-faint)] cursor-pointer"
+          className="mb-2.5 -m-1 flex flex-wrap items-center gap-2 rounded-md p-1 text-left transition-colors hover:bg-[var(--bg-subtle)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ink-faint)] cursor-pointer"
           aria-label={t("common.viewAll")}
           title={t("common.viewAll")}
         >
-          {displayDonors.map((donor) => (
+          {displaySenders.map((sender) => (
             <WireframeAvatar
-              key={donor.user_id || donor.agent_id || donor.name}
-              name={donor.name}
-              avatarUrl={donor.avatar_url}
-              entityId={donor.user_id || donor.agent_id}
-              kind={donor.user_id ? "user" : "agent"}
+              key={sender.user_id || sender.agent_id || sender.name}
+              name={sender.name}
+              avatarUrl={sender.avatar_url}
+              entityId={sender.user_id || sender.agent_id}
+              kind={sender.user_id ? "user" : "agent"}
               size={36}
-              title={donor.name}
+              title={sender.name}
             />
           ))}
-          {hiddenDonorCount > 0 && (
+          {hiddenCount > 0 && (
             <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 text-xs tabular-nums text-[var(--text-muted)]">
-              +{hiddenDonorCount}
+              +{hiddenCount}
             </span>
           )}
         </button>
       ) : loadFailed ? (
         <div className="mb-2.5">
-          <p className="text-sm text-[var(--text-muted)]">{t("idea.wishLoadFailed")}</p>
+          <p className="text-sm text-[var(--text-muted)]">{t("idea.flowerLoadFailed")}</p>
           <button
             type="button"
             onClick={() => {
               setLoaded(false);
               setLoadFailed(false);
-              setRetryToken((t) => t + 1);
+              setRetryToken((n) => n + 1);
             }}
             className="mt-1 text-xs text-[var(--primary)] hover:underline"
           >
@@ -158,12 +160,12 @@ export function FlowersPanel({
           </button>
         </div>
       ) : flowerCount > 0 ? (
-        <p className="mb-2.5 text-sm text-[var(--text-muted)]">{t("idea.wishUnavailable")}</p>
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">{t("idea.flowerUnavailable")}</p>
       ) : (
-        <p className="mb-2.5 text-sm text-[var(--text-muted)]">{t("idea.noWishes")}</p>
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">{t("idea.noFlowers")}</p>
       )}
       <p className="mb-3 font-code text-[10px] tabular-nums text-[#914700]/70">
-        {t("idea.highWish")} · {t("idea.wishCount", { count: flowerCount })}
+        {t("idea.flowerCountLabel", { count: flowerCount })}
         {canExpand && (
           <button
             type="button"
@@ -180,36 +182,41 @@ export function FlowersPanel({
         <Modal
           open={listOpen}
           onClose={() => setListOpen(false)}
-          title={t("idea.wishDonors", { count: donors.length })}
-          description={t("idea.wishSignals")}
+          title={t("idea.flowerSenders", { count: senders.length })}
+          description={t("idea.flowerSignals")}
         >
           <ul className="-mx-1 max-h-[60vh] space-y-1 overflow-y-auto">
-            {donors.map((donor) => {
-              const href = donorProfileHref(donor);
+            {senders.map((sender) => {
+              const href = senderProfileHref(sender);
               const inner = (
                 <>
                   <WireframeAvatar
-                    name={donor.name}
-                    avatarUrl={donor.avatar_url}
-                    entityId={donor.user_id || donor.agent_id}
-                    kind={donor.user_id ? "user" : "agent"}
+                    name={sender.name}
+                    avatarUrl={sender.avatar_url}
+                    entityId={sender.user_id || sender.agent_id}
+                    kind={sender.user_id ? "user" : "agent"}
                     size={32}
                   />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-[var(--title)]">
-                      {donor.name}
+                      {sender.name}
                     </div>
                     <div className="text-xs text-[var(--text-muted)]">
-                      {donor.user_id ? "User" : "Agent"}
-                      {donor.created_at && (
-                        <> · {new Date(donor.created_at).toLocaleDateString("zh-CN")}</>
+                      {sender.user_id ? "User" : "Agent"}
+                      {sender.created_at && (
+                        <>
+                          {" · "}
+                          {new Date(sender.created_at).toLocaleDateString(
+                            locale === "en" ? "en-US" : "zh-CN",
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
                 </>
               );
               return (
-                <li key={donor.user_id || donor.agent_id || donor.name}>
+                <li key={sender.user_id || sender.agent_id || sender.name}>
                   {href ? (
                     <Link
                       href={href}
@@ -267,10 +274,13 @@ export function RelatedIdeasPanel({ ideas, currentId }: { ideas: Idea[]; current
 
 export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats | null }) {
   const { t } = useI18n();
+  const wishCount = stats?.wish_count ?? idea.wish_count ?? 0;
+  const flowerCount = stats?.flower_count ?? idea.flower_count ?? 0;
   const rows: [string, number][] = stats
     ? [
         [t("idea.statLikes"), stats.like_count],
-        [t("idea.statWishes"), stats.flower_count],
+        [t("idea.statWishes"), wishCount],
+        [t("idea.statFlowers"), flowerCount],
         ["Fork", stats.fork_count],
         [t("idea.statComments"), stats.comment_count],
         [t("idea.statViews"), stats.view_count],
@@ -282,7 +292,8 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
       ]
     : [
         [t("idea.statLikes"), idea.like_count],
-        [t("idea.statWishes"), idea.flower_count],
+        [t("idea.statWishes"), wishCount],
+        [t("idea.statFlowers"), flowerCount],
         ["Fork", idea.fork_count],
         [t("idea.statComments"), idea.comment_count],
       ];
@@ -313,8 +324,9 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
               >
                 <span>v{row.version}</span>
                 <span className="tabular-nums">
-                  Fork {row.stats.fork_count} · {t("idea.statComments")} {row.stats.comment_count} · {t("idea.statWishes")}{" "}
-                  {row.stats.flower_count} · {t("idea.statReactions")} {row.stats.reaction_count}
+                  Fork {row.stats.fork_count} · {t("idea.statComments")} {row.stats.comment_count} ·{" "}
+                  {t("idea.statFlowers")} {row.stats.flower_count} · {t("idea.statReactions")}{" "}
+                  {row.stats.reaction_count}
                 </span>
               </div>
             ))}

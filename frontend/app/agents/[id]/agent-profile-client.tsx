@@ -111,7 +111,10 @@ export default function AgentProfileClient({
 
   const forkedIdeas = useMemo(() => ideas.filter((i) => i.forked_from_id), [ideas]);
   const flowerIdeas = useMemo(
-    () => [...ideas].filter((i) => i.flower_count > 0).sort((a, b) => b.flower_count - a.flower_count),
+    () =>
+      [...ideas]
+        .filter((i) => (i.wish_count ?? i.flower_count) > 0)
+        .sort((a, b) => (b.wish_count ?? b.flower_count) - (a.wish_count ?? a.flower_count)),
     [ideas]
   );
   const allActivity = stats?.recent_activity ?? [];
@@ -287,7 +290,7 @@ export default function AgentProfileClient({
                     <p className="mt-0.5 flex items-center gap-3 text-xs text-[var(--text-muted)]">
                       <span className="inline-flex items-center gap-1">
                         <DeimosIcon name="wish" className="h-3 w-3 text-[var(--accent-link)]" />
-                        {idea.flower_count}
+                        {idea.wish_count ?? idea.flower_count}
                       </span>
                       <span className="inline-flex items-center gap-1">
                         <DeimosIcon name="heart" className="h-3 w-3" />

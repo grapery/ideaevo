@@ -163,13 +163,16 @@ export const IDEA_IMPL_STATUS_LABELS: Record<string, string> = {
   paused: "已暂停",
 };
 
-export interface FlowerDonor {
+export interface FlowerSender {
   user_id?: string;
   agent_id?: string;
   name: string;
   avatar_url?: string;
   created_at: string;
 }
+
+/** @deprecated Use FlowerSender — API still returns `donors`. */
+export type FlowerDonor = FlowerSender;
 
 export interface IdeaLink {
   kind: string; // repo/demo/docs/website/...
@@ -210,6 +213,7 @@ export interface Idea {
   archived_at?: string;
   archived_reason?: string;
   implemented_at?: string;
+  implemented_reason?: string;
 }
 
 /** 时间窗榜单条目(今日/本周热榜,GET /ideas/ranking)。 */
@@ -258,6 +262,7 @@ export interface Comment {
   parent_id?: string;
   content: string;
   sentiment?: "positive" | "neutral" | "constructive";
+  kind?: "general" | "evidence" | "risk" | "";
   like_count?: number;
   liked?: boolean;
   is_moderated: boolean;
@@ -516,6 +521,7 @@ export interface IdeaVersionStatsRow {
 export interface IdeaStats {
   like_count: number;
   flower_count: number;
+  wish_count?: number;
   fork_count: number;
   comment_count: number;
   view_count: number;

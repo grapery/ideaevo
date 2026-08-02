@@ -39,10 +39,11 @@ func TestIdeaService_MarkImplemented_SetsStatusAndTimestamp(t *testing.T) {
 	idea, agentID := seedIdeaForLifecycle(t)
 	svc := NewIdeaService(testDB(t))
 
-	updated, err := svc.MarkImplemented(idea.ID, agentID)
+	updated, err := svc.MarkImplemented(idea.ID, agentID, "demo live + docs")
 	require.NoError(t, err)
 	assert.Equal(t, model.IdeaStatusImplemented, updated.Status)
 	require.NotNil(t, updated.ImplementedAt)
+	assert.Equal(t, "demo live + docs", updated.ImplementedReason)
 }
 
 func TestIdeaService_Reactivate_RestoresActive(t *testing.T) {
@@ -72,7 +73,7 @@ func TestIdeaService_MarkImplemented_RejectsNonAuthor(t *testing.T) {
 	idea, _ := seedIdeaForLifecycle(t)
 	svc := NewIdeaService(testDB(t))
 
-	_, err := svc.MarkImplemented(idea.ID, "agt-someone-else")
+	_, err := svc.MarkImplemented(idea.ID, "agt-someone-else", "x")
 	require.Error(t, err)
 }
 

@@ -58,10 +58,10 @@ export default function DashboardPage() {
   }
 
   const metricCards = [
-    ["MY IDEAS", profile.idea_count, "registered"],
-    ["OWNED AGENTS", profile.agent_count, "operational"],
-    ["ACTIVE FORKS", profile.following_count, "following"],
-    ["NEEDS ATTENTION", pendingDecisions.length, "decision"],
+    [t("dashboard.metricIdeas"), profile.idea_count, "registered"],
+    [t("dashboard.metricAgents"), profile.agent_count, "operational"],
+    [t("dashboard.metricFollowing"), profile.following_count, "following"],
+    [t("dashboard.metricAttention"), pendingDecisions.length, "decision"],
   ];
 
   return (

@@ -34,7 +34,16 @@ func uniqueSuffix() string {
 // ---- 常量 / 白名单（纯逻辑，无需 DB）----
 
 func TestFeedActions_ContainsCreateForkShare(t *testing.T) {
-	want := map[string]bool{ActionRegister: true, ActionFork: true, ActionShare: true}
+	want := map[string]bool{
+		ActionRegister:   true,
+		ActionFork:       true,
+		ActionShare:      true,
+		ActionBury:       true,
+		ActionArchive:    true,
+		ActionImplement:  true,
+		ActionReactivate: true,
+		ActionUpdateImpl: true,
+	}
 	if len(FeedActions) != len(want) {
 		t.Fatalf("FeedActions has %d entries, want %d: %v", len(FeedActions), len(want), FeedActions)
 	}
@@ -46,8 +55,8 @@ func TestFeedActions_ContainsCreateForkShare(t *testing.T) {
 }
 
 func TestFeedActions_ExcludesHighFrequencyNoise(t *testing.T) {
-	// 点赞/送花/发消息/关注等高频动作不应进 feed 白名单。
-	noise := []string{"like", "flower", "send_message", "create_session", "follow", "unfollow", "bury"}
+	// 点赞/送花/发消息/关注等高频动作不应进 feed 白名单。结案类动作允许进入。
+	noise := []string{"like", "flower", "wish", "send_message", "create_session", "follow", "unfollow", "comment"}
 	inSet := make(map[string]bool, len(FeedActions))
 	for _, a := range FeedActions {
 		inSet[a] = true

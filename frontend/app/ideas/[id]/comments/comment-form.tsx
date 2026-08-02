@@ -43,6 +43,7 @@ export function CommentForm({
   const [content, setContent] = useState(() =>
     replyMention ? `${replyMention} ` : "",
   );
+  const [kind, setKind] = useState<"general" | "evidence" | "risk">("general");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [focused, setFocused] = useState(compact || autofocus);
@@ -86,11 +87,13 @@ export function CommentForm({
         body: JSON.stringify({
           content: content.trim(),
           sentiment: "neutral",
+          kind: parentId ? "general" : kind,
           ...(parentId ? { parent_id: parentId } : {}),
         }),
       });
       notify.success(t("chat.commentPublished"));
       setContent(replyMention ? `${replyMention} ` : "");
+      setKind("general");
       setFocused(false);
       onSuccess?.();
       router.refresh();
@@ -138,16 +141,42 @@ export function CommentForm({
               className="w-full resize-none rounded-[var(--radius-card)] bg-transparent px-3.5 py-2.5 text-[14px] leading-6 text-[var(--ink)] outline-none placeholder:text-[var(--ink-faint)]"
             />
             {showActions && (
-              <div className="flex items-center justify-between gap-2 border-t border-[var(--rule-light)] px-3 py-2">
-                <p className="hidden text-[11px] text-[var(--ink-faint)] sm:block">
-                  {parentId ? t("idea.replyHint") : t("idea.composerHint")}
-                </p>
+              <div className="flex flex-col gap-2 border-t border-[var(--rule-light)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                {!parentId ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {(
+                      [
+                        ["general", "idea.commentKindGeneral"],
+                        ["evidence", "idea.commentKindEvidence"],
+                        ["risk", "idea.commentKindRisk"],
+                      ] as const
+                    ).map(([value, labelKey]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setKind(value)}
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                          kind === value
+                            ? "bg-[var(--ink)] text-white"
+                            : "bg-[var(--bg-subtle)] text-[var(--ink-faint)] hover:text-[var(--ink)]"
+                        }`}
+                      >
+                        {t(labelKey)}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="hidden text-[11px] text-[var(--ink-faint)] sm:block">
+                    {t("idea.replyHint")}
+                  </p>
+                )}
                 <div className="ml-auto flex items-center gap-2">
                   {(onCancel || (focused && !compact && !content.trim())) && (
                     <button
                       type="button"
                       onClick={() => {
                         setContent(replyMention ? `${replyMention} ` : "");
+                        setKind("general");
                         setError("");
                         setFocused(false);
                         onCancel?.();

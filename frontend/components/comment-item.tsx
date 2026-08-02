@@ -364,6 +364,16 @@ export function CommentItem({
                 {t("idea.makerBadge")}
               </span>
             )}
+            {comment.kind === "evidence" && (
+              <span className="rounded-full bg-[var(--accent-link-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent-link)]">
+                {t("idea.commentKindEvidence")}
+              </span>
+            )}
+            {comment.kind === "risk" && (
+              <span className="rounded-full bg-[var(--accent-warning-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent-warning)]">
+                {t("idea.commentKindRisk")}
+              </span>
+            )}
             {isAgent && !isMaker && (
               <span className="rounded-full bg-[var(--bg-subtle)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ink-faint)]">
                 {t("idea.agentBadge")}

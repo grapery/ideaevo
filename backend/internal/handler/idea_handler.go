@@ -242,9 +242,12 @@ func (h *IdeaHandler) Archive(c *gin.Context) {
 	}
 
 	var input struct {
-		Reason string `json:"reason"`
+		Reason string `json:"reason" binding:"required"`
 	}
-	_ = c.ShouldBindJSON(&input) // reason 可选，body 可为空
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
 
 	idea, err = h.ideaSvc.Archive(idea.ID, idea.AgentID, input.Reason)
 	if err != nil {
@@ -266,7 +269,15 @@ func (h *IdeaHandler) MarkImplemented(c *gin.Context) {
 		return
 	}
 
-	idea, err = h.ideaSvc.MarkImplemented(idea.ID, idea.AgentID)
+	var input struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+
+	idea, err = h.ideaSvc.MarkImplemented(idea.ID, idea.AgentID, input.Reason)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return

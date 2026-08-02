@@ -44,6 +44,24 @@ export default function NewIdeaPage() {
   const [similarIdeas, setSimilarIdeas] = useState<SimilarMatch[]>([]);
 
   useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("deimos_idea_draft_from_chat");
+      if (!raw) return;
+      const draft = JSON.parse(raw) as {
+        title?: string;
+        description?: string;
+        agent_id?: string;
+      };
+      if (draft.title) setTitle(draft.title);
+      if (draft.description) setDescription(draft.description);
+      if (draft.agent_id) setAgentId(draft.agent_id);
+      sessionStorage.removeItem("deimos_idea_draft_from_chat");
+    } catch {
+      // ignore malformed draft
+    }
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     agentApi
       .listMyAgents()

@@ -27,6 +27,7 @@ type IdeaMorePanelProps = {
     title: string;
     subtitle: string;
     statusSection: string;
+    conclusionReason: string;
     lifecycle: string;
     implProgress: string;
     registered: string;
@@ -34,6 +35,7 @@ type IdeaMorePanelProps = {
     signals: string;
     likes: string;
     wishes: string;
+    flowers: string;
     forks: string;
     comments: string;
     views: string;
@@ -97,9 +99,27 @@ export function IdeaMorePanel({
   const owner = agent?.owner;
   const ownerHref = owner?.id ? `/users/${owner.id}` : undefined;
 
+  const conclusionReason =
+    idea.status === "buried"
+      ? idea.buried_reason
+      : idea.status === "archived"
+        ? idea.archived_reason
+        : idea.status === "implemented"
+          ? idea.implemented_reason
+          : undefined;
+  const conclusionAt =
+    idea.status === "buried"
+      ? idea.buried_at
+      : idea.status === "archived"
+        ? idea.archived_at
+        : idea.status === "implemented"
+          ? idea.implemented_at
+          : undefined;
+
   const signalRows = [
     { label: labels.likes, value: stats?.like_count ?? idea.like_count },
-    { label: labels.wishes, value: stats?.flower_count ?? idea.flower_count },
+    { label: labels.wishes, value: stats?.wish_count ?? idea.wish_count ?? 0 },
+    { label: labels.flowers, value: stats?.flower_count ?? idea.flower_count },
     { label: labels.forks, value: stats?.fork_count ?? idea.fork_count },
     { label: labels.comments, value: stats?.comment_count ?? idea.comment_count },
     { label: labels.views, value: stats?.view_count ?? 0 },
@@ -146,12 +166,25 @@ export function IdeaMorePanel({
                 {new Date(idea.created_at).toLocaleDateString(locale)}
               </dd>
             </div>
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--rule-light)] pb-3">
               <dt className="text-[var(--ink-faint)]">{labels.updated}</dt>
               <dd className="font-code text-[12px] tabular-nums text-[var(--ink-soft)]">
                 {new Date(idea.updated_at).toLocaleDateString(locale)}
               </dd>
             </div>
+            {conclusionReason && (
+              <div className="rounded-[var(--radius-card)] border border-[var(--rule-light)] bg-[var(--bg-subtle)] px-3 py-3">
+                <p className="text-[11px] font-medium text-[var(--ink-faint)]">
+                  {labels.conclusionReason}
+                  {conclusionAt
+                    ? ` · ${new Date(conclusionAt).toLocaleDateString(locale)}`
+                    : ""}
+                </p>
+                <p className="mt-1.5 text-[13px] leading-6 text-[var(--ink)]">
+                  {conclusionReason}
+                </p>
+              </div>
+            )}
           </dl>
         </div>
 

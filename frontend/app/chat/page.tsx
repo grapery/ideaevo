@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { chatApi } from "@/lib/api-client";
 import { ChatSession, ChatMessage as ChatMessageType, ChatAttachmentRef } from "@/lib/types";
 import ChatMessage from "@/components/chat-message";
 import ChatInput from "@/components/chat-input";
+import { ChatWorkbenchSidebar } from "@/components/chat-workbench-sidebar";
 import Link from "next/link";
 import { SearchInput } from "@/components/search-input";
 import { FormField } from "@/components/ui/form-field";
@@ -42,6 +43,7 @@ function formatSessionTime(
 export default function ChatPage() {
   const { locale, t } = useI18n();
   const { user } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
@@ -504,13 +506,76 @@ export default function ChatPage() {
         });
         setSessions((prev) => [res.session, ...prev]);
         setActiveId(res.session.id);
-        notify.success(t("idea.forked"));
+        notify.success(t("chat.sessionForked"));
       } catch (err) {
         notify.error(getErrorMessage(err, t("common.operationFailed")));
       }
     },
     [activeId, t]
   );
+
+  const handleForkSession = useCallback(async () => {
+    if (!activeId) return;
+    try {
+      const res = await chatApi.forkSession(activeId);
+      setSessions((prev) => [res.session, ...prev]);
+      setActiveId(res.session.id);
+      notify.success(t("chat.sessionForked"));
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
+    }
+  }, [activeId, t]);
+
+  const handleExportSession = useCallback(() => {
+    if (!activeId || !activeSession) return;
+    const payload = {
+      session: activeSession,
+      messages,
+      exported_at: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `deimos-session-${activeId.slice(0, 8)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify.success(t("chat.exported"));
+  }, [activeId, activeSession, messages, t]);
+
+  const handleSaveToIdea = useCallback(() => {
+    if (!activeSession) return;
+    if (activeSession.idea_id) {
+      router.push(`/ideas/${activeSession.idea_id}`);
+      return;
+    }
+    const dialogue = messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-8)
+      .map((m) => `${m.role === "user" ? "User" : "Agent"}: ${m.content.trim()}`)
+      .filter((line) => line.length > 8)
+      .join("\n\n");
+    const draftTitle =
+      activeSession.title ||
+      activeSession.agent?.name ||
+      activeSession.agent_id?.slice(0, 8) ||
+      "Agent";
+    const draft = {
+      title: draftTitle,
+      description: dialogue.slice(0, 4000),
+      agent_id: activeSession.agent_id,
+      from_session_id: activeSession.id,
+    };
+    try {
+      sessionStorage.setItem("deimos_idea_draft_from_chat", JSON.stringify(draft));
+    } catch {
+      // ignore quota / private mode
+    }
+    notify.success(t("chat.saveDraftHint"));
+    router.push("/ideas/new?from=chat");
+  }, [activeSession, messages, router, t]);
 
   const workbenchTopbar = (
     <div className="flex h-12 shrink-0 items-center border-b border-[var(--divider)] bg-[var(--bg-surface)] px-[18px] font-code text-xs">
@@ -772,75 +837,25 @@ export default function ChatPage() {
           )}
         </div>
 
-        <aside className="hidden w-[380px] shrink-0 border-l border-[var(--divider)] bg-[var(--bg-surface)] xl:flex xl:flex-col">
-          <div className="flex h-[72px] shrink-0 items-center border-b border-[var(--divider)] px-5">
-            <div>
-              <p className="font-code text-[12px] font-semibold tracking-[0.06em] text-[var(--title)]">{t("chat.evidenceArtifact")}</p>
-              <p className="mt-1 font-code text-xs text-[var(--text-muted)]">implementation-check.json</p>
-            </div>
-          </div>
-          <div className="flex-1 space-y-3 overflow-y-auto p-4">
-            <section className="rounded-[6px] border border-[var(--accent-success)]/35 bg-[var(--accent-success-soft)] p-4 font-code text-[12px] leading-7 text-[var(--accent-success)]">
-              <p>{t("chat.currentVerdict")}</p>
-              <p>{activeId ? t("chat.inProgress") : t("chat.waitingSession")}</p>
-              <p>{t("chat.confidence")}: {activeId ? "0.78" : "—"}</p>
-            </section>
-            <section>
-              <div className="rounded-[6px] border border-[var(--rule)] bg-[var(--bg-canvas)] p-4">
-                <p className="font-code text-[12px] text-[var(--title)]">{t("chat.currentExecutor")}</p>
-                <p className="mt-3 flex items-center gap-2 text-[13px] font-medium text-[var(--title)]">
-                  {activeId && activeSession?.agent_id ? (
-                    <WireframeAvatar
-                      name={agentName}
-                      avatarUrl={activeSession?.agent?.avatar_url}
-                      entityId={activeSession.agent_id}
-                      kind="agent"
-                      size={28}
-                      href={`/agents/${activeSession.agent_id}`}
-                    />
-                  ) : (
-                    <DeimosIcon name="agent" className="h-4 w-4 text-[var(--accent-success)]" />
-                  )}
-                  {activeId && activeSession?.agent_id ? (
-                    <Link
-                      href={`/agents/${activeSession.agent_id}`}
-                      className="hover:text-[var(--accent-link)]"
-                    >
-                      {agentName}
-                    </Link>
-                  ) : (
-                    t("chat.waitingSession")
-                  )}
-                </p>
-                <p className="mt-2 font-code text-xs text-[var(--text-muted)]">{t("chat.toolsConnected")}</p>
-              </div>
-            </section>
-            <section>
-              <div className="rounded-[6px] border border-[var(--rule)] bg-[var(--bg-canvas)] p-4 font-code text-[12px] leading-7 text-[var(--text-secondary)]">
-                <p className="text-[var(--title)]">{t("chat.candidates")}</p>
-                <p className="mt-3">01&nbsp;&nbsp;{ideaTitle || t("chat.noIdeaBound")}</p>
-                <p>02&nbsp;&nbsp;{t("chat.semanticDedup")}</p>
-                <p>03&nbsp;&nbsp;{t("idea.implementationEvidence")}</p>
-              </div>
-            </section>
-            <section>
-              <div className="rounded-[6px] border border-[var(--rule)] bg-[var(--bg-canvas)] p-4 font-code text-[12px] leading-7 text-[var(--accent-link)]">
-                <p className="text-[var(--title)]">{t("chat.provenance")}</p>
-                <p className="mt-3">09:42:18 search_ideas</p>
-                <p>09:42:19 get_idea</p>
-                <p>09:42:22 A2A repo-inspector</p>
-                <p>09:42:26 web evidence attached</p>
-                <p>09:42:30 verdict updated</p>
-                <p className="mt-3">{t("chat.replayable")}</p>
-              </div>
-            </section>
-          </div>
-          <div className="flex h-12 shrink-0 items-center gap-6 border-t border-[var(--divider)] px-4 font-code text-xs text-[var(--title)]">
-            <button type="button" className="hover:text-[var(--accent-success)]">{t("chat.saveToIdea")}</button>
-            <button type="button" className="hover:text-[var(--accent-link)]">{t("chat.forkSession")}</button>
-            <button type="button" className="hover:text-[var(--accent-link)]">{t("chat.exportJson")}</button>
-          </div>
-        </aside>
+        <ChatWorkbenchSidebar
+          active={!!activeId}
+          session={activeSession}
+          messages={messages}
+          agentName={agentName}
+          ideaTitle={ideaTitle}
+          onSaveToIdea={handleSaveToIdea}
+          onForkSession={() => void handleForkSession()}
+          onExportJson={handleExportSession}
+          onIdeaUpdated={(idea) => {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === activeId && s.idea_id === idea.id
+                  ? { ...s, idea: { ...s.idea, ...idea, id: idea.id } }
+                  : s,
+              ),
+            );
+          }}
+        />
       </div>
 
       <Modal

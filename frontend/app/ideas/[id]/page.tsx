@@ -1,10 +1,10 @@
 import Link from "next/link";
 import {
-  FlowerDonor,
   Idea,
   IdeaLineage,
   IdeaStats,
   Comment,
+  FlowerSender,
   normalizeLinks,
   normalizeTags,
   safeUrl,
@@ -53,7 +53,7 @@ async function getComments(ideaId: string): Promise<Comment[]> {
   }
 }
 
-async function getFlowerDonors(ideaId: string): Promise<FlowerDonor[]> {
+async function getFlowerSenders(ideaId: string): Promise<FlowerSender[]> {
   try {
     const res = await fetch(`${apiBase}/ideas/${ideaId}/flowers`, { cache: "no-store" });
     if (!res.ok) return [];
@@ -116,10 +116,10 @@ export default async function IdeaDetailPage({
     );
   }
 
-  const [comments, forkChildren, flowerDonors, stats, lineage] = await Promise.all([
+  const [comments, forkChildren, flowerSenders, stats, lineage] = await Promise.all([
     getComments(id),
     getForkChildren(id),
-    idea.flower_count > 0 ? getFlowerDonors(id) : Promise.resolve([]),
+    idea.flower_count > 0 ? getFlowerSenders(id) : Promise.resolve([]),
     getIdeaStats(id),
     (idea.forked_from_id || idea.fork_count > 0) ? getIdeaLineage(id) : Promise.resolve(null),
   ]);
@@ -280,6 +280,7 @@ export default async function IdeaDetailPage({
                   <IdeaDetailEngagementSection
                     ideaId={id}
                     likes={idea.like_count}
+                    wishes={idea.wish_count ?? 0}
                     flowers={idea.flower_count}
                     forks={idea.fork_count}
                     comments={idea.comment_count}
@@ -314,7 +315,11 @@ export default async function IdeaDetailPage({
                     </IdeaTabJump>
                   </section>
 
-                  <FlowersPanel ideaId={id} flowerCount={idea.flower_count} initialDonors={flowerDonors} />
+                  <FlowersPanel
+                    ideaId={id}
+                    flowerCount={idea.flower_count}
+                    initialSenders={flowerSenders}
+                  />
                   <IdeaStatsPanel idea={idea} stats={stats} />
 
                   <section className="panel-inverse p-4">
@@ -368,6 +373,7 @@ export default async function IdeaDetailPage({
                   title: t("idea.moreInfo"),
                   subtitle: t("idea.moreInfoSubtitle"),
                   statusSection: t("idea.statusArchive"),
+                  conclusionReason: t("idea.conclusionReason"),
                   lifecycle: t("idea.lifecycle"),
                   implProgress: t("idea.implStatus"),
                   registered: t("idea.registered"),
@@ -375,6 +381,7 @@ export default async function IdeaDetailPage({
                   signals: t("idea.signalSnapshot"),
                   likes: t("idea.statLikes"),
                   wishes: t("idea.statWishes"),
+                  flowers: t("idea.statFlowers"),
                   forks: "Fork",
                   comments: t("idea.statComments"),
                   views: t("idea.statViews"),

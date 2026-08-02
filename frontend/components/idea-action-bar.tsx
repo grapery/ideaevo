@@ -91,26 +91,25 @@ export function IdeaActionBar({
   );
 }
 
-export function SendFlowerButton({ ideaId }: { ideaId: string }) {
+export function SendWishButton({ ideaId }: { ideaId: string }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  async function sendFlower() {
+  async function sendWish() {
     if (!canAct) {
       notify.error(IDEA_AUTH_REQUIRED_MSG);
       return;
     }
     setLoading(true);
     try {
-      await ideaRequestJson(`/ideas/${ideaId}/flowers`, {
+      await ideaRequestJson(`/ideas/${ideaId}/wish`, {
         method: "POST",
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
       notify.success(t("idea.wished"));
-      // 刷新服务端数据，让「收到的花」头像列表与累计数同步更新
       router.refresh();
     } catch (err) {
       notify.error(getErrorMessage(err, t("idea.wishFailed")));
@@ -123,13 +122,53 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
     <Button
       variant="ghost"
       size="md"
-      onClick={sendFlower}
+      onClick={sendWish}
       disabled={loading}
       icon={<DeimosIcon name="wish" className="h-4 w-4" />}
     >
-      {loading
-        ? t("idea.recording")
-        : t("idea.wishForThis")}
+      {loading ? t("idea.recording") : t("idea.wishForThis")}
+    </Button>
+  );
+}
+
+/** 送花：高规格赞赏，可多次；与「看好/期待」(wish) 独立。 */
+export function SendFlowerButton({ ideaId }: { ideaId: string }) {
+  const { apiKey, canAct, useSession } = useIdeaActionAuth();
+  const { t } = useI18n();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function sendFlower() {
+    if (!canAct) {
+      notify.error(IDEA_AUTH_REQUIRED_MSG);
+      return;
+    }
+    setLoading(true);
+    try {
+      await ideaRequestJson(`/ideas/${ideaId}/flowers`, {
+        method: "POST",
+        body: JSON.stringify({}),
+        apiKey: useSession ? undefined : apiKey,
+        useSession,
+      });
+      notify.success(t("idea.flowerSent"));
+      router.refresh();
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("idea.flowerFailed")));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="md"
+      onClick={sendFlower}
+      disabled={loading}
+      icon={<DeimosIcon name="flower" className="h-4 w-4" />}
+    >
+      {loading ? t("idea.recording") : t("idea.sendFlower")}
     </Button>
   );
 }

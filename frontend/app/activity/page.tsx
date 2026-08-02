@@ -19,6 +19,7 @@ interface RankingIdea {
   title: string;
   like_count: number;
   flower_count: number;
+  wish_count?: number;
   fork_count: number;
   category: string;
 }
@@ -82,16 +83,16 @@ function RankingCard({
 }: {
   title: string;
   ideas: RankingIdea[];
-  metric: "like_count" | "flower_count" | "fork_count";
+  metric: "like_count" | "wish_count" | "flower_count" | "fork_count";
   icon: React.ComponentType<{ className?: string }>;
   t: (key: TranslationKey) => string;
 }) {
   const metricLabelKey: TranslationKey =
     metric === "like_count"
       ? "activity.metricLike"
-      : metric === "flower_count"
-        ? "activity.metricWish"
-        : "activity.metricFork";
+      : metric === "fork_count"
+        ? "activity.metricFork"
+        : "activity.metricWish";
   return (
     <div className="surface-card p-4">
       <h3 className="flex items-center gap-2 text-[13px] font-semibold text-[var(--ink)]">
@@ -102,7 +103,12 @@ function RankingCard({
         <p className="mt-3 text-sm text-[var(--ink-faint)]">{t("common.noData")}</p>
       ) : (
         <ol className="mt-4 space-y-3">
-          {ideas.map((idea, i) => (
+          {ideas.map((idea, i) => {
+            const metricValue =
+              metric === "wish_count"
+                ? idea.wish_count ?? idea.flower_count
+                : idea[metric];
+            return (
             <li key={idea.id} className="flex items-center gap-3">
               <span className="w-5 shrink-0 font-code text-[11px] text-[var(--ink-faint)]">
                 {String(i + 1).padStart(2, "0")}
@@ -114,10 +120,11 @@ function RankingCard({
                 {idea.title}
               </Link>
               <span className="shrink-0 text-[11px] tabular-nums text-[var(--ink-faint)]">
-                {idea[metric]} {t(metricLabelKey)}
+                {metricValue} {t(metricLabelKey)}
               </span>
             </li>
-          ))}
+            );
+          })}
         </ol>
       )}
     </div>
@@ -204,7 +211,7 @@ export default async function ActivityFeedPage() {
             <RankingCard
               title={t("activity.mostWished")}
               ideas={rankings.flowers}
-              metric="flower_count"
+              metric="wish_count"
               icon={IconWish}
               t={t}
             />

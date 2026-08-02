@@ -8,6 +8,7 @@ import type { Idea } from "@/lib/types";
 export function IdeaDetailEngagementSection({
   ideaId,
   likes,
+  wishes,
   flowers,
   forks,
   comments,
@@ -15,7 +16,8 @@ export function IdeaDetailEngagementSection({
 }: {
   ideaId: string;
   likes: number;
-  flowers: number;
+  wishes?: number;
+  flowers?: number;
   forks: number;
   comments: number;
   status?: Idea["status"];
@@ -29,6 +31,7 @@ export function IdeaDetailEngagementSection({
         <IdeaDetailEngagement
           ideaId={ideaId}
           likes={likes}
+          wishes={wishes}
           flowers={flowers}
           forks={forks}
           comments={comments}

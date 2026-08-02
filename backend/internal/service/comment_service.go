@@ -48,6 +48,16 @@ type CreateCommentInput struct {
 	ParentID  string `json:"parent_id"`
 	Content   string `json:"content" binding:"required"`
 	Sentiment string `json:"sentiment"`
+	Kind      string `json:"kind"` // general | evidence | risk
+}
+
+func normalizeCommentKind(kind string) model.CommentKind {
+	switch model.CommentKind(kind) {
+	case model.CommentKindEvidence, model.CommentKindRisk, model.CommentKindGeneral:
+		return model.CommentKind(kind)
+	default:
+		return model.CommentKindGeneral
+	}
 }
 
 func (s *CommentService) CreateComment(input CreateCommentInput) (*model.Comment, error) {
@@ -61,6 +71,7 @@ func (s *CommentService) CreateComment(input CreateCommentInput) (*model.Comment
 		UserID:    input.UserID,
 		Content:   input.Content,
 		Sentiment: model.CommentSentiment(input.Sentiment),
+		Kind:      normalizeCommentKind(input.Kind),
 	}
 	if input.ParentID != "" {
 		rootID, err := s.resolveThreadRoot(input.IdeaID, input.ParentID)

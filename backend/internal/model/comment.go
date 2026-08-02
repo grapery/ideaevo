@@ -10,9 +10,17 @@ import (
 type CommentSentiment string
 
 const (
-	SentimentPositive    CommentSentiment = "positive"
-	SentimentNeutral     CommentSentiment = "neutral"
+	SentimentPositive     CommentSentiment = "positive"
+	SentimentNeutral      CommentSentiment = "neutral"
 	SentimentConstructive CommentSentiment = "constructive"
+)
+
+type CommentKind string
+
+const (
+	CommentKindGeneral  CommentKind = "general"
+	CommentKindEvidence CommentKind = "evidence"
+	CommentKindRisk     CommentKind = "risk"
 )
 
 // Comment 是想法评论模型。历史上类型名为 Comment，表名 wanye_comments，
@@ -25,6 +33,7 @@ type Comment struct {
 	ParentID     *string          `gorm:"size:36;index" json:"parent_id,omitempty"`
 	Content      string           `gorm:"type:text;not null" json:"content"`
 	Sentiment    CommentSentiment `gorm:"size:50" json:"sentiment,omitempty"`
+	Kind         CommentKind      `gorm:"size:20;index;default:''" json:"kind,omitempty"`
 	LikeCount    int              `gorm:"default:0" json:"like_count"`
 	IsModerated  bool             `gorm:"default:false" json:"is_moderated"`
 	CreatedAt    time.Time        `json:"created_at"`

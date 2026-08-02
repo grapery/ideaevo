@@ -23,6 +23,7 @@ import type { Idea } from "@/lib/types";
 export function IdeaDetailEngagement({
   ideaId,
   likes: initialLikes,
+  wishes: initialWishes,
   flowers: initialFlowers,
   forks,
   comments,
@@ -32,7 +33,8 @@ export function IdeaDetailEngagement({
 }: {
   ideaId: string;
   likes: number;
-  flowers: number;
+  wishes?: number;
+  flowers?: number;
   forks: number;
   comments: number;
   status?: Idea["status"];
@@ -48,8 +50,10 @@ export function IdeaDetailEngagement({
   // 但保留收藏、分享、举报等无害操作。
   const inactive = status !== undefined && status !== "active";
   const [likes, setLikes] = useState(initialLikes);
-  const [flowers, setFlowers] = useState(initialFlowers);
+  const [wishes, setWishes] = useState(initialWishes ?? 0);
+  const [flowers, setFlowers] = useState(initialFlowers ?? 0);
   const [liked, setLiked] = useState(false);
+  const [wished, setWished] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
   const [myReaction, setMyReaction] = useState("");
@@ -58,8 +62,9 @@ export function IdeaDetailEngagement({
 
   useEffect(() => {
     setLikes(initialLikes);
-    setFlowers(initialFlowers);
-  }, [initialLikes, initialFlowers]);
+    setWishes(initialWishes ?? 0);
+    setFlowers(initialFlowers ?? 0);
+  }, [initialLikes, initialWishes, initialFlowers]);
 
   // 获取 emoji 反应计数 + 当前用户的选择
   useEffect(() => {
@@ -81,6 +86,12 @@ export function IdeaDetailEngagement({
       useSession,
     })
       .then((res) => setLiked(res.liked))
+      .catch(() => {});
+    ideaRequestJson<{ wished: boolean }>(`/ideas/${ideaId}/wish`, {
+      apiKey: useSession ? undefined : apiKey,
+      useSession,
+    })
+      .then((res) => setWished(res.wished))
       .catch(() => {});
   }, [ideaId, canAct, apiKey, useSession]);
 
@@ -147,6 +158,39 @@ export function IdeaDetailEngagement({
     }
   }
 
+  async function toggleWish() {
+    if (!canAct) {
+      notify.error(IDEA_AUTH_REQUIRED_MSG);
+      return;
+    }
+    setLoading("wish");
+    try {
+      if (wished) {
+        await ideaRequestJson(`/ideas/${ideaId}/wish`, {
+          method: "DELETE",
+          apiKey: useSession ? undefined : apiKey,
+          useSession,
+        });
+        setWished(false);
+        setWishes((n) => Math.max(0, n - 1));
+      } else {
+        await ideaRequestJson(`/ideas/${ideaId}/wish`, {
+          method: "POST",
+          apiKey: useSession ? undefined : apiKey,
+          useSession,
+        });
+        setWished(true);
+        setWishes((n) => n + 1);
+        notify.success(t("idea.wished"));
+      }
+      router.refresh();
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("idea.wishFailed")));
+    } finally {
+      setLoading(null);
+    }
+  }
+
   async function sendFlower() {
     if (!canAct) {
       notify.error(IDEA_AUTH_REQUIRED_MSG);
@@ -156,15 +200,15 @@ export function IdeaDetailEngagement({
     try {
       await ideaRequestJson(`/ideas/${ideaId}/flowers`, {
         method: "POST",
+        body: JSON.stringify({}),
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
       setFlowers((n) => n + 1);
-      notify.success(t("idea.wished"));
-      // 刷新服务端数据，让「收到的花」头像列表与累计数同步更新
+      notify.success(t("idea.flowerSent"));
       router.refresh();
     } catch (err) {
-      notify.error(getErrorMessage(err, t("idea.wishFailed")));
+      notify.error(getErrorMessage(err, t("idea.flowerFailed")));
     } finally {
       setLoading(null);
     }
@@ -229,12 +273,22 @@ export function IdeaDetailEngagement({
         <CountButton
           variant="soft"
           icon={<DeimosIcon name="wish" className="h-3.5 w-3.5" />}
-          count={flowers}
-          active
+          count={wishes}
+          active={wished}
           tone="coral"
+          onClick={toggleWish}
+          disabled={inactive || loading === "wish"}
+          ariaLabel={t("idea.statWishes")}
+        />
+
+        <CountButton
+          variant="soft"
+          icon={<DeimosIcon name="flower" className="h-3.5 w-3.5" />}
+          count={flowers}
+          tone="link"
           onClick={sendFlower}
           disabled={inactive || loading === "flower"}
-          ariaLabel={t("idea.statWishes")}
+          ariaLabel={t("idea.sendFlower")}
         />
 
         <CountButton

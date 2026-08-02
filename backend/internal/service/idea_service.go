@@ -315,7 +315,7 @@ func (s *IdeaService) Bury(ideaID, agentID, reason string) (*model.Idea, error) 
 		s.indexer.RemoveIdea(idea.ID)
 	}
 
-	logActivity(s.db, "agent", agentID, "bury", "idea", ideaID, map[string]string{"reason": reason})
+	logActivity(s.db, "agent", agentID, ActionBury, "idea", ideaID, map[string]string{"reason": reason})
 	return &idea, nil
 }
 
@@ -344,12 +344,12 @@ func (s *IdeaService) Archive(ideaID, agentID, reason string) (*model.Idea, erro
 	if reason != "" {
 		meta["reason"] = reason
 	}
-	logActivity(s.db, "agent", agentID, "archive", "idea", ideaID, meta)
+	logActivity(s.db, "agent", agentID, ActionArchive, "idea", ideaID, meta)
 	return &idea, nil
 }
 
 // MarkImplemented 标记 idea 为已落地（已实现，可复用）。仅作者可操作。
-func (s *IdeaService) MarkImplemented(ideaID, agentID string) (*model.Idea, error) {
+func (s *IdeaService) MarkImplemented(ideaID, agentID, reason string) (*model.Idea, error) {
 	var idea model.Idea
 	if err := s.db.First(&idea, "id = ? AND agent_id = ?", ideaID, agentID).Error; err != nil {
 		return nil, fmt.Errorf("idea not found or not owned by agent: %w", err)
@@ -358,6 +358,10 @@ func (s *IdeaService) MarkImplemented(ideaID, agentID string) (*model.Idea, erro
 	now := time.Now()
 	idea.Status = model.IdeaStatusImplemented
 	idea.ImplementedAt = &now
+	idea.ImplementedReason = reason
+	if idea.ImplStatus == "" || idea.ImplStatus == model.ImplStatusConcept || idea.ImplStatus == model.ImplStatusInProgress {
+		idea.ImplStatus = model.ImplStatusImplemented
+	}
 
 	if err := s.db.Save(&idea).Error; err != nil {
 		return nil, err
@@ -368,7 +372,11 @@ func (s *IdeaService) MarkImplemented(ideaID, agentID string) (*model.Idea, erro
 		s.indexer.RemoveIdea(idea.ID)
 	}
 
-	logActivity(s.db, "agent", agentID, "implement", "idea", ideaID, nil)
+	meta := map[string]string{}
+	if reason != "" {
+		meta["reason"] = reason
+	}
+	logActivity(s.db, "agent", agentID, ActionImplement, "idea", ideaID, meta)
 	return &idea, nil
 }
 
@@ -390,7 +398,7 @@ func (s *IdeaService) Reactivate(ideaID, agentID string) (*model.Idea, error) {
 		s.indexer.IndexIdea(&idea)
 	}
 
-	logActivity(s.db, "agent", agentID, "reactivate", "idea", ideaID, nil)
+	logActivity(s.db, "agent", agentID, ActionReactivate, "idea", ideaID, nil)
 	return &idea, nil
 }
 
@@ -480,7 +488,14 @@ func (s *IdeaService) UpdateMeta(ideaID string, input UpdateIdeaMetaInput, asset
 		if !validImplStatuses[status] {
 			return nil, fmt.Errorf("invalid impl_status, must be one of: concept, in_progress, implemented, paused")
 		}
+		prev := string(idea.ImplStatus)
 		idea.ImplStatus = model.ImplStatus(status)
+		if prev != status {
+			logActivity(s.db, "agent", idea.AgentID, ActionUpdateImpl, "idea", idea.ID, map[string]string{
+				"from": prev,
+				"to":   status,
+			})
+		}
 	}
 	if input.RepoURL != nil {
 		v := strings.TrimSpace(*input.RepoURL)

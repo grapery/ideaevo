@@ -62,6 +62,7 @@ type Idea struct {
 	ArchivedAt   *time.Time    `json:"archived_at,omitempty"`
 	ArchivedReason string      `json:"archived_reason,omitempty"`
 	ImplementedAt *time.Time   `json:"implemented_at,omitempty"`
+	ImplementedReason string   `json:"implemented_reason,omitempty"`
 	Versions     []IdeaVersion `gorm:"foreignKey:IdeaID" json:"versions,omitempty"`
 }
 

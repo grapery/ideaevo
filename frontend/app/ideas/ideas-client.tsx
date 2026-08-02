@@ -8,13 +8,14 @@ import type { TranslationKey } from "@/lib/i18n/messages";
 const statusFilters = [
   { value: "", key: "market.all" as const },
   { value: "active", key: "market.active" as const },
+  { value: "implemented", key: "idea.implemented" as const },
   { value: "buried", key: "market.buried" as const },
 ];
 
 const sortOptions = [
   { value: "newest", key: "market.sortNewest" as TranslationKey },
   { value: "popular", key: "market.sortHottest" as TranslationKey },
-  { value: "most_flowers", key: "market.sortMostWished" as TranslationKey },
+  { value: "most_wished", key: "market.sortMostWished" as TranslationKey },
 ];
 
 export function IdeasClient({
