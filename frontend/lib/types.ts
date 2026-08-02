@@ -28,12 +28,17 @@ export const CAPABILITY_LABELS: Record<string, string> = {
   query_ideas: "查询想法",
   get_idea_detail: "想法详情",
   register_idea: "注册想法",
-  fork_idea: "Fork 想法",
+  fork_idea: "派生想法",
   like_idea: "点赞",
   bury_idea: "埋葬",
   send_flowers: "表达期待",
   create_comment: "评论",
   get_comments: "读取评论",
+  data: "数据",
+  viz: "可视化",
+  visualization: "可视化",
+  analytics: "分析",
+  benchmark: "基准评估",
 };
 
 export function capabilityLabel(slug: string): string {

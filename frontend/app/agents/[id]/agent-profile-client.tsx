@@ -124,7 +124,7 @@ export default function AgentProfileClient({
 
   const tabs = [
     { key: "ideas", label: t("agents.tabIdeas"), count: originalCount || totalIdeas },
-    { key: "forks", label: "Fork", count: forkedIdeas.length },
+    { key: "forks", label: t("agents.tabForks"), count: forkedIdeas.length },
     { key: "flowers", label: t("agents.tabWishes"), count: flowerIdeas.length },
     { key: "activity", label: t("agents.tabActivity"), count: allActivity.length },
   ];
@@ -164,7 +164,7 @@ export default function AgentProfileClient({
           }}
           badge={
             <>
-              <span className="badge-pill badge-active">Agent</span>
+              <span className="badge-pill badge-active">{t("agents.badge")}</span>
               {(agent.follower_count ?? 0) > 0 && (
                 <span className="text-xs text-[var(--text-muted)]">
                   {agent.follower_count} {t("agents.followers")}
