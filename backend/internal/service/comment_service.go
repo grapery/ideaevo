@@ -63,7 +63,11 @@ func (s *CommentService) CreateComment(input CreateCommentInput) (*model.Comment
 		Sentiment: model.CommentSentiment(input.Sentiment),
 	}
 	if input.ParentID != "" {
-		comment.ParentID = &input.ParentID
+		rootID, err := s.resolveThreadRoot(input.IdeaID, input.ParentID)
+		if err != nil {
+			return nil, err
+		}
+		comment.ParentID = &rootID
 	}
 	if err := s.db.Create(comment).Error; err != nil {
 		return nil, err
@@ -82,23 +86,152 @@ func (s *CommentService) CreateComment(input CreateCommentInput) (*model.Comment
 	return comment, nil
 }
 
+// resolveThreadRoot 将任意回复挂到顶层评论（PH 单层线程模型）。
+func (s *CommentService) resolveThreadRoot(ideaID, parentID string) (string, error) {
+	var parent model.Comment
+	if err := s.db.Where("id = ? AND idea_id = ?", parentID, ideaID).First(&parent).Error; err != nil {
+		return "", fmt.Errorf("parent comment not found")
+	}
+	seen := map[string]bool{parent.ID: true}
+	for parent.ParentID != nil {
+		if seen[*parent.ParentID] {
+			break
+		}
+		seen[*parent.ParentID] = true
+		var next model.Comment
+		if err := s.db.Where("id = ? AND idea_id = ?", *parent.ParentID, ideaID).First(&next).Error; err != nil {
+			break
+		}
+		parent = next
+	}
+	return parent.ID, nil
+}
+
 func (s *CommentService) GetComments(ideaID string) ([]model.Comment, error) {
-	var comments []model.Comment
-	if err := s.db.Where("idea_id = ? AND parent_id IS NULL AND is_moderated = ?", ideaID, false).
-		Preload("Replies", "is_moderated = ?", false).
-		Order("created_at DESC").
-		Find(&comments).Error; err != nil {
+	var all []model.Comment
+	if err := s.db.Where("idea_id = ? AND is_moderated = ?", ideaID, false).
+		Order("created_at ASC").
+		Find(&all).Error; err != nil {
 		return nil, err
 	}
-	return comments, nil
+	if len(all) == 0 {
+		return []model.Comment{}, nil
+	}
+
+	byID := make(map[string]*model.Comment, len(all))
+	for i := range all {
+		all[i].Replies = nil
+		byID[all[i].ID] = &all[i]
+	}
+
+	findRootID := func(c *model.Comment) string {
+		cur := c
+		seen := map[string]bool{cur.ID: true}
+		for cur.ParentID != nil {
+			p, ok := byID[*cur.ParentID]
+			if !ok || seen[p.ID] {
+				return cur.ID
+			}
+			seen[p.ID] = true
+			if p.ParentID == nil {
+				return p.ID
+			}
+			cur = p
+		}
+		return cur.ID
+	}
+
+	var roots []model.Comment
+	repliesByRoot := make(map[string][]model.Comment)
+	for i := range all {
+		c := all[i]
+		if c.ParentID == nil {
+			roots = append(roots, c)
+			continue
+		}
+		rootID := findRootID(&c)
+		// 跳过自身即根的异常环
+		if rootID == c.ID {
+			roots = append(roots, c)
+			continue
+		}
+		repliesByRoot[rootID] = append(repliesByRoot[rootID], c)
+	}
+
+	// 根评论按时间倒序（最新在上）；回复保持时间正序
+	for i, j := 0, len(roots)-1; i < j; i, j = i+1, j-1 {
+		roots[i], roots[j] = roots[j], roots[i]
+	}
+	for i := range roots {
+		roots[i].Replies = repliesByRoot[roots[i].ID]
+	}
+	return roots, nil
 }
 
 func (s *CommentService) GetCommentsEnriched(ideaID string) ([]CommentView, error) {
+	return s.GetCommentsEnrichedForViewer(ideaID, "", "")
+}
+
+func (s *CommentService) GetCommentsEnrichedForViewer(ideaID, viewerUserID, viewerAgentID string) ([]CommentView, error) {
 	comments, err := s.GetComments(ideaID)
 	if err != nil {
 		return nil, err
 	}
-	return EnrichComments(s.db, comments), nil
+	return EnrichCommentsForViewer(s.db, comments, viewerUserID, viewerAgentID), nil
+}
+
+func (s *CommentService) LikeComment(commentID, userID, agentID string) error {
+	if userID == "" && agentID == "" {
+		return fmt.Errorf("authentication required")
+	}
+	var comment model.Comment
+	if err := s.db.Where("id = ?", commentID).First(&comment).Error; err != nil {
+		return fmt.Errorf("comment not found")
+	}
+	like := model.CommentLike{
+		CommentID: commentID,
+		UserID:    userID,
+		AgentID:   agentID,
+	}
+	if err := s.db.Create(&like).Error; err != nil {
+		return fmt.Errorf("already liked or error: %w", err)
+	}
+	s.db.Model(&model.Comment{}).Where("id = ?", commentID).
+		UpdateColumn("like_count", gorm.Expr("like_count + 1"))
+	return nil
+}
+
+func (s *CommentService) UnlikeComment(commentID, userID, agentID string) error {
+	q := s.db.Where("comment_id = ?", commentID)
+	if userID != "" {
+		q = q.Where("user_id = ?", userID)
+	} else {
+		q = q.Where("agent_id = ?", agentID)
+	}
+	res := q.Delete(&model.CommentLike{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected > 0 {
+		s.db.Model(&model.Comment{}).Where("id = ? AND like_count > 0", commentID).
+			UpdateColumn("like_count", gorm.Expr("like_count - 1"))
+	}
+	return nil
+}
+
+func (s *CommentService) HasLikedComment(commentID, userID, agentID string) bool {
+	if userID == "" && agentID == "" {
+		return false
+	}
+	q := s.db.Model(&model.CommentLike{}).Where("comment_id = ?", commentID)
+	if userID != "" {
+		q = q.Where("user_id = ?", userID)
+	} else {
+		q = q.Where("agent_id = ?", agentID)
+	}
+	var n int64
+	q.Count(&n)
+	return n > 0
 }
 
 type AdminCommentFilter struct {

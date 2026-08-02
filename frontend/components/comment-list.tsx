@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Comment } from "@/lib/types";
 import { CommentItem } from "./comment-item";
 import { useI18n } from "@/lib/i18n/provider";
@@ -28,34 +28,51 @@ export function flattenComments(comments: Comment[]): FlatComment[] {
   return result;
 }
 
+function threadScore(comment: Comment): number {
+  const replies = comment.replies ?? [];
+  const replyLikes = replies.reduce((sum, r) => sum + (r.like_count ?? 0), 0);
+  return (comment.like_count ?? 0) * 3 + replies.length + replyLikes;
+}
+
 function CommentThread({
   comment,
   ideaId,
   status,
+  makerIds,
 }: {
   comment: Comment;
   ideaId?: string;
   status?: Idea["status"];
+  makerIds?: string[];
 }) {
+  const { t } = useI18n();
   const replies = comment.replies ?? [];
-  const [expanded, setExpanded] = useState(replies.length > 0 && replies.length <= 3);
+  const [expanded, setExpanded] = useState(true);
+  const [visibleReplies, setVisibleReplies] = useState(
+    Math.min(4, replies.length),
+  );
+
+  const shownReplies = expanded ? replies.slice(0, visibleReplies) : [];
+  const hiddenCount = expanded ? Math.max(0, replies.length - visibleReplies) : 0;
 
   return (
-    <div className="space-y-0">
+    <div className="py-5 first:pt-2">
       <CommentItem
         comment={comment}
         depth={0}
         ideaId={ideaId}
         status={status}
+        makerIds={makerIds}
         replyCount={replies.length}
         repliesExpanded={expanded}
         onToggleReplies={
           replies.length > 0 ? () => setExpanded((v) => !v) : undefined
         }
       />
-      {expanded && replies.length > 0 && (
-        <div className="ml-3 mt-1 space-y-0 border-l border-[var(--rule)] pl-3">
-          {replies.map((reply) => (
+
+      {shownReplies.length > 0 && (
+        <div className="relative ml-[1.875rem] mt-4 space-y-5 border-l border-[var(--rule)] pl-5 sm:ml-[2.125rem]">
+          {shownReplies.map((reply) => (
             <CommentItem
               key={reply.id}
               comment={reply}
@@ -63,9 +80,32 @@ function CommentThread({
               replyTo={comment}
               ideaId={ideaId}
               status={status}
+              makerIds={makerIds}
             />
           ))}
+
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleReplies((n) => Math.min(n + 6, replies.length))
+              }
+              className="text-[12px] font-medium text-[var(--primary)] hover:underline"
+            >
+              {t("idea.moreReplies", { count: hiddenCount })}
+            </button>
+          )}
         </div>
+      )}
+
+      {!expanded && replies.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="ml-[1.875rem] mt-3 text-[12px] font-medium text-[var(--primary)] hover:underline sm:ml-[2.125rem]"
+        >
+          {t("idea.showReplies", { count: replies.length })}
+        </button>
       )}
     </div>
   );
@@ -75,39 +115,92 @@ export function CommentList({
   comments,
   ideaId,
   status,
+  makerIds,
   initialVisible = 8,
+  sort = "top",
+  onSortChange,
 }: {
   comments: Comment[];
   ideaId?: string;
   status?: Idea["status"];
+  makerIds?: string[];
   /** 详情页预览条数；传 Infinity / 很大数字可展示全部 */
   initialVisible?: number;
+  sort?: "top" | "newest";
+  onSortChange?: (sort: "top" | "newest") => void;
 }) {
   const { t } = useI18n();
   const [visible, setVisible] = useState(
-    Math.min(initialVisible, comments.length)
+    Math.min(initialVisible, comments.length),
   );
+
+  const ordered = useMemo(() => {
+    const copy = [...comments];
+    if (sort === "newest") {
+      copy.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+    } else {
+      copy.sort((a, b) => {
+        const score = threadScore(b) - threadScore(a);
+        if (score !== 0) return score;
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+    }
+    return copy;
+  }, [comments, sort]);
 
   if (comments.length === 0) return null;
 
-  const shown = comments.slice(0, visible);
-  const remaining = comments.length - visible;
+  const shown = ordered.slice(0, visible);
+  const remaining = ordered.length - visible;
 
   return (
-    <div className="space-y-3">
-      {shown.map((comment) => (
-        <CommentThread
-          key={comment.id}
-          comment={comment}
-          ideaId={ideaId}
-          status={status}
-        />
-      ))}
+    <div>
+      {onSortChange && (
+        <div className="mb-2 flex items-center gap-1 border-b border-[var(--rule-light)] pb-3">
+          {(
+            [
+              ["top", t("idea.sortTop")],
+              ["newest", t("idea.sortNewest")],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => onSortChange(value)}
+              className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${
+                sort === value
+                  ? "bg-[var(--panel-inverse)] text-white"
+                  : "text-[var(--ink-faint)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="divide-y divide-[var(--rule-light)]">
+        {shown.map((comment) => (
+          <CommentThread
+            key={comment.id}
+            comment={comment}
+            ideaId={ideaId}
+            status={status}
+            makerIds={makerIds}
+          />
+        ))}
+      </div>
+
       {remaining > 0 && (
         <button
           type="button"
-          onClick={() => setVisible((n) => Math.min(n + 8, comments.length))}
-          className="w-full surface-card px-3 py-2.5 text-[13px] font-medium text-[var(--accent-link)] hover:border-[var(--accent-link)] hover:bg-[var(--bg-subtle)]"
+          onClick={() => setVisible((n) => Math.min(n + 8, ordered.length))}
+          className="mt-3 w-full rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2.5 text-[13px] font-medium text-[var(--primary)] hover:bg-[var(--bg-subtle)]"
         >
           {t("idea.showMoreComments", { count: remaining })}
         </button>

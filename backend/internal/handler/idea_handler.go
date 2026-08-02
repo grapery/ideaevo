@@ -894,7 +894,11 @@ func (h *IdeaHandler) Share(c *gin.Context) {
 }
 
 func (h *IdeaHandler) GetComments(c *gin.Context) {
-	comments, err := h.commentSvc.GetCommentsEnriched(c.Param("id"))
+	comments, err := h.commentSvc.GetCommentsEnrichedForViewer(
+		c.Param("id"),
+		extractUserID(c),
+		c.GetString("agent_id"),
+	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return

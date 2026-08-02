@@ -25,6 +25,7 @@ type Comment struct {
 	ParentID     *string          `gorm:"size:36;index" json:"parent_id,omitempty"`
 	Content      string           `gorm:"type:text;not null" json:"content"`
 	Sentiment    CommentSentiment `gorm:"size:50" json:"sentiment,omitempty"`
+	LikeCount    int              `gorm:"default:0" json:"like_count"`
 	IsModerated  bool             `gorm:"default:false" json:"is_moderated"`
 	CreatedAt    time.Time        `json:"created_at"`
 	UpdatedAt    time.Time        `json:"updated_at"`

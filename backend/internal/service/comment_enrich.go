@@ -16,6 +16,8 @@ type CommentView struct {
 	ParentID     *string                `json:"parent_id,omitempty"`
 	Content      string                 `json:"content"`
 	Sentiment    model.CommentSentiment `json:"sentiment,omitempty"`
+	LikeCount    int                    `json:"like_count"`
+	Liked        bool                   `json:"liked"`
 	IsModerated  bool                   `json:"is_moderated"`
 	CreatedAt    time.Time              `json:"created_at"`
 	UpdatedAt    time.Time              `json:"updated_at"`
@@ -33,15 +35,55 @@ type commentAuthorBrief struct {
 
 // EnrichComments attaches author display fields to a comment tree.
 func EnrichComments(db *gorm.DB, comments []model.Comment) []CommentView {
+	return EnrichCommentsForViewer(db, comments, "", "")
+}
+
+// EnrichCommentsForViewer also marks comments liked by the current viewer.
+func EnrichCommentsForViewer(db *gorm.DB, comments []model.Comment, viewerUserID, viewerAgentID string) []CommentView {
 	if len(comments) == 0 {
 		return []CommentView{}
 	}
 	users, agents := loadCommentAuthors(db, collectCommentAuthorIDs(comments))
+	liked := loadViewerCommentLikes(db, collectCommentIDs(comments), viewerUserID, viewerAgentID)
 	out := make([]CommentView, len(comments))
 	for i, c := range comments {
-		out[i] = commentViewFrom(c, users, agents)
+		out[i] = commentViewFrom(c, users, agents, liked)
 	}
 	return out
+}
+
+func collectCommentIDs(comments []model.Comment) []string {
+	var ids []string
+	var walk func([]model.Comment)
+	walk = func(list []model.Comment) {
+		for _, c := range list {
+			ids = append(ids, c.ID)
+			if len(c.Replies) > 0 {
+				walk(c.Replies)
+			}
+		}
+	}
+	walk(comments)
+	return ids
+}
+
+func loadViewerCommentLikes(db *gorm.DB, commentIDs []string, userID, agentID string) map[string]bool {
+	liked := make(map[string]bool)
+	if len(commentIDs) == 0 || (userID == "" && agentID == "") {
+		return liked
+	}
+	q := db.Model(&model.CommentLike{}).Select("comment_id").Where("comment_id IN ?", commentIDs)
+	if userID != "" {
+		q = q.Where("user_id = ?", userID)
+	} else {
+		q = q.Where("agent_id = ?", agentID)
+	}
+	var rows []string
+	q.Pluck("comment_id", &rows)
+	for _, id := range rows {
+		liked[id] = true
+	}
+	return liked
 }
 
 func collectCommentAuthorIDs(comments []model.Comment) []string {
@@ -82,7 +124,11 @@ func loadCommentAuthors(db *gorm.DB, ids []string) (users, agents map[string]com
 	return users, agents
 }
 
-func commentViewFrom(c model.Comment, users, agents map[string]commentAuthorBrief) CommentView {
+func commentViewFrom(
+	c model.Comment,
+	users, agents map[string]commentAuthorBrief,
+	liked map[string]bool,
+) CommentView {
 	view := CommentView{
 		ID:          c.ID,
 		IdeaID:      c.IdeaID,
@@ -90,6 +136,8 @@ func commentViewFrom(c model.Comment, users, agents map[string]commentAuthorBrie
 		ParentID:    c.ParentID,
 		Content:     c.Content,
 		Sentiment:   c.Sentiment,
+		LikeCount:   c.LikeCount,
+		Liked:       liked[c.ID],
 		IsModerated: c.IsModerated,
 		CreatedAt:   c.CreatedAt,
 		UpdatedAt:   c.UpdatedAt,
@@ -106,7 +154,7 @@ func commentViewFrom(c model.Comment, users, agents map[string]commentAuthorBrie
 	if len(c.Replies) > 0 {
 		view.Replies = make([]CommentView, len(c.Replies))
 		for i, r := range c.Replies {
-			view.Replies[i] = commentViewFrom(r, users, agents)
+			view.Replies[i] = commentViewFrom(r, users, agents, liked)
 		}
 	}
 	return view

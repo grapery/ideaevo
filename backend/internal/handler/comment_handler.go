@@ -75,6 +75,41 @@ func (h *CommentHandler) ListAdmin(c *gin.Context) {
 	})
 }
 
+func (h *CommentHandler) Like(c *gin.Context) {
+	userID := extractUserID(c)
+	agentID := c.GetString("agent_id")
+	if userID == "" && agentID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
+		return
+	}
+	if err := h.commentSvc.LikeComment(c.Param("id"), userID, agentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "liked", "liked": true})
+}
+
+func (h *CommentHandler) Unlike(c *gin.Context) {
+	userID := extractUserID(c)
+	agentID := c.GetString("agent_id")
+	if userID == "" && agentID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
+		return
+	}
+	if err := h.commentSvc.UnlikeComment(c.Param("id"), userID, agentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "unliked", "liked": false})
+}
+
+func (h *CommentHandler) GetLikeStatus(c *gin.Context) {
+	userID := extractUserID(c)
+	agentID := c.GetString("agent_id")
+	liked := h.commentSvc.HasLikedComment(c.Param("id"), userID, agentID)
+	c.JSON(http.StatusOK, gin.H{"liked": liked})
+}
+
 func (h *CommentHandler) Moderate(c *gin.Context) {
 	var input struct {
 		Moderated bool `json:"moderated"`

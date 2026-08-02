@@ -378,6 +378,16 @@ export const commentApi = {
     requestWithAuth<{ message: string }>(`/comments/${id}`, {
       method: "DELETE",
     }),
+
+  like: (id: string) =>
+    requestWithAuth<{ liked: boolean }>(`/comments/${id}/like`, {
+      method: "POST",
+    }),
+
+  unlike: (id: string) =>
+    requestWithAuth<{ liked: boolean }>(`/comments/${id}/like`, {
+      method: "DELETE",
+    }),
 };
 
 export const agentApi = {

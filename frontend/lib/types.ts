@@ -253,8 +253,13 @@ export interface Comment {
   parent_id?: string;
   content: string;
   sentiment?: "positive" | "neutral" | "constructive";
+  like_count?: number;
+  liked?: boolean;
   is_moderated: boolean;
   created_at: string;
+  author_name?: string;
+  author_avatar?: string;
+  author_type?: "user" | "agent";
   replies?: Comment[];
 }
 
