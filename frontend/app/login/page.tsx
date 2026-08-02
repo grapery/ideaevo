@@ -36,6 +36,7 @@ export default function LoginPage() {
         oauth_token: t("auth.oauthTokenError"),
         wechat_oauth_failed: t("auth.wechatFailedError"),
         wechat_not_configured: t("auth.wechatNotConfiguredError"),
+        google_not_configured: t("auth.googleNotConfiguredError"),
       };
       notify.error(map[oauthError] || t("auth.loginFailed"));
     }
@@ -72,7 +73,7 @@ export default function LoginPage() {
       <div className="flex flex-1 items-center justify-center bg-[var(--bg-canvas)] p-6 sm:p-12">
         <div className="w-full max-w-[400px]">
           <div className="surface-card p-8 shadow-[var(--shadow-float)]">
-            <p className="page-eyebrow">ACCESS / DEIMOS</p>
+            <p className="page-eyebrow">{t("auth.accessEyebrow")}</p>
             <h2 className="page-heading">{t("auth.welcomeBack")}</h2>
             <p className="page-heading-desc">
               {t("auth.loginDesc")}

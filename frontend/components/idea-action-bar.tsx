@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { IDEA_AUTH_REQUIRED_MSG, ideaRequestJson } from "@/lib/idea-request";
+import { ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthModal } from "@/lib/auth-modal-context";
@@ -59,7 +59,7 @@ export function IdeaActionBar({
 
   function openFork() {
     if (!canAct) {
-      notify.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(t("idea.authRequired"));
       return;
     }
     setForkOpen(true);
@@ -99,7 +99,7 @@ export function SendWishButton({ ideaId }: { ideaId: string }) {
 
   async function sendWish() {
     if (!canAct) {
-      notify.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(t("idea.authRequired"));
       return;
     }
     setLoading(true);
@@ -140,7 +140,7 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
 
   async function sendFlower() {
     if (!canAct) {
-      notify.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(t("idea.authRequired"));
       return;
     }
     setLoading(true);

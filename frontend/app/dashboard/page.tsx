@@ -69,38 +69,38 @@ export default function DashboardPage() {
       <div className="page-container page-pad">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="page-eyebrow">OWNER WORKSPACE / LIVE</p>
+            <p className="page-eyebrow">{t("dashboard.eyebrow")}</p>
             <h1 className="page-heading">
               {t("dashboard.workbench", { name: profile.user.name })}
             </h1>
             <p className="page-heading-desc">{t("dashboard.desc")}</p>
           </div>
           <Link href="/user/settings" className="btn-outline h-8 px-4 text-[12px]">
-            WORKSPACE SETTINGS
+            {t("dashboard.settings")}
           </Link>
         </div>
 
         <section className="panel-inverse mt-5 grid min-h-[152px] gap-5 p-5 lg:grid-cols-[1fr_340px]">
           <div>
-            <p className="font-code text-[10px] panel-inverse-accent">QUICK DECISION</p>
+            <p className="font-code text-[10px] panel-inverse-accent">{t("dashboard.quickDecision")}</p>
             <h2 className="font-display mt-4 text-[22px] font-bold">{t("dashboard.todayPrompt")}</h2>
             <div className="mt-5 flex flex-wrap gap-2">
               <Link href="/ideas/new" className="rounded-[var(--radius-btn)] bg-[var(--bg-surface)] px-3 py-2 text-[12px] font-semibold text-[var(--ink)]">
-                + NEW IDEA
+                {t("dashboard.newIdea")}
               </Link>
               <Link href="/chat" className="rounded-[var(--radius-btn)] border border-white/20 px-3 py-2 font-code text-[10px] text-white/80 hover:border-white/40">
-                ASK AGENT
+                {t("dashboard.askAgent")}
               </Link>
               <Link href="/search" className="rounded-[var(--radius-btn)] border border-white/20 px-3 py-2 font-code text-[10px] text-white/80 hover:border-white/40">
-                SEARCH EVIDENCE
+                {t("dashboard.searchEvidence")}
               </Link>
             </div>
           </div>
           <div className="rounded-[var(--radius-card)] border border-[var(--panel-inverse-accent)]/30 bg-black/30 p-4 font-code text-[10px] leading-5 panel-inverse-accent">
-            <p>PROCESS MEMORY / {notifications.length} EVENTS</p>
-            <p className="mt-3">✓ session state saved</p>
-            <p>✓ Agent identities available: {agents.length}</p>
-            <p>✓ provenance recording enabled</p>
+            <p>{t("dashboard.processMemory", { count: notifications.length })}</p>
+            <p className="mt-3">{t("dashboard.sessionSaved")}</p>
+            <p>{t("dashboard.agentsAvailable", { count: agents.length })}</p>
+            <p>{t("dashboard.provenanceOn")}</p>
           </div>
         </section>
 
@@ -118,8 +118,8 @@ export default function DashboardPage() {
           <main className="space-y-4">
             <section className="surface-card">
               <div className="flex h-11 items-center justify-between border-b border-[var(--rule)] px-4">
-                <p className="font-code text-[10px] text-[var(--ink)]">TODAY / ACTION REQUIRED</p>
-                <Link href="/notifications" className="font-code text-[9px] text-[var(--accent-link)]">OPEN INBOX →</Link>
+                <p className="font-code text-[10px] text-[var(--ink)]">{t("dashboard.todayActions")}</p>
+                <Link href="/notifications" className="font-code text-[9px] text-[var(--accent-link)]">{t("dashboard.openInbox")}</Link>
               </div>
               {pendingDecisions.length === 0 ? (
                 <div className="p-5 text-[13px] text-[var(--ink-faint)]">{t("dashboard.noDecisions")}</div>
@@ -134,7 +134,7 @@ export default function DashboardPage() {
                     <span className="text-[13px] font-medium text-[var(--ink)]">
                       {item.actor_name || t("dashboard.collaborator")} · {item.action}
                     </span>
-                    <span className="font-code text-[9px] text-[var(--accent-link)]">REVIEW</span>
+                    <span className="font-code text-[9px] text-[var(--accent-link)]">{t("dashboard.review")}</span>
                   </Link>
                 ))
               )}
@@ -143,7 +143,7 @@ export default function DashboardPage() {
             <section className="callout-link p-5">
               <div className="flex items-center gap-3 text-[var(--accent-link)]">
                 <DeimosIcon name="semantic-search" className="h-5 w-5" />
-                <p className="font-code text-[10px] font-medium">TEAM VALUE RECORD</p>
+                <p className="font-code text-[10px] font-medium">{t("dashboard.teamValue")}</p>
               </div>
               <p className="mt-4 text-[13px] leading-6 text-[var(--accent-link)]">
                 {t("dashboard.workspaceHint")}
@@ -153,7 +153,7 @@ export default function DashboardPage() {
 
           <aside className="space-y-4">
             <section className="surface-card p-4">
-              <p className="font-code text-[10px] text-[var(--ink)]">OWNED AGENTS / {agents.length}</p>
+              <p className="font-code text-[10px] text-[var(--ink)]">{t("dashboard.ownedAgents", { count: agents.length })}</p>
               <div className="mt-4 space-y-3">
                 {agents.slice(0, 4).map((agent) => (
                   <Link key={agent.id} href={`/agents/${agent.id}`} className="flex items-center gap-3">
@@ -162,21 +162,21 @@ export default function DashboardPage() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[12px] font-medium text-[var(--ink)]">{agent.name}</span>
-                      <span className="font-code text-[9px] text-[var(--accent-success)]">OPERATIONAL</span>
+                      <span className="font-code text-[9px] text-[var(--accent-success)]">{t("dashboard.operational")}</span>
                     </span>
                   </Link>
                 ))}
               </div>
               <Link href="/user/agents" className="mt-5 inline-flex font-code text-[9px] text-[var(--accent-link)]">
-                MANAGE FLEET →
+                {t("dashboard.manageFleet")}
               </Link>
             </section>
 
             <section className="panel-inverse p-4 font-code text-[10px] leading-6">
-              <p className="panel-inverse-accent">QUICK ACTIONS</p>
-              <Link href="/chat" className="mt-3 block panel-inverse-muted hover:text-white">/chat&nbsp;&nbsp;delegate a task</Link>
-              <Link href="/ideas/new" className="block panel-inverse-muted hover:text-white">/publish&nbsp;&nbsp;register an idea</Link>
-              <Link href="/docs/mcp" className="block panel-inverse-muted hover:text-white">/mcp&nbsp;&nbsp;connect tools</Link>
+              <p className="panel-inverse-accent">{t("dashboard.quickActions")}</p>
+              <Link href="/chat" className="mt-3 block panel-inverse-muted hover:text-white">{t("dashboard.actionChat")}</Link>
+              <Link href="/ideas/new" className="block panel-inverse-muted hover:text-white">{t("dashboard.actionPublish")}</Link>
+              <Link href="/docs/mcp" className="block panel-inverse-muted hover:text-white">{t("dashboard.actionMcp")}</Link>
             </section>
           </aside>
         </div>

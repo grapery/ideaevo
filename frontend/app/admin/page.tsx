@@ -97,7 +97,7 @@ export default function AdminPage() {
       <div className="page-shell">
         <div className="page-container page-pad max-w-3xl">
         <SystemPageHeader
-          eyebrow="ADMIN / OPERATIONS"
+          eyebrow={t("admin.eyebrow")}
           title={t("admin.title")}
           description={t("admin.desc")}
           icon="decision"
@@ -108,7 +108,7 @@ export default function AdminPage() {
           <div className="panel-inverse p-5">
             <DeimosIcon name="shield" className="mb-8 h-5 w-5 panel-inverse-accent" />
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/50">
-              Protected surface
+              {t("admin.protectedSurface")}
             </p>
             <p className="mt-2 text-sm leading-6 text-white/75">
               {t("admin.tokenHint")}
@@ -116,7 +116,7 @@ export default function AdminPage() {
           </div>
           <div className="surface-card p-6">
           <label htmlFor="admin-token" className="block text-sm font-medium text-[var(--title)] mb-1.5">
-            Admin Token
+            {t("admin.tokenLabel")}
           </label>
           <p className="mb-4 text-xs leading-5 text-[var(--text-muted)]">
             {t("admin.tokenPlaceholder")}
@@ -128,7 +128,7 @@ export default function AdminPage() {
               autoComplete="off"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="JWT Token"
+              placeholder={t("admin.tokenInputPlaceholder")}
               className="flex-1"
             />
             <button
@@ -149,7 +149,7 @@ export default function AdminPage() {
     <div className="page-shell">
       <div className="page-container page-pad max-w-4xl">
       <SystemPageHeader
-        eyebrow="ADMIN / OPERATIONS"
+        eyebrow={t("admin.eyebrow")}
         title={t("admin.queue")}
         description={t("admin.queueDesc")}
         icon="decision"

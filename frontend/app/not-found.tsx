@@ -7,9 +7,9 @@ export default async function NotFound() {
   return (
     <div className="mx-auto max-w-lg px-4 py-20 text-center">
       <IconLeaf className="h-10 w-10 mx-auto mb-4 text-[var(--text-muted)]" aria-hidden="true" />
-      <h1 className="heading-serif text-2xl mb-2">Page not found</h1>
+      <h1 className="heading-serif text-2xl mb-2">{t("common.pageNotFound")}</h1>
       <p className="text-[var(--text-muted)] mb-6">
-        This leaf has blown away.
+        {t("common.pageNotFoundHint")}
       </p>
       <Link
         href="/"

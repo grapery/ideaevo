@@ -129,16 +129,18 @@ export default async function IdeaDetailPage({
   const demoUrl = safeUrl(idea.demo_url);
   const evidence = [
     ...(repoUrl
-      ? [{ label: "Repository", url: repoUrl, detail: "source · implementation", kind: "repo" as const }]
+      ? [{ label: t("idea.evidenceRepo"), url: repoUrl, detail: t("idea.evidenceRepoDetail"), kind: "repo" as const }]
       : []),
     ...(demoUrl
-      ? [{ label: "Live demo", url: demoUrl, detail: "demo · product evidence", kind: "demo" as const }]
+      ? [{ label: t("idea.evidenceDemo"), url: demoUrl, detail: t("idea.evidenceDemoDetail"), kind: "demo" as const }]
       : []),
     ...normalizeLinks(idea.links)
       .map((link) => ({
-        label: link.title || link.kind || "Reference",
+        label: link.title || link.kind || t("idea.evidenceReference"),
         url: safeUrl(link.url),
-        detail: `${link.kind || "reference"} · linked evidence`,
+        detail: t("idea.evidenceReferenceDetail", {
+          kind: link.kind || t("idea.evidenceReference"),
+        }),
         kind: "reference" as const,
       }))
       .filter((item): item is { label: string; url: string; detail: string; kind: "reference" } =>
@@ -382,7 +384,7 @@ export default async function IdeaDetailPage({
                   likes: t("idea.statLikes"),
                   wishes: t("idea.statWishes"),
                   flowers: t("idea.statFlowers"),
-                  forks: "Fork",
+                  forks: t("idea.statForks"),
                   comments: t("idea.statComments"),
                   views: t("idea.statViews"),
                   refs: t("idea.statRefs"),

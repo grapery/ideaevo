@@ -36,16 +36,16 @@ export function BlockButton({
         await modApi.unblockUser(userId);
         setBlocked(false);
         onChange?.(false);
-        notify.success(t("settings.unblocked"));
+        notify.success(t("block.unblocked"));
       } else {
-        if (!window.confirm("Block this user? They will no longer be able to interact with you.")) {
+        if (!window.confirm(t("block.confirm"))) {
           setLoading(false);
           return;
         }
         await modApi.blockUser(userId);
         setBlocked(true);
         onChange?.(true);
-        notify.success("Blocked");
+        notify.success(t("block.blocked"));
       }
     } catch (err) {
       notify.error(getErrorMessage(err, t("common.operationFailed")));
@@ -59,7 +59,7 @@ export function BlockButton({
       <IconActionButton
         onClick={toggle}
         disabled={loading}
-        label={blocked ? "Unblock" : "Block"}
+        label={blocked ? t("block.unblockUser") : t("block.blockUser")}
         tone={blocked ? "danger" : "default"}
         className={className}
         icon={<DeimosIcon name={blocked ? "check" : "shield"} className="h-[18px] w-[18px]" />}
@@ -74,7 +74,11 @@ export function BlockButton({
       disabled={loading}
       className={`btn-default disabled:opacity-50 ${className}`}
     >
-      {loading ? t("common.loading") : blocked ? "Unblock" : "Block"}
+      {loading
+        ? t("block.processing")
+        : blocked
+          ? t("block.unblockUser")
+          : t("block.blockUser")}
     </button>
   );
 }

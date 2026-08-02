@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Idea, IdeaImplStatus, IDEA_IMPL_STATUS_LABELS, normalizeTags } from "@/lib/types";
+import { Idea, IdeaImplStatus, normalizeTags } from "@/lib/types";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { Modal } from "@/components/ui/modal";
@@ -37,9 +37,16 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
   const [demoUrl, setDemoUrl] = useState(idea.demo_url || "");
   const [implStatus, setImplStatus] = useState<IdeaImplStatus>(idea.impl_status || "");
 
+  const implStatusOptions: { value: IdeaImplStatus; label: string }[] = [
+    { value: "concept", label: t("idea.concept") },
+    { value: "in_progress", label: t("idea.inProgress") },
+    { value: "implemented", label: t("idea.implemented") },
+    { value: "paused", label: t("idea.paused") },
+  ];
+
   async function submit() {
     if (!title.trim() || !description.trim() || !category.trim() || !changelog.trim()) {
-      notify.error("Title, description, category, and changelog are all required");
+      notify.error(t("idea.versionRequiredFields"));
       return;
     }
     setSaving(true);
@@ -59,9 +66,9 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
           demo_url: demoUrl.trim() || undefined,
           impl_status: implStatus || undefined,
         },
-        { useSession: true }
+        { useSession: true },
       );
-      notify.success("New version published");
+      notify.success(t("idea.versionPublished"));
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -73,20 +80,16 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="btn-outline btn-sm"
-      >
-        + Publish new version
+      <button type="button" onClick={() => setOpen(true)} className="btn-outline btn-sm">
+        {t("idea.publishNewVersion")}
       </button>
 
       <Modal
         open={open}
         onClose={() => !saving && setOpen(false)}
         disableClose={saving}
-        title="Publish new version"
-        description="Create a new version based on the current content. The changelog will be recorded in version history."
+        title={t("idea.publishVersionTitle")}
+        description={t("idea.publishVersionDesc")}
         footer={
           <>
             <button
@@ -103,16 +106,16 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
               disabled={saving}
               className="btn-outline px-4 py-2 text-sm disabled:opacity-50"
             >
-              {saving ? t("idea.publishing") : "Publish version"}
+              {saving ? t("idea.publishing") : t("idea.publishVersionButton")}
             </button>
           </>
         }
       >
         <div className="space-y-4">
-          <FormField id="pv-title" label="Title">
+          <FormField id="pv-title" label={t("fork.titleLabel")}>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </FormField>
-          <FormField id="pv-desc" label="Description">
+          <FormField id="pv-desc" label={t("fork.descLabel")}>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -121,7 +124,7 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
             />
           </FormField>
           <div className="grid grid-cols-2 gap-3">
-            <FormField id="pv-category" label="Category">
+            <FormField id="pv-category" label={t("idea.category")}>
               <Input value={category} onChange={(e) => setCategory(e.target.value)} />
             </FormField>
             <FormField id="pv-status" label={t("idea.implStatus")}>
@@ -130,32 +133,32 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
                 onChange={(e) => setImplStatus(e.target.value as IdeaImplStatus)}
                 className="w-full rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm text-[var(--text-secondary)]"
               >
-                <option value="">Unchanged</option>
-                {Object.entries(IDEA_IMPL_STATUS_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
+                <option value="">{t("idea.unchanged")}</option>
+                {implStatusOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
             </FormField>
           </div>
-          <FormField id="pv-tags" label="Tags (comma separated)">
+          <FormField id="pv-tags" label={t("idea.tagsComma")}>
             <Input value={tagsRaw} onChange={(e) => setTagsRaw(e.target.value)} />
           </FormField>
           <div className="grid grid-cols-2 gap-3">
-            <FormField id="pv-repo" label="Repository URL">
+            <FormField id="pv-repo" label={t("idea.repoUrl")}>
               <Input value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} />
             </FormField>
-            <FormField id="pv-demo" label="Demo URL">
+            <FormField id="pv-demo" label={t("idea.demoUrl")}>
               <Input value={demoUrl} onChange={(e) => setDemoUrl(e.target.value)} />
             </FormField>
           </div>
-          <FormField id="pv-changelog" label="Changelog" hint="Required. Describe the changes in this version.">
+          <FormField id="pv-changelog" label={t("idea.changelog")} hint={t("idea.changelogHint")}>
             <Textarea
               value={changelog}
               onChange={(e) => setChangelog(e.target.value)}
               rows={3}
-              placeholder="e.g. Add implementation plan, fix category tags"
+              placeholder={t("idea.changelogPlaceholder")}
               className="resize-none"
             />
           </FormField>

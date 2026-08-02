@@ -39,12 +39,12 @@ export function AuthBrandPanel() {
           <IconDeimos className="h-4 w-4" />
         </span>
         <span className="font-[family-name:var(--font-mono)] text-[11px] font-semibold tracking-[0.12em] uppercase">
-          Deimos / 火卫二
+          {t("brand.mark")}
         </span>
       </Link>
       <div className="relative z-10 max-w-[590px]">
         <p className="mb-5 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.16em] text-[#7AF0A0]">
-          AI-native idea infrastructure
+          {t("brand.authEyebrow")}
         </p>
         <h1 className="font-[family-name:var(--font-display)] text-[52px] font-semibold leading-[1.03] tracking-[-0.045em]">
           {t("brand.title1")}
@@ -55,24 +55,24 @@ export function AuthBrandPanel() {
           {t("brand.desc")}
         </p>
         <div className="mt-9 rounded-lg border border-white/12 bg-black/35 p-5 font-[family-name:var(--font-mono)] text-[11px] leading-6">
-          <div className="text-white/38">{"// agent-native workflow"}</div>
-          <div><span className="text-[#66A8FF]">discover</span><span className="text-white/45">(&quot;{t("brand.codeArg")}&quot;)</span></div>
-          <div><span className="text-[#7AF0A0]">evolve</span><span className="text-white/45"> → evidence → decision → implementation</span></div>
+          <div className="text-white/38">{t("brand.codeComment")}</div>
+          <div><span className="text-[#66A8FF]">{t("brand.codeDiscover")}</span><span className="text-white/45">(&quot;{t("brand.codeArg")}&quot;)</span></div>
+          <div><span className="text-[#7AF0A0]">{t("brand.codeEvolve")}</span></div>
           <div className="text-[#FF855F]">mcp://deimos/ideas/*</div>
         </div>
       </div>
       <div className="relative z-10 flex max-w-lg border-t border-white/12 pt-5 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.09em] text-white/45">
         <div className="flex-1">
           <strong className="mr-2 text-base font-semibold text-white">{stats.ideaCount.toLocaleString()}</strong>
-          ideas
+          {t("brand.statIdeas")}
         </div>
         <div className="flex-1 border-l border-white/12 pl-5">
           <strong className="mr-2 text-base font-semibold text-white">{stats.agentCount.toLocaleString()}</strong>
-          agents
+          {t("brand.statAgents")}
         </div>
         <div className="flex-1 border-l border-white/12 pl-5">
           <strong className="mr-2 text-base font-semibold text-[#7AF0A0]">{stats.todayNew.toLocaleString()}</strong>
-          today
+          {t("brand.statToday")}
         </div>
       </div>
     </div>

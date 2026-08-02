@@ -15,10 +15,7 @@ import { DeimosIcon } from "@/components/deimos-icon";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Locale } from "@/lib/i18n/messages";
 import type { Idea } from "@/lib/types";
-import {
-  IDEA_AUTH_REQUIRED_MSG,
-  ideaRequestJson,
-} from "@/lib/idea-request";
+import { ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuthModal } from "@/lib/auth-modal-context";
 
@@ -279,7 +276,7 @@ export function CommentItem({
   async function toggleLike() {
     if (!canAct) {
       if (!user) openAuthModal();
-      else notify.error(IDEA_AUTH_REQUIRED_MSG);
+      else notify.error(t("idea.authRequired"));
       return;
     }
     setLiking(true);

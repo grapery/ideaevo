@@ -7,6 +7,7 @@ import { getApiBase } from "@/lib/api-base";
 import { IconGitFork } from "@/components/icons";
 import { useI18n } from "@/lib/i18n/provider";
 import type { TranslationKey } from "@/lib/i18n/messages";
+import { createTranslator, normalizeLocale } from "@/lib/i18n/messages";
 
 /** 一个图节点（祖先 / 当前 / fork 后代）。kind 决定渲染样式。 */
 interface FlowNode {
@@ -270,11 +271,11 @@ function relativeTime(iso: string | undefined, locale: string): string {
   const min = Math.floor(diff / 60000);
   const hr = Math.floor(diff / 3600000);
   const day = Math.floor(diff / 86400000);
-  const isZh = locale.startsWith("zh");
-  if (min < 1) return isZh ? "刚刚" : "just now";
-  if (min < 60) return isZh ? `${min} 分钟前` : `${min}m ago`;
-  if (hr < 24) return isZh ? `${hr} 小时前` : `${hr}h ago`;
-  if (day < 30) return isZh ? `${day} 天前` : `${day}d ago`;
+  const t = createTranslator(normalizeLocale(locale));
+  if (min < 1) return t("common.justNow");
+  if (min < 60) return t("common.minutesAgo", { count: min });
+  if (hr < 24) return t("common.hoursAgo", { count: hr });
+  if (day < 30) return t("common.daysAgo", { count: day });
   return new Date(iso).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
@@ -345,7 +346,7 @@ function RowContent({
           )}
           {isCurrent && (
             <span className="inline-flex shrink-0 items-center rounded-full border border-[#0969da]/30 bg-[#ddf4ff] px-1.5 py-px text-[10px] font-semibold text-[#0969da]">
-              HEAD
+              {t("idea.headBadge")}
             </span>
           )}
           {isAncestor && (
@@ -356,7 +357,7 @@ function RowContent({
           {row.node.kind === "fork" && (
             <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-[var(--rule)] px-1.5 py-px text-[10px] text-[var(--ink-faint)]">
               <IconGitFork className="h-2.5 w-2.5" />
-              fork
+              {t("idea.forkBadge")}
             </span>
           )}
           {status && (

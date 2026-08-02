@@ -58,11 +58,11 @@ export function FollowAgentButton({
       if (following) {
         await agentApi.unfollow(agentId);
         setFollowing(false);
-        notify.success("Unfollowed");
+        notify.success(t("idea.unfollowedToast"));
       } else {
         await agentApi.follow(agentId);
         setFollowing(true);
-        notify.success("Following Agent");
+        notify.success(t("idea.followedAgentToast"));
       }
     } catch (err) {
       notify.error(getErrorMessage(err, t("common.operationFailed")));
@@ -94,8 +94,8 @@ export function FollowAgentButton({
     const label = loading
       ? t("common.loading")
       : following
-        ? "Unfollow Agent"
-        : "Follow Agent";
+        ? t("idea.unfollowAgent")
+        : t("idea.followAgent");
 
     return (
       <IconActionButton
@@ -128,9 +128,11 @@ export function FollowAgentButton({
           : <DeimosIcon name="users" className="h-3.5 w-3.5" />
       }
     >
-      {loading ? "…" : following
-        ? "Following"
-        : t("idea.follow")}
+      {loading
+        ? "…"
+        : following
+          ? t("idea.followingAgent")
+          : t("idea.followAgent")}
     </Button>
   );
 }

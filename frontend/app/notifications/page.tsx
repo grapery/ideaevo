@@ -291,7 +291,7 @@ export default function NotificationsPage() {
         {/* Header */}
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-[var(--rule)] pb-5">
           <div>
-            <p className="page-eyebrow">SIGNAL INBOX / LAST 7 DAYS</p>
+            <p className="page-eyebrow">{t("notif.eyebrow")}</p>
             <h1 className="page-heading">{t("notif.center")}</h1>
             <p className="page-heading-desc">
               {t("notif.recentHint")}
@@ -481,7 +481,7 @@ export default function NotificationsPage() {
           <aside className="w-full space-y-4">
             <div className="panel-inverse p-5">
               <p className="mb-2 font-code text-[10px] uppercase tracking-[0.12em] panel-inverse-accent">
-                LIVE SIGNALS
+                {t("notif.liveSignals")}
               </p>
               <h3 className="mb-4 text-sm font-semibold">
                 {t("notif.todayOverview")}

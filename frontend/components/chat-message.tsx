@@ -382,7 +382,7 @@ export default function ChatMessage({
   const attachment = normalizeMessageMetadata(message.metadata)?.attachment;
 
   if (isA2ADelegation) {
-    const targetAgentName = activity?.target_agent_name ?? "Agent";
+    const targetAgentName = activity?.target_agent_name ?? t("activity.agent");
     return (
       <div className="mb-4">
         <div
@@ -478,7 +478,7 @@ export default function ChatMessage({
       }
     : {
         id: message.actor_id || agentIdentity?.id || "deimos-agent",
-        name: agentIdentity?.name || "Agent",
+        name: agentIdentity?.name || t("activity.agent"),
         avatarUrl: agentIdentity?.avatarUrl,
       };
 

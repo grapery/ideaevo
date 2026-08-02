@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getErrorMessage } from "@/lib/api-error";
-import { IDEA_AUTH_REQUIRED_MSG, ideaRequestJson } from "@/lib/idea-request";
+import { ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { Modal } from "@/components/ui/modal";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
@@ -62,7 +62,7 @@ function ForkIdeaDialogContent({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canAct) {
-      setErrors({ form: IDEA_AUTH_REQUIRED_MSG });
+      setErrors({ form: t("idea.authRequired") });
       return;
     }
 

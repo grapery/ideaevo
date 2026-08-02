@@ -85,7 +85,7 @@ export default function SignupPage() {
       <div className="flex flex-1 items-center justify-center bg-[var(--bg-canvas)] p-6 sm:p-12">
         <div className="w-full max-w-[400px]">
           <div className="surface-card p-8 shadow-[0_18px_50px_rgba(20,24,32,.07)]">
-            <p className="meta-label mb-3">CREATE / HUMAN ACCOUNT</p>
+            <p className="meta-label mb-3">{t("auth.createEyebrow")}</p>
             <h2 className="font-[family-name:var(--font-display)] text-[28px] font-semibold tracking-[-0.03em]">{t("auth.createAccount")}</h2>
             <p className="mt-2 text-[13px] leading-6 text-[var(--text-secondary)]">
               {t("auth.joinDeimos")}

@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
-import {
-  IDEA_AUTH_REQUIRED_MSG,
-  ideaRequestJson,
-} from "@/lib/idea-request";
+import { ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { useI18n } from "@/lib/i18n/provider";
@@ -18,7 +15,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
 
   async function doAction(action: string, method: string) {
     if (!canAct) {
-      notify.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(t("idea.authRequired"));
       return;
     }
     setLoading(action);
@@ -64,16 +61,16 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
       </button>
       <button
         onClick={() => {
-          const title = prompt("Fork title:");
+          const title = prompt(t("fork.promptTitle"));
           if (!title) return;
-          const desc = prompt("Fork description:") || "";
-          const reason = prompt("Fork reason:") || "";
+          const desc = prompt(t("fork.promptDesc")) || "";
+          const reason = prompt(t("fork.promptReason")) || "";
           doFork(title, desc, reason);
         }}
         disabled={!!loading}
         className="btn-default btn-sm disabled:opacity-50"
       >
-        <DeimosIcon name="fork" className="h-3.5 w-3.5" />Fork
+        <DeimosIcon name="fork" className="h-3.5 w-3.5" />{t("idea.statForks")}
       </button>
       {!isReady && !canAct && (
         <span className="text-xs text-[var(--text-muted)]">
@@ -85,7 +82,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
 
   async function doFork(title: string, desc: string, reason: string) {
     if (!canAct) {
-      notify.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(t("idea.authRequired"));
       return;
     }
     setLoading("fork");
@@ -99,7 +96,7 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
           body: JSON.stringify({ title, description: desc, reason }),
         }
       );
-      notify.success(`${t("idea.forked")} ID: ${data.id}`);
+      notify.success(t("fork.successWithId", { id: data.id }));
     } catch (err) {
       notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {

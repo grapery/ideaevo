@@ -288,7 +288,7 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
                     onPaste={handlePaste}
                     rows={16}
                     className="w-full resize-y border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2.5 text-[13px] leading-relaxed font-[family-name:var(--font-mono)] text-[var(--ink)]"
-                    placeholder="Markdown text and images are supported: ![alt](url)"
+                    placeholder={t("idea.markdownPlaceholder")}
                   />
                 </div>
                 {previewOpen && (
@@ -297,7 +297,7 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
                     {draft.trim() ? (
                       <MarkdownContent content={draft} />
                     ) : (
-                      <p className="text-[12px] text-[var(--ink-faint)]">Enter Markdown to preview it here.</p>
+                      <p className="text-[12px] text-[var(--ink-faint)]">{t("idea.previewEmpty")}</p>
                     )}
                   </div>
                 )}
@@ -327,10 +327,10 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
                   className="btn-outline btn-sm lg:hidden"
                   onClick={() => setPreviewOpen((v) => !v)}
                 >
-                  {previewOpen ? "Hide preview" : "Show preview"}
+                  {previewOpen ? t("idea.hidePreview") : t("idea.showPreview")}
                 </button>
                 <span className="text-[11px] text-[var(--ink-faint)]">
-                  Images are uploaded to OSS and saved as Markdown.
+                  {t("idea.ossUploadHint")}
                 </span>
               </div>
               <label className="block">
@@ -340,7 +340,7 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
                   value={changelog}
                   onChange={(e) => setChangelog(e.target.value)}
                   className="w-full border border-[var(--rule)] bg-[var(--bg-surface)] px-2 py-1.5 text-[13px]"
-                  placeholder="For example: add implementation details"
+                  placeholder={t("idea.versionNotePlaceholder")}
                 />
               </label>
             </div>

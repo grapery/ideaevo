@@ -1,4 +1,5 @@
 import { api } from "@/lib/api-client";
+import { getClientTranslator } from "@/lib/i18n/messages";
 
 /** 上传想法描述插图，返回可写入 Markdown 的公开 URL */
 export async function uploadIdeaDescriptionImage(ideaId: string, file: File): Promise<string> {
@@ -9,13 +10,14 @@ export async function uploadIdeaDescriptionImage(ideaId: string, file: File): Pr
     headers: { "Content-Type": file.type },
   });
   if (!putRes.ok) {
-    throw new Error("图片上传失败");
+    throw new Error(getClientTranslator()("common.imageUploadFailed"));
   }
   return presign.public_url;
 }
 
-export function markdownImageSnippet(url: string, alt = "配图"): string {
-  return `\n\n![${alt}](${url})\n`;
+export function markdownImageSnippet(url: string, alt?: string): string {
+  const resolvedAlt = alt ?? getClientTranslator()("idea.imageAlt");
+  return `\n\n![${resolvedAlt}](${url})\n`;
 }
 
 export function insertAtTextareaCursor(

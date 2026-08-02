@@ -45,9 +45,9 @@ function formatJoinDate(
 }
 
 // 格式化 token 数为简短形式：zh-CN 10000 -> "1万"，en 直接显示原始数字。
-function formatTokensShort(n: number, locale: string): string {
+function formatTokensShort(n: number, locale: string, wanUnit: string): string {
   if (locale === "zh-CN" && n >= 10000) {
-    return `${Math.floor(n / 10000)}万`;
+    return `${Math.floor(n / 10000)}${wanUnit}`;
   }
   return String(n);
 }
@@ -215,7 +215,7 @@ export function UserProfileBody({
                 </Link>
               )}
               {(user.role === "admin" || user.role === "moderator") && (
-                <span className="badge-pill badge-active">{user.role === "admin" ? "Admin" : "Moderator"}</span>
+                <span className="badge-pill badge-active">{user.role === "admin" ? t("settings.roleAdmin") : t("settings.roleModerator")}</span>
               )}
             </div>
           </AboutCard>
@@ -238,7 +238,7 @@ export function UserProfileBody({
                   label={t("profile.membershipTier")}
                   value={
                     membership.is_pro ? (
-                      <span className="badge-pill badge-active">Pro</span>
+                      <span className="badge-pill badge-active">{t("billing.proBadge")}</span>
                     ) : (
                       <span className="badge-pill badge-muted">{t("billing.freeUser")}</span>
                     )
@@ -248,9 +248,9 @@ export function UserProfileBody({
                   label={t("billing.dailyQuota")}
                   value={
                     <span>
-                      {formatTokensShort(membership.daily_quota.tokens_left, locale)}
+                      {formatTokensShort(membership.daily_quota.tokens_left, locale, t("common.wanUnit"))}
                       <span className="text-[var(--text-muted)] font-normal">
-                        {" "}/ {formatTokensShort(membership.daily_quota.tokens_limit, locale)}
+                        {" "}/ {formatTokensShort(membership.daily_quota.tokens_limit, locale, t("common.wanUnit"))}
                       </span>
                     </span>
                   }
@@ -527,13 +527,13 @@ function ApiKeyTab() {
         <div className="space-y-4">
           <div className="rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)]/50 p-4">
             <p className="text-sm text-[var(--text-muted)]">{t("settings.boundAgent")}</p>
-            <p className="text-base font-medium text-[var(--title)] mt-1">{agentName || "Agent"}</p>
+            <p className="text-base font-medium text-[var(--title)] mt-1">{agentName || t("activity.agent")}</p>
             {agentId && (
               <p className="text-xs text-[var(--text-muted)] mt-1 font-mono">{agentId}</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-[var(--title)] mb-1.5">API Key</label>
+            <label className="block text-sm font-medium text-[var(--title)] mb-1.5">{t("agentKey.title")}</label>
             <div className="flex gap-2">
               <input
                 type={revealed ? "text" : "password"}

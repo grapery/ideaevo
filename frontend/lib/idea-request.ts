@@ -2,7 +2,10 @@ import { getApiBase } from "./api-base";
 import { parseResponseError } from "./api-error";
 
 export const IDEA_AUTH_REQUIRED_MSG =
-  "请先登录，或在「我的面板」输入 Agent API Key";
+  "Please sign in, or enter an Agent API Key in My Panel"; // deprecated: use t("idea.authRequired")
+
+
+/** @deprecated Prefer t("idea.authRequired") for locale-aware copy. */
 
 type IdeaRequestOptions = RequestInit & {
   apiKey?: string;

@@ -28,6 +28,7 @@ import {
 } from "./types";
 import { getApiBase } from "./api-base";
 import { parseResponseError, formatApiError } from "./api-error";
+import { getClientTranslator } from "./i18n/messages";
 import { ideaRequestJson } from "./idea-request";
 
 export class ApiRequestError extends Error {
@@ -49,7 +50,7 @@ async function fetchApi(
   try {
     return await fetch(`${getApiBase()}${path}`, options);
   } catch {
-    throw new Error("网络连接失败，请确认 API 服务已启动");
+    throw new Error(getClientTranslator()("common.networkError"));
   }
 }
 
@@ -69,12 +70,15 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       body = undefined;
     }
     const raw = body?.error ?? body?.message;
+    const fallback = getClientTranslator()("common.requestFailedStatus", {
+      status: res.status,
+    });
     const message =
       typeof raw === "string"
-        ? formatApiError(raw, `请求失败 (${res.status})`)
+        ? formatApiError(raw, fallback)
         : Array.isArray(raw) && typeof raw[0] === "string"
-          ? formatApiError(raw[0], `请求失败 (${res.status})`)
-          : formatApiError(res.statusText, `请求失败 (${res.status})`);
+          ? formatApiError(raw[0], fallback)
+          : formatApiError(res.statusText, fallback);
     throw new ApiRequestError(message, res.status, body);
   }
   return res.json();
@@ -102,12 +106,15 @@ async function requestWithAuth<T>(
       body = undefined;
     }
     const raw = body?.error ?? body?.message;
+    const fallback = getClientTranslator()("common.requestFailedStatus", {
+      status: res.status,
+    });
     const message =
       typeof raw === "string"
-        ? formatApiError(raw, `请求失败 (${res.status})`)
+        ? formatApiError(raw, fallback)
         : Array.isArray(raw) && typeof raw[0] === "string"
-          ? formatApiError(raw[0], `请求失败 (${res.status})`)
-          : formatApiError(res.statusText, `请求失败 (${res.status})`);
+          ? formatApiError(raw[0], fallback)
+          : formatApiError(res.statusText, fallback);
     throw new ApiRequestError(message, res.status, body);
   }
   return res.json();
@@ -621,13 +628,13 @@ export const chatApi = {
       ),
     });
     if (!res.ok) {
-      onError(new Error(await parseResponseError(res, "消息发送失败")));
+      onError(new Error(await parseResponseError(res, getClientTranslator()("common.sendMessageFailed"))));
       return;
     }
 
     const reader = res.body?.getReader();
     if (!reader) {
-      onError(new Error("No stream body"));
+      onError(new Error(getClientTranslator()("common.noStreamBody")));
       return;
     }
 
@@ -647,11 +654,14 @@ export const chatApi = {
           const err = JSON.parse(dataStr);
           onError(
             new Error(
-              formatApiError(err.error || "stream error", "消息发送失败"),
+              formatApiError(
+                err.error || getClientTranslator()("common.streamError"),
+                getClientTranslator()("common.sendMessageFailed"),
+              ),
             ),
           );
         } catch {
-          onError(new Error(dataStr || "stream error"));
+          onError(new Error(dataStr || getClientTranslator()("common.streamError")));
         }
         return true;
       }
@@ -823,7 +833,9 @@ export const chatApi = {
       headers: { "Content-Type": contentType },
     });
     if (!putRes.ok) {
-      throw new Error(`文件上传失败 (HTTP ${putRes.status})`);
+      throw new Error(
+        getClientTranslator()("common.uploadFailedHttp", { status: putRes.status }),
+      );
     }
     const { attachment } = await chatApi.finalizeChatFile(
       presign.key,

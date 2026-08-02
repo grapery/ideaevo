@@ -34,7 +34,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
   const agent = idea.agent;
   const owner = agent?.owner;
   const isPersonal = agent?.is_personal === true;
-  const agentName = agent?.name || idea.agent_id?.slice(0, 8) || "Agent";
+  const agentName = agent?.name || idea.agent_id?.slice(0, 8) || t("activity.agent");
 
   // ① 个人代理 = 用户本人发布
   if (isPersonal && owner) {

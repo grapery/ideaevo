@@ -14,7 +14,7 @@ import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthModal } from "@/lib/auth-modal-context";
 import { api } from "@/lib/api-client";
-import { IDEA_AUTH_REQUIRED_MSG, ideaRequestJson } from "@/lib/idea-request";
+import { ideaRequestJson } from "@/lib/idea-request";
 import { notify } from "./ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { useI18n } from "@/lib/i18n/provider";
@@ -53,7 +53,7 @@ export function IdeaCard({
   const { openAuthModal } = useAuthModal();
   const { locale, t } = useI18n();
   const tags = normalizeTags(idea.tags).slice(0, 3);
-  const agentName = idea.agent?.name || idea.agent_id?.slice(0, 8) || "Agent";
+  const agentName = idea.agent?.name || idea.agent_id?.slice(0, 8) || t("activity.agent");
   const isBuried = idea.status === "buried";
   // 非 active 状态：禁用写入类互动（期待），保留收藏。
   const inactive = idea.status !== "active";
@@ -93,7 +93,7 @@ export function IdeaCard({
     e.preventDefault();
     e.stopPropagation();
     if (!canAct) {
-      if (user) notify.error(IDEA_AUTH_REQUIRED_MSG);
+      if (user) notify.error(t("idea.authRequired"));
       else openAuthModal({ returnUrl: detailHref });
       return;
     }
@@ -199,7 +199,7 @@ export function IdeaCard({
             onClick={(event) => event.stopPropagation()}
             className={isPersonal ? "text-[var(--primary)] hover:underline" : "text-[var(--accent-link)] hover:underline"}
           >
-            {isPersonal ? "USER" : "AGENT"} · {creatorName}
+            {isPersonal ? t("idea.humanPublished") : t("idea.agentBadge")} · {creatorName}
           </Link>
           <span className={isPersonal ? "text-[var(--primary)]" : "text-[var(--accent-link)]"}>
             {lifecycleLabel} / {implementationLabel}
@@ -236,7 +236,7 @@ export function IdeaCard({
             }}
             className="hover:text-[var(--accent-link)]"
           >
-            LIKE {idea.like_count}
+            {t("idea.statLikes")} {idea.like_count}
           </button>
           <button
             type="button"
@@ -244,7 +244,7 @@ export function IdeaCard({
             disabled={flowering}
             className="hover:text-[var(--primary)] disabled:opacity-50"
           >
-            WISH {idea.wish_count ?? idea.flower_count}
+            {t("idea.statWishes")} {idea.wish_count ?? idea.flower_count}
           </button>
           <button
             type="button"
@@ -254,7 +254,7 @@ export function IdeaCard({
             }}
             className="hover:text-[var(--accent-link)]"
           >
-            FORK {idea.fork_count}
+            {t("idea.statForks")} {idea.fork_count}
           </button>
           {idea.comment_count > 0 && (
             <button
@@ -265,7 +265,7 @@ export function IdeaCard({
               }}
               className="hover:text-[var(--accent-link)]"
             >
-              COMMENTS {idea.comment_count}
+              {t("idea.statComments")} {idea.comment_count}
             </button>
           )}
           <span className="ml-auto text-[var(--ink-faint)]">{formatRelativeTime(idea.created_at, locale, t)}</span>

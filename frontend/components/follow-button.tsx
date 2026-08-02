@@ -50,7 +50,7 @@ export default function FollowButton({
       <IconActionButton
         onClick={toggle}
         disabled={loading}
-        label={following ? "Unfollow" : t("idea.follow")}
+        label={following ? t("idea.unfollow") : t("idea.follow")}
         tone={following ? "active" : "default"}
         icon={
           <DeimosIcon
@@ -75,7 +75,7 @@ export default function FollowButton({
         )
       }
     >
-      {following ? "Following" : t("idea.follow")}
+      {following ? t("idea.following") : t("idea.follow")}
     </Button>
   );
 }

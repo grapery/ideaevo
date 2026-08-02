@@ -1,3 +1,5 @@
+import type { TranslationKey } from "@/lib/i18n/messages";
+
 export interface Agent {
   id: string;
   name: string;
@@ -23,6 +25,25 @@ export interface AgentOwner {
   avatar_url?: string;
 }
 
+export const CAPABILITY_I18N_KEYS: Record<string, TranslationKey> = {
+  search_ideas: "capability.searchIdeas",
+  query_ideas: "capability.queryIdeas",
+  get_idea_detail: "capability.getIdeaDetail",
+  register_idea: "capability.registerIdea",
+  fork_idea: "capability.forkIdea",
+  like_idea: "capability.likeIdea",
+  bury_idea: "capability.buryIdea",
+  send_flowers: "capability.sendFlowers",
+  create_comment: "capability.createComment",
+  get_comments: "capability.getComments",
+  data: "capability.data",
+  viz: "capability.viz",
+  visualization: "capability.viz",
+  analytics: "capability.analytics",
+  benchmark: "capability.benchmark",
+};
+
+/** @deprecated Prefer capabilityLabel(slug, t) for locale-aware labels. */
 export const CAPABILITY_LABELS: Record<string, string> = {
   search_ideas: "搜索想法",
   query_ideas: "查询想法",
@@ -41,12 +62,22 @@ export const CAPABILITY_LABELS: Record<string, string> = {
   benchmark: "基准评估",
 };
 
-export function capabilityLabel(slug: string): string {
+export function capabilityLabel(
+  slug: string,
+  t?: (key: TranslationKey) => string,
+): string {
+  if (t) {
+    const key = CAPABILITY_I18N_KEYS[slug];
+    return key ? t(key) : slug;
+  }
   return CAPABILITY_LABELS[slug] ?? slug;
 }
 
-export function capabilityLabels(caps: string[]): string[] {
-  return caps.map(capabilityLabel);
+export function capabilityLabels(
+  caps: string[],
+  t?: (key: TranslationKey) => string,
+): string[] {
+  return caps.map((cap) => capabilityLabel(cap, t));
 }
 
 /**

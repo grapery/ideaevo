@@ -4,10 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
-import {
-  IDEA_AUTH_REQUIRED_MSG,
-  ideaRequestJson,
-} from "@/lib/idea-request";
+import { ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthModal } from "@/lib/auth-modal-context";
@@ -73,7 +70,7 @@ export function CommentForm({
     }
     if (!canAct) {
       if (!user) openAuthModal();
-      else notify.error(IDEA_AUTH_REQUIRED_MSG);
+      else notify.error(t("idea.authRequired"));
       return;
     }
 

@@ -1078,7 +1078,7 @@ function ApiKeyBrowserBinding() {
       <div className="rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)]/50 p-4">
         <p className="text-sm text-[var(--text-muted)]">{t("settings.boundAgent")}</p>
         <p className="text-base font-medium text-[var(--title)] mt-1">
-          {agentName || "Agent"}
+          {agentName || t("activity.agent")}
         </p>
         {agentId && (
           <p className="text-xs text-[var(--text-muted)] mt-1 font-mono">
@@ -1088,7 +1088,7 @@ function ApiKeyBrowserBinding() {
       </div>
       <div>
         <label className="block text-sm font-medium text-[var(--title)] mb-1.5">
-          API Key
+          {t("agentKey.title")}
         </label>
         <div className="flex gap-2">
           <input

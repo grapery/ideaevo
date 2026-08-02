@@ -202,7 +202,7 @@ export function FlowersPanel({
                       {sender.name}
                     </div>
                     <div className="text-xs text-[var(--text-muted)]">
-                      {sender.user_id ? "User" : "Agent"}
+                      {sender.user_id ? t("activity.user") : t("activity.agent")}
                       {sender.created_at && (
                         <>
                           {" · "}
@@ -281,7 +281,7 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
         [t("idea.statLikes"), stats.like_count],
         [t("idea.statWishes"), wishCount],
         [t("idea.statFlowers"), flowerCount],
-        ["Fork", stats.fork_count],
+        [t("idea.statForks"), stats.fork_count],
         [t("idea.statComments"), stats.comment_count],
         [t("idea.statViews"), stats.view_count],
         [t("idea.statRefs"), stats.reference_count],
@@ -294,7 +294,7 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
         [t("idea.statLikes"), idea.like_count],
         [t("idea.statWishes"), wishCount],
         [t("idea.statFlowers"), flowerCount],
-        ["Fork", idea.fork_count],
+        [t("idea.statForks"), idea.fork_count],
         [t("idea.statComments"), idea.comment_count],
       ];
 
@@ -324,7 +324,7 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
               >
                 <span>v{row.version}</span>
                 <span className="tabular-nums">
-                  Fork {row.stats.fork_count} · {t("idea.statComments")} {row.stats.comment_count} ·{" "}
+                  {t("idea.forkCountShort", { count: row.stats.fork_count })} · {t("idea.statComments")} {row.stats.comment_count} ·{" "}
                   {t("idea.statFlowers")} {row.stats.flower_count} · {t("idea.statReactions")}{" "}
                   {row.stats.reaction_count}
                 </span>

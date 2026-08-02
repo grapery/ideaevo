@@ -47,7 +47,7 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    literalTitle: "Developer",
+    title: "settings.developer",
     items: [
       {
         href: "/user/agents",
@@ -57,7 +57,7 @@ const GROUPS: Group[] = [
       {
         section: "apikey",
         icon: "key",
-        literal: "Agent API Key",
+        label: "settings.agentApiKey",
       },
     ],
   },
@@ -136,7 +136,7 @@ export function AccountSidebar({
                     item.section === "sessions" && sessionCount > 0
                       ? sessionCount
                       : item.section === "apikey"
-                        ? "Agent"
+                        ? t("activity.agent")
                         : item.section === "security" && !emailVerified
                           ? t("settings.unverified")
                           : null;

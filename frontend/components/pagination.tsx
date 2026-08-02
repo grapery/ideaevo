@@ -34,7 +34,7 @@ export function Pagination({
         disabled={page >= totalPages}
         className="btn-default btn-sm disabled:opacity-50"
       >
-        Next
+        {t("common.next")}
       </button>
     </div>
   );

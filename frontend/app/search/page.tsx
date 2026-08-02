@@ -139,10 +139,10 @@ export default function SearchPage() {
       <div className="page-container page-pad">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="page-eyebrow">SEMANTIC RADAR / EVIDENCE SEARCH</p>
+            <p className="page-eyebrow">{t("search.eyebrow")}</p>
             <h1 className="page-heading">{t("search.title")}</h1>
           </div>
-          <p className="font-code text-[10px] text-[var(--ink-faint)]">VECTOR + MYSQL FALLBACK</p>
+          <p className="font-code text-[10px] text-[var(--ink-faint)]">{t("search.vectorFallback")}</p>
         </div>
 
         <section className="callout-link mt-5 p-4">
@@ -159,12 +159,15 @@ export default function SearchPage() {
             autoFocus
           />
           <div className="mt-3 flex flex-wrap items-center gap-5 font-code text-[10px] text-[var(--ink-faint)]">
-            <span>semantic similarity</span>
-            <span>lifecycle state</span>
-            <span>implementation evidence</span>
+            <span>{t("search.signalSemantic")}</span>
+            <span>{t("search.signalLifecycle")}</span>
+            <span>{t("search.signalEvidence")}</span>
             {searched && (
               <span className="ml-auto text-[var(--accent-link)]">
-                {results.length} MATCHES · {elapsed?.toFixed(2) || "0.00"}s
+                {t("search.matchesElapsed", {
+                  count: results.length,
+                  seconds: elapsed?.toFixed(2) || "0.00",
+                })}
               </span>
             )}
           </div>
@@ -172,9 +175,9 @@ export default function SearchPage() {
 
         <div className="mt-5 grid items-start gap-5 lg:grid-cols-[208px_minmax(0,720px)] xl:grid-cols-[208px_minmax(0,720px)_320px]">
           <aside className="hidden min-h-[690px] surface-card p-4 lg:block">
-            <p className="font-code text-[10px] text-[var(--ink)]">FILTERS</p>
+            <p className="font-code text-[10px] text-[var(--ink)]">{t("search.filters")}</p>
             <div className="mt-5">
-              <p className="font-code text-[9px] text-[var(--ink-faint)]">STATUS</p>
+              <p className="font-code text-[9px] text-[var(--ink-faint)]">{t("market.status")}</p>
               <div className="mt-2 space-y-1">
                 {statusFilters.map((filter) => (
                   <button
@@ -194,7 +197,7 @@ export default function SearchPage() {
             </div>
 
             <div className="my-4 border-t border-[var(--rule)]" />
-            <p className="font-code text-[9px] text-[var(--ink-faint)]">CATEGORY</p>
+            <p className="font-code text-[9px] text-[var(--ink-faint)]">{t("idea.category")}</p>
             <div className="mt-2 space-y-1">
               {categories.map((category) => (
                 <button
@@ -222,7 +225,7 @@ export default function SearchPage() {
               </div>
             ) : results.length === 0 ? (
               <div className="callout-primary p-8 text-center">
-                <p className="font-code text-[10px] text-[var(--primary)]">NO MATCH / EXPLORATION SPACE</p>
+                <p className="font-code text-[10px] text-[var(--primary)]">{t("search.noMatchEyebrow")}</p>
                 <p className="mt-3 font-display text-[18px] font-semibold text-[var(--ink)]">
                   {t("search.noMatch", { query })}
                 </p>
@@ -244,7 +247,7 @@ export default function SearchPage() {
                     );
                   })}
                 </div>
-                <Link href="/ideas/new" className="btn-primary mt-6">+ REGISTER THIS IDEA</Link>
+                <Link href="/ideas/new" className="btn-primary mt-6">{t("search.registerIdea")}</Link>
               </div>
             ) : (
               <div className="space-y-3">
@@ -258,7 +261,7 @@ export default function SearchPage() {
                     disabled={loading}
                     className="h-10 w-full rounded-[6px] border border-[var(--rule)] bg-[var(--bg-surface)] px-4 text-left font-code text-[10px] text-[var(--ink-soft)] hover:border-[var(--accent-link)]"
                   >
-                    {loading ? "LOADING…" : "LOAD MORE RESULTS →"}
+                    {loading ? t("common.loading") : t("search.loadMore")}
                   </button>
                 )}
               </div>
@@ -267,25 +270,25 @@ export default function SearchPage() {
 
           <aside className="hidden space-y-4 xl:block">
             <section className="panel-inverse p-4 font-code text-[10px] leading-6">
-              <p className="panel-inverse-accent">HOW THIS RANKS</p>
-              <p className="mt-3 panel-inverse-muted">0.45 semantic overlap</p>
-              <p className="panel-inverse-muted">0.25 implementation evidence</p>
-              <p className="panel-inverse-muted">0.20 community future value</p>
-              <p className="panel-inverse-muted">0.10 lifecycle recency</p>
+              <p className="panel-inverse-accent">{t("search.howRanks")}</p>
+              <p className="mt-3 panel-inverse-muted">{t("search.rankSemantic")}</p>
+              <p className="panel-inverse-muted">{t("search.rankEvidence")}</p>
+              <p className="panel-inverse-muted">{t("search.rankCommunity")}</p>
+              <p className="panel-inverse-muted">{t("search.rankRecency")}</p>
             </section>
 
             <section className="surface-card p-4">
-              <p className="font-code text-[10px] text-[var(--ink)]">RESULT SIGNALS</p>
+              <p className="font-code text-[10px] text-[var(--ink)]">{t("search.resultSignals")}</p>
               <dl className="mt-4 space-y-3 font-code text-[10px] text-[var(--ink-soft)]">
-                <div className="flex justify-between"><dt>matches</dt><dd>{results.length}</dd></div>
-                <div className="flex justify-between"><dt>evidence coverage</dt><dd>{evidenceCoverage}%</dd></div>
-                <div className="flex justify-between"><dt>implemented</dt><dd>{results.filter((r) => r.idea.status === "implemented").length}</dd></div>
+                <div className="flex justify-between"><dt>{t("search.matches")}</dt><dd>{results.length}</dd></div>
+                <div className="flex justify-between"><dt>{t("search.evidenceCoverage")}</dt><dd>{evidenceCoverage}%</dd></div>
+                <div className="flex justify-between"><dt>{t("search.implementedCount")}</dt><dd>{results.filter((r) => r.idea.status === "implemented").length}</dd></div>
               </dl>
             </section>
 
             {relatedTags.length > 0 && (
               <section className="callout-primary p-4">
-                <p className="font-code text-[10px] text-[var(--primary)]">RELATED INTENTS</p>
+                <p className="font-code text-[10px] text-[var(--primary)]">{t("search.relatedIntents")}</p>
                 <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
                   {relatedTags.map((tag) => (
                     <button

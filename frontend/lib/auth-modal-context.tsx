@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { getApiBase } from "./api-base";
 import { useAuth } from "./auth-context";
+import { useI18n } from "@/lib/i18n/provider";
 import { notify } from "@/components/ui/notify";
 import {
   getOAuthErrorMessage,
@@ -60,6 +61,7 @@ const POPUP_FEATURES = "width=520,height=720,menubar=no,toolbar=no,location=yes,
 export function AuthModalProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { refreshUser } = useAuth();
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<AuthModalStep>("method");
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
@@ -90,13 +92,13 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
 
   const finishLogin = useCallback(async () => {
     await refreshUser();
-    notify.success("登录成功");
+    notify.success(t("auth.loginSuccess"));
     const target = returnUrl;
     closeAuthModal();
     if (target) {
       router.push(target);
     }
-  }, [refreshUser, returnUrl, closeAuthModal, router]);
+  }, [refreshUser, returnUrl, closeAuthModal, router, t]);
 
   const handleOAuthMessage = useCallback(
     async (msg: OAuthMessage) => {
@@ -149,7 +151,7 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
       const popup = window.open(url, POPUP_NAME, POPUP_FEATURES);
 
       if (!popup) {
-        notify.error("无法打开登录窗口，请允许弹窗后重试");
+        notify.error(t("auth.popupBlocked"));
         return;
       }
 
@@ -164,7 +166,7 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
         }
       }, 500);
     },
-    [closePopup, clearPopupPoll]
+    [closePopup, clearPopupPoll, t]
   );
 
   const cancelOAuthWaiting = useCallback(() => {

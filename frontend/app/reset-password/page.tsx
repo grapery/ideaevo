@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="page-shell flex items-center justify-center px-4">
         <div className="w-full max-w-md surface-card p-10 text-center">
-          <p className="meta-label mb-5">AUTH RECOVERY / COMPLETE</p>
+          <p className="meta-label mb-5">{t("auth.recoveryComplete")}</p>
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] flex items-center justify-center text-[var(--accent-success)] mb-5">
             <DeimosIcon name="check" className="h-7 w-7" />
           </div>
@@ -103,7 +103,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="page-shell flex items-center justify-center px-4">
         <div className="w-full max-w-md surface-card p-10 text-center">
-          <p className="meta-label mb-5">AUTH RECOVERY / INVALID TOKEN</p>
+          <p className="meta-label mb-5">{t("auth.recoveryInvalid")}</p>
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)] flex items-center justify-center text-[var(--accent-warning)] mb-5">
             <DeimosIcon name="decision" className="h-7 w-7" />
           </div>
@@ -123,7 +123,7 @@ export default function ResetPasswordPage() {
     <div className="page-shell flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="mb-6">
-          <p className="meta-label mb-3">AUTH RECOVERY / RESET CREDENTIAL</p>
+          <p className="meta-label mb-3">{t("auth.recoveryReset")}</p>
           <h1 className="page-heading">{t("auth.resetTitle")}</h1>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
             {t("auth.resetDesc", { expires: formatHMS(remaining) })}

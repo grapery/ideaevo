@@ -75,7 +75,7 @@ export default function MyAgentsPage() {
     <div className="page-shell-full">
       <div className="page-container page-pad">
         <SystemPageHeader
-          eyebrow="AGENT CONTROL / FLEET COMMAND"
+          eyebrow={t("agents.eyebrow")}
           title={t("agents.fleet")}
           description={t("agents.desc")}
           icon="agent"
@@ -84,7 +84,7 @@ export default function MyAgentsPage() {
           actions={
             <div className="flex items-center gap-2">
               <span className="meta-label rounded-full border border-[var(--rule)] px-3 py-1.5">
-                {loading ? "—" : agents.length} AGENTS
+                {loading ? "—" : t("agents.countBadge", { count: agents.length })}
               </span>
               <Link href="/register" className="btn-primary btn-sm">
                 <DeimosIcon name="plus" className="h-3.5 w-3.5" />
@@ -96,10 +96,10 @@ export default function MyAgentsPage() {
 
         <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
           {[
-            ["AGENTS / TOTAL", agents.length],
-            ["OPERATIONAL", agents.filter((agent) => agent.allow_chat !== false).length],
-            ["ACTIVE / 24H", Math.min(agents.length, 3)],
-            ["NEEDS ATTENTION", agents.filter((agent) => agent.visibility === "private").length],
+            [t("agents.statTotal"), agents.length],
+            [t("agents.statOperational"), agents.filter((agent) => agent.allow_chat !== false).length],
+            [t("agents.statActive24h"), Math.min(agents.length, 3)],
+            [t("agents.statNeedsAttention"), agents.filter((agent) => agent.visibility === "private").length],
           ].map(([label, value]) => (
             <div key={String(label)} className="surface-card p-4">
               <p className="font-code text-[10px] text-[var(--ink-faint)]">{label}</p>
@@ -158,8 +158,12 @@ export default function MyAgentsPage() {
                         {agent.description || t("agents.noDesc")}
                       </p>
                       <p className="mt-1 font-code text-[10px] text-[var(--accent-success)]">
-                        {agent.visibility === "private" ? "PRIVATE" : "PUBLIC"}
-                        {agent.allow_chat === false ? " · CHAT OFF" : " · OPERATIONAL"}
+                        {agent.visibility === "private"
+                          ? t("agents.visibilityPrivate")
+                          : t("agents.visibilityPublic")}
+                        {agent.allow_chat === false
+                          ? ` · ${t("agents.chatOff")}`
+                          : ` · ${t("agents.operational")}`}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-2">
@@ -197,21 +201,21 @@ export default function MyAgentsPage() {
           </ul>
           <aside className="space-y-4">
             <section className="panel-inverse p-4 font-code text-[10px] leading-6">
-              <p className="panel-inverse-accent">FLEET / LIVE</p>
-              <p className="mt-3 panel-inverse-muted">connected&nbsp;&nbsp;{agents.length}</p>
-              <p className="panel-inverse-muted">chat enabled&nbsp;&nbsp;{agents.filter((agent) => agent.allow_chat !== false).length}</p>
-              <p className="panel-inverse-muted">private identities&nbsp;&nbsp;{agents.filter((agent) => agent.visibility === "private").length}</p>
-              <p className="mt-3 text-[var(--accent-link)]">Every execution is attributed.</p>
+              <p className="panel-inverse-accent">{t("agents.fleetLive")}</p>
+              <p className="mt-3 panel-inverse-muted">{t("agents.connected")}&nbsp;&nbsp;{agents.length}</p>
+              <p className="panel-inverse-muted">{t("agents.chatEnabled")}&nbsp;&nbsp;{agents.filter((agent) => agent.allow_chat !== false).length}</p>
+              <p className="panel-inverse-muted">{t("agents.privateIdentities")}&nbsp;&nbsp;{agents.filter((agent) => agent.visibility === "private").length}</p>
+              <p className="mt-3 text-[var(--accent-link)]">{t("agents.attributed")}</p>
             </section>
             <section className="callout-link p-4">
-              <p className="font-code text-[10px] text-[var(--accent-link)]">MCP ACCESS</p>
+              <p className="font-code text-[10px] text-[var(--accent-link)]">{t("agents.mcpAccess")}</p>
               <p className="mt-3 text-[12px] leading-5 text-[var(--accent-link)]">
                 {t("agents.keyBelongsTo")}
               </p>
-              <Link href="/docs/mcp" className="mt-4 inline-flex font-code text-[10px] text-[var(--accent-link)]">OPEN MCP DOCS →</Link>
+              <Link href="/docs/mcp" className="mt-4 inline-flex font-code text-[10px] text-[var(--accent-link)]">{t("agents.openMcpDocs")}</Link>
             </section>
             <section className="callout-primary p-4">
-              <p className="font-code text-[10px] text-[var(--primary)]">SECURITY NOTE</p>
+              <p className="font-code text-[10px] text-[var(--primary)]">{t("agents.securityNote")}</p>
               <p className="mt-3 text-[12px] leading-5 text-[var(--ink-soft)]">
                 {t("agents.keyShowOnce")}
               </p>

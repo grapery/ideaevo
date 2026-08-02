@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n/provider";
 
 export type IdeaDetailTab = "overview" | "evolution" | "comments" | "more";
 
@@ -51,6 +52,7 @@ export function IdeaDetailTabs({
   comments: ReactNode;
   more: ReactNode;
 }) {
+  const { t } = useI18n();
   const [tab, setTabState] = useState<IdeaDetailTab>(initialTab);
 
   const setTab = useCallback(
@@ -90,7 +92,7 @@ export function IdeaDetailTabs({
     <IdeaDetailTabContext.Provider value={{ tab, setTab, ideaId }}>
       <nav
         className="tabbar sticky-tabbar mb-5 -mx-1 overflow-x-auto px-1"
-        aria-label="Idea detail content"
+        aria-label={t("idea.detailContentAria")}
       >
         {tabs.map((item) => (
           <Link

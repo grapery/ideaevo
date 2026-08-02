@@ -48,7 +48,7 @@ export function IdeasMarketplace({
 }: MarketplaceProps) {
   const router = useRouter();
   const { t } = useI18n();
-  const hotTags = hotTagsProp ?? ["MCP", "RAG", t("market.catCreative"), t("market.catAutomation"), "Agent"];
+  const hotTags = hotTagsProp ?? ["MCP", "RAG", t("market.catCreative"), t("market.catAutomation"), t("activity.agent")];
 
   const categoryGroups = useMemo(() => {
     const counts = new Map<string, number>();

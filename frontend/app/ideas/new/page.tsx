@@ -115,30 +115,30 @@ export default function NewIdeaPage() {
   return (
     <div className="page-shell-full">
       <div className="page-container page-pad">
-        <p className="page-eyebrow">IDEA MARKET / PUBLISH</p>
+        <p className="page-eyebrow">{t("idea.publishEyebrow")}</p>
         <h1 className="page-heading">{t("idea.publishTitle")}</h1>
         <p className="page-heading-desc">{t("idea.publishDesc")}</p>
 
         <div className="mt-6 app-grid-2 lg:grid-cols-[minmax(0,var(--content-main))_var(--content-aside)] lg:justify-center">
           <form onSubmit={handleSubmit} className="surface-card p-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField id="new-agent" label="01 / PUBLISHER">
+              <FormField id="new-agent" label={t("idea.publishPublisher")}>
                 {loadingAgents ? (
-                  <p className="text-[12px] text-[var(--ink-faint)]">loading identities…</p>
+                  <p className="text-[12px] text-[var(--ink-faint)]">{t("idea.loadingIdentities")}</p>
                 ) : (
                   <select
                     value={agentId}
                     onChange={(event) => setAgentId(event.target.value)}
                     className="input-field h-9"
                   >
-                    <option value="">Human owner · personal Agent</option>
+                    <option value="">{t("idea.humanOwnerOption")}</option>
                     {agents.map((agent) => (
                       <option key={agent.id} value={agent.id}>{agent.name}</option>
                     ))}
                   </select>
                 )}
               </FormField>
-              <FormField id="new-category" label="02 / CATEGORY">
+              <FormField id="new-category" label={t("idea.publishCategory")}>
                 <select
                   value={category}
                   onChange={(event) => setCategory(event.target.value)}
@@ -153,12 +153,12 @@ export default function NewIdeaPage() {
 
             <p className="mt-2 font-code text-[10px] text-[var(--ink-faint)]">
               {selectedAgent
-                ? `EXECUTOR / ${selectedAgent.name}`
-                : "OWNER / HUMAN · execution may be delegated later"}
+                ? t("idea.executorLine", { name: selectedAgent.name })
+                : t("idea.ownerHumanLine")}
             </p>
 
             <div className="mt-5">
-              <FormField id="new-title" label="03 / IDEA TITLE" required>
+              <FormField id="new-title" label={t("idea.publishTitleField")} required>
                 <Input
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
@@ -170,7 +170,7 @@ export default function NewIdeaPage() {
             </div>
 
             <div className="mt-5">
-              <FormField id="new-desc" label="04 / PROBLEM · OPPORTUNITY · PROPOSAL" required>
+              <FormField id="new-desc" label={t("idea.publishBodyField")} required>
                 <Textarea
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
@@ -183,7 +183,9 @@ export default function NewIdeaPage() {
 
             {similarIdeas.length > 0 && (
               <section className="callout-primary mt-5 p-4">
-                <p className="font-code text-[10px] font-medium text-[var(--primary)]">SIMILARITY GUARD / MATCHES FOUND</p>
+                <p className="font-code text-[10px] font-medium text-[var(--primary)]">
+                  {t("idea.similarityGuard")}
+                </p>
                 <ul className="mt-3 space-y-2">
                   {similarIdeas.map(({ idea, similarity }) => (
                     <li key={idea.id} className="flex items-center justify-between gap-4 text-[12px]">
@@ -191,7 +193,7 @@ export default function NewIdeaPage() {
                         {idea.title}
                       </Link>
                       <span className="shrink-0 font-code text-[10px] text-[var(--primary)]">
-                        {Math.round(similarity * 100)}% MATCH
+                        {t("idea.matchPct", { pct: Math.round(similarity * 100) })}
                       </span>
                     </li>
                   ))}
@@ -209,36 +211,40 @@ export default function NewIdeaPage() {
                 {loading ? t("idea.publishing") : t("idea.publishButton")}
               </Button>
               <Link href="/ideas" className="font-code text-[10px] text-[var(--ink-faint)] hover:text-[var(--ink)]">
-                CANCEL
+                {t("idea.cancelLink")}
               </Link>
             </div>
           </form>
 
           <aside className="space-y-4">
             <section className="callout-primary p-4">
-              <p className="font-code text-[10px] font-medium text-[var(--primary)]">SIMILARITY GUARD / PRE-FLIGHT</p>
+              <p className="font-code text-[10px] font-medium text-[var(--primary)]">
+                {t("idea.similarityPreflight")}
+              </p>
               <p className="mt-4 text-[13px] font-semibold text-[var(--ink)]">
                 {t("idea.autoCheck")}
               </p>
               <div className="mt-4 space-y-2 font-code text-[10px] leading-5 text-[var(--ink-soft)]">
-                <p>01&nbsp;&nbsp;semantic title match</p>
-                <p>02&nbsp;&nbsp;problem overlap</p>
-                <p>03&nbsp;&nbsp;implementation evidence</p>
+                <p>{t("idea.checkSemantic")}</p>
+                <p>{t("idea.checkOverlap")}</p>
+                <p>{t("idea.checkEvidence")}</p>
               </div>
             </section>
 
             <section className="panel-inverse p-4 font-code text-[10px] leading-6">
-              <p className="panel-inverse-accent">AI-NATIVE PUBLISHING</p>
-              <p className="mt-3 panel-inverse-muted">Agent can enrich this draft, attach evidence and update lifecycle after publication.</p>
+              <p className="panel-inverse-accent">{t("idea.aiNativePublish")}</p>
+              <p className="mt-3 panel-inverse-muted">{t("idea.aiNativePublishHint")}</p>
               <Link href="/chat" className="mt-4 inline-flex panel-inverse-accent hover:underline">
-                OPEN IN AGENT WORKBENCH →
+                {t("idea.openWorkbench")}
               </Link>
             </section>
 
             <section className="callout-link p-4">
-              <p className="font-code text-[10px] text-[var(--accent-link)]">WHAT GETS RECORDED</p>
+              <p className="font-code text-[10px] text-[var(--accent-link)]">
+                {t("idea.whatGetsRecorded")}
+              </p>
               <p className="mt-3 font-code text-[10px] leading-5 text-[var(--accent-link)]">
-                publisher · executing Agent · source idea · semantic matches · lifecycle transitions
+                {t("idea.whatGetsRecordedHint")}
               </p>
             </section>
           </aside>

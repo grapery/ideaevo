@@ -72,7 +72,7 @@ export function IdeaEvolutionGraph({
           <p className="meta-label mb-2 text-[var(--accent-link)]">{t("idea.evolveGraphTitle")}</p>
           <h2 className="page-title text-[30px]">{t("idea.evolveTitle")}</h2>
           <p className="mt-2 text-[13px] text-[var(--ink-soft)]">
-            See how versions, fork branches, contributors, and implementation status evolve over time.
+            {t("idea.evolveDesc")}
           </p>
         </div>
         <DeimosIcon name="fork" className="h-8 w-8 text-[var(--accent-link)]" />
@@ -99,23 +99,25 @@ export function IdeaEvolutionGraph({
             {/* 纵向时间轴：ROOT → VERSION → CURRENT 自上而下排列 */}
             <div className="relative grid gap-5">
               <GraphNode
-                eyebrow="ROOT / v1"
+                eyebrow={t("idea.rootVersion")}
                 title={source?.title || idea.title}
-                detail={`CONCEPT · ${source?.agent?.name || idea.agent?.owner?.name || "origin"}`}
+                detail={t("idea.conceptOrigin", {
+                  name: source?.agent?.name || idea.agent?.owner?.name || t("idea.originFallback"),
+                })}
                 date={source?.created_at || idea.created_at}
                 href={source ? `/ideas/${source.id}` : undefined}
                 tone="root"
                 locale={locale}
               />
               <GraphNode
-                eyebrow={`VERSION / v${Math.max(1, currentVersion - 1)}`}
+                eyebrow={t("idea.versionNode", { version: Math.max(1, currentVersion - 1) })}
                 title={lineage?.source_version?.title || t("idea.semanticEvidence")}
-                detail={`${t("market.active")} · ${idea.agent?.name || "Agent"}`}
+                detail={`${t("market.active")} · ${idea.agent?.name || t("activity.agent")}`}
                 date={lineage?.source_version?.created_at || idea.created_at}
                 locale={locale}
               />
               <GraphNode
-                eyebrow={`CURRENT / v${currentVersion}`}
+                eyebrow={t("idea.currentVersion", { version: currentVersion })}
                 title={idea.title}
                 detail={`${(idea.impl_status || idea.status).toUpperCase()} · ${t("idea.currentBranchLabel")}`}
                 date={idea.updated_at}
@@ -146,7 +148,7 @@ export function IdeaEvolutionGraph({
                     {t("idea.noBranches")}
                   </p>
                   <p className="mt-2 text-sm text-[var(--ink-soft)]">
-                    Forked branches will form a traceable evolution graph here.
+                    {t("idea.noBranchesHint")}
                   </p>
                 </div>
               )}
@@ -154,7 +156,7 @@ export function IdeaEvolutionGraph({
           </div>
 
           <p className="mt-16 font-code text-[9px] uppercase leading-5 text-[var(--ink-faint)]">
-            NODE = idea/version　 LINE = lineage　 ORANGE = active fork　 GREEN = implemented branch
+            {t("idea.graphLegend")}
           </p>
         </div>
 
@@ -192,7 +194,7 @@ export function IdeaEvolutionGraph({
               <p>{dateLabel(idea.updated_at, locale)}　{t("idea.versionUpdated")}</p>
               <p>{dateLabel(idea.created_at, locale)}　{t("idea.ideaRegistered")}</p>
               {branches.slice(0, 3).map((branch) => (
-                <p key={branch.id}>{dateLabel(branch.updated_at, locale)}　Fork · {branch.title}</p>
+                <p key={branch.id}>{dateLabel(branch.updated_at, locale)}　{t("idea.forkEvent", { title: branch.title })}</p>
               ))}
             </div>
           </div>

@@ -7,22 +7,23 @@ import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { modApi, type ReportTargetType } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n/provider";
+import type { TranslationKey } from "@/lib/i18n/messages";
 
-const REASONS = [
-  "Spam / Ads",
-  "Harassment / Abuse",
-  "Trolling / Personal attacks",
-  "Misinformation",
-  "Illegal / Policy violation",
-  "Copyright infringement",
-  "Other",
+const REASON_OPTIONS: { code: string; labelKey: TranslationKey }[] = [
+  { code: "spam", labelKey: "report.spam" },
+  { code: "harassment", labelKey: "report.harassment" },
+  { code: "flamewar", labelKey: "report.flamewar" },
+  { code: "misinfo", labelKey: "report.misinfo" },
+  { code: "illegal", labelKey: "report.illegal" },
+  { code: "copyright", labelKey: "report.copyright" },
+  { code: "other", labelKey: "report.other" },
 ];
 
-const TARGET_LABEL: Record<ReportTargetType, string> = {
-  idea: "Idea",
-  comment: "Comment",
-  user: "User",
-  agent: "Agent",
+const TARGET_LABEL_KEY: Record<ReportTargetType, TranslationKey> = {
+  idea: "report.idea",
+  comment: "report.comment",
+  user: "report.user",
+  agent: "report.agent",
 };
 
 /**
@@ -56,7 +57,7 @@ export function ReportDialog({
 
   async function submit() {
     if (!reason) {
-      notify.error("Please select a reason");
+      notify.error(t("report.selectReason"));
       return;
     }
     setSubmitting(true);
@@ -67,24 +68,28 @@ export function ReportDialog({
         reason,
         detail: detail.trim() || undefined,
       });
-      notify.success("Report submitted. Thank you.");
+      notify.success(t("report.submitted"));
       setReason("");
       setDetail("");
       onClose();
     } catch (err) {
-      notify.error(getErrorMessage(err, t("common.operationFailed")));
+      notify.error(getErrorMessage(err, t("report.submitFailed")));
     } finally {
       setSubmitting(false);
     }
   }
+
+  const targetLabel = t(TARGET_LABEL_KEY[targetType]);
 
   return (
     <Modal
       open={open}
       onClose={handleClose}
       disableClose={submitting}
-      title={`Report ${TARGET_LABEL[targetType]}`}
-      description={targetName ? `Target: ${targetName}` : undefined}
+      title={t("report.title", { target: targetLabel })}
+      description={
+        targetName ? t("report.target", { name: targetName }) : undefined
+      }
       footer={
         <>
           <button
@@ -93,7 +98,7 @@ export function ReportDialog({
             disabled={submitting}
             className="btn-default px-4 py-2 text-sm disabled:opacity-50"
           >
-            {t("common.cancel")}
+            {t("report.cancel")}
           </button>
           <button
             type="button"
@@ -101,26 +106,26 @@ export function ReportDialog({
             disabled={submitting || !reason}
             className="btn-danger px-4 py-2 text-sm disabled:opacity-50"
           >
-            {submitting ? t("common.saving") : t("common.confirm")}
+            {submitting ? t("report.submitting") : t("report.submit")}
           </button>
         </>
       }
     >
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-[var(--title)] mb-2">
-            Reason
+          <label className="mb-2 block text-sm font-medium text-[var(--title)]">
+            {t("report.reasonLabel")}
           </label>
           <div className="flex flex-wrap gap-2">
-            {REASONS.map((r) => (
+            {REASON_OPTIONS.map((opt) => (
               <button
-                key={r}
+                key={opt.code}
                 type="button"
-                onClick={() => setReason(r)}
+                onClick={() => setReason(opt.code)}
                 className="filter-chip"
-                data-active={reason === r ? "true" : undefined}
+                data-active={reason === opt.code ? "true" : undefined}
               >
-                {r}
+                {t(opt.labelKey)}
               </button>
             ))}
           </div>
@@ -131,11 +136,9 @@ export function ReportDialog({
           value={detail}
           onChange={(e) => setDetail(e.target.value)}
           rows={3}
-          placeholder="Additional details (optional)"
+          placeholder={t("report.detailPlaceholder")}
         />
-        <p className="text-xs text-[var(--text-muted)]">
-          Reports are reviewed by admins. Malicious reports may restrict your account.
-        </p>
+        <p className="text-xs text-[var(--text-muted)]">{t("report.reviewHint")}</p>
       </div>
     </Modal>
   );

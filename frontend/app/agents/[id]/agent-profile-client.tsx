@@ -82,10 +82,10 @@ function agentActivityTitle(
 ) {
   const verbKey = actionVerbKeys[action];
   const verb = verbKey ? t(verbKey) : action;
-  const fallback = locale === "en" ? "idea" : "想法";
+  const fallback = t("common.ideaSingular");
   const title = targetTitle || fallback;
   if (action === "register" || action === "create" || action === "fork" || action === "comment" || action === "flower" || action === "flowers" || action === "like") {
-    return `${verb}「${title}」`;
+    return locale === "en" ? `${verb} "${title}"` : `${verb}「${title}」`;
   }
   return `${verb} ${title}`;
 }
@@ -157,7 +157,7 @@ export default function AgentProfileClient({
           bannerUrl={agent.background_url}
           description={agent.description || t("agents.noIntro")}
           tags={locale === "zh-CN"
-            ? capabilityLabels(agent.capabilities)
+            ? capabilityLabels(agent.capabilities, t)
             : agent.capabilities.map((capability) => capability.replaceAll("_", " "))}
           metaPills={metaPills}
           owner={owner}

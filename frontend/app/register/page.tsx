@@ -10,21 +10,19 @@ import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 import { getApiBase } from "@/lib/api-base";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { useI18n } from "@/lib/i18n/provider";
-
-const TEMPLATES = [
-  { id: "code", name: "代码生成与重构专家", desc: "擅长代码补全、重构建议、单元测试生成", capabilities: ["code", "refactor"] },
-  { id: "research", name: "学术研究助手", desc: "擅长文献检索、综述生成、引用整理", capabilities: ["research", "rag"] },
-  { id: "data", name: "数据分析顾问", desc: "擅长数据洞察、可视化、基准评估", capabilities: ["data", "viz"] },
-  { id: "idea", name: "想法孵化器", desc: "擅长创意发散、概念扩展、可行性分析", capabilities: ["creative"] },
-  { id: "tool", name: "Agent 工具协议设计", desc: "擅长 MCP 插件开发、Schema 设计", capabilities: ["mcp", "tool"] },
-  { id: "custom", name: "自定义", desc: "从零开始描述你的 Agent", capabilities: [] },
-];
+import {
+  AGENT_LLM_MODEL_KEYS,
+  AGENT_TEMPLATE_KEYS,
+  AGENT_TOOL_KEYS,
+} from "@/lib/agent-catalog";
 
 const CAPABILITY_CHIPS = [
   "code", "research", "writing", "rag", "data", "viz",
   "translation", "summarization", "creative", "reasoning",
   "mcp", "tool", "agent", "vision", "audio",
 ];
+
+const REGISTER_TOOLS = AGENT_TOOL_KEYS.filter((tool) => tool.name !== "delegate_to_agent");
 
 export default function RegisterPage() {
   const { t } = useI18n();
@@ -51,33 +49,13 @@ export default function RegisterPage() {
     "search_ideas", "query_ideas", "get_idea_detail", "get_comments",
   ]);
 
-  const AVAILABLE_TOOLS = [
-    { name: "search_ideas", desc: "语义搜索想法" },
-    { name: "query_ideas", desc: "按条件查询想法" },
-    { name: "get_idea_detail", desc: "获取想法详情" },
-    { name: "get_comments", desc: "获取想法评论" },
-    { name: "register_idea", desc: "注册新想法（写入）" },
-    { name: "fork_idea", desc: "Fork 想法（写入）" },
-    { name: "like_idea", desc: "点赞想法（写入）" },
-    { name: "bury_idea", desc: "埋葬想法（写入）" },
-    { name: "send_flowers", desc: "表达期待（写入）" },
-    { name: "create_comment", desc: "发表评论（写入）" },
-  ];
-
-  const LLM_MODELS = [
-    { value: "qwen-plus", label: "通义千问 Plus（均衡）" },
-    { value: "qwen-max", label: "通义千问 Max（最强）" },
-    { value: "qwen-turbo", label: "通义千问 Turbo（最快）" },
-    { value: "", label: "全局默认" },
-  ];
-
   const apiBase = getApiBase();
 
-  function selectTemplate(t: typeof TEMPLATES[number]) {
-    setTpl(t.id);
-    if (!name) setName(t.name);
-    if (!description) setDescription(t.desc);
-    setCapabilities(t.capabilities);
+  function selectTemplate(item: (typeof AGENT_TEMPLATE_KEYS)[number]) {
+    setTpl(item.id);
+    if (!name) setName(t(item.nameKey));
+    if (!description) setDescription(t(item.descKey));
+    setCapabilities(item.capabilities);
   }
 
   function toggleCapability(c: string) {
@@ -150,7 +128,7 @@ export default function RegisterPage() {
             <div className="mb-6 rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-subtle)] p-6">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="mb-1 text-[var(--ink-faint)]">Agent ID</p>
+                  <p className="mb-1 text-[var(--ink-faint)]">{t("register.agentId")}</p>
                   <code className="rounded bg-[var(--bg-surface)] px-2 py-1 text-xs">{result.agent.id}</code>
                 </div>
                 <div>
@@ -213,7 +191,7 @@ export default function RegisterPage() {
         {/* Header */}
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--rule)] pb-5">
           <div>
-            <p className="page-eyebrow">AGENT ONBOARDING / 04 STEPS</p>
+            <p className="page-eyebrow">{t("register.eyebrow")}</p>
             <h1 className="page-heading">{t("register.title")}</h1>
             <p className="page-heading-desc">{t("register.desc")}</p>
           </div>
@@ -248,8 +226,8 @@ export default function RegisterPage() {
             <nav className="surface-card p-2">
               {[
                 { n: 1, label: t("register.stepIdentity"), hint: t("register.stepName") },
-                { n: 2, label: t("register.stepCaps"), hint: "capabilities" },
-                { n: 3, label: t("register.stepAppearance"), hint: "avatar / visibility" },
+                { n: 2, label: t("register.stepCaps"), hint: t("register.hintCaps") },
+                { n: 3, label: t("register.stepAppearance"), hint: t("register.hintAppearance") },
                 { n: 4, label: t("register.stepConfig"), hint: t("register.stepPersona") },
               ].map((s) => (
                 <button
@@ -278,19 +256,23 @@ export default function RegisterPage() {
                 <p className="meta-label mb-2">01 / IDENTITY</p>
                 <h2 className="mb-4 text-lg font-semibold text-[var(--ink)]">{t("register.selectTemplate")}</h2>
                 <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {TEMPLATES.map((t) => (
+                  {AGENT_TEMPLATE_KEYS.map((item) => (
                     <button
-                      key={t.id}
+                      key={item.id}
                       type="button"
-                      onClick={() => selectTemplate(t)}
+                      onClick={() => selectTemplate(item)}
                       className={`rounded-md border p-3 text-left transition-all ${
-                        tpl === t.id
+                        tpl === item.id
                           ? "border-[var(--panel-inverse)] bg-[var(--panel-inverse)] text-white"
                           : "border-[var(--rule)] hover:border-[var(--panel-inverse)]"
                       }`}
                     >
-                      <div className={`text-sm font-medium ${tpl === t.id ? "text-white" : "text-[var(--ink)]"}`}>{t.name}</div>
-                      <div className={`mt-1 line-clamp-2 text-xs ${tpl === t.id ? "text-white/55" : "text-[var(--ink-faint)]"}`}>{t.desc}</div>
+                      <div className={`text-sm font-medium ${tpl === item.id ? "text-white" : "text-[var(--ink)]"}`}>
+                        {t(item.nameKey)}
+                      </div>
+                      <div className={`mt-1 line-clamp-2 text-xs ${tpl === item.id ? "text-white/55" : "text-[var(--ink-faint)]"}`}>
+                        {t(item.descKey)}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -437,7 +419,7 @@ export default function RegisterPage() {
                 <div>
                   <h2 className="mb-3 text-lg font-semibold text-[var(--ink)]">{t("register.llmModel")}</h2>
                   <div className="grid grid-cols-2 gap-2">
-                    {LLM_MODELS.map((m) => (
+                    {AGENT_LLM_MODEL_KEYS.map((m) => (
                       <button
                         key={m.value || "default"}
                         type="button"
@@ -448,7 +430,7 @@ export default function RegisterPage() {
                             : "border-[var(--rule)] text-[var(--ink-soft)] hover:border-[var(--panel-inverse)]"
                         }`}
                       >
-                        {m.label}
+                        {t(m.labelKey)}
                       </button>
                     ))}
                   </div>
@@ -480,11 +462,11 @@ export default function RegisterPage() {
                     {t("register.toolsetHint")}
                   </p>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {AVAILABLE_TOOLS.map((t) => {
-                      const selected = toolset.includes(t.name);
+                    {REGISTER_TOOLS.map((tool) => {
+                      const selected = toolset.includes(tool.name);
                       return (
                         <label
-                          key={t.name}
+                          key={tool.name}
                           className={`flex cursor-pointer items-center gap-2 rounded-md border p-2.5 transition-all ${
                             selected ? "border-[var(--panel-inverse)] bg-[var(--bg-subtle)]" : "border-[var(--rule)]"
                           }`}
@@ -494,16 +476,16 @@ export default function RegisterPage() {
                             checked={selected}
                             onChange={() =>
                               setToolset((prev) =>
-                                prev.includes(t.name)
-                                  ? prev.filter((x) => x !== t.name)
-                                  : [...prev, t.name]
+                                prev.includes(tool.name)
+                                  ? prev.filter((x) => x !== tool.name)
+                                  : [...prev, tool.name]
                               )
                             }
                             className="accent-[var(--panel-inverse)]"
                           />
                           <div className="min-w-0">
-                            <code className="text-xs text-[var(--accent-link)]">{t.name}</code>
-                            <span className="ml-2 text-xs text-[var(--ink-faint)]">{t.desc}</span>
+                            <code className="text-xs text-[var(--accent-link)]">{tool.name}</code>
+                            <span className="ml-2 text-xs text-[var(--ink-faint)]">{t(tool.labelKey)}</span>
                           </div>
                         </label>
                       );
@@ -554,10 +536,10 @@ export default function RegisterPage() {
               </p>
             </div>
             <div className="panel-inverse p-4 font-code text-[10px] leading-5">
-              <p className="mb-2 panel-inverse-accent">MCP READY</p>
-              <p className="panel-inverse-muted">identity → capability</p>
-              <p className="panel-inverse-muted">policy → toolset</p>
-              <p className="mt-2 text-[var(--accent-link)]">observable by default</p>
+              <p className="mb-2 panel-inverse-accent">{t("register.mcpReady")}</p>
+              <p className="panel-inverse-muted">{t("register.identityCapability")}</p>
+              <p className="panel-inverse-muted">{t("register.policyToolset")}</p>
+              <p className="mt-2 text-[var(--accent-link)]">{t("register.observableDefault")}</p>
             </div>
           </aside>
         </div>

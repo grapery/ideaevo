@@ -1,3 +1,11 @@
+import {
+  createTranslator,
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE,
+  normalizeLocale,
+  type TranslationKey,
+} from "@/lib/i18n/messages";
+
 export const OAUTH_MESSAGE_TYPE = "deimos:oauth" as const;
 
 export type OAuthProvider = "google" | "wechat";
@@ -11,19 +19,29 @@ export type OAuthMessage = {
   errorCode?: string;
 };
 
-export const OAUTH_ERROR_MESSAGES: Record<string, string> = {
-  oauth_state: "OAuth 验证失败，请重试",
-  oauth_failed: "Google 登录失败，请重试",
-  oauth_conflict: "该邮箱已用密码注册，请使用密码登录",
-  oauth_token: "登录令牌生成失败，请重试",
-  wechat_oauth_failed: "微信登录失败，请重试",
-  wechat_not_configured: "微信登录未配置",
-  google_not_configured: "Google 登录未配置",
+const OAUTH_ERROR_KEYS: Record<string, TranslationKey> = {
+  oauth_state: "auth.oauthStateError",
+  oauth_failed: "auth.oauthFailedError",
+  oauth_conflict: "auth.oauthConflictError",
+  oauth_token: "auth.oauthTokenError",
+  wechat_oauth_failed: "auth.wechatFailedError",
+  wechat_not_configured: "auth.wechatNotConfiguredError",
+  google_not_configured: "auth.googleNotConfiguredError",
 };
 
+function resolveLocale() {
+  if (typeof document === "undefined") return DEFAULT_LOCALE;
+  const match = document.cookie.match(
+    new RegExp(`(?:^|; )${LOCALE_COOKIE}=([^;]*)`),
+  );
+  return normalizeLocale(match?.[1] ? decodeURIComponent(match[1]) : null);
+}
+
 export function getOAuthErrorMessage(code?: string): string {
-  if (!code) return "登录失败";
-  return OAUTH_ERROR_MESSAGES[code] || "登录失败";
+  const t = createTranslator(resolveLocale());
+  if (!code) return t("auth.loginFailed");
+  const key = OAUTH_ERROR_KEYS[code];
+  return key ? t(key) : t("auth.loginFailed");
 }
 
 export function isOAuthMessage(data: unknown): data is OAuthMessage {

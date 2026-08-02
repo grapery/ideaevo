@@ -32,7 +32,7 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
       setRevealedKey(res.api_key);
       setShowKey(true);
       setConfirmOpen(false);
-      notify.success("API Key regenerated");
+      notify.success(t("agentKey.regenerated"));
     } catch (err) {
       notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
@@ -43,7 +43,7 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
   function handleUseInBrowser() {
     if (!revealedKey) return;
     setApiKey(revealedKey);
-    notify.success(`Set ${agentName} as the browser default key`);
+    notify.success(t("agentKey.setDefault", { name: agentName }));
   }
 
   if (compact) {
@@ -54,7 +54,7 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
           className="text-xs text-[var(--primary)] hover:underline"
           onClick={() => setConfirmOpen(true)}
         >
-          API Key
+          {t("agentKey.title")}
         </button>
         {renderModals()}
       </>
@@ -64,10 +64,8 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
   return (
     <div className="border-t border-[var(--divider)] pt-4 space-y-3">
       <div>
-        <h4 className="text-sm font-medium text-[var(--ink)]">API Key</h4>
-        <p className="text-xs text-[var(--text-muted)] mt-1">
-          Used to call MCP / REST as this Agent. The key is shown only once on registration or regeneration — keep it safe.
-        </p>
+        <h4 className="text-sm font-medium text-[var(--ink)]">{t("agentKey.title")}</h4>
+        <p className="text-xs text-[var(--text-muted)] mt-1">{t("agentKey.hint")}</p>
       </div>
 
       {revealedKey ? (
@@ -95,26 +93,29 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
           </div>
           {!isBound && (
             <button type="button" className="btn-default btn-sm" onClick={handleUseInBrowser}>
-              Set as browser default key
+              {t("agentKey.setAsDefault")}
             </button>
           )}
           {isBound && (
-            <p className="text-xs text-[var(--text-muted)]">This is the currently bound Agent key for the browser</p>
+            <p className="text-xs text-[var(--text-muted)]">{t("agentKey.currentlyBound")}</p>
           )}
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" className="btn-outline btn-sm" onClick={() => setConfirmOpen(true)}>
-            Regenerate API Key
+            {t("agentKey.regenerate")}
           </button>
           {isBound && (
-            <span className="text-xs text-[var(--text-muted)]">This Agent&apos;s key is already bound in the browser</span>
+            <span className="text-xs text-[var(--text-muted)]">{t("agentKey.alreadyBound")}</span>
           )}
         </div>
       )}
 
       <p className="text-xs text-[var(--text-muted)]">
-        For MCP configuration see the <Link href="/docs/mcp" className="text-[var(--primary)] hover:underline">docs</Link>
+        {t("agentKey.docsPrefix")}{" "}
+        <Link href="/docs/mcp" className="text-[var(--primary)] hover:underline">
+          {t("settings.docsLink")}
+        </Link>
       </p>
 
       {renderModals()}
@@ -126,8 +127,8 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
       <Modal
         open={confirmOpen}
         onClose={() => !loading && setConfirmOpen(false)}
-        title="Regenerate API Key"
-        description="The old key will be invalidated immediately. MCP clients using the old key must update their configuration."
+        title={t("agentKey.regenerate")}
+        description={t("agentKey.regenDesc")}
         footer={
           <>
             <button
@@ -144,13 +145,14 @@ export function AgentApiKeyPanel({ agentId, agentName, compact = false }: Props)
               disabled={loading}
               onClick={() => void handleRotate()}
             >
-              {loading ? t("common.loading") : "Confirm regenerate"}
+              {loading ? t("common.loading") : t("agentKey.confirmRegen")}
             </button>
           </>
         }
       >
         <p className="text-sm text-[var(--text-muted)]">
-          Agent: <span className="font-medium text-[var(--ink)]">{agentName}</span>
+          {t("agentKey.agentLabel")}:{" "}
+          <span className="font-medium text-[var(--ink)]">{agentName}</span>
         </p>
       </Modal>
     );

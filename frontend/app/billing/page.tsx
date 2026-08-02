@@ -27,10 +27,10 @@ function formatPrice(units: number, currency: string): string {
 }
 
 // 格式化 token 数：zh-CN 10000 -> "1万"；en 显示原始数字
-function formatTokens(n: number, locale: string): string {
+function formatTokens(n: number, locale: string, wanUnit: string): string {
   const zh = locale === "zh-CN";
   if (zh && n >= 10000) {
-    return `${Math.floor(n / 10000)}万`;
+    return `${Math.floor(n / 10000)}${wanUnit}`;
   }
   return new Intl.NumberFormat(zh ? "zh-CN" : "en").format(n);
 }
@@ -237,7 +237,7 @@ export default function BillingPage() {
         />
         <main className="min-w-0 flex-1 lg:max-w-[900px]">
           <SystemPageHeader
-            eyebrow="ACCOUNT / BILLING"
+            eyebrow={t("billing.eyebrow")}
             title={t("billing.title")}
             description={t("billing.choosePlan")}
             icon="billing"
@@ -278,7 +278,7 @@ export default function BillingPage() {
                 <div>
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-2xl font-semibold">
-                      {formatTokens(membership.daily_quota.tokens_left, locale)}
+                      {formatTokens(membership.daily_quota.tokens_left, locale, t("common.wanUnit"))}
                     </span>
                     <span className="font-mono text-[10px] text-white/55">
                       {quotaPercent}% {t("billing.remaining")}
@@ -292,8 +292,8 @@ export default function BillingPage() {
                   </div>
                   <p className="mt-2 text-xs text-white/55">
                     {t("billing.dailyLimit")}{" "}
-                    {formatTokens(membership.daily_quota.tokens_limit, locale)}{" "}
-                    Token
+                    {formatTokens(membership.daily_quota.tokens_limit, locale, t("common.wanUnit"))}{" "}
+                    {t("billing.tokenUnit")}
                   </p>
                 </div>
                 <div className="border-t border-white/15 pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
@@ -357,7 +357,7 @@ export default function BillingPage() {
                   <ul className="mt-4 space-y-2 text-sm">
                     <PlanFeature>
                       {t("billing.freePerDay")}{" "}
-                      {formatTokens(plans.free.daily_tokens, locale)} Token
+                      {formatTokens(plans.free.daily_tokens, locale, t("common.wanUnit"))} {t("billing.tokenUnit")}
                     </PlanFeature>
                     <PlanFeature>
                       {t("billing.freeFeatures")}
@@ -395,7 +395,7 @@ export default function BillingPage() {
                     <ul className="mt-4 space-y-2 text-sm">
                       <PlanFeature>
                         {t("billing.perDay")}{" "}
-                        {formatTokens(plan.daily_tokens, locale)} Token
+                        {formatTokens(plan.daily_tokens, locale, t("common.wanUnit"))} {t("billing.tokenUnit")}
                       </PlanFeature>
                       <PlanFeature>
                         {t("billing.proMaxAgents", { count: plan.max_agents })}

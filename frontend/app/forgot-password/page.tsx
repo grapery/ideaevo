@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
       <div className="page-shell">
         <div className="mx-auto max-w-lg px-4 py-16">
           <div className="surface-card p-10 text-center">
-            <p className="meta-label mb-5">AUTH RECOVERY / MESSAGE SENT</p>
+            <p className="meta-label mb-5">{t("auth.recoverySent")}</p>
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-md bg-[var(--ink)] text-white">
               <DeimosIcon name="send" className="h-6 w-6" />
             </div>
@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
     <div className="page-shell">
       <div className="mx-auto max-w-lg px-4 py-16">
         <div className="mb-8 text-center">
-          <p className="meta-label mb-3">AUTH RECOVERY / REQUEST</p>
+          <p className="meta-label mb-3">{t("auth.recoveryRequest")}</p>
           <h1 className="page-heading">{t("auth.forgotTitle")}</h1>
           <p className="mt-3 text-base text-[var(--text-muted)]">
             {t("auth.forgotDesc")}

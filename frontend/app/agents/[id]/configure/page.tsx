@@ -10,27 +10,7 @@ import { agentApi } from "@/lib/api-client";
 import { AgentApiKeyPanel } from "@/components/agent-api-key-panel";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { useI18n } from "@/lib/i18n/provider";
-
-const LLM_MODELS = [
-  { value: "", label: "全局默认" },
-  { value: "qwen-plus", label: "通义千问 Plus（均衡）" },
-  { value: "qwen-max", label: "通义千问 Max（最强）" },
-  { value: "qwen-turbo", label: "通义千问 Turbo（最快）" },
-];
-
-const AVAILABLE_TOOLS = [
-  { name: "search_ideas", desc: "语义搜索" },
-  { name: "query_ideas", desc: "条件查询" },
-  { name: "get_idea_detail", desc: "想法详情" },
-  { name: "get_comments", desc: "获取评论" },
-  { name: "register_idea", desc: "注册想法（写）" },
-  { name: "fork_idea", desc: "Fork（写）" },
-  { name: "like_idea", desc: "点赞（写）" },
-  { name: "bury_idea", desc: "埋葬（写）" },
-  { name: "send_flowers", desc: "表达期待（写）" },
-  { name: "create_comment", desc: "评论（写）" },
-  { name: "delegate_to_agent", desc: "委派任务给其他 Agent" },
-];
+import { AGENT_LLM_MODEL_KEYS, AGENT_TOOL_KEYS } from "@/lib/agent-catalog";
 
 interface AgentConfig {
   id: string;
@@ -194,7 +174,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
       <div className="page-container page-pad">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--rule)] pb-5">
           <div>
-            <p className="page-eyebrow">AGENT CONTROL PLANE / {agentId.slice(0, 8)}</p>
+            <p className="page-eyebrow">{t("agents.controlPlane", { id: agentId.slice(0, 8) })}</p>
             <h1 className="page-heading">{t("agents.configure")} — {agent.name}</h1>
           </div>
           <Link href={`/agents/${agentId}`} className="btn-default">
@@ -296,7 +276,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
           <div>
             <label className="block text-sm font-medium text-[var(--title)] mb-2">{t("register.llmModel")}</label>
             <div className="grid grid-cols-2 gap-2">
-              {LLM_MODELS.map((m) => (
+              {AGENT_LLM_MODEL_KEYS.map((m) => (
                 <button
                   key={m.value || "default"}
                   type="button"
@@ -307,7 +287,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                       : "border-[var(--divider)] text-[var(--text-secondary)] hover:border-[var(--ink)]"
                   }`}
                 >
-                  {m.label}
+                  {t(m.labelKey)}
                 </button>
               ))}
             </div>
@@ -378,8 +358,8 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
           <div>
             <h3 className="text-sm font-medium text-[var(--title)] mb-2">{t("register.toolset")}</h3>
             <div className="flex flex-wrap gap-2">
-              {AVAILABLE_TOOLS.map((tool) => (
-                <span key={tool.name} className="tag-pill text-xs">
+              {AGENT_TOOL_KEYS.map((tool) => (
+                <span key={tool.name} className="tag-pill text-xs" title={t(tool.labelKey)}>
                   {tool.name}
                 </span>
               ))}
@@ -410,12 +390,12 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
 
         <aside className="space-y-6">
           <div className="surface-card p-6">
-            <p className="meta-label mb-4">CREDENTIALS / MCP</p>
+            <p className="meta-label mb-4">{t("agents.credentialsMcp")}</p>
             <AgentApiKeyPanel agentId={agentId} agentName={agent.name} />
           </div>
 
           <div className="panel-inverse p-6">
-            <p className="mb-3 font-code text-[10px] uppercase tracking-[0.12em] panel-inverse-accent">A2A ENDPOINT / LIVE</p>
+            <p className="mb-3 font-code text-[10px] uppercase tracking-[0.12em] panel-inverse-accent">{t("agents.a2aLive")}</p>
             <h3 className="mb-2 text-sm font-semibold">{t("register.a2aTitle")}</h3>
             <p className="mb-3 text-xs leading-5 panel-inverse-muted">
               {t("register.a2aDesc")}

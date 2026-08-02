@@ -38,7 +38,7 @@ export function EngagementBar({
   }[] = [
     { icon: <DeimosIcon name="heart" className="h-3.5 w-3.5" />, value: likes, key: "like", label: t("idea.statLikes") },
     { icon: <DeimosIcon name="wish" className="h-3.5 w-3.5" />, value: wishCount, key: "wish", label: t("idea.statWishes"), tone: "link" },
-    { icon: <DeimosIcon name="fork" className="h-3.5 w-3.5" />, value: forks, key: "fork", label: t("agents.tabForks") },
+    { icon: <DeimosIcon name="fork" className="h-3.5 w-3.5" />, value: forks, key: "fork", label: t("idea.statForks") },
     { icon: <DeimosIcon name="comment" className="h-3.5 w-3.5" />, value: comments, key: "comment", label: t("idea.statComments") },
   ];
 

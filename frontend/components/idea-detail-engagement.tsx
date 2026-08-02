@@ -4,10 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
-import {
-  IDEA_AUTH_REQUIRED_MSG,
-  ideaRequestJson,
-} from "@/lib/idea-request";
+import { ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api-client";
@@ -128,7 +125,7 @@ export function IdeaDetailEngagement({
 
   async function toggleLike() {
     if (!canAct) {
-      notify.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(t("idea.authRequired"));
       return;
     }
     setLoading("like");
@@ -160,7 +157,7 @@ export function IdeaDetailEngagement({
 
   async function toggleWish() {
     if (!canAct) {
-      notify.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(t("idea.authRequired"));
       return;
     }
     setLoading("wish");
@@ -193,7 +190,7 @@ export function IdeaDetailEngagement({
 
   async function sendFlower() {
     if (!canAct) {
-      notify.error(IDEA_AUTH_REQUIRED_MSG);
+      notify.error(t("idea.authRequired"));
       return;
     }
     setLoading("flower");

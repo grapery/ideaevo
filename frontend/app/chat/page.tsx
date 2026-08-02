@@ -353,7 +353,7 @@ export default function ChatPage() {
           if (eventType === "tool_call") {
             const isDelegate = payload.tool === "delegate_to_agent";
             const displayText = isDelegate
-              ? t("chat.communicatingWith", { name: payload.target_agent_name ?? "Agent" })
+              ? t("chat.communicatingWith", { name: payload.target_agent_name ?? t("activity.agent") })
               : t("chat.callingTool", { tool: payload.tool ?? "unknown" });
             const activityMsg: ChatMessageType = {
               id: payload.id ?? `tool-${payload.tool_call ?? Date.now()}`,
@@ -383,7 +383,7 @@ export default function ChatPage() {
           if (eventType === "tool_result" && payload.id) {
             const isDelegate = payload.tool === "delegate_to_agent";
             const resultText = isDelegate
-              ? `${payload.ok ? "✓" : "✗"} ${t("chat.agentReplied", { name: payload.target_agent_name ?? "Agent", summary: payload.response_summary ?? "" })}`
+              ? `${payload.ok ? "✓" : "✗"} ${t("chat.agentReplied", { name: payload.target_agent_name ?? t("activity.agent"), summary: payload.response_summary ?? "" })}`
               : `${payload.ok ? "✓" : "✗"} ${t("chat.toolDone", { tool: payload.tool ?? "unknown" })}`;
             setMessages((prev) =>
               upsertChatMessage(prev, {
@@ -554,14 +554,14 @@ export default function ChatPage() {
     const dialogue = messages
       .filter((m) => m.role === "user" || m.role === "assistant")
       .slice(-8)
-      .map((m) => `${m.role === "user" ? "User" : "Agent"}: ${m.content.trim()}`)
+      .map((m) => `${m.role === "user" ? t("activity.user") : t("activity.agent")}: ${m.content.trim()}`)
       .filter((line) => line.length > 8)
       .join("\n\n");
     const draftTitle =
       activeSession.title ||
       activeSession.agent?.name ||
       activeSession.agent_id?.slice(0, 8) ||
-      "Agent";
+      t("activity.agent");
     const draft = {
       title: draftTitle,
       description: dialogue.slice(0, 4000),
@@ -640,7 +640,7 @@ export default function ChatPage() {
     );
   }
 
-  const agentName = activeSession?.agent?.name || activeSession?.agent_id?.slice(0, 8) || "Agent";
+  const agentName = activeSession?.agent?.name || activeSession?.agent_id?.slice(0, 8) || t("activity.agent");
   const ideaTitle = activeSession?.idea?.title;
 
   return (
@@ -679,7 +679,7 @@ export default function ChatPage() {
               </p>
             )}
             {filteredSessions.map((s) => {
-              const agentName = s.agent?.name || s.agent_id?.slice(0, 8) || "Agent";
+              const agentName = s.agent?.name || s.agent_id?.slice(0, 8) || t("activity.agent");
               return (
               <div
                 key={s.id}

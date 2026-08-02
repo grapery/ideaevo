@@ -37,7 +37,7 @@ export default function VerifyEmailPage() {
     <div className="page-shell">
       <div className="mx-auto max-w-lg px-4 py-16">
         <div className="surface-card p-10 text-center shadow-[0_18px_50px_rgba(20,24,32,.05)]">
-          <p className="meta-label mb-5">IDENTITY / EMAIL VERIFICATION</p>
+          <p className="meta-label mb-5">{t("auth.verifyEyebrow")}</p>
           {status === "loading" && (
             <>
               <div className="mx-auto h-16 w-16 rounded-full bg-[var(--primary-soft)] flex items-center justify-center mb-5">

@@ -106,7 +106,7 @@ export default function AdminRefundsPage() {
       <div className="page-container page-pad">
         <div className="mx-auto max-w-3xl">
         <SystemPageHeader
-          eyebrow="ADMIN / REVIEW QUEUE"
+          eyebrow={t("admin.reviewEyebrow")}
           title={t("admin.refundReview")}
           description={t("admin.refundDesc")}
           icon="decision"
@@ -115,7 +115,7 @@ export default function AdminRefundsPage() {
           actions={
             <span className="meta-label inline-flex items-center gap-2 rounded-full border border-[var(--rule)] px-3 py-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-warning)]" />
-              {total} PENDING
+              {t("admin.pendingBadge", { count: total })}
             </span>
           }
         />
