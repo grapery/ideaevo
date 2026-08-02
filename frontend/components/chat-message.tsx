@@ -389,18 +389,18 @@ export default function ChatMessage({
           className={`inline-flex flex-col gap-1.5 rounded-xl border px-4 py-3 max-w-[85%] ${
             a2aCompleted
               ? "border-[var(--teal)]/30 bg-[var(--teal-soft)]"
-              : "border-[var(--primary)]/30 bg-[var(--primary-soft)]"
+              : "border-[var(--accent-link)]/30 bg-[var(--accent-link-soft)]"
           }`}
         >
           <div className="flex items-center gap-2 text-[13px] font-medium">
             {a2aCompleted ? (
               <span className="text-[var(--teal)]">✓</span>
             ) : (
-              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--accent-link)] border-t-transparent" />
             )}
             <span
               className={
-                a2aCompleted ? "text-[var(--teal)]" : "text-[var(--primary)]"
+                a2aCompleted ? "text-[var(--teal)]" : "text-[var(--accent-link)]"
               }
             >
               {a2aCompleted ? t("chat.agentReply") : t("chat.communicating")}
@@ -412,6 +412,11 @@ export default function ChatMessage({
               entityId={activity?.target_agent_id ?? targetAgentName}
               name={targetAgentName}
               size={28}
+              href={
+                activity?.target_agent_id
+                  ? `/agents/${activity.target_agent_id}`
+                  : undefined
+              }
             />
             <span className="text-sm font-medium text-[var(--title)]">
               {targetAgentName}
@@ -477,6 +482,13 @@ export default function ChatMessage({
         avatarUrl: agentIdentity?.avatarUrl,
       };
 
+  const agentHref =
+    !isUser &&
+    identity.id &&
+    identity.id !== "deimos-agent"
+      ? `/agents/${identity.id}`
+      : undefined;
+
   return (
     <div
       className={`group flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
@@ -490,6 +502,7 @@ export default function ChatMessage({
           avatarUrl={identity.avatarUrl}
           name={identity.name}
           size={34}
+          href={agentHref}
           className="self-start"
         />
         <div
@@ -498,8 +511,8 @@ export default function ChatMessage({
           <div
             className={`rounded-md border px-4 py-3 text-[15px] leading-[1.75] ${
               isUser
-                ? "border-[#6f94ee] bg-[#557bd8] text-white"
-                : "border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--text-secondary)]"
+                ? "border-[var(--chat-user-border,#5474d0)] bg-[var(--chat-user-bg,#3a5bb8)] text-white"
+                : "border-[var(--chat-assistant-border,var(--rule))] bg-[var(--chat-assistant-bg,var(--bg-subtle))] text-[var(--body)]"
             }`}
           >
             <MessageBody

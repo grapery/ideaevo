@@ -40,12 +40,12 @@ export function WireframeAvatar({
 
   const inner = (
     <div
-      className="relative shrink-0 rounded-full border border-[var(--panel-inverse)] bg-[var(--bg-surface)]"
+      className="relative shrink-0 rounded-full border border-[var(--avatar-frame)] bg-[var(--bg-surface)]"
       style={{
         width: size,
         height: size,
         padding: frameInset,
-        boxShadow: "0 0 0 1px rgba(255,255,255,.9)",
+        boxShadow: "0 0 0 1px var(--avatar-ring)",
       }}
     >
       <div className="h-full w-full overflow-hidden rounded-full bg-[var(--bg-subtle)]">
@@ -69,6 +69,7 @@ export function WireframeAvatar({
       <Link
         href={href}
         title={title ?? name}
+        onClick={(e) => e.stopPropagation()}
         className={`inline-flex shrink-0 rounded-full transition-opacity hover:opacity-80 ${className}`}
       >
         {inner}

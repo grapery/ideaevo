@@ -588,7 +588,7 @@ export default function ChatPage() {
             <button
               type="button"
               onClick={() => setShowNewDialog(true)}
-              className="flex h-11 w-full items-center rounded-[6px] bg-[#f2f4f7] px-3.5 text-left text-[13px] font-semibold text-[#15181d] hover:bg-white"
+              className="flex h-11 w-full items-center rounded-[6px] border border-[var(--primary)] bg-[var(--primary)] px-3.5 text-left text-[13px] font-semibold text-white hover:bg-[var(--primary-hover)] hover:border-[var(--primary-hover)]"
             >
               + {t("chat.newChat")}
             </button>
@@ -632,6 +632,7 @@ export default function ChatPage() {
                   entityId={s.agent_id}
                   kind="agent"
                   size={36}
+                  href={s.agent_id ? `/agents/${s.agent_id}` : undefined}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
@@ -708,6 +709,11 @@ export default function ChatPage() {
                   entityId={activeSession?.agent_id}
                   kind="agent"
                   size={38}
+                  href={
+                    activeSession?.agent_id
+                      ? `/agents/${activeSession.agent_id}`
+                      : undefined
+                  }
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-semibold text-[var(--title)]">{activeSession?.title || agentName}</p>
@@ -774,7 +780,7 @@ export default function ChatPage() {
             </div>
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto p-4">
-            <section className="rounded-[6px] border border-[#466b48] bg-[var(--accent-success-soft)] p-4 font-code text-[12px] leading-7 text-[var(--accent-success)]">
+            <section className="rounded-[6px] border border-[var(--accent-success)]/35 bg-[var(--accent-success-soft)] p-4 font-code text-[12px] leading-7 text-[var(--accent-success)]">
               <p>{t("chat.currentVerdict")}</p>
               <p>{activeId ? t("chat.inProgress") : t("chat.waitingSession")}</p>
               <p>{t("chat.confidence")}: {activeId ? "0.78" : "—"}</p>
@@ -783,8 +789,28 @@ export default function ChatPage() {
               <div className="rounded-[6px] border border-[var(--rule)] bg-[var(--bg-canvas)] p-4">
                 <p className="font-code text-[12px] text-[var(--title)]">{t("chat.currentExecutor")}</p>
                 <p className="mt-3 flex items-center gap-2 text-[13px] font-medium text-[var(--title)]">
-                  <DeimosIcon name="agent" className="h-4 w-4 text-[#36d399]" />
-                  {activeId ? agentName : t("chat.waitingSession")}
+                  {activeId && activeSession?.agent_id ? (
+                    <WireframeAvatar
+                      name={agentName}
+                      avatarUrl={activeSession?.agent?.avatar_url}
+                      entityId={activeSession.agent_id}
+                      kind="agent"
+                      size={28}
+                      href={`/agents/${activeSession.agent_id}`}
+                    />
+                  ) : (
+                    <DeimosIcon name="agent" className="h-4 w-4 text-[var(--accent-success)]" />
+                  )}
+                  {activeId && activeSession?.agent_id ? (
+                    <Link
+                      href={`/agents/${activeSession.agent_id}`}
+                      className="hover:text-[var(--accent-link)]"
+                    >
+                      {agentName}
+                    </Link>
+                  ) : (
+                    t("chat.waitingSession")
+                  )}
                 </p>
                 <p className="mt-2 font-code text-xs text-[var(--text-muted)]">{t("chat.toolsConnected")}</p>
               </div>

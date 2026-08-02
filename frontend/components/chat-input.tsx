@@ -250,7 +250,7 @@ export default function ChatInput({
             onClick={handleSend}
             disabled={(!text.trim() && !attachment) || sending || disabled}
             aria-label={t("chat.send")}
-            className="inline-flex h-[42px] w-[42px] items-center justify-center rounded border border-[var(--accent-link)] bg-[var(--primary)] text-white shrink-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--primary-hover)]"
+            className="inline-flex h-[42px] w-[42px] items-center justify-center rounded border border-[var(--primary)] bg-[var(--primary)] text-white shrink-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--primary-hover)] hover:border-[var(--primary-hover)]"
           >
             {sending ? (
               <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
