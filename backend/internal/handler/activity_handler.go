@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -23,7 +24,7 @@ func NewActivityHandler(db *gorm.DB, followSvc *service.FollowService, socialSvc
 }
 
 // ActivityView 是 ActivityLog 的丰富化视图，附带关联实体的名称/头像/标题，
-// 使前端 feed 无需额外请求即可渲染 GitHub 式事件卡片（避免 N+1）。
+// 使前端 feed 无需额外请求即可渲染信息丰富的事件卡片（避免 N+1）。
 type ActivityView struct {
 	ID         string    `json:"id"`
 	ActorType  string    `json:"actor_type"`
@@ -40,6 +41,14 @@ type ActivityView struct {
 	TargetDesc     string         `json:"target_desc,omitempty"`
 	TargetStatus   string         `json:"target_status,omitempty"`
 	TargetCategory string         `json:"target_category,omitempty"`
+	TargetImplStatus string       `json:"target_impl_status,omitempty"`
+	TargetTags     []string       `json:"target_tags,omitempty"`
+	TargetIconURL  string         `json:"target_icon_url,omitempty"`
+	TargetCoverURL string         `json:"target_cover_url,omitempty"`
+	TargetLikeCount    int        `json:"target_like_count,omitempty"`
+	TargetFlowerCount  int        `json:"target_flower_count,omitempty"`
+	TargetForkCount    int        `json:"target_fork_count,omitempty"`
+	TargetCommentCount int        `json:"target_comment_count,omitempty"`
 	Reactions      map[string]int `json:"reactions,omitempty"`
 }
 
@@ -62,11 +71,19 @@ func hydrateActivities(db *gorm.DB, socialSvc *service.SocialService, activities
 
 	// 批量加载 ideas
 	type ideaBrief struct {
-		ID          string
-		Title       string
-		Description string
-		Status      string
-		Category    string
+		ID           string
+		Title        string
+		Description  string
+		Status       string
+		ImplStatus   string `gorm:"column:impl_status"`
+		Category     string
+		Tags         string
+		IconURL      string `gorm:"column:icon_url"`
+		CoverURL     string `gorm:"column:cover_url"`
+		LikeCount    int    `gorm:"column:like_count"`
+		FlowerCount  int    `gorm:"column:flower_count"`
+		ForkCount    int    `gorm:"column:fork_count"`
+		CommentCount int    `gorm:"column:comment_count"`
 	}
 	ideaMap := make(map[string]ideaBrief)
 	if len(ideaIDs) > 0 {
@@ -75,7 +92,10 @@ func hydrateActivities(db *gorm.DB, socialSvc *service.SocialService, activities
 			ids = append(ids, id)
 		}
 		var ideas []ideaBrief
-		db.Table("ideas").Select("id, title, description, status, category").Where("id IN ?", ids).Scan(&ideas)
+		db.Table("ideas").
+			Select("id, title, description, status, impl_status, category, tags, icon_url, cover_url, like_count, flower_count, fork_count, comment_count").
+			Where("id IN ?", ids).
+			Scan(&ideas)
 		for _, idea := range ideas {
 			ideaMap[idea.ID] = idea
 		}
@@ -141,6 +161,19 @@ func hydrateActivities(db *gorm.DB, socialSvc *service.SocialService, activities
 				v.TargetDesc = brief.Description
 				v.TargetStatus = brief.Status
 				v.TargetCategory = brief.Category
+				v.TargetImplStatus = brief.ImplStatus
+				v.TargetIconURL = brief.IconURL
+				v.TargetCoverURL = brief.CoverURL
+				v.TargetLikeCount = brief.LikeCount
+				v.TargetFlowerCount = brief.FlowerCount
+				v.TargetForkCount = brief.ForkCount
+				v.TargetCommentCount = brief.CommentCount
+				if brief.Tags != "" && brief.Tags != "null" {
+					var tags []string
+					if err := json.Unmarshal([]byte(brief.Tags), &tags); err == nil {
+						v.TargetTags = tags
+					}
+				}
 			}
 			if reactionMap != nil {
 				if counts, ok := reactionMap[a.TargetID]; ok && len(counts) > 0 {

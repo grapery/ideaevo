@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthModal } from "@/lib/auth-modal-context";
 import { ActivityList, ActivityLog } from "@/components/activity-list";
-import { AppLink as Link } from "@/components/app-link";
 import { useI18n } from "@/lib/i18n/provider";
 
 type Tab = "global" | "following";
@@ -19,9 +19,9 @@ export function ActivityFeedTabs({
   initialGlobal: ActivityLog[];
 }) {
   const { user } = useAuth();
+  const { openAuthModal } = useAuthModal();
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("global");
-  const [global, setGlobal] = useState<ActivityLog[]>(initialGlobal);
   const [following, setFollowing] = useState<ActivityLog[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -43,55 +43,56 @@ export function ActivityFeedTabs({
     }
   }, []);
 
-  // 切到关注 tab 时按需拉取（登录用户才拉）。
   useEffect(() => {
     if (tab === "following" && user && following === null) {
       loadFollowing();
     }
   }, [tab, user, following, loadFollowing]);
 
+  function selectTab(next: Tab) {
+    if (next === "following" && !user) {
+      openAuthModal();
+      return;
+    }
+    setTab(next);
+  }
+
   return (
-    <div className="surface-card">
-      {/* tab 切换 */}
-      <div className="flex border-b border-[var(--divider)]">
-        <TabButton active={tab === "global"} onClick={() => setTab("global")}>
+    <div>
+      <div className="sticky-tabbar mb-1 flex gap-1 border-b border-[var(--rule)]">
+        <TabButton active={tab === "global"} onClick={() => selectTab("global")}>
           {t("activity.allFeed")}
         </TabButton>
-        <TabButton
-          active={tab === "following"}
-          onClick={() => user && setTab("following")}
-          disabled={!user}
-        >
+        <TabButton active={tab === "following"} onClick={() => selectTab("following")}>
           {t("activity.followFeed")}
         </TabButton>
       </div>
 
-      {tab === "global" && <ActivityList activities={global} />}
+      {tab === "global" && <ActivityList activities={initialGlobal} />}
 
       {tab === "following" &&
         (user ? (
           loading ? (
-            <div className="p-8 text-center text-[var(--text-muted)]">
+            <div className="px-5 py-12 text-center text-[14px] text-[var(--ink-faint)]">
               {t("common.loading")}
             </div>
           ) : error ? (
-            <div className="p-8 text-center text-[var(--text-muted)]">
+            <div className="px-5 py-12 text-center text-[14px] text-[var(--ink-faint)]">
               {t("activity.feedLoadFailed")}
             </div>
           ) : (
             <ActivityList activities={following ?? []} />
           )
         ) : (
-          <div className="p-8 text-center text-[var(--text-muted)]">
-            <p className="mb-3">
-              <Link
-                href="/login"
-                className="text-[var(--primary)] hover:underline"
-              >
-                {t("auth.loginShort")}
-              </Link>{" "}
-              {t("activity.loginToView")}
-            </p>
+          <div className="px-5 py-12 text-center text-[14px] text-[var(--ink-faint)]">
+            <button
+              type="button"
+              onClick={() => openAuthModal()}
+              className="font-medium text-[var(--primary)] hover:underline"
+            >
+              {t("auth.loginShort")}
+            </button>{" "}
+            {t("activity.loginToView")}
           </div>
         ))}
     </div>
@@ -100,12 +101,10 @@ export function ActivityFeedTabs({
 
 function TabButton({
   active,
-  disabled,
   onClick,
   children,
 }: {
   active: boolean;
-  disabled?: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -113,14 +112,16 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
-      className={`flex-1 px-5 py-4 text-sm font-semibold transition-colors ${
+      className={`relative px-4 py-3 text-[14px] font-semibold transition-colors ${
         active
-          ? "text-[var(--title)] border-b-2 border-[var(--primary)]"
-          : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-      } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+          ? "text-[var(--ink)]"
+          : "text-[var(--ink-faint)] hover:text-[var(--ink)]"
+      }`}
     >
       {children}
+      {active && (
+        <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-[var(--primary)]" />
+      )}
     </button>
   );
 }

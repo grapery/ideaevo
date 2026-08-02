@@ -9,7 +9,7 @@ import {
   normalizeTags,
   safeUrl,
 } from "@/lib/types";
-import { CommentList } from "@/components/comment-list";
+import { DiscussionPanel } from "@/components/discussion-panel";
 import { IdeaActionBar } from "@/components/idea-action-bar";
 import { IdeaDetailEngagementSection } from "@/components/idea-detail-engagement-section";
 import { IdeaIcon, IdeaMetaPanel } from "@/components/idea-meta-panel";
@@ -19,7 +19,6 @@ import { IdeaMediaGallery } from "@/components/idea-media-gallery";
 import { IdeaProvenanceStrip } from "@/components/idea-provenance-strip";
 import { ForkDerivativesPanel } from "@/components/fork-derivatives-panel";
 import { FlowersPanel, IdeaStatsPanel } from "@/components/idea-detail-sidebar";
-import { CommentForm } from "./comments/comment-form";
 import { getApiBase } from "@/lib/api-base";
 import { IconLeaf, IconGitFork } from "@/components/icons";
 import { IdeaViewReporter } from "@/components/idea-view-reporter";
@@ -30,6 +29,8 @@ import {
   type IdeaDetailTab,
 } from "@/components/idea-detail-tabs";
 import { IdeaTabJump } from "@/components/idea-tab-jump";
+import { IdeaMorePanel } from "@/components/idea-more-panel";
+import { IdeaLifecycleRail } from "@/components/idea-lifecycle-rail";
 import { getServerI18n } from "@/lib/i18n/server";
 
 const apiBase = getApiBase();
@@ -127,17 +128,29 @@ export default async function IdeaDetailPage({
   const repoUrl = safeUrl(idea.repo_url);
   const demoUrl = safeUrl(idea.demo_url);
   const evidence = [
-    ...(repoUrl ? [{ label: "Repository", url: repoUrl, detail: "source · implementation" }] : []),
-    ...(demoUrl ? [{ label: "Live demo", url: demoUrl, detail: "demo · product evidence" }] : []),
+    ...(repoUrl
+      ? [{ label: "Repository", url: repoUrl, detail: "source · implementation", kind: "repo" as const }]
+      : []),
+    ...(demoUrl
+      ? [{ label: "Live demo", url: demoUrl, detail: "demo · product evidence", kind: "demo" as const }]
+      : []),
     ...normalizeLinks(idea.links)
       .map((link) => ({
         label: link.title || link.kind || "Reference",
         url: safeUrl(link.url),
         detail: `${link.kind || "reference"} · linked evidence`,
+        kind: "reference" as const,
       }))
-      .filter((item): item is { label: string; url: string; detail: string } => Boolean(item.url)),
+      .filter((item): item is { label: string; url: string; detail: string; kind: "reference" } =>
+        Boolean(item.url),
+      ),
   ];
   const totalReferences = stats?.reference_count ?? evidence.length;
+  const moreTabCount =
+    evidence.length +
+    (idea.category ? 1 : 0) +
+    tags.length +
+    (stats?.version_count || lineage?.current_version?.version ? 1 : 0);
   const currentVersion = stats?.version_count || lineage?.current_version?.version || 1;
   const implStatusCode = (
     idea.impl_status || (idea.status === "implemented" ? "implemented" : "concept")
@@ -235,24 +248,13 @@ export default async function IdeaDetailPage({
               {
                 key: "more",
                 label: t("idea.moreInfo"),
-                count: totalReferences,
+                count: moreTabCount || totalReferences,
               },
             ]}
             overview={
               <div className="app-grid-2 gap-5">
                 <main id="overview" className="scroll-mt-24 space-y-5 surface-card p-5 sm:p-6">
-                  <div className="panel-inverse px-4 py-3.5">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-code text-[10px] leading-6">
-                      <span className="panel-inverse-muted">{t("idea.lifecycle")}</span>
-                      <span>{t("idea.concept")}</span><span className="text-white/45">────●</span>
-                      <span className="panel-inverse-accent">{implStatus}</span>
-                      <span className="text-white/45">────○</span>
-                      <span>{t("idea.implemented")}</span>
-                    </div>
-                    <p className="mt-1 font-code text-[9px] text-white/45">
-                      {t("idea.registered")} {new Date(idea.created_at).toLocaleDateString(locale)}　·　{t("idea.updated")} {new Date(idea.updated_at).toLocaleDateString(locale)}
-                    </p>
-                  </div>
+                  <IdeaLifecycleRail idea={idea} />
 
                   {(idea.cover_url || idea.video_url) && <IdeaCoverHero idea={idea} />}
                   <IdeaMediaGallery idea={idea} />
@@ -336,76 +338,70 @@ export default async function IdeaDetailPage({
               </div>
             }
             comments={
-              <section id="comments" className="scroll-mt-24 surface-card p-5 sm:p-6">
-                <div className="mb-1 flex items-baseline justify-between gap-3">
-                  <h2 className="text-[15px] font-semibold text-[var(--ink)]">
-                    {t("idea.discussion")}
-                  </h2>
-                  <span className="font-code text-[11px] tabular-nums text-[var(--ink-faint)]">
-                    {comments.length}
-                  </span>
-                </div>
-                <p className="text-[13px] text-[var(--ink-soft)]">
-                  {t("idea.discussionHint")}
-                </p>
-
-                <div className="mt-5">
-                  <CommentForm ideaId={id} status={idea.status} />
-                </div>
-
-                <div className="mt-6">
-                  {comments.length === 0 ? (
-                    <p className="rounded-md border border-dashed border-[var(--rule)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
-                      {t("idea.noComments")}
-                    </p>
-                  ) : (
-                    <CommentList
-                      comments={comments}
-                      ideaId={id}
-                      status={idea.status}
-                      initialVisible={8}
-                    />
-                  )}
-                </div>
-              </section>
+              <div className="surface-card p-5 sm:p-6">
+                <DiscussionPanel
+                  ideaId={id}
+                  status={idea.status}
+                  comments={comments}
+                  makerIds={[
+                    idea.agent_id,
+                    idea.agent?.id,
+                    idea.agent?.owner_user_id,
+                    idea.agent?.owner?.id,
+                  ].filter((v): v is string => !!v)}
+                  initialVisible={8}
+                />
+              </div>
             }
             more={
-              <section id="more" className="scroll-mt-24 surface-card p-5 sm:p-6">
-                <div className="mb-1 flex items-baseline justify-between gap-3">
-                  <h2 className="text-[15px] font-semibold text-[var(--ink)]">
-                    {t("idea.implementationEvidence")}
-                  </h2>
-                  <span className="font-code text-[11px] tabular-nums text-[var(--ink-faint)]">
-                    {totalReferences}
-                  </span>
-                </div>
-                <p className="text-[13px] text-[var(--ink-soft)]">
-                  {t("idea.evidenceSectionHint")}
-                </p>
-                <div className="mt-5 space-y-2">
-                  {evidence.length > 0 ? evidence.map((item, index) => (
-                    <a
-                      key={`${item.url}-${index}`}
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-baseline gap-3 rounded-md border border-[var(--rule)] px-4 py-3 text-sm leading-6 transition-colors hover:border-[var(--accent-link)] hover:bg-[var(--bg-subtle)]"
-                    >
-                      <span className="shrink-0 font-code text-[11px] text-[var(--ink-faint)]">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="font-medium text-[var(--ink)]">{item.label}</span>
-                        <span className="ml-2 text-[var(--ink-soft)]">· {item.detail}</span>
-                      </span>
-                    </a>
-                  )) : (
-                    <p className="rounded-md border border-dashed border-[var(--rule)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
-                      {t("idea.noEvidence")}
-                    </p>
-                  )}
-                </div>
-              </section>
+              <IdeaMorePanel
+                idea={idea}
+                evidence={evidence}
+                tags={tags}
+                stats={stats}
+                lineage={lineage}
+                lifecycleStatus={lifecycleStatus}
+                implStatus={implStatus}
+                currentVersion={currentVersion}
+                locale={locale}
+                labels={{
+                  title: t("idea.moreInfo"),
+                  subtitle: t("idea.moreInfoSubtitle"),
+                  statusSection: t("idea.statusArchive"),
+                  lifecycle: t("idea.lifecycle"),
+                  implProgress: t("idea.implStatus"),
+                  registered: t("idea.registered"),
+                  updated: t("idea.updated"),
+                  signals: t("idea.signalSnapshot"),
+                  likes: t("idea.statLikes"),
+                  wishes: t("idea.statWishes"),
+                  forks: "Fork",
+                  comments: t("idea.statComments"),
+                  views: t("idea.statViews"),
+                  refs: t("idea.statRefs"),
+                  evidence: t("idea.implementationEvidence"),
+                  evidenceHint: t("idea.evidenceSectionHint"),
+                  noEvidence: t("idea.noEvidence"),
+                  openLink: t("idea.openEvidence"),
+                  taxonomy: t("idea.taxonomy"),
+                  category: t("idea.category"),
+                  tags: t("idea.tags"),
+                  noCategory: t("idea.noCategory"),
+                  noTags: t("idea.noTags"),
+                  maker: t("idea.makerSection"),
+                  postedBy: t("idea.postedByAgent"),
+                  agentFallback: t("idea.creator"),
+                  lineage: t("idea.forkLineage"),
+                  sourceIdea: t("idea.sourceIdea"),
+                  currentBranch: t("idea.currentBranch"),
+                  totalForks: (count) => t("idea.totalForks", { count }),
+                  activeBranches: (count) => t("idea.activeBranches", { count }),
+                  viewGraph: t("idea.viewGraph"),
+                  version: t("idea.versions"),
+                  versionHint: t("idea.versionSnapshot"),
+                  versionLabel: (version) => t("idea.latestVersionShort", { version }),
+                }}
+              />
             }
           />
         </div>
