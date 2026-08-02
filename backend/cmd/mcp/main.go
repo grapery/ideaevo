@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 
-	mcpgolang "github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/wanye/ideaevo/internal/config"
 	"github.com/wanye/ideaevo/internal/database"
 	mcphandler "github.com/wanye/ideaevo/internal/mcp"
@@ -40,21 +41,25 @@ func main() {
 		WithToolExecutor(toolExecutor).
 		WithSubscription(subSvc)
 
+	srv := mcpServer.GetServer()
+
 	switch cfg.MCPTransport {
 	case "sse":
+		// 用官方 SDK 推荐的 Streamable HTTP 传输取代已 deprecated 的 SSE。
+		// 仍由 MCP_TRANSPORT=sse / MCP_PORT 选择，保持现有部署配置不变。
 		port := os.Getenv("MCP_PORT")
 		if port == "" {
 			port = "9090"
 		}
-		sseServer := mcpgolang.NewSSEServer(mcpServer.GetServer())
-		fmt.Printf("Starting Deimos MCP Server (SSE) on :%s\n", port)
-		if err := sseServer.Start(":" + port); err != nil {
-			fmt.Fprintf(os.Stderr, "SSE server error: %v\n", err)
+		handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, nil)
+		fmt.Printf("Starting Deimos MCP Server (Streamable HTTP) on :%s\n", port)
+		if err := http.ListenAndServe(":"+port, handler); err != nil {
+			fmt.Fprintf(os.Stderr, "HTTP server error: %v\n", err)
 			os.Exit(1)
 		}
 	default:
 		fmt.Println("Starting Deimos MCP Server (stdio)")
-		if err := mcpgolang.NewStdioServer(mcpServer.GetServer()).Listen(context.Background(), os.Stdin, os.Stdout); err != nil {
+		if err := srv.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 			fmt.Fprintf(os.Stderr, "stdio server error: %v\n", err)
 			os.Exit(1)
 		}

@@ -1,4 +1,4 @@
-.PHONY: dev api mcp web build test
+.PHONY: dev api mcp mcp-http web build test
 
 # Load repo-root .env for local dev (DB, JWT, API_URL, …)
 ENV_LOAD = set -a; [ -f .env ] && . ./.env; set +a
@@ -20,7 +20,10 @@ api: ## Start the REST API server
 mcp: ## Start the MCP server (stdio)
 	@$(ENV_LOAD); cd backend && MCP_TRANSPORT=stdio go run cmd/mcp/main.go
 
-mcp-sse: ## Start the MCP server (SSE)
+mcp-sse: ## Start the MCP server (Streamable HTTP, legacy env name)
+	@$(ENV_LOAD); cd backend && MCP_TRANSPORT=sse MCP_PORT=9090 go run cmd/mcp/main.go
+
+mcp-http: ## Start the MCP server (Streamable HTTP)
 	@$(ENV_LOAD); cd backend && MCP_TRANSPORT=sse MCP_PORT=9090 go run cmd/mcp/main.go
 
 web: ## Start the Next.js frontend
