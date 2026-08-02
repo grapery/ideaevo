@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { IconLeaf } from "@/components/icons";
+import { useI18n } from "@/lib/i18n/provider";
 
 /**
  * ProfileLayout —— 统一的主页主体（sticky Tab + 主列/侧栏两栏）。
@@ -32,38 +33,30 @@ export function ProfileLayout({
 }: ProfileLayoutProps) {
   return (
     <div>
-      {/* Sticky tab bar */}
-      <nav className="sticky top-12 z-30 mt-4 bg-[var(--bg-canvas)]">
-        <div className="mx-auto page-container">
-          <div className="flex h-10 gap-5 overflow-x-auto rounded-[6px] border border-[var(--rule)] bg-white px-4">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => onTabChange(t.key)}
-                data-active={activeTab === t.key}
-                className={`shrink-0 border-b-2 font-code text-[9px] ${
-                  activeTab === t.key
-                    ? "border-[var(--accent-link)] text-[var(--accent-link)]"
-                    : "border-transparent text-[var(--ink-faint)] hover:text-[var(--ink)]"
-                }`}
-              >
-                <span>{t.label}</span>
-                {t.count !== undefined && t.count > 0 && (
-                  <span className="ml-1 text-[8px]">{t.count}</span>
-                )}
-              </button>
-            ))}
-          </div>
+      <nav className="tabbar sticky-tabbar z-30 mt-4">
+        <div className="page-container overflow-x-auto">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => onTabChange(t.key)}
+              data-active={activeTab === t.key ? "true" : undefined}
+              className="tabbar-tab"
+            >
+              <span>{t.label}</span>
+              {t.count !== undefined && t.count > 0 && (
+                <span className="count-badge">{t.count}</span>
+              )}
+            </button>
+          ))}
         </div>
       </nav>
 
-      {/* Content: main + sidebar two-column */}
-      <div className="mx-auto page-container py-6">
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="page-container py-6">
+        <div className="app-grid-2">
           <main className="min-w-0">{children}</main>
           {sidebar && (
-            <aside className="hidden lg:block space-y-4">{sidebar}</aside>
+            <aside className="hidden space-y-4 lg:block">{sidebar}</aside>
           )}
         </div>
       </div>
@@ -71,11 +64,9 @@ export function ProfileLayout({
   );
 }
 
-/* ---- Shared sub-components for profiles ---- */
-
 /** GitHub-style "About" sidebar card. */
 export function AboutCard({
-  title = "关于",
+  title,
   children,
   className = "",
 }: {
@@ -83,10 +74,11 @@ export function AboutCard({
   children: ReactNode;
   className?: string;
 }) {
+  const { t } = useI18n();
   return (
-    <div className={`rounded-[8px] border border-[var(--rule)] bg-white p-4 ${className}`.trim()}>
-      <h3 className="mb-3 border-b border-[var(--divider)] pb-3 font-code text-[10px] text-[var(--ink)]">
-        {title}
+    <div className={`surface-card p-4 ${className}`.trim()}>
+      <h3 className="mb-3 border-b border-[var(--rule)] pb-3 text-[12px] font-semibold text-[var(--ink)]">
+        {title ?? t("agents.aboutAgent")}
       </h3>
       {children}
     </div>
@@ -96,9 +88,9 @@ export function AboutCard({
 /** Key-value row inside an About card. */
 export function StatRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-[var(--text-muted)]">{label}</span>
-      <span className="font-semibold text-[var(--title)] tabular-nums">{value}</span>
+    <div className="flex items-center justify-between text-[13px]">
+      <span className="text-[var(--ink-faint)]">{label}</span>
+      <span className="font-semibold tabular-nums text-[var(--ink)]">{value}</span>
     </div>
   );
 }
@@ -106,7 +98,7 @@ export function StatRow({ label, value }: { label: string; value: ReactNode }) {
 /** Unified empty state. */
 export function ProfileEmptyState({ text }: { text: string }) {
   return (
-    <div className="surface-card py-16 text-center text-[var(--text-muted)]">
+    <div className="surface-card py-16 text-center text-[var(--ink-faint)]">
       <IconLeaf className="mx-auto mb-3 h-10 w-10" aria-hidden="true" />
       <p className="text-sm">{text}</p>
     </div>

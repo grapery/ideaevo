@@ -229,8 +229,8 @@ export default function BillingPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container flex flex-col gap-6 py-6 lg:flex-row">
+    <div className="page-shell-full">
+      <div className="page-container page-pad flex flex-col gap-6 lg:flex-row">
         <AccountSidebar
           activePath="/billing"
           emailVerified={user.email_verified}
@@ -244,14 +244,14 @@ export default function BillingPage() {
           />
 
           {loadError && (
-            <div className="mb-6 flex items-center justify-between gap-4 rounded-[8px] border border-[var(--coral)]/35 bg-[var(--coral)]/10 p-4 text-sm text-[var(--coral)]">
+            <div className="mb-6 flex items-center justify-between gap-4 rounded-[var(--radius-card)] border border-[var(--accent-warning)]/35 bg-[var(--accent-warning-soft)] p-4 text-sm text-[var(--accent-warning)]">
               <span>{loadError}</span>
               <button
                 type="button"
                 onClick={() => void loadData()}
                 className="btn-outline shrink-0"
               >
-                {locale === "zh-CN" ? "重试" : "Retry"}
+                {t("billing.retry")}
               </button>
             </div>
           )}
@@ -286,7 +286,7 @@ export default function BillingPage() {
                   </div>
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15">
                     <div
-                      className="h-full rounded-full bg-[#9aff39]"
+                      className="h-full rounded-full bg-[var(--panel-inverse-accent)]"
                       style={{ width: `${quotaPercent}%` }}
                     />
                   </div>
@@ -312,7 +312,7 @@ export default function BillingPage() {
                   <div className="flex items-center gap-2 text-xl font-semibold">
                     <DeimosIcon
                       name="tool"
-                      className="h-4 w-4 text-[#9aff39]"
+                      className="h-4 w-4 text-[var(--panel-inverse-accent)]"
                     />
                     {membership.is_pro
                       ? t("billing.enabled")
@@ -389,7 +389,7 @@ export default function BillingPage() {
                       {formatPrice(plan.prices[currency] || 0, currency)}
                       <span className="text-sm font-normal text-[var(--text-muted)]">
                         {" "}
-                        / {plan.duration_days} {locale === "zh-CN" ? "天" : "days"}
+                        / {t("billing.durationDays", { count: plan.duration_days })}
                       </span>
                     </div>
                     <ul className="mt-4 space-y-2 text-sm">

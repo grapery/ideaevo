@@ -17,7 +17,7 @@ export function VideoCoverButton({
   poster?: string;
   className?: string;
 }) {
-  const { locale } = useI18n();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   return (
@@ -26,7 +26,7 @@ export function VideoCoverButton({
         type="button"
         onClick={() => setOpen(true)}
         className={`group relative flex items-center justify-center overflow-hidden rounded-xl bg-[var(--fill,#f2f3f7)] ${className ?? ""}`}
-        aria-label={locale === "zh-CN" ? "播放视频" : "Play video"}
+        aria-label={t("common.playVideo")}
       >
         {poster ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -52,7 +52,7 @@ export function VideoCoverButton({
 
 /** 全屏视频播放器(HTML5 video,无需第三方库)。 */
 function VideoModal({ url, onClose }: { url: string; onClose: () => void }) {
-  const { locale } = useI18n();
+  const { t } = useI18n();
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
@@ -62,7 +62,7 @@ function VideoModal({ url, onClose }: { url: string; onClose: () => void }) {
         type="button"
         onClick={onClose}
         className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
-        aria-label={locale === "zh-CN" ? "关闭" : "Close"}
+        aria-label={t("common.close")}
       >
         <DeimosIcon name="close" className="h-5 w-5" />
       </button>

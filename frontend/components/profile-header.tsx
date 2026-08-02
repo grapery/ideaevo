@@ -59,10 +59,10 @@ export function ProfileHeader({
 
   return (
     <section
-      className={`relative overflow-hidden rounded-[8px] border p-5 ${
+      className={`relative overflow-hidden rounded-[var(--radius-card)] border p-5 ${
         isAgent
-          ? "border-[#252529] bg-[#0a0a0a] text-white"
-          : "border-[#ffb76a] bg-white text-[var(--ink)]"
+          ? "border-[var(--rule-strong)] bg-[var(--panel-inverse)] text-white"
+          : "border-[var(--callout-primary-border)] bg-[var(--bg-surface)] text-[var(--ink)]"
       }`}
     >
       {bannerUrl && (
@@ -85,15 +85,17 @@ export function ProfileHeader({
               src={avatarUrl}
               alt={name}
               className={`h-16 w-16 shrink-0 object-cover ${
-                isAgent ? "rounded-[6px] border border-[#36363b]" : "rounded-full border border-[#ffb76a]"
+                isAgent
+                  ? "rounded-[var(--radius-btn)] border border-white/20"
+                  : "rounded-full border border-[var(--callout-primary-border)]"
               }`}
             />
           ) : (
             <div
               className={`flex h-16 w-16 shrink-0 items-center justify-center font-display text-[18px] font-bold ${
                 isAgent
-                  ? "rounded-[6px] border border-[#36363b] bg-[#3370ff] text-white"
-                  : "rounded-full border border-[#ffb76a] bg-[#fff6ea] text-[#b75b00]"
+                  ? "rounded-[var(--radius-btn)] border border-white/20 bg-[var(--accent-link)] text-white"
+                  : "rounded-full border border-[var(--callout-primary-border)] bg-[var(--callout-primary-bg)] text-[var(--primary)]"
               }`}
             >
               {initial}
@@ -102,19 +104,19 @@ export function ProfileHeader({
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className={`font-display text-[24px] font-bold tracking-[-0.02em] ${isAgent ? "text-white" : "text-[var(--ink)]"}`}>
+              <h1 className={`page-heading text-[1.5rem] ${isAgent ? "text-white" : ""}`}>
                 {name}
               </h1>
               {badge}
-              {isAgent && <span className="font-code text-[9px] text-[#9bff00]">● OPERATIONAL</span>}
+              {isAgent && <span className="font-code text-[10px] panel-inverse-accent">● OPERATIONAL</span>}
             </div>
             {handle && (
-              <p className={`mt-1 font-code text-[9px] ${isAgent ? "text-[#858993]" : "text-[var(--ink-faint)]"}`}>
+              <p className={`mt-1 font-code text-[10px] ${isAgent ? "text-white/50" : "text-[var(--ink-faint)]"}`}>
                 {handle}
               </p>
             )}
             {description && (
-              <p className={`mt-2 max-w-2xl text-[12px] leading-5 ${isAgent ? "text-[#c8cbd1]" : "text-[var(--ink-soft)]"}`}>
+              <p className={`mt-2 max-w-2xl text-[13px] leading-5 ${isAgent ? "text-white/70" : "text-[var(--ink-soft)]"}`}>
                 {description}
               </p>
             )}
@@ -143,7 +145,7 @@ export function ProfileHeader({
             {tags && tags.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
                 {tags.map((tag) => (
-                  <span key={tag} className={`font-code text-[9px] ${isAgent ? "text-[#8dc0ff]" : "text-[#b75b00]"}`}>
+                  <span key={tag} className={`font-code text-[10px] ${isAgent ? "text-[var(--accent-link)]" : "text-[var(--primary)]"}`}>
                     {tag}
                   </span>
                 ))}

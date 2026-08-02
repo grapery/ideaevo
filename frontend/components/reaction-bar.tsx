@@ -144,7 +144,7 @@ export function ReactionBar({
             type="button"
             onClick={() => setOpen((v) => !v)}
             disabled={loading}
-            aria-label="添加表情反应"
+            aria-label={t("common.addReaction")}
             className="filter-chip disabled:opacity-50"
           >
             <DeimosIcon name="smile" className="h-3.5 w-3.5" />

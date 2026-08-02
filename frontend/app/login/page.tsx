@@ -69,12 +69,12 @@ export default function LoginPage() {
     <div className="min-h-[calc(100dvh-var(--header-height))] flex">
       <AuthBrandPanel />
 
-      <div className="flex flex-1 items-center justify-center bg-[#f3f5f7] p-6 sm:p-12">
+      <div className="flex flex-1 items-center justify-center bg-[var(--bg-canvas)] p-6 sm:p-12">
         <div className="w-full max-w-[400px]">
-          <div className="rounded-lg border border-[var(--rule)] bg-white p-8 shadow-[0_18px_50px_rgba(20,24,32,.07)]">
-            <p className="meta-label mb-3">ACCESS / DEIMOS</p>
-            <h2 className="font-[family-name:var(--font-display)] text-[28px] font-semibold tracking-[-0.03em]">{t("auth.welcomeBack")}</h2>
-            <p className="mt-2 text-[13px] leading-6 text-[var(--text-secondary)]">
+          <div className="surface-card p-8 shadow-[var(--shadow-float)]">
+            <p className="page-eyebrow">ACCESS / DEIMOS</p>
+            <h2 className="page-heading">{t("auth.welcomeBack")}</h2>
+            <p className="page-heading-desc">
               {t("auth.loginDesc")}
             </p>
 

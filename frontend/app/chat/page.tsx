@@ -22,16 +22,20 @@ import { DeimosIcon } from "@/components/deimos-icon";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/lib/i18n/provider";
-import type { Locale } from "@/lib/i18n/messages";
+import type { Locale, TranslationKey } from "@/lib/i18n/messages";
 
-function formatSessionTime(dateStr: string, locale: Locale) {
+function formatSessionTime(
+  dateStr: string,
+  locale: Locale,
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string,
+) {
   const d = new Date(dateStr);
   const now = new Date();
   if (d.toDateString() === now.toDateString()) {
     return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   }
   const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 7) return locale === "zh-CN" ? `${diffDays}天前` : `${diffDays}d ago`;
+  if (diffDays < 7) return t("common.dayAgo", { count: diffDays });
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
@@ -289,7 +293,7 @@ export default function ChatPage() {
               id: `error-${Date.now()}`,
               session_id: sessionId,
               role: "system",
-              content: `工具执行失败：${err.message}`,
+              content: t("chat.toolFailed", { msg: err.message }),
               created_at: new Date().toISOString(),
             });
             return updated;
@@ -347,8 +351,8 @@ export default function ChatPage() {
           if (eventType === "tool_call") {
             const isDelegate = payload.tool === "delegate_to_agent";
             const displayText = isDelegate
-              ? `🔗 正在与 ${payload.target_agent_name ?? "Agent"} 通信…`
-              : `正在调用工具：${payload.tool ?? "unknown"}…`;
+              ? t("chat.communicatingWith", { name: payload.target_agent_name ?? "Agent" })
+              : t("chat.callingTool", { tool: payload.tool ?? "unknown" });
             const activityMsg: ChatMessageType = {
               id: payload.id ?? `tool-${payload.tool_call ?? Date.now()}`,
               session_id: sessionId,
@@ -377,8 +381,8 @@ export default function ChatPage() {
           if (eventType === "tool_result" && payload.id) {
             const isDelegate = payload.tool === "delegate_to_agent";
             const resultText = isDelegate
-              ? `${payload.ok ? "✓" : "✗"} ${payload.target_agent_name ?? "Agent"} 回复：${payload.response_summary ?? ""}`
-              : `${payload.ok ? "✓" : "✗"} ${payload.tool} 完成`;
+              ? `${payload.ok ? "✓" : "✗"} ${t("chat.agentReplied", { name: payload.target_agent_name ?? "Agent", summary: payload.response_summary ?? "" })}`
+              : `${payload.ok ? "✓" : "✗"} ${t("chat.toolDone", { tool: payload.tool ?? "unknown" })}`;
             setMessages((prev) =>
               upsertChatMessage(prev, {
                 id: payload.id!,
@@ -633,7 +637,7 @@ export default function ChatPage() {
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium text-[var(--title)] truncate">{s.title}</span>
                     <span className="text-xs text-[var(--text-muted)] shrink-0 tabular-nums">
-                      {formatSessionTime(s.updated_at, locale)}
+                      {formatSessionTime(s.updated_at, locale, t)}
                     </span>
                   </div>
                   <div className="mt-0.5 flex items-center justify-between gap-2">
@@ -817,9 +821,7 @@ export default function ChatPage() {
         open={pendingDeleteId !== null}
         onClose={() => setPendingDeleteId(null)}
         title={t("chat.createTask")}
-        description={locale === "zh-CN"
-          ? "消息、工具运行记录与分支上下文将一并删除，此操作无法撤销。"
-          : "Messages, tool runs, and branch context will be permanently deleted."}
+        description={t("chat.deleteTaskDesc")}
         className="max-w-sm"
       >
         <div className="flex justify-end gap-2">
@@ -848,7 +850,7 @@ export default function ChatPage() {
                   name="agent-id"
                   value={newAgentId}
                   onChange={(e) => setNewAgentId(e.target.value)}
-                  placeholder={locale === "zh-CN" ? "输入或粘贴 Agent ID" : "Enter or paste an Agent ID"}
+                  placeholder={t("chat.agentIdPlaceholder")}
                 />
               </FormField>
               <FormField id="new-chat-title" label={t("chat.optionalTitle")}>
@@ -856,7 +858,7 @@ export default function ChatPage() {
                   name="title"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder={locale === "zh-CN" ? "给对话起个名字" : "Name this conversation"}
+                  placeholder={t("chat.titlePlaceholder")}
                 />
               </FormField>
               <div className="flex gap-3 justify-end">

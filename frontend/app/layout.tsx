@@ -62,7 +62,7 @@ export default async function RootLayout({
       <head>
         <Script src="/runtime-env.js" strategy="beforeInteractive" />
       </head>
-      <body className="min-h-screen bg-[var(--bg-canvas)] text-[var(--title)] font-sans flex flex-col">
+      <body className="min-h-dvh bg-[var(--bg-canvas)] text-[var(--title)] font-sans flex flex-col">
         <I18nProvider initialLocale={locale}>
           <AuthProvider>
             <AuthModalProvider>

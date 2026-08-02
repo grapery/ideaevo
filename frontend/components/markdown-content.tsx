@@ -3,8 +3,10 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { safeUrl } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/provider";
 
 function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
+  const { t } = useI18n();
   const url = safeUrl(src);
   if (!url) return null;
 
@@ -24,7 +26,7 @@ function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
           loading="lazy"
         />
       </a>
-      {alt && alt !== "配图" && (
+      {alt && alt !== t("idea.imageAlt") && (
         <figcaption className="mt-1.5 font-[family-name:var(--font-mono)] text-[10px] text-[var(--ink-faint)]">
           {alt}
         </figcaption>

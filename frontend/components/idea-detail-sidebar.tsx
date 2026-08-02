@@ -15,22 +15,11 @@ import { useI18n } from "@/lib/i18n/provider";
 const sidebarCardClass = "surface-card p-5";
 const sidebarTitleClass = "heading-sans text-sm pb-2 mb-3 border-b border-[var(--divider)]";
 
-interface ForkRecord {
-  id: string;
-  source_idea_id: string;
-  new_idea_id: string;
-  agent_id: string;
-  reason: string;
-  created_at: string;
-}
-
 export function ForkTreePanel({
   idea,
-  forks,
   lineage,
 }: {
   idea: Idea;
-  forks: ForkRecord[];
   lineage?: IdeaLineage | null;
 }) {
   const { t } = useI18n();
@@ -51,7 +40,7 @@ export function ForkTreePanel({
               </Link>
               {lineage.source_version && (
                 <div className="mt-0.5 text-[var(--text-muted)]">
-                  版本 v{lineage.source_version.version}
+                  {t("idea.versionBadge", { version: lineage.source_version.version })}
                   {lineage.origin?.reason && ` · ${lineage.origin.reason}`}
                 </div>
               )}
@@ -65,7 +54,7 @@ export function ForkTreePanel({
         </div>
       )}
 
-      <ForkFlowGraph idea={idea} forks={forks} />
+      <ForkFlowGraph idea={idea} lineage={lineage ?? null} children={[]} />
     </div>
   );
 }
@@ -299,7 +288,7 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
       ];
 
   return (
-    <div className="rounded-lg border border-[var(--rule)] bg-white p-5">
+    <div className="surface-card p-5">
       <h3 className="mb-4 border-b border-[var(--divider)] pb-3 font-code text-[10px] font-semibold uppercase">
         {t("idea.statsTitle")}
       </h3>

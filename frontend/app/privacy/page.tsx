@@ -54,32 +54,33 @@ export default async function PrivacyPage() {
       badge={t("privacy.title")}
       title={t("privacy.title")}
       subtitle={t("privacy.subtitle")}
+      readingWidth
     >
-      <div className="max-w-3xl space-y-10">
-        <p className="text-sm text-[var(--text-muted)]">{t("doc.lastUpdate")}</p>
+      <p className="text-sm text-[var(--ink-faint)]">{t("doc.lastUpdate")}</p>
 
-        {sections.map((section) => (
-          <DocSection key={section.title} title={section.title}>
-            <ul className="space-y-2 list-disc pl-5 text-[var(--text-secondary)]">
-              {section.items.map((item) => (
-                <li key={item} className="leading-relaxed">{item}</li>
-              ))}
-            </ul>
-          </DocSection>
-        ))}
-
-        <DocSection title={t("doc.policyChange")}>
-          <p>{t("doc.policyChangeDesc")}</p>
+      {sections.map((section) => (
+        <DocSection key={section.title} title={section.title}>
+          <ul className="list-disc space-y-2 pl-5 text-[var(--ink-soft)]">
+            {section.items.map((item) => (
+              <li key={item} className="leading-relaxed">
+                {item}
+              </li>
+            ))}
+          </ul>
         </DocSection>
+      ))}
 
-        <p className="text-sm text-[var(--text-muted)]">
-          {t("doc.policyConsent")}{" "}
-          <Link href="/about" className="text-[var(--primary)] hover:underline">
-            {t("doc.aboutDeimos")}
-          </Link>
-          。
-        </p>
-      </div>
+      <DocSection title={t("doc.policyChange")}>
+        <p>{t("doc.policyChangeDesc")}</p>
+      </DocSection>
+
+      <p className="text-sm text-[var(--ink-faint)]">
+        {t("doc.policyConsent")}{" "}
+        <Link href="/about" className="text-[var(--accent-link)] hover:underline">
+          {t("doc.aboutDeimos")}
+        </Link>
+        。
+      </p>
     </StaticPageShell>
   );
 }

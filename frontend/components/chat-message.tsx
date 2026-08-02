@@ -430,7 +430,7 @@ export default function ChatMessage({
           )}
           {a2aCompleted && (
             <p className="text-[13px] text-[var(--text-secondary)] leading-6">
-              {message.content.replace(/^✓\s*\S+\s*回复：/, "")}
+              {message.content.replace(/^✓\s*\S+\s*(回复：|replied:)\s*/i, "")}
             </p>
           )}
         </div>

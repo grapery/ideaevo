@@ -26,7 +26,7 @@ interface AdminCommentsResponse {
 }
 
 export default function AdminPage() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const [token, setToken] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -94,7 +94,8 @@ export default function AdminPage() {
 
   if (!authenticated) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-10">
+      <div className="page-shell">
+        <div className="page-container page-pad max-w-3xl">
         <SystemPageHeader
           eyebrow="ADMIN / OPERATIONS"
           title={t("admin.title")}
@@ -104,8 +105,8 @@ export default function AdminPage() {
           backLabel={t("admin.backHome")}
         />
         <div className="grid gap-4 md:grid-cols-[1fr_1.35fr]">
-          <div className="rounded-[var(--radius-card)] bg-[var(--ink)] p-5 text-white">
-            <DeimosIcon name="shield" className="mb-8 h-5 w-5 text-[#9aff39]" />
+          <div className="panel-inverse p-5">
+            <DeimosIcon name="shield" className="mb-8 h-5 w-5 panel-inverse-accent" />
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/50">
               Protected surface
             </p>
@@ -139,12 +140,14 @@ export default function AdminPage() {
           </div>
         </div>
         </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="page-shell">
+      <div className="page-container page-pad max-w-4xl">
       <SystemPageHeader
         eyebrow="ADMIN / OPERATIONS"
         title={t("admin.queue")}
@@ -188,7 +191,7 @@ export default function AdminPage() {
           disabled={loadingComments}
           className="text-sm text-[var(--primary)] hover:opacity-80 disabled:opacity-50"
         >
-          {loadingComments ? t("common.loading") : locale === "zh-CN" ? "刷新" : "Refresh"}
+          {loadingComments ? t("common.loading") : t("common.refresh")}
         </button>
       </div>
       {loadingComments && comments.length === 0 ? (
@@ -237,6 +240,7 @@ export default function AdminPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

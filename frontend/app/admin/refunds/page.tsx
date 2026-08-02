@@ -102,8 +102,9 @@ export default function AdminRefundsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container max-w-4xl py-8">
+    <div className="page-shell">
+      <div className="page-container page-pad">
+        <div className="mx-auto max-w-3xl">
         <SystemPageHeader
           eyebrow="ADMIN / REVIEW QUEUE"
           title={t("admin.refundReview")}
@@ -205,8 +206,9 @@ export default function AdminRefundsPage() {
           </div>
         )}
 
-        <div className="mt-6 text-xs text-[var(--text-muted)] text-center">
+        <div className="mt-6 text-center text-xs text-[var(--ink-faint)]">
           {t("admin.approveHint")}
+        </div>
         </div>
       </div>
     </div>

@@ -43,7 +43,7 @@ export default function UserPageClient({
   }, [currentUser, isSelf, profile.user.id]);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
+    <div className="page-shell-full">
       <div className="mx-auto page-container py-6">
         <UserProfileHeader
           user={profile.user}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CodeBlock } from "@/components/code-block";
 import { IconDeimos } from "@/components/icons";
-import { DocSection, StaticPageShell } from "@/components/static-page-shell";
+import { DocSection, DocsToc, StaticPageShell } from "@/components/static-page-shell";
 import { getServerI18n } from "@/lib/i18n/server";
 
 const mcpConfigExample = `{
@@ -79,26 +79,10 @@ export default async function McpDocsPage() {
       title={t("docs.title")}
       subtitle={t("docs.subtitle")}
     >
-      <div className="flex flex-col lg:flex-row gap-8">
-        <aside className="lg:w-[200px] shrink-0">
-          <nav className="surface-card p-4 sticky top-[calc(var(--header-height)+1rem)]">
-            <p className="meta-label mb-3">{t("doc.toc")}</p>
-            <ul className="space-y-1">
-              {toc.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className="block text-[14px] leading-5 text-[var(--ink-soft)] hover:text-[var(--accent-link)] py-1 underline decoration-dotted underline-offset-[3px]"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </aside>
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <DocsToc items={toc} />
 
-        <main className="flex-1 min-w-0 space-y-10">
+        <main className="min-w-0 flex-1 space-y-10">
           <DocSection id="quickstart" title={t("docs.quickstart")}>
             <p className="mb-4">{t("docs.quickstartHint")}</p>
             <div className="space-y-2">

@@ -105,6 +105,31 @@
 
   --header-height: 48px;      /* ardot 全局栏 48px */
 
+  /* ---- 布局尺度 (Layout scale) ---- */
+  --page-max: 1440px;
+  --page-pad-y: 1.5rem;       /* 24px — app 页统一上下留白 */
+  --page-pad-y-docs: 2rem;    /* 文档/静态页略松 */
+  --content-reading: 720px;   /* 评论/长文阅读宽度 */
+  --content-main: 760px;
+  --content-aside: 336px;
+  --content-rail: 216px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* ---- 反色面板 / 提示块 (复用 marketplace terminal & callouts) ---- */
+  --panel-inverse: #0a0a0a;
+  --panel-inverse-muted: rgba(255, 255, 255, 0.55);
+  --panel-inverse-accent: #9bff00;
+  --callout-link-bg: #edf3ff;
+  --callout-link-border: #9bbcff;
+  --callout-primary-bg: #fff6ea;
+  --callout-primary-border: #ffb76a;
+
   /* Agent Skills 式 Inter 排版；中文以 Noto Sans SC / PingFang SC 回退。 */
   --font-mono: var(--font-ibm-plex-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-display: var(--font-inter), var(--font-noto-sans), "PingFang SC", sans-serif;
@@ -444,7 +469,7 @@ a {
 /* ============ 页面骨架 (Page Layout) ============ */
 .page-container {
   width: 100%;
-  max-width: 1440px;
+  max-width: var(--page-max);
   margin-inline: auto;
   padding-inline: 1rem;
 }
@@ -459,7 +484,65 @@ a {
   }
 }
 
-/* Agent Skills 文档层级：紧凑 Inter 标题，移动端平滑降级。 */
+/* 全站 app 页外壳：统一画布色 + 最小高度 */
+.page-shell {
+  min-height: calc(100dvh - var(--header-height));
+  background: var(--bg-canvas);
+}
+
+.page-shell-full {
+  min-height: calc(100dvh - var(--header-height));
+  background: var(--bg-canvas);
+}
+
+/* 内容区垂直节奏 —— 挂在 page-container 上 */
+.page-pad {
+  padding-block: var(--page-pad-y);
+}
+
+.page-pad-docs {
+  padding-block: var(--page-pad-y-docs);
+}
+
+/* 阅读宽度（评论全文、docs 正文） */
+.page-reading {
+  width: 100%;
+  max-width: var(--content-reading);
+  margin-inline: auto;
+}
+
+/* App 页 H1：统一 28→30，替代散落的 text-[28/30/34] 与 clamp */
+.page-heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.75rem; /* 28px */
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--ink);
+}
+@media (min-width: 640px) {
+  .page-heading {
+    font-size: 1.875rem; /* 30px */
+  }
+}
+
+.page-heading-desc {
+  margin-top: 0.25rem;
+  max-width: 42rem;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.page-eyebrow {
+  margin-bottom: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent-link);
+}
+
+/* 文档/营销大标题（about / docs）—— 保持较大字号 */
 .page-title {
   font-family: var(--font-display);
   font-weight: 600;
@@ -471,6 +554,69 @@ a {
 @media (min-width: 768px) {
   .page-title {
     font-size: 36px;
+  }
+}
+
+/* 反色终端面板 */
+.panel-inverse {
+  background: var(--panel-inverse);
+  color: #fff;
+  border-radius: var(--radius-card);
+}
+
+.panel-inverse .panel-inverse-muted {
+  color: var(--panel-inverse-muted);
+}
+
+.panel-inverse .panel-inverse-accent {
+  color: var(--panel-inverse-accent);
+}
+
+/* 语义提示块 */
+.callout-link {
+  background: var(--callout-link-bg);
+  border: 1px solid var(--callout-link-border);
+  border-radius: var(--radius-card);
+}
+
+.callout-primary {
+  background: var(--callout-primary-bg);
+  border: 1px solid var(--callout-primary-border);
+  border-radius: var(--radius-card);
+}
+
+/* Sticky tab 条：与 header 对齐，共享画布采样 */
+.sticky-tabbar {
+  position: sticky;
+  top: var(--header-height);
+  z-index: 20;
+  background: color-mix(in srgb, var(--bg-canvas) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* App 三栏网格：rail | main | aside */
+.app-grid-3 {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .app-grid-3 {
+    grid-template-columns: var(--content-rail) minmax(0, 1fr) var(--content-aside);
+    gap: var(--space-5);
+  }
+}
+
+.app-grid-2 {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .app-grid-2 {
+    grid-template-columns: minmax(0, 1fr) var(--content-aside);
+    gap: var(--space-5);
   }
 }
 

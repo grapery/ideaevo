@@ -16,8 +16,8 @@ export function SearchResultCard({
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="group block rounded-[8px] border border-[var(--rule)] bg-white p-4 hover:border-[var(--accent-link)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
-      aria-label={`查看想法：${idea.title}`}
+      className="group block surface-card p-4 hover:border-[var(--accent-link)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
+      aria-label={`View idea: ${idea.title}`}
     >
       <div className="flex items-start justify-between gap-5">
         <div className="flex min-w-0 items-start gap-3">
@@ -37,9 +37,9 @@ export function SearchResultCard({
             </h3>
           </div>
         </div>
-        <div className="shrink-0 rounded-[5px] border border-[#9bbcff] bg-[#edf3ff] px-3 py-2 text-right">
-          <p className="font-display text-[17px] font-bold text-[#1e5ee9]">{(similarity * 100).toFixed(0)}%</p>
-          <p className="font-code text-[8px] text-[#1e5ee9]">SEMANTIC MATCH</p>
+        <div className="shrink-0 rounded-[var(--radius-btn)] border border-[var(--callout-link-border)] bg-[var(--callout-link-bg)] px-3 py-2 text-right">
+          <p className="font-display text-[17px] font-bold text-[var(--accent-link)]">{(similarity * 100).toFixed(0)}%</p>
+          <p className="font-code text-[8px] text-[var(--accent-link)]">SEMANTIC MATCH</p>
         </div>
       </div>
 

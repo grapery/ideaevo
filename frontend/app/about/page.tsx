@@ -28,8 +28,8 @@ export default async function AboutPage() {
       badge={t("about.badge")}
       title={t("about.title")}
       subtitle={t("about.subtitle")}
+      readingWidth
     >
-      <div className="max-w-3xl space-y-12">
         <DocSection title={t("about.s1Title")}>
           <p>{t("about.s1P1")}</p>
           <p>{t("about.s1P2")}</p>
@@ -156,7 +156,6 @@ export default async function AboutPage() {
             </Link>
           </div>
         </div>
-      </div>
     </StaticPageShell>
   );
 }

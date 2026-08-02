@@ -78,8 +78,8 @@ export default function ResetPasswordPage() {
 
   if (done) {
     return (
-      <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7] flex items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-lg border border-[var(--rule)] bg-white p-10 text-center">
+      <div className="page-shell flex items-center justify-center px-4">
+        <div className="w-full max-w-md surface-card p-10 text-center">
           <p className="meta-label mb-5">AUTH RECOVERY / COMPLETE</p>
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] flex items-center justify-center text-[var(--accent-success)] mb-5">
             <DeimosIcon name="check" className="h-7 w-7" />
@@ -101,8 +101,8 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7] flex items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-lg border border-[var(--rule)] bg-white p-10 text-center">
+      <div className="page-shell flex items-center justify-center px-4">
+        <div className="w-full max-w-md surface-card p-10 text-center">
           <p className="meta-label mb-5">AUTH RECOVERY / INVALID TOKEN</p>
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)] flex items-center justify-center text-[var(--accent-warning)] mb-5">
             <DeimosIcon name="decision" className="h-7 w-7" />
@@ -120,17 +120,17 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7] flex items-center justify-center px-4">
+    <div className="page-shell flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="mb-6">
           <p className="meta-label mb-3">AUTH RECOVERY / RESET CREDENTIAL</p>
-          <h1 className="page-title">{t("auth.resetTitle")}</h1>
+          <h1 className="page-heading">{t("auth.resetTitle")}</h1>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
             {t("auth.resetDesc", { expires: formatHMS(remaining) })}
           </p>
         </div>
 
-        <div className="rounded-lg border border-[var(--rule)] bg-white p-6">
+        <div className="surface-card p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
             <FormField id="reset-password" label={t("auth.newPassword")} error={errors.password}>
               <PasswordInput

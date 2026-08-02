@@ -40,7 +40,7 @@ export function WireframeAvatar({
 
   const inner = (
     <div
-      className="relative shrink-0 rounded-full border border-[#0a0a0a] bg-white"
+      className="relative shrink-0 rounded-full border border-[var(--panel-inverse)] bg-[var(--bg-surface)]"
       style={{
         width: size,
         height: size,

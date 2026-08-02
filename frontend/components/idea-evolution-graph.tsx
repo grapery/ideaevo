@@ -29,8 +29,8 @@ function GraphNode({
   locale: Locale;
 }) {
   const tones = {
-    root: "border-[#0a0a0a] bg-[#0a0a0a] text-white",
-    plain: "border-[var(--accent-link)] bg-white text-[var(--accent-link)]",
+    root: "border-[var(--panel-inverse)] bg-[var(--panel-inverse)] text-white",
+    plain: "border-[var(--accent-link)] bg-[var(--bg-surface)] text-[var(--accent-link)]",
     current: "border-[var(--accent-link)] bg-[#eaf1ff] text-[#1f56d8]",
     human: "border-[#ffb45a] bg-[#fff4e6] text-[#914700]",
     implemented: "border-[#456b16] bg-[#172416] text-[#a3e635]",
@@ -78,7 +78,7 @@ export function IdeaEvolutionGraph({
         <DeimosIcon name="fork" className="h-8 w-8 text-[var(--accent-link)]" />
       </div>
 
-      <div className="mb-5 flex h-12 items-center gap-7 rounded-md border border-[var(--rule)] bg-white px-4 font-code text-[10px] font-semibold uppercase text-[var(--ink-soft)]">
+      <div className="mb-5 flex h-12 items-center gap-7 surface-card px-4 font-code text-[10px] font-semibold uppercase text-[var(--ink-soft)]">
         <span className="text-[var(--ink)]">{t("idea.graphView")}</span>
         <span>{t("idea.timelineView")}</span>
         <span>{t("idea.versionsView")}</span>
@@ -88,7 +88,7 @@ export function IdeaEvolutionGraph({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_296px]">
-        <div className="relative overflow-hidden rounded-lg border border-[var(--rule-strong)] bg-white p-6 sm:p-10">
+        <div className="relative overflow-hidden surface-card p-6 sm:p-10">
           <div className="mb-8 flex justify-between border-b border-[var(--rule)] pb-5 font-code text-[9px] uppercase text-[var(--ink-faint)]">
             <span>{dateLabel(source?.created_at || idea.created_at, locale)}</span>
             <span>{dateLabel(idea.updated_at, locale)}</span>
@@ -96,8 +96,8 @@ export function IdeaEvolutionGraph({
           </div>
 
           <div className="relative">
-            <div className="absolute left-[12%] right-[12%] top-[64px] hidden h-0.5 bg-[#0a0a0a] md:block" />
-            <div className="relative grid gap-5 md:grid-cols-3">
+            {/* 纵向时间轴：ROOT → VERSION → CURRENT 自上而下排列 */}
+            <div className="relative grid gap-5">
               <GraphNode
                 eyebrow="ROOT / v1"
                 title={source?.title || idea.title}
@@ -125,24 +125,23 @@ export function IdeaEvolutionGraph({
               />
             </div>
 
-            <div className="relative mt-20 grid gap-5 md:grid-cols-2 md:px-[18%]">
+            {/* Fork 分支：纵向堆叠 */}
+            <div className="relative mt-8 grid gap-5">
               {branches.length > 0 ? branches.map((branch, index) => (
-                <div key={branch.id} className="relative">
-                  <div className={`absolute -top-20 left-1/2 hidden h-20 w-px md:block ${index === 0 ? "bg-[#ff8a00]" : "bg-[#a3e635]"}`} />
-                  <GraphNode
-                    eyebrow={index === 0
-                      ? t("idea.forkActive")
-                      : t("idea.forkImpl")}
-                    title={branch.title}
-                    detail={`${branch.status.toUpperCase()} · ${branch.agent?.name || t("idea.contributorsLabel")}`}
-                    date={branch.updated_at}
-                    href={`/ideas/${branch.id}`}
-                    tone={branch.status === "implemented" ? "implemented" : "human"}
-                    locale={locale}
-                  />
-                </div>
+                <GraphNode
+                  key={branch.id}
+                  eyebrow={index === 0
+                    ? t("idea.forkActive")
+                    : t("idea.forkImpl")}
+                  title={branch.title}
+                  detail={`${branch.status.toUpperCase()} · ${branch.agent?.name || t("idea.contributorsLabel")}`}
+                  date={branch.updated_at}
+                  href={`/ideas/${branch.id}`}
+                  tone={branch.status === "implemented" ? "implemented" : "human"}
+                  locale={locale}
+                />
               )) : (
-                <div className="col-span-2 rounded-lg border border-dashed border-[var(--rule-strong)] px-5 py-10 text-center">
+                <div className="rounded-lg border border-dashed border-[var(--rule-strong)] px-5 py-10 text-center">
                   <p className="font-code text-[10px] uppercase text-[var(--ink-faint)]">
                     {t("idea.noBranches")}
                   </p>
@@ -160,7 +159,7 @@ export function IdeaEvolutionGraph({
         </div>
 
         <aside className="space-y-3">
-          <div className="rounded-lg bg-[#0a0a0a] p-4 text-white">
+          <div className="panel-inverse p-4 text-white">
             <p className="font-code text-[10px] text-white/60">{t("idea.selected")} / {t("idea.currentBranch")} v{currentVersion}</p>
             <h3 className="mt-5 text-sm font-semibold">{idea.title}</h3>
             <p className="mt-1 font-code text-[10px] text-[#a3e635]">{(idea.impl_status || idea.status).toUpperCase()}</p>
@@ -171,7 +170,7 @@ export function IdeaEvolutionGraph({
               <dt>{t("idea.versionLabel")}</dt><dd>{currentVersion}</dd>
             </dl>
           </div>
-          <div className="rounded-lg border border-[var(--rule)] bg-white p-4">
+          <div className="surface-card p-4">
             <p className="font-code text-[10px] uppercase">{t("idea.lineageMetrics")}</p>
             <dl className="mt-5 space-y-2 font-code text-[10px]">
               {[

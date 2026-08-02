@@ -95,20 +95,14 @@ export default function NewIdeaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="page-container py-7">
-        <nav className="font-code text-[9px] text-[var(--ink-faint)]">
-          IDEA MARKET&nbsp;&nbsp;/&nbsp;&nbsp;<span className="text-[var(--primary)]">PUBLISH</span>
-        </nav>
-        <h1 className="font-display mt-3 text-[30px] font-bold tracking-[-0.025em] text-[var(--ink)]">
-          {t("idea.publishTitle")}
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-[var(--ink-soft)]">
-          {t("idea.publishDesc")}
-        </p>
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
+        <p className="page-eyebrow">IDEA MARKET / PUBLISH</p>
+        <h1 className="page-heading">{t("idea.publishTitle")}</h1>
+        <p className="page-heading-desc">{t("idea.publishDesc")}</p>
 
-        <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,760px)_320px] lg:justify-center">
-          <form onSubmit={handleSubmit} className="rounded-[8px] border border-[var(--rule)] bg-white p-5">
+        <div className="mt-6 app-grid-2 lg:grid-cols-[minmax(0,var(--content-main))_var(--content-aside)] lg:justify-center">
+          <form onSubmit={handleSubmit} className="surface-card p-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField id="new-agent" label="01 / PUBLISHER">
                 {loadingAgents ? (
@@ -139,7 +133,7 @@ export default function NewIdeaPage() {
               </FormField>
             </div>
 
-            <p className="mt-2 font-code text-[9px] text-[var(--ink-faint)]">
+            <p className="mt-2 font-code text-[10px] text-[var(--ink-faint)]">
               {selectedAgent
                 ? `EXECUTOR / ${selectedAgent.name}`
                 : "OWNER / HUMAN · execution may be delegated later"}
@@ -162,7 +156,7 @@ export default function NewIdeaPage() {
                 <Textarea
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
-                  placeholder={"问题是什么？谁受到影响？\n已有探索与证据是什么？\n什么结果意味着值得继续？"}
+                  placeholder={t("idea.publishDescPlaceholder")}
                   rows={12}
                   className="w-full font-code text-[12px] leading-6"
                 />
@@ -170,15 +164,15 @@ export default function NewIdeaPage() {
             </div>
 
             {similarIdeas.length > 0 && (
-              <section className="mt-5 rounded-[6px] border border-[#ffb76a] bg-[#fff6ea] p-4">
-                <p className="font-code text-[10px] font-medium text-[#b75b00]">SIMILARITY GUARD / MATCHES FOUND</p>
+              <section className="callout-primary mt-5 p-4">
+                <p className="font-code text-[10px] font-medium text-[var(--primary)]">SIMILARITY GUARD / MATCHES FOUND</p>
                 <ul className="mt-3 space-y-2">
                   {similarIdeas.map(({ idea, similarity }) => (
                     <li key={idea.id} className="flex items-center justify-between gap-4 text-[12px]">
                       <Link href={`/ideas/${idea.id}`} className="truncate text-[var(--ink)] hover:text-[var(--accent-link)]">
                         {idea.title}
                       </Link>
-                      <span className="shrink-0 font-code text-[10px] text-[#b75b00]">
+                      <span className="shrink-0 font-code text-[10px] text-[var(--primary)]">
                         {Math.round(similarity * 100)}% MATCH
                       </span>
                     </li>
@@ -203,8 +197,8 @@ export default function NewIdeaPage() {
           </form>
 
           <aside className="space-y-4">
-            <section className="rounded-[8px] border border-[#ffb76a] bg-[#fff6ea] p-4">
-              <p className="font-code text-[10px] font-medium text-[#b75b00]">SIMILARITY GUARD / PRE-FLIGHT</p>
+            <section className="callout-primary p-4">
+              <p className="font-code text-[10px] font-medium text-[var(--primary)]">SIMILARITY GUARD / PRE-FLIGHT</p>
               <p className="mt-4 text-[13px] font-semibold text-[var(--ink)]">
                 {t("idea.autoCheck")}
               </p>
@@ -215,17 +209,17 @@ export default function NewIdeaPage() {
               </div>
             </section>
 
-            <section className="rounded-[8px] bg-[#0a0a0a] p-4 font-code text-[10px] leading-6 text-[#d6d9de]">
-              <p className="text-[#9bff00]">AI-NATIVE PUBLISHING</p>
-              <p className="mt-3">Agent can enrich this draft, attach evidence and update lifecycle after publication.</p>
-              <Link href="/chat" className="mt-4 inline-flex text-[#9bff00] hover:underline">
+            <section className="panel-inverse p-4 font-code text-[10px] leading-6">
+              <p className="panel-inverse-accent">AI-NATIVE PUBLISHING</p>
+              <p className="mt-3 panel-inverse-muted">Agent can enrich this draft, attach evidence and update lifecycle after publication.</p>
+              <Link href="/chat" className="mt-4 inline-flex panel-inverse-accent hover:underline">
                 OPEN IN AGENT WORKBENCH →
               </Link>
             </section>
 
-            <section className="rounded-[8px] border border-[#9bbcff] bg-[#edf3ff] p-4">
-              <p className="font-code text-[10px] text-[#1e5ee9]">WHAT GETS RECORDED</p>
-              <p className="mt-3 font-code text-[10px] leading-5 text-[#174aa9]">
+            <section className="callout-link p-4">
+              <p className="font-code text-[10px] text-[var(--accent-link)]">WHAT GETS RECORDED</p>
+              <p className="mt-3 font-code text-[10px] leading-5 text-[var(--accent-link)]">
                 publisher · executing Agent · source idea · semantic matches · lifecycle transitions
               </p>
             </section>

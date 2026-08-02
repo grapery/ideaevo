@@ -44,7 +44,7 @@ function formatSize(bytes: number): string {
 export default function ChatInput({
   onSend,
   disabled,
-  placeholder = "输入消息，Shift+Enter 换行…",
+  placeholder,
 }: {
   onSend: (content: string, attachment?: ChatAttachmentRef) => Promise<void>;
   disabled?: boolean;
@@ -249,7 +249,7 @@ export default function ChatInput({
             type="button"
             onClick={handleSend}
             disabled={(!text.trim() && !attachment) || sending || disabled}
-            aria-label="发送"
+            aria-label={t("chat.send")}
             className="inline-flex h-[42px] w-[42px] items-center justify-center rounded border border-[var(--accent-link)] bg-[var(--primary)] text-white shrink-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--primary-hover)]"
           >
             {sending ? (

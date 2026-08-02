@@ -33,7 +33,13 @@ const categories = [
   { value: "other", label: "market.catOther" as const },
 ];
 
-const suggestedKeywords = ["MCP", "Agent", "自动化", "工具", "AI"];
+const suggestedKeywords: { label?: string; labelKey?: string; query: string }[] = [
+  { label: "MCP", query: "MCP" },
+  { label: "Agent", query: "Agent" },
+  { labelKey: "search.suggestedAutomation", query: "automation" },
+  { labelKey: "search.suggestedTool", query: "tool" },
+  { label: "AI", query: "AI" },
+];
 
 function buildSearchParams(query: string, page: number, status: string, category: string) {
   const params = new URLSearchParams({ q: query, page: String(page), limit: "10" });
@@ -129,19 +135,17 @@ export default function SearchPage() {
     void handleSearch(value, 1, activeStatus, activeCategory);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="page-container py-7">
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="font-code text-[10px] text-[var(--accent-link)]">SEMANTIC RADAR / EVIDENCE SEARCH</p>
-            <h1 className="font-display mt-2 text-[30px] font-bold tracking-[-0.025em] text-[var(--ink)]">
-              {t("search.title")}
-            </h1>
+            <p className="page-eyebrow">SEMANTIC RADAR / EVIDENCE SEARCH</p>
+            <h1 className="page-heading">{t("search.title")}</h1>
           </div>
-          <p className="font-code text-[9px] text-[var(--ink-faint)]">VECTOR + MYSQL FALLBACK</p>
+          <p className="font-code text-[10px] text-[var(--ink-faint)]">VECTOR + MYSQL FALLBACK</p>
         </div>
 
-        <section className="mt-5 rounded-[8px] border border-[#9bbcff] bg-white p-4">
+        <section className="callout-link mt-5 p-4">
           <SearchInput
             variant="inline"
             id="search-q"
@@ -154,7 +158,7 @@ export default function SearchPage() {
             loading={loading}
             autoFocus
           />
-          <div className="mt-3 flex flex-wrap items-center gap-5 font-code text-[9px] text-[var(--ink-faint)]">
+          <div className="mt-3 flex flex-wrap items-center gap-5 font-code text-[10px] text-[var(--ink-faint)]">
             <span>semantic similarity</span>
             <span>lifecycle state</span>
             <span>implementation evidence</span>
@@ -167,7 +171,7 @@ export default function SearchPage() {
         </section>
 
         <div className="mt-5 grid items-start gap-5 lg:grid-cols-[208px_minmax(0,720px)] xl:grid-cols-[208px_minmax(0,720px)_320px]">
-          <aside className="hidden min-h-[690px] rounded-[8px] border border-[var(--rule)] bg-white p-4 lg:block">
+          <aside className="hidden min-h-[690px] surface-card p-4 lg:block">
             <p className="font-code text-[10px] text-[var(--ink)]">FILTERS</p>
             <div className="mt-5">
               <p className="font-code text-[9px] text-[var(--ink-faint)]">STATUS</p>
@@ -177,7 +181,7 @@ export default function SearchPage() {
                     key={filter.value}
                     type="button"
                     onClick={() => setActiveStatus(filter.value)}
-                    className={`flex h-8 w-full items-center rounded-[5px] px-2 text-left text-[12px] ${
+                    className={`flex h-8 w-full items-center rounded-[var(--radius-btn)] px-2 text-left text-[12px] ${
                       activeStatus === filter.value
                         ? "bg-[var(--accent-link-soft)] font-medium text-[var(--accent-link)]"
                         : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
@@ -197,9 +201,9 @@ export default function SearchPage() {
                   key={category.value}
                   type="button"
                   onClick={() => setActiveCategory(category.value)}
-                  className={`flex h-8 w-full items-center rounded-[5px] px-2 text-left text-[12px] ${
+                  className={`flex h-8 w-full items-center rounded-[var(--radius-btn)] px-2 text-left text-[12px] ${
                     activeCategory === category.value
-                      ? "bg-[var(--primary-soft)] font-medium text-[#b75b00]"
+                      ? "bg-[var(--primary-soft)] font-medium text-[var(--primary)]"
                       : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
                   }`}
                 >
@@ -211,31 +215,34 @@ export default function SearchPage() {
 
           <main className="min-w-0">
             {!searched ? (
-              <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[8px] border border-[var(--rule)] bg-white p-8 text-center">
+              <div className="flex min-h-[260px] flex-col items-center justify-center surface-card p-8 text-center">
                 <DeimosIcon name="semantic-search" className="h-7 w-7 text-[var(--accent-link)]" />
                 <p className="font-display mt-4 text-[18px] font-semibold text-[var(--ink)]">{t("search.inputQuestion")}</p>
                 <p className="mt-1 text-[12px] text-[var(--ink-faint)]">{t("search.desc")}</p>
               </div>
             ) : results.length === 0 ? (
-              <div className="rounded-[8px] border border-[#ffb76a] bg-[#fff6ea] p-8 text-center">
-                <p className="font-code text-[10px] text-[#b75b00]">NO MATCH / EXPLORATION SPACE</p>
-                <p className="font-display mt-3 text-[18px] font-semibold text-[var(--ink)]">
+              <div className="callout-primary p-8 text-center">
+                <p className="font-code text-[10px] text-[var(--primary)]">NO MATCH / EXPLORATION SPACE</p>
+                <p className="mt-3 font-display text-[18px] font-semibold text-[var(--ink)]">
                   {t("search.noMatch", { query })}
                 </p>
                 <div className="mt-5 flex flex-wrap justify-center gap-3">
-                  {suggestedKeywords.map((keyword) => (
+                  {suggestedKeywords.map((kw) => {
+                    const label = kw.labelKey ? t(kw.labelKey as Parameters<typeof t>[0]) : kw.label ?? kw.query;
+                    return (
                     <button
-                      key={keyword}
+                      key={kw.query}
                       type="button"
                       onClick={() => {
-                        setQuery(keyword);
-                        submitSearch(keyword);
+                        setQuery(label);
+                        submitSearch(label);
                       }}
-                      className="font-code text-[10px] text-[#b75b00] hover:underline"
+                      className="font-code text-[10px] text-[var(--primary)] hover:underline"
                     >
-                      #{keyword}
+                      #{label}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
                 <Link href="/ideas/new" className="btn-primary mt-6">+ REGISTER THIS IDEA</Link>
               </div>
@@ -249,7 +256,7 @@ export default function SearchPage() {
                     type="button"
                     onClick={() => void handleSearch(query, page + 1, activeStatus, activeCategory)}
                     disabled={loading}
-                    className="h-10 w-full rounded-[6px] border border-[var(--rule)] bg-white px-4 text-left font-code text-[10px] text-[var(--ink-soft)] hover:border-[var(--accent-link)]"
+                    className="h-10 w-full rounded-[6px] border border-[var(--rule)] bg-[var(--bg-surface)] px-4 text-left font-code text-[10px] text-[var(--ink-soft)] hover:border-[var(--accent-link)]"
                   >
                     {loading ? "LOADING…" : "LOAD MORE RESULTS →"}
                   </button>
@@ -259,15 +266,15 @@ export default function SearchPage() {
           </main>
 
           <aside className="hidden space-y-4 xl:block">
-            <section className="rounded-[8px] bg-[#0a0a0a] p-4 font-code text-[10px] leading-6 text-[#d6d9de]">
-              <p className="text-[#9bff00]">HOW THIS RANKS</p>
-              <p className="mt-3">0.45 semantic overlap</p>
-              <p>0.25 implementation evidence</p>
-              <p>0.20 community future value</p>
-              <p>0.10 lifecycle recency</p>
+            <section className="panel-inverse p-4 font-code text-[10px] leading-6">
+              <p className="panel-inverse-accent">HOW THIS RANKS</p>
+              <p className="mt-3 panel-inverse-muted">0.45 semantic overlap</p>
+              <p className="panel-inverse-muted">0.25 implementation evidence</p>
+              <p className="panel-inverse-muted">0.20 community future value</p>
+              <p className="panel-inverse-muted">0.10 lifecycle recency</p>
             </section>
 
-            <section className="rounded-[8px] border border-[var(--rule)] bg-white p-4">
+            <section className="surface-card p-4">
               <p className="font-code text-[10px] text-[var(--ink)]">RESULT SIGNALS</p>
               <dl className="mt-4 space-y-3 font-code text-[10px] text-[var(--ink-soft)]">
                 <div className="flex justify-between"><dt>matches</dt><dd>{results.length}</dd></div>
@@ -277,8 +284,8 @@ export default function SearchPage() {
             </section>
 
             {relatedTags.length > 0 && (
-              <section className="rounded-[8px] border border-[#ffb76a] bg-[#fff6ea] p-4">
-                <p className="font-code text-[10px] text-[#b75b00]">RELATED INTENTS</p>
+              <section className="callout-primary p-4">
+                <p className="font-code text-[10px] text-[var(--primary)]">RELATED INTENTS</p>
                 <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
                   {relatedTags.map((tag) => (
                     <button
@@ -288,7 +295,7 @@ export default function SearchPage() {
                         setQuery(tag);
                         submitSearch(tag);
                       }}
-                      className="font-code text-[9px] text-[#b75b00] hover:underline"
+                      className="font-code text-[10px] text-[var(--primary)] hover:underline"
                     >
                       #{tag}
                     </button>

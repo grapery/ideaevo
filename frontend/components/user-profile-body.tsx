@@ -18,6 +18,7 @@ import {
   ProfileEmptyState,
 } from "@/components/profile-layout";
 import { useI18n } from "@/lib/i18n/provider";
+import type { TranslationKey } from "@/lib/i18n/messages";
 
 const AppLink = AppLinkComponent as unknown as React.ComponentType<{
   href: string;
@@ -35,17 +36,17 @@ interface ProfileStats {
   session_count?: number;
 }
 
-function formatJoinDate(dateStr: string, locale: string) {
+function formatJoinDate(
+  dateStr: string,
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string
+) {
   const d = new Date(dateStr);
-  if (locale === "zh-CN") {
-    return `加入于 ${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
-  }
-  return `Joined ${d.toLocaleDateString("en", { year: "numeric", month: "long" })}`;
+  return t("profile.joinedDate", { year: d.getFullYear(), month: d.getMonth() + 1 });
 }
 
-// 格式化 token 数为简短形式：10000 -> "1万"，10000000 -> "1000万"。
-function formatTokensShort(n: number): string {
-  if (n >= 10000) {
+// 格式化 token 数为简短形式：zh-CN 10000 -> "1万"，en 直接显示原始数字。
+function formatTokensShort(n: number, locale: string): string {
+  if (locale === "zh-CN" && n >= 10000) {
     return `${Math.floor(n / 10000)}万`;
   }
   return String(n);
@@ -177,7 +178,7 @@ export function UserProfileBody({
 
   const tabs: { key: Tab; label: string; count?: number }[] = (
     [
-      { key: "overview", label: locale === "zh-CN" ? "概览" : "Overview" },
+      { key: "overview", label: t("profile.overview") },
       { key: "ideas", label: t("idea.ideas"), count: stats.idea_count ?? 0 },
       { key: "agents", label: t("header.agents"), count: stats.agent_count ?? 0 },
       { key: "activity", label: t("header.activity") },
@@ -207,7 +208,7 @@ export function UserProfileBody({
               {isOwn && user.email && (
                 <p className="text-[var(--text-muted)]">{user.email}</p>
               )}
-              <p className="text-[var(--text-muted)]">{formatJoinDate(user.created_at, locale)}</p>
+              <p className="text-[var(--text-muted)]">{formatJoinDate(user.created_at, t)}</p>
               {isOwn && (
                 <Link href="/user/agents" className="inline-block text-sm text-[var(--primary)] hover:underline">
                   {t("settings.myAgents")} →
@@ -219,7 +220,7 @@ export function UserProfileBody({
             </div>
           </AboutCard>
 
-          <AboutCard title={locale === "zh-CN" ? "数据概览" : "Stats overview"}>
+          <AboutCard title={t("profile.statsOverview")}>
             <div className="space-y-2.5">
               <StatRow label={t("idea.ideas")} value={ideaCount} />
               <StatRow label={t("header.agents")} value={stats.agent_count ?? 0} />
@@ -234,7 +235,7 @@ export function UserProfileBody({
             <AboutCard title={t("billing.membershipQuota")}>
               <div className="space-y-2.5">
                 <StatRow
-                  label={locale === "zh-CN" ? "会员等级" : "Membership tier"}
+                  label={t("profile.membershipTier")}
                   value={
                     membership.is_pro ? (
                       <span className="badge-pill badge-active">Pro</span>
@@ -247,9 +248,9 @@ export function UserProfileBody({
                   label={t("billing.dailyQuota")}
                   value={
                     <span>
-                      {formatTokensShort(membership.daily_quota.tokens_left)}
+                      {formatTokensShort(membership.daily_quota.tokens_left, locale)}
                       <span className="text-[var(--text-muted)] font-normal">
-                        {" "}/ {formatTokensShort(membership.daily_quota.tokens_limit)}
+                        {" "}/ {formatTokensShort(membership.daily_quota.tokens_limit, locale)}
                       </span>
                     </span>
                   }
@@ -278,7 +279,7 @@ export function UserProfileBody({
           )}
 
           {ideas !== null && ideas.length > 0 && (
-            <AboutCard title={locale === "zh-CN" ? "最新想法" : "Latest ideas"}>
+            <AboutCard title={t("profile.latestIdeas")}>
               <ul className="space-y-2">
                 {ideas.slice(0, 5).map((idea) => (
                   <li key={idea.id}>
@@ -309,7 +310,7 @@ export function UserProfileBody({
         (ideas === null ? (
           <Loading />
         ) : ideas.length === 0 ? (
-          <ProfileEmptyState text={isOwn ? (locale === "zh-CN" ? "你还没有创建想法" : "You haven't created any ideas") : (locale === "zh-CN" ? "这个用户还没有创建想法" : "This user hasn't created any ideas")} />
+          <ProfileEmptyState text={isOwn ? t("profile.noIdeasOwn") : t("profile.noIdeasOther")} />
         ) : (
           <div className="space-y-4">
             {ideas.map((idea) => (
@@ -322,7 +323,7 @@ export function UserProfileBody({
         (agents === null ? (
           <Loading />
         ) : agents.length === 0 ? (
-          <ProfileEmptyState text={isOwn ? (locale === "zh-CN" ? "你还没有 Agent" : "You don't have any Agents") : (locale === "zh-CN" ? "这个用户还没有公开的 Agent" : "This user has no public Agents")} />
+          <ProfileEmptyState text={isOwn ? t("profile.noAgentsOwn") : t("profile.noAgentsOther")} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {agents.map((agent) => (
@@ -359,7 +360,7 @@ export function UserProfileBody({
         (followers === null ? (
           <Loading />
         ) : followers.length === 0 ? (
-          <ProfileEmptyState text={locale === "zh-CN" ? "还没有关注者" : "No followers yet"} />
+          <ProfileEmptyState text={t("profile.noFollowers")} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
             {followers.map((u) => (
@@ -374,7 +375,7 @@ export function UserProfileBody({
         (following === null ? (
           <Loading />
         ) : following.length === 0 ? (
-          <ProfileEmptyState text={locale === "zh-CN" ? "还没有关注任何人" : "Not following anyone yet"} />
+          <ProfileEmptyState text={t("profile.notFollowing")} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
             {following.map((u) => (
@@ -403,13 +404,13 @@ function OverviewTab({
   onSeeAllIdeas: () => void;
   onSeeAllActivity: () => void;
 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   return (
     <div className="space-y-6">
       {/* 最新想法 */}
       <section className="surface-card">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--divider)]">
-          <h2 className="text-base font-semibold text-[var(--title)]">{locale === "zh-CN" ? "最新想法" : "Latest ideas"}</h2>
+          <h2 className="text-base font-semibold text-[var(--title)]">{t("profile.latestIdeas")}</h2>
           {ideas && ideas.length > 3 && (
             <button
               onClick={onSeeAllIdeas}
@@ -422,7 +423,7 @@ function OverviewTab({
         {ideas === null ? (
           <Loading />
         ) : ideas.length === 0 ? (
-          <ProfileEmptyState text={locale === "zh-CN" ? "还没有创建想法" : "No ideas yet"} />
+          <ProfileEmptyState text={t("profile.noIdeasShort")} />
         ) : (
           <div className="p-4 space-y-4">
             {ideas.slice(0, 3).map((idea) => (
@@ -435,7 +436,7 @@ function OverviewTab({
       {/* 最近动态 */}
       <section className="surface-card">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--divider)]">
-          <h2 className="text-base font-semibold text-[var(--title)]">{locale === "zh-CN" ? "最近动态" : "Recent activity"}</h2>
+          <h2 className="text-base font-semibold text-[var(--title)]">{t("profile.recentActivity")}</h2>
           {activity && activity.length > 5 && (
             <button
               onClick={onSeeAllActivity}
@@ -462,12 +463,12 @@ function SessionsTab({ sessions }: { sessions: ChatSession[] | null }) {
   return (
     <section className="surface-card">
       <div className="px-5 py-4 border-b border-[var(--divider)]">
-        <h2 className="text-base font-semibold text-[var(--title)]">{locale === "zh-CN" ? "最近对话" : "Recent conversations"}</h2>
+        <h2 className="text-base font-semibold text-[var(--title)]">{t("profile.recentConversations")}</h2>
       </div>
       {sessions === null ? (
         <Loading />
       ) : sessions.length === 0 ? (
-        <ProfileEmptyState text={locale === "zh-CN" ? "还没有对话" : "No conversations yet"} />
+        <ProfileEmptyState text={t("profile.noConversations")} />
       ) : (
         <ul className="divide-y divide-[var(--divider)]">
           {sessions.map((s) => (
@@ -538,7 +539,7 @@ function ApiKeyTab() {
                 type={revealed ? "text" : "password"}
                 readOnly
                 value={apiKey || ""}
-                className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm font-mono text-[var(--text-secondary)]"
+                className="flex-1 rounded-lg border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-sm font-mono text-[var(--text-secondary)]"
               />
               <button
                 onClick={() => setRevealed(!revealed)}
@@ -565,7 +566,7 @@ function ApiKeyTab() {
               onChange={(e) => setInputKey(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSet()}
               placeholder="wanye_xxxxxxxx"
-              className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm"
+              className="flex-1 rounded-lg border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-sm"
             />
             <button onClick={handleSet} className="btn-outline px-5 py-2 text-sm font-medium">
               {t("common.confirm")}

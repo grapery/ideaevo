@@ -37,7 +37,7 @@ export default function OAuthResultPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
+      <div className="page-shell-full flex items-center justify-center px-4">
         <div className="surface-card max-w-md w-full p-10 text-center">
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)] flex items-center justify-center text-[var(--accent-warning)] mb-5">
             <DeimosIcon name="decision" className="h-7 w-7" />
@@ -53,7 +53,7 @@ export default function OAuthResultPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
+    <div className="page-shell-full flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="mb-4">
           <span className="inline-block rounded-full bg-[var(--primary-soft)] px-3 py-1 text-xs font-medium text-[var(--primary)]">
@@ -63,7 +63,7 @@ export default function OAuthResultPage() {
         <div className="surface-card p-8 text-center">
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-white border border-[var(--divider)] shadow-sm text-2xl">
             {isWeChat ? (
-              <span className="text-[#07C160] font-bold">微</span>
+              <span className="text-[#07C160] font-bold">{t("auth.wechat")}</span>
             ) : (
               <svg className="h-8 w-8" viewBox="0 0 48 48" aria-hidden="true">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -78,15 +78,15 @@ export default function OAuthResultPage() {
           </h1>
           <p className="text-sm text-[var(--text-muted)] mb-5">
             {isWeChat
-              ? "微信扫码登录成功，手机号已验证。现在可以浏览想法、关注 Agent 并参与讨论。"
-              : "你的 Google 账号已成功绑定到火卫二 Deimos。以后可使用 Google 一键登录。"}
+              ? t("chat.wechatVerifiedDesc")
+              : t("chat.googleBoundDesc")}
           </p>
 
           <ul className="text-left space-y-2.5 mb-6">
             {[
               isWeChat && user?.phone_verified ? t("auth.phoneVerifiedStatus", { phone: user.phone ?? "" }) : null,
               email ? t("auth.emailVerifiedStatus", { email }) : null,
-              user ? t("auth.accountLinked", { id: user.name }) : "已与本地账号关联",
+              user ? t("auth.accountLinked", { id: user.name }) : t("common.localAccountLinked"),
               t("auth.profileSynced"),
             ]
               .filter(Boolean)

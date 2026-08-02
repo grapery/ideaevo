@@ -1,96 +1,73 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Idea } from "@/lib/types";
+import type { Idea, IdeaLineage } from "@/lib/types";
 import { getApiBase } from "@/lib/api-base";
 import { IconGitFork } from "@/components/icons";
 import { useI18n } from "@/lib/i18n/provider";
+import type { TranslationKey } from "@/lib/i18n/messages";
 
-interface ForkRecord {
-  id: string;
-  source_idea_id: string;
-  new_idea_id: string;
-  agent_id: string;
-  reason: string;
-  created_at: string;
-}
-
+/** 一个图节点（祖先 / 当前 / fork 后代）。kind 决定渲染样式。 */
 interface FlowNode {
   id: string;
   title: string;
-  agentId?: string;
+  agentName?: string;
+  agentAvatar?: string;
   reason?: string;
   createdAt?: string;
+  status?: string;
   kind: "ancestor" | "current" | "fork";
   children: FlowNode[];
 }
 
-/** One row in the git-style graph (top = oldest) */
+/** 图中的一行（最旧在最上方）。lane 决定横向位置。 */
 interface LayoutRow {
   node: FlowNode;
   lane: number;
-  /** Lanes that carry a vertical line through the top half of this row */
   lanesAbove: number[];
-  /** Lanes that carry a vertical line through the bottom half of this row */
   lanesBelow: number[];
-  /** Draw a branch elbow from lanesAbove[branchFrom] into this row's lane */
   branchFrom?: number;
 }
 
-const LANE_W = 14;
-const ROW_H = 48;
-const PAD_X = 10;
-const DOT_R = 4;
+const LANE_W = 22;
+const ROW_H = 52;
+const PAD_X = 14;
+const PAD_Y = 6;
+const DOT_R = 4.5;
+const CURVE_R = 10;
 
 const LANE_COLORS = [
-  "var(--ink-faint)",
-  "var(--accent-link)",
-  "#6b8cae",
-  "#9b7bb8",
-  "#c49a6c",
+  "#57606a",
+  "#0969da",
+  "#8250df",
+  "#1a7f37",
+  "#bf8700",
+  "#cf222e",
+  "#0550ae",
 ];
 
 function laneX(lane: number) {
   return PAD_X + lane * LANE_W;
 }
 
-function buildDescendantTree(
-  ideaId: string,
-  forks: ForkRecord[],
-  ideaMap: Map<string, Idea>
-): FlowNode[] {
-  const childrenByParent = new Map<string, ForkRecord[]>();
-  for (const f of forks) {
-    const list = childrenByParent.get(f.source_idea_id) || [];
-    list.push(f);
-    childrenByParent.set(f.source_idea_id, list);
-  }
-
-  function toNode(fork: ForkRecord): FlowNode {
-    const idea = ideaMap.get(fork.new_idea_id);
-    const childForks = childrenByParent.get(fork.new_idea_id) || [];
-    return {
-      id: fork.new_idea_id,
-      title: idea?.title || `Fork ${fork.new_idea_id.slice(0, 6)}`,
-      agentId: fork.agent_id,
-      reason: fork.reason,
-      createdAt: fork.created_at,
-      kind: "fork",
-      children: childForks
-        .sort((a, b) => a.created_at.localeCompare(b.created_at))
-        .map(toNode),
-    };
-  }
-
-  return (childrenByParent.get(ideaId) || [])
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .map(toNode);
+function ideaToNode(idea: Idea, kind: FlowNode["kind"]): FlowNode {
+  return {
+    id: idea.id,
+    title: idea.title,
+    agentName: idea.agent?.name,
+    agentAvatar: idea.agent?.avatar_url,
+    reason: idea.description ? idea.description.split("\n")[0].slice(0, 100) : undefined,
+    createdAt: idea.created_at,
+    status: idea.status,
+    kind,
+    children: [],
+  };
 }
 
 /**
- * Git log --graph style layout.
- * Main lineage (ancestors + HEAD) stays on lane 0; each fork branch gets its own lane.
+ * GitHub network / `git log --graph` 风格：
+ * 主链（祖先 + HEAD）始终在 lane 0；fork 后代向右分支到独立 lane。
  */
 function layoutGitGraph(
   ancestors: FlowNode[],
@@ -98,7 +75,7 @@ function layoutGitGraph(
   descendants: FlowNode[]
 ): LayoutRow[] {
   const rows: LayoutRow[] = [];
-  const activeBelow = new Set<number>([0]);
+  const activeBelow = new Set<number>();
 
   const pushRow = (partial: Omit<LayoutRow, "lanesAbove" | "lanesBelow">) => {
     const lanesAbove = [...activeBelow];
@@ -112,55 +89,38 @@ function layoutGitGraph(
     lanes.forEach((l) => activeBelow.add(l));
   };
 
-  // Ancestors on main lane 0
   ancestors.forEach((a, i) => {
     const idx = pushRow({ node: a, lane: 0 });
-    const hasMore = i < ancestors.length - 1 || ancestors.length > 0;
-    setBelow(idx, hasMore ? [0] : []);
+    // 主链继续到下一个祖先或 HEAD
+    setBelow(idx, [0]);
+    void i;
   });
 
-  // HEAD — fork tip: branches off lane 0 when forked from ancestor
-  const headLane = ancestors.length > 0 ? 1 : 0;
-  const headIdx = pushRow({
-    node: current,
-    lane: headLane,
-    branchFrom: ancestors.length > 0 ? 0 : undefined,
-  });
+  const headIdx = pushRow({ node: current, lane: 0 });
 
   if (descendants.length === 0) {
-    setBelow(headIdx, ancestors.length > 0 ? [0] : []);
+    setBelow(headIdx, []);
     return rows;
   }
 
-  // Fork point from HEAD: keep main lane 0 + child lanes
-  const childLanes = descendants.map((_, i) => i + (headLane + 1));
-  setBelow(headIdx, [0, ...childLanes]);
+  // 主链 lane 0 保持到最后一个 fork，便于兄弟分支都从 HEAD 平滑分出
+  const childLanes = descendants.map((_, i) => i + 1);
+  setBelow(headIdx, [0, childLanes[0]]);
 
-  function walkChildren(nodes: FlowNode[], lanes: number[], parentLane: number) {
-    nodes.forEach((node, i) => {
-      const lane = lanes[i];
-      const idx = pushRow({
-        node,
-        lane,
-        branchFrom: parentLane,
-      });
-
-      if (node.children.length > 0) {
-        // Nested forks continue on same lane, children branch further right
-        const nestedLanes = node.children.map((_, j) => lane + j + 1);
-        const below = [parentLane, lane, ...nestedLanes];
-        setBelow(idx, [...new Set(below)]);
-        walkChildren(node.children, nestedLanes, lane);
-      } else {
-        // Close this branch lane; keep parent lanes if siblings remain
-        const remaining = lanes.slice(i + 1);
-        const below = [parentLane, ...remaining];
-        setBelow(idx, below.length > 0 ? [...new Set(below)] : []);
-      }
+  descendants.forEach((node, i) => {
+    const lane = childLanes[i];
+    const idx = pushRow({
+      node,
+      lane,
+      branchFrom: 0,
     });
-  }
+    if (i < descendants.length - 1) {
+      setBelow(idx, [0, childLanes[i + 1]]);
+    } else {
+      setBelow(idx, []);
+    }
+  });
 
-  walkChildren(descendants, childLanes, headLane);
   return rows;
 }
 
@@ -172,37 +132,38 @@ function maxLaneOf(rows: LayoutRow[]) {
   return m;
 }
 
-/** Unified SVG for the entire graph column */
 function GitGraphSvg({ rows }: { rows: LayoutRow[] }) {
   const maxLane = maxLaneOf(rows);
-  const width = laneX(maxLane) + PAD_X;
-  const height = rows.length * ROW_H;
+  const width = Math.max(laneX(maxLane) + PAD_X, LANE_W + PAD_X * 2);
+  const height = rows.length * ROW_H + PAD_Y * 2;
 
   const paths: ReactNode[] = [];
   const dots: ReactNode[] = [];
 
   rows.forEach((row, i) => {
-    const yMid = i * ROW_H + ROW_H / 2;
+    const yMid = i * ROW_H + ROW_H / 2 + PAD_Y;
     const x = laneX(row.lane);
     const color = LANE_COLORS[row.lane % LANE_COLORS.length];
     const isCurrent = row.node.kind === "current";
+    const isImplemented = row.node.status === "implemented";
+    const nodeColor = isImplemented ? "#1a7f37" : isCurrent ? "#0969da" : color;
 
-    // Connect from previous row's dot to this row's dot
     if (i > 0) {
       const prev = rows[i - 1];
-      const yTop = (i - 1) * ROW_H + ROW_H / 2;
-      const yBranch = yMid - 8;
+      const yTop = (i - 1) * ROW_H + ROW_H / 2 + PAD_Y;
 
       if (row.branchFrom !== undefined && row.lane !== row.branchFrom) {
         const bx = laneX(row.branchFrom);
+        const yTurn = yMid - CURVE_R;
+        const dx = x - bx;
         paths.push(
           <path
             key={`branch-${i}`}
-            d={`M ${bx} ${yTop} L ${bx} ${yBranch} L ${x} ${yBranch} L ${x} ${yMid}`}
+            d={`M ${bx} ${yTop} L ${bx} ${yTurn} Q ${bx} ${yMid} ${bx + dx / 2} ${yMid} L ${x} ${yMid}`}
             fill="none"
-            stroke={color}
+            stroke={nodeColor}
             strokeWidth={1.5}
-            strokeLinejoin="round"
+            strokeLinecap="round"
           />
         );
         for (const la of row.lanesAbove) {
@@ -217,7 +178,7 @@ function GitGraphSvg({ rows }: { rows: LayoutRow[] }) {
               x2={lx}
               y2={yMid}
               stroke={LANE_COLORS[la % LANE_COLORS.length]}
-              strokeWidth={1.5}
+              strokeWidth={1.25}
               opacity={0.45}
             />
           );
@@ -233,43 +194,43 @@ function GitGraphSvg({ rows }: { rows: LayoutRow[] }) {
               y1={yTop}
               x2={lx}
               y2={yMid}
-              stroke={la === row.lane ? color : LANE_COLORS[la % LANE_COLORS.length]}
-              strokeWidth={1.5}
-              opacity={la === row.lane ? 0.85 : 0.45}
+              stroke={la === row.lane ? nodeColor : LANE_COLORS[la % LANE_COLORS.length]}
+              strokeWidth={la === row.lane ? 1.5 : 1.25}
+              opacity={la === row.lane ? 0.95 : 0.45}
             />
           );
         }
       }
     }
 
-    // Pass-through lanes below this row (no commit on that lane)
     if (i < rows.length - 1) {
-      const yBot = yMid;
-      const yNext = (i + 1) * ROW_H + ROW_H / 2;
+      const yNext = (i + 1) * ROW_H + ROW_H / 2 + PAD_Y;
       for (const lb of row.lanesBelow) {
         if (lb === row.lane) continue;
+        const next = rows[i + 1];
+        // 下一行节点就在该 lane 上时，由「上一行→本行」那段接线，避免重复
+        if (next.lane === lb) continue;
         const lx = laneX(lb);
         paths.push(
           <line
             key={`v-pass-below-${i}-${lb}`}
             x1={lx}
-            y1={yBot}
+            y1={yMid}
             x2={lx}
             y2={yNext}
             stroke={LANE_COLORS[lb % LANE_COLORS.length]}
-            strokeWidth={1.5}
+            strokeWidth={1.25}
             opacity={0.45}
           />
         );
       }
     }
 
-    // Commit dot
     if (isCurrent) {
       dots.push(
         <g key={`dot-${i}`}>
-          <circle cx={x} cy={yMid} r={DOT_R + 1} fill={color} stroke={color} strokeWidth={1.5} />
-          <circle cx={x} cy={yMid} r={2} fill="var(--bg-surface)" />
+          <circle cx={x} cy={yMid} r={DOT_R + 1.5} fill={nodeColor} />
+          <circle cx={x} cy={yMid} r={2} fill="#fff" />
         </g>
       );
     } else {
@@ -279,8 +240,8 @@ function GitGraphSvg({ rows }: { rows: LayoutRow[] }) {
           cx={x}
           cy={yMid}
           r={DOT_R}
-          fill="var(--bg-surface)"
-          stroke={color}
+          fill={isImplemented ? nodeColor : "#fff"}
+          stroke={nodeColor}
           strokeWidth={1.5}
         />
       );
@@ -301,54 +262,142 @@ function GitGraphSvg({ rows }: { rows: LayoutRow[] }) {
   );
 }
 
-function RowContent({ row }: { row: LayoutRow }) {
+function relativeTime(iso: string | undefined, locale: string): string {
+  if (!iso) return "";
+  const now = Date.now();
+  const then = new Date(iso).getTime();
+  const diff = Math.max(0, now - then);
+  const min = Math.floor(diff / 60000);
+  const hr = Math.floor(diff / 3600000);
+  const day = Math.floor(diff / 86400000);
+  const isZh = locale.startsWith("zh");
+  if (min < 1) return isZh ? "刚刚" : "just now";
+  if (min < 60) return isZh ? `${min} 分钟前` : `${min}m ago`;
+  if (hr < 24) return isZh ? `${hr} 小时前` : `${hr}h ago`;
+  if (day < 30) return isZh ? `${day} 天前` : `${day}d ago`;
+  return new Date(iso).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function statusLabel(
+  status: string | undefined,
+  t: (key: TranslationKey) => string
+): string | null {
+  if (status === "implemented") return t("idea.implemented");
+  if (status === "archived") return t("market.archived");
+  if (status === "buried") return t("market.buried");
+  if (status === "active") return null;
+  return null;
+}
+
+function AgentAvatar({ name, url, color }: { name?: string; url?: string; color: string }) {
+  const initial = (name || "?").charAt(0).toUpperCase();
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={name || ""}
+        className="h-5 w-5 shrink-0 rounded-full object-cover ring-1 ring-[var(--rule)]"
+      />
+    );
+  }
+  return (
+    <span
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium text-white"
+      style={{ backgroundColor: color }}
+    >
+      {initial}
+    </span>
+  );
+}
+
+function RowContent({
+  row,
+}: {
+  row: LayoutRow;
+}) {
+  const { locale, t } = useI18n();
   const isCurrent = row.node.kind === "current";
+  const isAncestor = row.node.kind === "ancestor";
   const color = LANE_COLORS[row.lane % LANE_COLORS.length];
+  const status = statusLabel(row.node.status, t);
 
   return (
     <div
-      className="flex min-w-0 flex-1 items-center"
-      style={{ height: ROW_H }}
+      className={`group flex min-w-0 flex-1 items-center gap-3 border-b border-[var(--rule)] px-2 transition-colors last:border-b-0 hover:bg-[var(--bg-subtle)] ${
+        isCurrent ? "bg-[color-mix(in_srgb,var(--accent-link)_6%,transparent)]" : ""
+      }`}
+      style={{ minHeight: ROW_H }}
     >
-      <div
-        className={`min-w-0 flex-1 px-2 ${
-          isCurrent
-            ? "border border-[var(--rule)] border-l-[3px] bg-[var(--bg-subtle)] py-1.5"
-            : "py-0.5"
-        }`}
-        style={isCurrent ? { borderLeftColor: color } : undefined}
-      >
-        {isCurrent ? (
-          <span className="block truncate text-[13px] font-medium text-[var(--ink)]">
-            {row.node.title}
-          </span>
-        ) : (
-          <Link
-            href={`/ideas/${row.node.id}`}
-            className="block truncate text-[13px] text-[var(--ink-soft)] hover:text-[var(--accent-link)]"
-          >
-            {row.node.title}
-          </Link>
-        )}
-        {isCurrent && (
-          <span
-            className="mt-0.5 inline-block px-1 py-px font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-wider"
-            style={{ color }}
-          >
-            HEAD
-          </span>
-        )}
-        {row.node.kind === "fork" && row.node.reason && (
-          <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--ink-faint)]" title={row.node.reason}>
+      <div className="min-w-0 flex-1 py-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          {isCurrent ? (
+            <span className="truncate text-[13px] font-semibold text-[var(--ink)]">
+              {row.node.title}
+            </span>
+          ) : (
+            <Link
+              href={`/ideas/${row.node.id}`}
+              className="truncate text-[13px] font-medium text-[var(--ink)] hover:text-[var(--accent-link)] hover:underline"
+            >
+              {row.node.title}
+            </Link>
+          )}
+          {isCurrent && (
+            <span className="inline-flex shrink-0 items-center rounded-full border border-[#0969da]/30 bg-[#ddf4ff] px-1.5 py-px text-[10px] font-semibold text-[#0969da]">
+              HEAD
+            </span>
+          )}
+          {isAncestor && (
+            <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--rule)] px-1.5 py-px text-[10px] text-[var(--ink-faint)]">
+              {t("idea.ancestor")}
+            </span>
+          )}
+          {row.node.kind === "fork" && (
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-[var(--rule)] px-1.5 py-px text-[10px] text-[var(--ink-faint)]">
+              <IconGitFork className="h-2.5 w-2.5" />
+              fork
+            </span>
+          )}
+          {status && (
+            <span className="inline-flex shrink-0 items-center rounded-full border border-[#1a7f37]/25 bg-[#dafbe1] px-1.5 py-px text-[10px] font-medium text-[#1a7f37]">
+              {status}
+            </span>
+          )}
+        </div>
+        {row.node.reason && (
+          <p className="mt-0.5 truncate text-[12px] text-[var(--ink-soft)]">
             {row.node.reason}
           </p>
+        )}
+      </div>
+
+      <div className="hidden shrink-0 items-center gap-2 sm:flex">
+        {(row.node.agentName || row.node.agentAvatar) && (
+          <div className="flex max-w-[140px] items-center gap-1.5 text-[12px] text-[var(--ink-faint)]">
+            <AgentAvatar name={row.node.agentName} url={row.node.agentAvatar} color={color} />
+            <span className="truncate">{row.node.agentName}</span>
+          </div>
+        )}
+        {row.node.createdAt && (
+          <time
+            className="w-[72px] text-right font-[family-name:var(--font-mono)] text-[11px] tabular-nums text-[var(--ink-faint)]"
+            dateTime={row.node.createdAt}
+            title={new Date(row.node.createdAt).toLocaleString(locale)}
+          >
+            {relativeTime(row.node.createdAt, locale)}
+          </time>
         )}
       </div>
     </div>
   );
 }
 
+const ancestorCache = new Map<string, FlowNode[]>();
+
 async function fetchAncestorChain(idea: Idea, apiBase: string): Promise<FlowNode[]> {
+  if (ancestorCache.has(idea.id)) return ancestorCache.get(idea.id)!;
+
   const ancestors: FlowNode[] = [];
   let parentId = idea.forked_from_id;
   let depth = 0;
@@ -361,6 +410,13 @@ async function fetchAncestorChain(idea: Idea, apiBase: string): Promise<FlowNode
       ancestors.unshift({
         id: parent.id,
         title: parent.title,
+        agentName: parent.agent?.name,
+        agentAvatar: parent.agent?.avatar_url,
+        reason: parent.description
+          ? parent.description.split("\n")[0].slice(0, 100)
+          : undefined,
+        createdAt: parent.created_at,
+        status: parent.status,
         kind: "ancestor",
         children: [],
       });
@@ -370,59 +426,83 @@ async function fetchAncestorChain(idea: Idea, apiBase: string): Promise<FlowNode
       break;
     }
   }
+
+  ancestorCache.set(idea.id, ancestors);
   return ancestors;
 }
 
 export function ForkFlowGraph({
   idea,
-  forks,
-  compact = false,
+  lineage,
+  children: forkChildren,
 }: {
   idea: Idea;
-  forks: ForkRecord[];
-  compact?: boolean;
+  lineage: IdeaLineage | null;
+  children: Idea[];
 }) {
-  const [ideaMap, setIdeaMap] = useState<Map<string, Idea>>(new Map());
   const [ancestors, setAncestors] = useState<FlowNode[]>([]);
+  const [loading, setLoading] = useState(true);
   const apiBase = getApiBase();
   const { t } = useI18n();
+  const isFetched = useRef(false);
 
   useEffect(() => {
-    if (forks.length === 0) return;
-    const ids = forks.map((f) => f.new_idea_id);
-    Promise.all(
-      ids.map((id) =>
-        fetch(`${apiBase}/ideas/${id}`)
-          .then((r) => (r.ok ? r.json() : null))
-          .then((d) => (d ? [id, d] : null))
-          .catch(() => null)
-      )
-    ).then((results) => {
-      const m = new Map<string, Idea>();
-      for (const r of results) {
-        if (r) m.set(r[0] as string, r[1] as Idea);
+    if (isFetched.current) return;
+    isFetched.current = true;
+
+    const sourceIdea = lineage?.source_idea;
+    if (sourceIdea) {
+      const directParent: FlowNode = {
+        id: sourceIdea.id,
+        title: sourceIdea.title,
+        agentName: sourceIdea.agent?.name,
+        agentAvatar: sourceIdea.agent?.avatar_url,
+        reason: sourceIdea.description
+          ? sourceIdea.description.split("\n")[0].slice(0, 100)
+          : undefined,
+        createdAt: sourceIdea.created_at,
+        status: sourceIdea.status,
+        kind: "ancestor",
+        children: [],
+      };
+
+      if (sourceIdea.forked_from_id) {
+        fetchAncestorChain(sourceIdea, apiBase).then((grandchain) => {
+          setAncestors([...grandchain, directParent]);
+          setLoading(false);
+        });
+      } else {
+        setAncestors([directParent]);
+        setLoading(false);
       }
-      setIdeaMap(m);
-    });
-  }, [forks, apiBase]);
+    } else if (idea.forked_from_id) {
+      fetchAncestorChain(idea, apiBase).then((chain) => {
+        setAncestors(chain);
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
+    }
+  }, [idea, lineage, apiBase]);
 
-  useEffect(() => {
-    fetchAncestorChain(idea, apiBase).then(setAncestors);
-  }, [idea, apiBase]);
-
-  const descendants = useMemo(
-    () => buildDescendantTree(idea.id, forks, ideaMap),
-    [idea.id, forks, ideaMap]
+  const descendants = useMemo<FlowNode[]>(
+    () => forkChildren.map((c) => ideaToNode(c, "fork")),
+    [forkChildren]
   );
 
-  const currentNode: FlowNode = useMemo(
+  const currentNode = useMemo<FlowNode>(
     () => ({
       id: idea.id,
       title: idea.title,
+      agentName: idea.agent?.name,
+      agentAvatar: idea.agent?.avatar_url,
+      reason: idea.description ? idea.description.split("\n")[0].slice(0, 100) : undefined,
+      createdAt: idea.created_at,
+      status: idea.status,
       kind: "current",
       children: descendants,
     }),
-    [idea.id, idea.title, descendants]
+    [idea, descendants]
   );
 
   const layout = useMemo(
@@ -430,43 +510,89 @@ export function ForkFlowGraph({
     [ancestors, currentNode, descendants]
   );
 
-  const hasLineage = ancestors.length > 0 || forks.length > 0;
-
-  if (!hasLineage && compact) return null;
+  const hasLineage = ancestors.length > 0 || forkChildren.length > 0;
+  const totalForks = lineage?.stats.total_forks ?? idea.fork_count;
+  const activeBranches =
+    lineage?.stats.active_branches ??
+    forkChildren.filter((c) => c.status === "active").length;
+  const contributors = lineage?.stats.contributors ?? 0;
 
   return (
-    <div className={compact ? "" : "surface-card p-4"}>
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <h3
-          className={`flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)] ${
-            compact ? "" : "border-b border-[var(--rule)] pb-2"
-          }`}
-        >
-          <IconGitFork className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)]" />
-          {t("idea.forkLineageShort")}
-        </h3>
-        <span className="shrink-0 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
-          {t("idea.forkCount", { count: forks.length })}
-          {ancestors.length > 0 && ` · ${t("idea.upstreamLayers", { count: ancestors.length })}`}
-        </span>
+    <section id="evolution" className="scroll-mt-24">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-[15px] font-semibold text-[var(--ink)]">
+            {t("idea.forkNetwork")}
+          </h2>
+          <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
+            {t("idea.forkNetworkHint")}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-[family-name:var(--font-mono)] text-[11px] tabular-nums text-[var(--ink-faint)]">
+          <span>{t("idea.totalForks", { count: totalForks })}</span>
+          <span>{t("idea.activeBranches", { count: activeBranches })}</span>
+          <span>{t("idea.contributors", { count: contributors })}</span>
+          {ancestors.length > 0 && (
+            <span>{t("idea.upstreamLayers", { count: ancestors.length })}</span>
+          )}
+        </div>
       </div>
 
-      {hasLineage ? (
-        <div className="overflow-x-auto">
-          <div className="flex min-w-[200px]">
-            <GitGraphSvg rows={layout} />
-            <div className="min-w-0 flex-1">
-              {layout.map((row) => (
-                <RowContent key={row.node.id} row={row} />
-              ))}
-            </div>
+      <div className="overflow-hidden surface-card">
+        <div className="flex items-center justify-between gap-3 border-b border-[var(--rule)] bg-[var(--bg-subtle)] px-4 py-2">
+          <h3 className="flex items-center gap-1.5 text-[12px] font-semibold text-[var(--ink-soft)]">
+            <IconGitFork className="h-3.5 w-3.5 shrink-0" />
+            {t("idea.forkLineageShort")}
+          </h3>
+          <div className="hidden items-center gap-4 text-[11px] text-[var(--ink-faint)] sm:flex">
+            <span className="w-[140px]">{t("idea.publisher")}</span>
+            <span className="w-[72px] text-right">{t("idea.updated")}</span>
           </div>
         </div>
-      ) : (
-        <p className="text-[12px] leading-relaxed text-[var(--ink-faint)]">
-          {t("idea.noForkRecords")}
-        </p>
-      )}
-    </div>
+
+        {hasLineage ? (
+          <div className="overflow-x-auto">
+            <div className="flex min-w-[320px]">
+              <div className="shrink-0 border-r border-[var(--rule)] bg-[var(--bg-subtle)]/40 py-0 pl-1">
+                <GitGraphSvg rows={layout} />
+              </div>
+              <div className="min-w-0 flex-1">
+                {layout.map((row) => (
+                  <RowContent key={row.node.id} row={row} />
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : loading ? (
+          <div className="px-4 py-12 text-center text-[13px] text-[var(--ink-faint)]">
+            {t("common.loading")}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center px-4 py-14 text-center">
+            <IconGitFork className="mb-3 h-8 w-8 text-[var(--ink-faint)]" />
+            <p className="text-[13px] font-medium text-[var(--ink-soft)]">
+              {t("idea.noForkRecords")}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--ink-faint)]">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[#0969da]">
+            <span className="h-1 w-1 rounded-full bg-white" />
+          </span>
+          {t("idea.currentBranch")}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-full border-[1.5px] border-[#57606a] bg-white" />
+          {t("idea.ancestor")}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#1a7f37]" />
+          {t("idea.implemented")}
+        </span>
+      </div>
+    </section>
   );
 }

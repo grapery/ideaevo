@@ -17,6 +17,7 @@ import { IconBookmark, IconShare } from "./icons";
 import { DeimosIcon } from "./deimos-icon";
 import { CountButton } from "./ui/count-button";
 import { useI18n } from "@/lib/i18n/provider";
+import { useIdeaDetailTab } from "@/components/idea-detail-tabs";
 import type { Idea } from "@/lib/types";
 
 export function IdeaDetailEngagement({
@@ -42,6 +43,7 @@ export function IdeaDetailEngagement({
   const { user } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
+  const detailTab = useIdeaDetailTab();
   // 非 active 状态（已实现/已归档/已埋没）的 idea 为只读：禁用写入类操作，
   // 但保留收藏、分享、举报等无害操作。
   const inactive = status !== undefined && status !== "active";
@@ -169,7 +171,14 @@ export function IdeaDetailEngagement({
   }
 
   function scrollToComments() {
-    document.getElementById("comments")?.scrollIntoView({ behavior: "smooth" });
+    if (detailTab) {
+      detailTab.setTab("comments");
+      requestAnimationFrame(() => {
+        document.getElementById("comments")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      return;
+    }
+    router.push(`/ideas/${ideaId}?tab=comments`);
   }
 
   async function shareIdea() {

@@ -37,9 +37,9 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
+      <div className="page-shell">
         <div className="mx-auto max-w-lg px-4 py-16">
-          <div className="rounded-lg border border-[var(--rule)] bg-white p-10 text-center">
+          <div className="surface-card p-10 text-center">
             <p className="meta-label mb-5">AUTH RECOVERY / MESSAGE SENT</p>
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-md bg-[var(--ink)] text-white">
               <DeimosIcon name="send" className="h-6 w-6" />
@@ -61,17 +61,17 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
+    <div className="page-shell">
       <div className="mx-auto max-w-lg px-4 py-16">
         <div className="mb-8 text-center">
           <p className="meta-label mb-3">AUTH RECOVERY / REQUEST</p>
-          <h1 className="page-title">{t("auth.forgotTitle")}</h1>
+          <h1 className="page-heading">{t("auth.forgotTitle")}</h1>
           <p className="mt-3 text-base text-[var(--text-muted)]">
             {t("auth.forgotDesc")}
           </p>
         </div>
 
-        <div className="rounded-lg border border-[var(--rule)] bg-white p-8 shadow-[0_18px_50px_rgba(20,24,32,.05)]">
+        <div className="surface-card p-8 shadow-[var(--shadow-float)]">
           <form onSubmit={handleSubmit} className="space-y-5">
             <FormField id="forgot-email" label={t("auth.emailAddress")} error={error}>
               <Input

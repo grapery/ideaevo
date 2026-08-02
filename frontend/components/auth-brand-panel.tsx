@@ -32,7 +32,7 @@ export function AuthBrandPanel() {
   }, []);
 
   return (
-    <div className="relative hidden overflow-hidden bg-[#101112] text-white lg:flex lg:w-[52%] flex-col justify-between px-12 py-10">
+    <div className="relative hidden overflow-hidden bg-[var(--panel-inverse)] text-white lg:flex lg:w-[52%] flex-col justify-between px-12 py-10">
       <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:48px_48px]" />
       <Link href="/" className="relative z-10 flex items-center gap-2.5">
         <span className="grid h-8 w-8 place-items-center rounded-md bg-[var(--primary)] text-white">

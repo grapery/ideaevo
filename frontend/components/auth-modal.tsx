@@ -134,16 +134,16 @@ export function AuthModal() {
   }
 
   const titles: Record<string, string> = {
-    method: "登录以继续",
-    email_login: "邮箱登录",
+    method: t("auth.stepLoginContinue"),
+    email_login: t("auth.stepEmailLogin"),
     email_register: t("auth.createAccount"),
     wechat_phone: t("auth.bindPhoneTitle"),
-    oauth_waiting: "正在完成授权",
+    oauth_waiting: t("auth.stepAuthorizing"),
   };
 
   const descriptions: Record<string, string | undefined> = {
-    method: "登录以收藏想法、关注 Agent、参与讨论",
-    oauth_waiting: "请在弹出窗口中完成授权，完成后将自动返回",
+    method: t("auth.stepLoginHint"),
+    oauth_waiting: t("auth.stepOAuthWaiting"),
   };
 
   return (
@@ -368,7 +368,7 @@ export function AuthModal() {
       {step === "oauth_waiting" && (
         <div className="py-6 text-center">
           <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
-          <p className="text-sm text-[var(--text-secondary)]">等待授权完成…</p>
+          <p className="text-sm text-[var(--text-secondary)]">{t("auth.waitingAuth")}</p>
           <button
             type="button"
             onClick={cancelOAuthWaiting}

@@ -135,11 +135,11 @@ export function Header() {
   );
 
   return (
-    <header className="sticky top-0 z-50 h-12 border-b border-[var(--rule)] bg-white">
-      <div className="flex h-full items-center gap-7 px-4 md:px-8">
+    <header className="sticky top-0 z-50 h-12 border-b border-[var(--rule)] bg-[var(--bg-surface)]">
+      <div className="page-container flex h-full items-center gap-5 lg:gap-7">
         <Logo compact />
 
-        <nav className="hidden items-center gap-7 md:flex">
+        <nav className="hidden items-center gap-5 lg:gap-7 md:flex">
           <Link href="/ideas" className={navLinkClass}>
             {t("header.discover")}
           </Link>
@@ -161,7 +161,7 @@ export function Header() {
 
         <Link
           href="/chat"
-          className="hidden h-8 items-center gap-2 rounded-[6px] bg-[#0a0a0a] px-4 text-[12px] font-semibold text-white hover:bg-[#202020] lg:inline-flex"
+          className="hidden h-8 items-center gap-2 rounded-[var(--radius-btn)] bg-[var(--panel-inverse)] px-4 text-[12px] font-semibold text-white hover:opacity-90 lg:inline-flex"
         >
           {t("header.ask")}
           <span className="font-code text-[10px] text-white/60">⌘K</span>
@@ -196,7 +196,7 @@ export function Header() {
               )}
             </button>
             {accountOpen && (
-              <div className="absolute right-0 mt-1 w-52 overflow-hidden rounded-[6px] border border-[var(--rule)] bg-white py-1 shadow-[var(--shadow-float)]">
+              <div className="absolute right-0 mt-1 w-52 overflow-hidden rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] py-1 shadow-[var(--shadow-float)]">
                 {accountLinks}
               </div>
             )}
@@ -224,7 +224,7 @@ export function Header() {
             <DeimosIcon name="menu" className="h-4 w-4" />
           </button>
           {menuOpen && (
-            <div className="fixed inset-x-3 top-14 overflow-hidden rounded-[6px] border border-[var(--rule)] bg-white py-1 shadow-[var(--shadow-float)]">
+            <div className="fixed inset-x-3 top-14 overflow-hidden rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] py-1 shadow-[var(--shadow-float)]">
               <LanguageSwitcher mobile />
               <Link
                 href="/ideas"

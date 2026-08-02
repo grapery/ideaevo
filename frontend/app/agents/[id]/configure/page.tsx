@@ -184,26 +184,26 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
   if (agent.owner_user_id && user && agent.owner_user_id !== user.id) {
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center">
-        <p className="text-[var(--text-muted)]">只有 Agent 创建者才能修改配置</p>
+        <p className="text-[var(--text-muted)]">{t("register.onlyOwnerCanEdit")}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
-      <div className="mx-auto max-w-[1180px] px-4 py-8 sm:px-6">
-        <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--rule)] pb-6">
+    <div className="page-shell">
+      <div className="page-container page-pad">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--rule)] pb-5">
           <div>
-            <p className="meta-label mb-2">AGENT CONTROL PLANE / {agentId.slice(0, 8)}</p>
-            <h1 className="page-title">{t("agents.configure")} — {agent.name}</h1>
+            <p className="page-eyebrow">AGENT CONTROL PLANE / {agentId.slice(0, 8)}</p>
+            <h1 className="page-heading">{t("agents.configure")} — {agent.name}</h1>
           </div>
           <Link href={`/agents/${agentId}`} className="btn-default">
             {t("common.back")}
           </Link>
         </div>
 
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-6 rounded-lg border border-[var(--rule)] bg-white p-6">
+        <div className="app-grid-2">
+        <div className="space-y-6 surface-card p-6">
           {/* 头像 & 背景图 */}
           <div className="space-y-4">
             {/* 背景图预览 + 上传 */}
@@ -287,7 +287,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               rows={5}
-              placeholder="定义 Agent 的行为模式、语气和专业领域。留空使用平台默认。"
+              placeholder={t("register.behaviorPlaceholder")}
               className="w-full resize-y rounded-md border border-[var(--divider)] bg-white px-4 py-2.5 font-[family-name:var(--font-mono)] text-xs leading-6 text-[var(--text-secondary)] outline-none focus:border-[var(--ink)]"
             />
           </div>
@@ -409,21 +409,21 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
         </div>
 
         <aside className="space-y-6">
-          <div className="rounded-lg border border-[var(--rule)] bg-white p-6">
+          <div className="surface-card p-6">
             <p className="meta-label mb-4">CREDENTIALS / MCP</p>
             <AgentApiKeyPanel agentId={agentId} agentName={agent.name} />
           </div>
 
-          <div className="rounded-lg bg-[#101112] p-6 text-white">
-            <p className="mb-3 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.12em] text-[#7AF0A0]">A2A ENDPOINT / LIVE</p>
-            <h3 className="mb-2 text-sm font-semibold">Agent-to-Agent 协议</h3>
-            <p className="mb-3 text-xs leading-5 text-white/50">
-              此 Agent 可被其他 Agent 发现、委派与调用：
+          <div className="panel-inverse p-6">
+            <p className="mb-3 font-code text-[10px] uppercase tracking-[0.12em] panel-inverse-accent">A2A ENDPOINT / LIVE</p>
+            <h3 className="mb-2 text-sm font-semibold">{t("register.a2aTitle")}</h3>
+            <p className="mb-3 text-xs leading-5 panel-inverse-muted">
+              {t("register.a2aDesc")}
             </p>
-            <code className="block break-all rounded-md border border-white/10 bg-black/35 p-3 font-[family-name:var(--font-mono)] text-[10px] leading-5 text-[#66A8FF]">
+            <code className="block break-all rounded-[var(--radius-card)] border border-white/10 bg-black/35 p-3 font-code text-[10px] leading-5 text-[var(--accent-link)]">
               POST {typeof window !== "undefined" ? window.location.origin : ""}/api/../a2a/agents/{agentId}
             </code>
-            <p className="mt-3 font-[family-name:var(--font-mono)] text-[10px] leading-5 text-white/45">
+            <p className="mt-3 font-code text-[10px] leading-5 text-white/45">
               GET /a2a/agents/{agentId}/.well-known/agent.json
             </p>
           </div>

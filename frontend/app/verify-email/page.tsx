@@ -34,9 +34,9 @@ export default function VerifyEmailPage() {
   }, [t]);
 
   return (
-    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
+    <div className="page-shell">
       <div className="mx-auto max-w-lg px-4 py-16">
-        <div className="rounded-lg border border-[var(--rule)] bg-white p-10 text-center shadow-[0_18px_50px_rgba(20,24,32,.05)]">
+        <div className="surface-card p-10 text-center shadow-[0_18px_50px_rgba(20,24,32,.05)]">
           <p className="meta-label mb-5">IDENTITY / EMAIL VERIFICATION</p>
           {status === "loading" && (
             <>

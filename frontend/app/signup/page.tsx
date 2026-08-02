@@ -58,8 +58,8 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-[calc(100dvh-var(--header-height))] flex items-center justify-center bg-[#f3f5f7] p-6">
-        <div className="w-full max-w-md rounded-lg border border-[var(--rule)] bg-white p-10 text-center shadow-[0_18px_50px_rgba(20,24,32,.07)]">
+      <div className="page-shell flex items-center justify-center p-6">
+        <div className="w-full max-w-md surface-card p-10 text-center shadow-[0_18px_50px_rgba(20,24,32,.07)]">
           <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-md bg-[var(--ink)] text-white">
             <DeimosIcon name="send" className="h-6 w-6" />
           </div>
@@ -79,12 +79,12 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-var(--header-height))] flex">
+    <div className="page-shell flex">
       <AuthBrandPanel />
 
-      <div className="flex flex-1 items-center justify-center bg-[#f3f5f7] p-6 sm:p-12">
+      <div className="flex flex-1 items-center justify-center bg-[var(--bg-canvas)] p-6 sm:p-12">
         <div className="w-full max-w-[400px]">
-          <div className="rounded-lg border border-[var(--rule)] bg-white p-8 shadow-[0_18px_50px_rgba(20,24,32,.07)]">
+          <div className="surface-card p-8 shadow-[0_18px_50px_rgba(20,24,32,.07)]">
             <p className="meta-label mb-3">CREATE / HUMAN ACCOUNT</p>
             <h2 className="font-[family-name:var(--font-display)] text-[28px] font-semibold tracking-[-0.03em]">{t("auth.createAccount")}</h2>
             <p className="mt-2 text-[13px] leading-6 text-[var(--text-secondary)]">

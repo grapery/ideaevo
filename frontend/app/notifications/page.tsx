@@ -254,7 +254,7 @@ export default function NotificationsPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center text-[var(--text-muted)]">
+      <div className="page-shell-full flex items-center justify-center text-[var(--text-muted)]">
         {t("common.loading")}
       </div>
     );
@@ -286,17 +286,17 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
-      <div className="mx-auto page-container py-8">
+    <div className="page-shell">
+      <div className="page-container page-pad">
         {/* Header */}
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-[var(--rule)] pb-6">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-[var(--rule)] pb-5">
           <div>
-            <p className="meta-label mb-2">SIGNAL INBOX / LAST 7 DAYS</p>
-            <h1 className="page-title">{t("notif.center")}</h1>
-            <p className="mt-2 text-[13px] text-[var(--text-muted)]">
+            <p className="page-eyebrow">SIGNAL INBOX / LAST 7 DAYS</p>
+            <h1 className="page-heading">{t("notif.center")}</h1>
+            <p className="page-heading-desc">
               {t("notif.recentHint")}
               {unread > 0 && (
-                <span className="ml-2 rounded-full bg-[var(--coral)]/15 px-2 py-0.5 text-xs font-medium text-[var(--coral)]">
+                <span className="ml-2 rounded-full bg-[var(--accent-warning-soft)] px-2 py-0.5 text-xs font-medium text-[var(--accent-warning)]">
                   {t("notif.unreadCount", { count: unread })}
                 </span>
               )}
@@ -323,35 +323,24 @@ export default function NotificationsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="mb-6 flex flex-wrap border-b border-[var(--divider)]">
+        <nav className="tabbar mb-5 overflow-x-auto">
           {TABS.map((tab) => (
             <button
               key={tab.value}
               type="button"
               onClick={() => setActiveTab(tab.value)}
-              className={`inline-flex items-center gap-2 border-b-2 px-4 py-2.5 font-[family-name:var(--font-mono)] text-[10px] font-semibold uppercase transition-colors ${
-                activeTab === tab.value
-                  ? "border-[var(--ink)] text-[var(--ink)]"
-                  : "border-transparent text-[var(--text-muted)] hover:text-[var(--ink)]"
-              }`}
+              data-active={activeTab === tab.value ? "true" : undefined}
+              className="tabbar-tab"
             >
               {t(tab.labelKey)}
               {counts[tab.value] > 0 && (
-                <span
-                  className={`rounded-full px-1.5 text-xs ${
-                    activeTab === tab.value
-                      ? "bg-[var(--ink)] text-white"
-                      : "bg-white"
-                  }`}
-                >
-                  {counts[tab.value]}
-                </span>
+                <span className="count-badge">{counts[tab.value]}</span>
               )}
             </button>
           ))}
-        </div>
+        </nav>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="app-grid-2">
           {/* Notification list */}
           <main className="flex-1 min-w-0">
             {loading ? (
@@ -376,7 +365,7 @@ export default function NotificationsPage() {
                 {groups.map((group) => (
                   <div key={group.label}>
                     <h2 className="meta-label mb-2">{group.label}</h2>
-                    <div className="divide-y divide-[var(--divider)] rounded-lg border border-[var(--rule)] bg-white">
+                    <div className="divide-y divide-[var(--divider)] surface-card">
                       {group.items.map((n) => {
                         const meta = actionMeta[n.action] || {
                           labelKey: "notif.center" as TranslationKey,
@@ -490,8 +479,8 @@ export default function NotificationsPage() {
 
           {/* Summary sidebar */}
           <aside className="w-full space-y-4">
-            <div className="rounded-lg bg-[#101112] p-5 text-white">
-              <p className="mb-2 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.12em] text-[#7AF0A0]">
+            <div className="panel-inverse p-5">
+              <p className="mb-2 font-code text-[10px] uppercase tracking-[0.12em] panel-inverse-accent">
                 LIVE SIGNALS
               </p>
               <h3 className="mb-4 text-sm font-semibold">
@@ -547,7 +536,7 @@ export default function NotificationsPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-[var(--rule)] bg-white p-4">
+            <div className="surface-card p-4">
               <h3 className="flex items-center gap-1.5 text-sm font-semibold text-[var(--title)]">
                 <DeimosIcon
                   name="pulse"

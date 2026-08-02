@@ -45,7 +45,7 @@ function OAuthBridgeContent() {
         : t("auth.loginIncomplete");
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
+    <div className="page-shell-full flex items-center justify-center px-4">
       <div className="surface-card max-w-sm w-full p-8 text-center">
         <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
         <p className="text-sm text-[var(--text-secondary)]">{label}</p>
@@ -61,7 +61,7 @@ export default function OAuthBridgePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center">
+        <div className="page-shell-full flex items-center justify-center">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
         </div>
       }

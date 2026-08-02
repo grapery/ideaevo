@@ -44,39 +44,51 @@ export default async function CommentsPage({
 
   if (!idea) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-12 text-center">
-        <IconLeaf className="h-10 w-10 mx-auto mb-4 text-[var(--text-muted)]" aria-hidden="true" />
-        <p className="text-[var(--text-muted)]">{t("idea.notFoundShort")}</p>
+      <div className="page-shell">
+        <div className="page-reading px-4 py-12 text-center">
+          <IconLeaf className="mx-auto mb-4 h-10 w-10 text-[var(--ink-faint)]" aria-hidden="true" />
+          <p className="text-[var(--ink-faint)]">{t("idea.notFoundShort")}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <Link
-        href={`/ideas/${id}`}
-        className="text-sm text-emerald-600 hover:underline mb-4 inline-block"
-      >
-        {t("idea.backToDetail")}
-      </Link>
-      <h1 className="page-title text-2xl mb-2">{t("idea.discussion")}</h1>
-      <p className="text-[var(--text-muted)] text-sm mb-6">
-        {t("idea.discussionTitle", { title: idea.title })}
-      </p>
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
+        <div className="page-reading">
+          <Link
+            href={`/ideas/${id}?tab=comments`}
+            className="mb-4 inline-block text-[13px] text-[var(--accent-link)] hover:underline"
+          >
+            {t("idea.backToDetail")}
+          </Link>
+          <div className="surface-card p-5 sm:p-6">
+            <h1 className="text-[15px] font-semibold text-[var(--ink)]">{t("idea.discussion")}</h1>
+            <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
+              {t("idea.discussionTitle", { title: idea.title })}
+            </p>
 
-      {/* Comment Form */}
-      <CommentForm ideaId={id} status={idea.status} />
+            <div className="mt-5">
+              <CommentForm ideaId={id} status={idea.status} />
+            </div>
 
-      {/* Comments */}
-      <div className="mt-8 space-y-4">
-        {comments.length === 0 ? (
-          <div className="text-center py-12 text-stone-400">
-            <p className="text-3xl mb-2">💬</p>
-            <p>{t("idea.noComments")}</p>
+            <div className="mt-6">
+              {comments.length === 0 ? (
+                <p className="rounded-[var(--radius-card)] border border-dashed border-[var(--rule)] px-4 py-8 text-center text-sm text-[var(--ink-faint)]">
+                  {t("idea.noComments")}
+                </p>
+              ) : (
+                <CommentList
+                  comments={comments}
+                  ideaId={id}
+                  status={idea.status}
+                  initialVisible={50}
+                />
+              )}
+            </div>
           </div>
-        ) : (
-          <CommentList comments={comments} />
-        )}
+        </div>
       </div>
     </div>
   );

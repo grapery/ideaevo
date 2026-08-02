@@ -187,21 +187,21 @@ export function IdeaCard({
         onClick={goDetail}
         onKeyDown={onCardKeyDown}
         aria-label={`${t("idea.body")}: ${idea.title}`}
-        className={`group relative min-h-[170px] cursor-pointer overflow-hidden rounded-[8px] border bg-white px-5 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
+        className={`group relative min-h-[170px] cursor-pointer overflow-hidden surface-card px-5 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
           highlighted
             ? "min-h-[190px] border-[var(--rule-strong)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--accent-link)]"
-            : "border-[var(--rule)]"
+            : ""
         }`}
       >
         <div className="flex items-center gap-8 font-code text-[10px] font-medium">
           <Link
             href={creatorHref}
             onClick={(event) => event.stopPropagation()}
-            className={isPersonal ? "text-[#b75b00] hover:underline" : "text-[var(--accent-link)] hover:underline"}
+            className={isPersonal ? "text-[var(--primary)] hover:underline" : "text-[var(--accent-link)] hover:underline"}
           >
             {isPersonal ? "USER" : "AGENT"} · {creatorName}
           </Link>
-          <span className={isPersonal ? "text-[#b75b00]" : "text-[var(--accent-link)]"}>
+          <span className={isPersonal ? "text-[var(--primary)]" : "text-[var(--accent-link)]"}>
             {lifecycleLabel} / {implementationLabel}
           </span>
         </div>

@@ -134,46 +134,47 @@ export default function RegisterPage() {
       },
     };
     return (
-      <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
-        <div className="mx-auto max-w-4xl px-4 py-10">
-          <div className="rounded-lg border border-[var(--rule)] bg-white p-8">
-            <div className="text-center mb-6">
-              <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] flex items-center justify-center text-[var(--accent-success)] mb-4">
+      <div className="page-shell">
+        <div className="page-container page-pad">
+          <div className="mx-auto max-w-3xl">
+          <div className="surface-card p-8">
+            <div className="mb-6 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-card)] border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] text-[var(--accent-success)]">
                 <DeimosIcon name="check" className="h-7 w-7" />
               </div>
-              <h1 className="page-title text-2xl">{t("register.successTitle")}</h1>
-              <p className="mt-2 text-sm text-[var(--text-muted)]">
+              <h1 className="page-heading">{t("register.successTitle")}</h1>
+              <p className="page-heading-desc mx-auto">
                 {t("register.successDesc")}
               </p>
             </div>
-            <div className="mb-6 rounded-md border border-[var(--rule)] bg-[#f7f8f9] p-6">
+            <div className="mb-6 rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-subtle)] p-6">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-[var(--text-muted)] mb-1">Agent ID</p>
-                  <code className="text-xs bg-white/60 px-2 py-1 rounded">{result.agent.id}</code>
+                  <p className="mb-1 text-[var(--ink-faint)]">Agent ID</p>
+                  <code className="rounded bg-[var(--bg-surface)] px-2 py-1 text-xs">{result.agent.id}</code>
                 </div>
                 <div>
-                  <p className="text-[var(--text-muted)] mb-1">{t("register.agentName")}</p>
-                  <p className="font-semibold text-[var(--title)]">{result.agent.name}</p>
+                  <p className="mb-1 text-[var(--ink-faint)]">{t("register.agentName")}</p>
+                  <p className="font-semibold text-[var(--ink)]">{result.agent.name}</p>
                 </div>
               </div>
               <div className="mt-4">
-                <p className="flex items-center gap-1.5 text-sm font-medium text-[var(--title)] mb-2">
+                <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-[var(--ink)]">
                   <DeimosIcon name="key" className="h-4 w-4 text-[var(--accent-link)]" />
                   {t("register.apiKeyLabel")}
                 </p>
-                <code className="block rounded-lg bg-[var(--bg-subtle)] p-3 text-xs break-all border border-[var(--divider)]">
+                <code className="block break-all rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] p-3 text-xs">
                   {result.api_key}
                 </code>
               </div>
             </div>
-            <div className="mb-6 rounded-md border border-white/10 bg-[#101112] p-5 text-xs text-white">
-              <p className="mb-2 font-[family-name:var(--font-mono)] text-[#7AF0A0]">{t("register.mcpConfig")}</p>
-              <pre className="overflow-x-auto font-[family-name:var(--font-mono)] text-white/68">
+            <div className="panel-inverse mb-6 p-5 text-xs">
+              <p className="mb-2 font-code panel-inverse-accent">{t("register.mcpConfig")}</p>
+              <pre className="overflow-x-auto font-code text-white/70">
                 {JSON.stringify(mcpConfig, null, 2)}
               </pre>
             </div>
-            <div className="flex gap-3 justify-center">
+            <div className="flex justify-center gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -193,6 +194,7 @@ export default function RegisterPage() {
               </button>
             </div>
           </div>
+          </div>
         </div>
       </div>
     );
@@ -206,14 +208,14 @@ export default function RegisterPage() {
   ];
 
   return (
-    <div className="min-h-[calc(100dvh-var(--header-height))] bg-[#f3f5f7]">
-      <div className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6 lg:px-8">
+    <div className="page-shell">
+      <div className="page-container page-pad">
         {/* Header */}
-        <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--rule)] pb-6">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--rule)] pb-5">
           <div>
-            <p className="meta-label mb-2">AGENT ONBOARDING / 04 STEPS</p>
-            <h1 className="page-title">{t("register.title")}</h1>
-            <p className="mt-2 max-w-xl text-[13px] leading-6 text-[var(--text-muted)]">{t("register.desc")}</p>
+            <p className="page-eyebrow">AGENT ONBOARDING / 04 STEPS</p>
+            <h1 className="page-heading">{t("register.title")}</h1>
+            <p className="page-heading-desc">{t("register.desc")}</p>
           </div>
           {/* Step progress */}
           <div className="flex items-center gap-3">
@@ -222,8 +224,8 @@ export default function RegisterPage() {
                 <div
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
                     step >= n
-                      ? "bg-[var(--ink)] text-white"
-                      : "bg-[var(--bg-subtle)] text-[var(--text-muted)]"
+                      ? "bg-[var(--panel-inverse)] text-white"
+                      : "bg-[var(--bg-subtle)] text-[var(--ink-faint)]"
                   }`}
                 >
                   {n}
@@ -231,7 +233,7 @@ export default function RegisterPage() {
                 {idx < 3 && (
                   <div
                     className={`h-0.5 w-12 ${
-                      step > n ? "bg-[var(--ink)]" : "bg-[var(--divider)]"
+                      step > n ? "bg-[var(--panel-inverse)]" : "bg-[var(--rule)]"
                     }`}
                   />
                 )}
@@ -240,10 +242,10 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
+        <div className="grid gap-5 lg:grid-cols-[var(--content-rail)_minmax(0,1fr)_260px]">
           {/* Left: Step nav */}
           <aside className="w-full">
-            <nav className="rounded-lg border border-[var(--rule)] bg-white p-2">
+            <nav className="surface-card p-2">
               {[
                 { n: 1, label: t("register.stepIdentity"), hint: t("register.stepName") },
                 { n: 2, label: t("register.stepCaps"), hint: "capabilities" },
@@ -255,16 +257,16 @@ export default function RegisterPage() {
                   type="button"
                   onClick={() => step >= s.n && setStep(s.n)}
                   disabled={step < s.n}
-                  className={`w-full text-left rounded-lg p-3 mb-1 transition-colors ${
+                  className={`mb-1 w-full rounded-[var(--radius-card)] p-3 text-left transition-colors ${
                     step === s.n
-                      ? "bg-[var(--ink)] text-white"
-                      : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-40 disabled:cursor-not-allowed"
+                      ? "bg-[var(--panel-inverse)] text-white"
+                      : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] disabled:cursor-not-allowed disabled:opacity-40"
                   }`}
                 >
                   <div className="text-sm font-medium">
                     {s.n}. {s.label}
                   </div>
-                  <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.hint}</div>
+                  <div className="text-xs text-[var(--ink-faint)] mt-0.5">{s.hint}</div>
                 </button>
               ))}
             </nav>
@@ -272,9 +274,9 @@ export default function RegisterPage() {
 
           <main className="min-w-0">
             {step === 1 && (
-              <div className="rounded-lg border border-[var(--rule)] bg-white p-6">
+              <div className="surface-card p-6">
                 <p className="meta-label mb-2">01 / IDENTITY</p>
-                <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">{t("register.selectTemplate")}</h2>
+                <h2 className="mb-4 text-lg font-semibold text-[var(--ink)]">{t("register.selectTemplate")}</h2>
                 <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {TEMPLATES.map((t) => (
                     <button
@@ -283,23 +285,23 @@ export default function RegisterPage() {
                       onClick={() => selectTemplate(t)}
                       className={`rounded-md border p-3 text-left transition-all ${
                         tpl === t.id
-                          ? "border-[var(--ink)] bg-[var(--ink)] text-white"
-                          : "border-[var(--divider)] hover:border-[var(--ink)]"
+                          ? "border-[var(--panel-inverse)] bg-[var(--panel-inverse)] text-white"
+                          : "border-[var(--rule)] hover:border-[var(--panel-inverse)]"
                       }`}
                     >
-                      <div className={`text-sm font-medium ${tpl === t.id ? "text-white" : "text-[var(--title)]"}`}>{t.name}</div>
-                      <div className={`mt-1 line-clamp-2 text-xs ${tpl === t.id ? "text-white/55" : "text-[var(--text-muted)]"}`}>{t.desc}</div>
+                      <div className={`text-sm font-medium ${tpl === t.id ? "text-white" : "text-[var(--ink)]"}`}>{t.name}</div>
+                      <div className={`mt-1 line-clamp-2 text-xs ${tpl === t.id ? "text-white/55" : "text-[var(--ink-faint)]"}`}>{t.desc}</div>
                     </button>
                   ))}
                 </div>
-                <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">{t("register.basicInfo")}</h2>
+                <h2 className="mb-4 text-lg font-semibold text-[var(--ink)]">{t("register.basicInfo")}</h2>
                 <div className="space-y-4">
                   <FormField id="reg-agent-name" label={t("register.agentName")} required>
                     <Input
                       name="agent-name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="例如：CodeReviewBot"
+                      placeholder={t("register.agentNamePlaceholder")}
                     />
                   </FormField>
                   <FormField
@@ -313,7 +315,7 @@ export default function RegisterPage() {
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={4}
-                      placeholder="你的 Agent 能做什么？擅长什么领域？"
+                      placeholder={t("register.descPlaceholder")}
                     />
                   </FormField>
                 </div>
@@ -321,10 +323,10 @@ export default function RegisterPage() {
             )}
 
             {step === 2 && (
-              <div className="rounded-lg border border-[var(--rule)] bg-white p-6">
+              <div className="surface-card p-6">
                 <p className="meta-label mb-2">02 / CAPABILITIES</p>
-                <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">{t("register.capabilities")}</h2>
-                <p className="mb-4 text-sm text-[var(--text-muted)]">
+                <h2 className="mb-1 text-lg font-semibold text-[var(--ink)]">{t("register.capabilities")}</h2>
+                <p className="mb-4 text-sm text-[var(--ink-faint)]">
                   {t("register.capHint")}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -337,8 +339,8 @@ export default function RegisterPage() {
                         onClick={() => toggleCapability(c)}
                         className={`rounded-md border px-3 py-2 font-[family-name:var(--font-mono)] text-[11px] transition-colors ${
                           selected
-                            ? "border-[var(--ink)] bg-[var(--ink)] text-white"
-                            : "border-[var(--divider)] bg-white text-[var(--text-secondary)] hover:border-[var(--ink)]"
+                            ? "border-[var(--panel-inverse)] bg-[var(--panel-inverse)] text-white"
+                            : "border-[var(--rule)] bg-white text-[var(--ink-soft)] hover:border-[var(--panel-inverse)]"
                         }`}
                       >
                         {c}
@@ -346,17 +348,17 @@ export default function RegisterPage() {
                     );
                   })}
                 </div>
-                <p className="mt-4 text-xs text-[var(--text-muted)]">
+                <p className="mt-4 text-xs text-[var(--ink-faint)]">
                   {t("register.capSelected", { count: capabilities.length })}
                 </p>
               </div>
             )}
 
             {step === 3 && (
-              <div className="space-y-6 rounded-lg border border-[var(--rule)] bg-white p-6">
+              <div className="space-y-6 surface-card p-6">
                 <p className="meta-label">03 / GOVERNANCE</p>
                 <div>
-                  <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">{t("register.visibility")}</h2>
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--ink)]">{t("register.visibility")}</h2>
                   <div className="space-y-2">
                     {[
                       { v: "public", label: t("register.public") },
@@ -366,8 +368,8 @@ export default function RegisterPage() {
                         key={opt.v}
                         className={`flex cursor-pointer items-start gap-3 rounded-md border p-4 transition-all ${
                           visibility === opt.v
-                            ? "border-[var(--ink)] bg-[#f7f8f9]"
-                            : "border-[var(--divider)]"
+                            ? "border-[var(--panel-inverse)] bg-[var(--bg-subtle)]"
+                            : "border-[var(--rule)]"
                         }`}
                       >
                         <input
@@ -375,10 +377,10 @@ export default function RegisterPage() {
                           name="visibility"
                           checked={visibility === opt.v}
                           onChange={() => setVisibility(opt.v as "public" | "private")}
-                          className="mt-1 accent-[var(--ink)]"
+                          className="mt-1 accent-[var(--panel-inverse)]"
                         />
                         <div>
-                          <div className="text-sm font-medium text-[var(--title)]">{opt.label}</div>
+                          <div className="text-sm font-medium text-[var(--ink)]">{opt.label}</div>
                         </div>
                       </label>
                     ))}
@@ -386,28 +388,28 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <h2 className="mb-4 text-lg font-semibold text-[var(--title)]">{t("register.permissions")}</h2>
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--ink)]">{t("register.permissions")}</h2>
                   <div className="space-y-3">
-                    <label className="flex cursor-pointer items-center justify-between rounded-md border border-[var(--divider)] p-4">
+                    <label className="flex cursor-pointer items-center justify-between rounded-md border border-[var(--rule)] p-4">
                       <div>
-                        <div className="text-sm font-medium text-[var(--title)]">{t("register.allowFollow")}</div>
+                        <div className="text-sm font-medium text-[var(--ink)]">{t("register.allowFollow")}</div>
                       </div>
                       <input
                         type="checkbox"
                         checked={allowFollow}
                         onChange={(e) => setAllowFollow(e.target.checked)}
-                        className="h-5 w-5 accent-[var(--ink)]"
+                        className="h-5 w-5 accent-[var(--panel-inverse)]"
                       />
                     </label>
-                    <label className="flex cursor-pointer items-center justify-between rounded-md border border-[var(--divider)] p-4">
+                    <label className="flex cursor-pointer items-center justify-between rounded-md border border-[var(--rule)] p-4">
                       <div>
-                        <div className="text-sm font-medium text-[var(--title)]">{t("register.allowChat")}</div>
+                        <div className="text-sm font-medium text-[var(--ink)]">{t("register.allowChat")}</div>
                       </div>
                       <input
                         type="checkbox"
                         checked={allowChat}
                         onChange={(e) => setAllowChat(e.target.checked)}
-                        className="h-5 w-5 accent-[var(--ink)]"
+                        className="h-5 w-5 accent-[var(--panel-inverse)]"
                       />
                     </label>
                   </div>
@@ -416,24 +418,24 @@ export default function RegisterPage() {
             )}
 
             {step === 4 && (
-              <div className="space-y-6 rounded-lg border border-[var(--rule)] bg-white p-6">
+              <div className="space-y-6 surface-card p-6">
                 <p className="meta-label">04 / RUNTIME</p>
                 <div>
-                  <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">{t("register.systemPrompt")}</h2>
-                  <p className="mb-3 text-sm text-[var(--text-muted)]">
-                    定义 Agent 的行为模式、语气和专业领域。留空则使用平台默认。
+                  <h2 className="mb-1 text-lg font-semibold text-[var(--ink)]">{t("register.systemPrompt")}</h2>
+                  <p className="mb-3 text-sm text-[var(--ink-faint)]">
+                    {t("register.systemPromptHint")}
                   </p>
                   <Textarea
                     name="system-prompt"
                     value={systemPrompt}
                     onChange={(e) => setSystemPrompt(e.target.value)}
                     rows={5}
-                    placeholder={"例如：你是一个资深的代码审查专家。你的回答应该：\n1. 指出潜在的安全问题\n2. 建议更优雅的写法\n3. 保持简洁、技术性强"}
+                    placeholder={t("register.systemPromptPlaceholder")}
                   />
                 </div>
 
                 <div>
-                  <h2 className="mb-3 text-lg font-semibold text-[var(--title)]">{t("register.llmModel")}</h2>
+                  <h2 className="mb-3 text-lg font-semibold text-[var(--ink)]">{t("register.llmModel")}</h2>
                   <div className="grid grid-cols-2 gap-2">
                     {LLM_MODELS.map((m) => (
                       <button
@@ -442,8 +444,8 @@ export default function RegisterPage() {
                         onClick={() => setLlmModel(m.value)}
                         className={`rounded-md border p-3 text-left text-sm transition-all ${
                           llmModel === m.value
-                            ? "border-[var(--ink)] bg-[var(--ink)] text-white"
-                            : "border-[var(--divider)] text-[var(--text-secondary)] hover:border-[var(--ink)]"
+                            ? "border-[var(--panel-inverse)] bg-[var(--panel-inverse)] text-white"
+                            : "border-[var(--rule)] text-[var(--ink-soft)] hover:border-[var(--panel-inverse)]"
                         }`}
                       >
                         {m.label}
@@ -453,7 +455,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <h2 className="mb-3 text-lg font-semibold text-[var(--title)]">
+                  <h2 className="mb-3 text-lg font-semibold text-[var(--ink)]">
                     {t("register.temperature")}
                   </h2>
                   <div className="flex items-center gap-4">
@@ -466,15 +468,15 @@ export default function RegisterPage() {
                       onChange={(e) => setTemperature(parseFloat(e.target.value))}
                       className="flex-1 accent-[var(--primary)]"
                     />
-                    <span className="w-12 text-right text-sm font-medium text-[var(--title)] tabular-nums">
+                    <span className="w-12 text-right text-sm font-medium text-[var(--ink)] tabular-nums">
                       {temperature.toFixed(1)}
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <h2 className="mb-1 text-lg font-semibold text-[var(--title)]">{t("register.toolset")}</h2>
-                  <p className="mb-3 text-sm text-[var(--text-muted)]">
+                  <h2 className="mb-1 text-lg font-semibold text-[var(--ink)]">{t("register.toolset")}</h2>
+                  <p className="mb-3 text-sm text-[var(--ink-faint)]">
                     {t("register.toolsetHint")}
                   </p>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -484,7 +486,7 @@ export default function RegisterPage() {
                         <label
                           key={t.name}
                           className={`flex cursor-pointer items-center gap-2 rounded-md border p-2.5 transition-all ${
-                            selected ? "border-[var(--ink)] bg-[#f7f8f9]" : "border-[var(--divider)]"
+                            selected ? "border-[var(--panel-inverse)] bg-[var(--bg-subtle)]" : "border-[var(--rule)]"
                           }`}
                         >
                           <input
@@ -497,11 +499,11 @@ export default function RegisterPage() {
                                   : [...prev, t.name]
                               )
                             }
-                            className="accent-[var(--ink)]"
+                            className="accent-[var(--panel-inverse)]"
                           />
                           <div className="min-w-0">
                             <code className="text-xs text-[var(--accent-link)]">{t.name}</code>
-                            <span className="ml-2 text-xs text-[var(--text-muted)]">{t.desc}</span>
+                            <span className="ml-2 text-xs text-[var(--ink-faint)]">{t.desc}</span>
                           </div>
                         </label>
                       );
@@ -525,7 +527,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={() => setStep((s) => Math.min(4, s + 1))}
                   disabled={!stepValid[step - 1]}
-                  className="rounded-md bg-[var(--ink)] px-6 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="btn-default px-6 py-2.5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {t("register.nextStep")}
                 </button>
@@ -543,19 +545,19 @@ export default function RegisterPage() {
           </main>
 
           <aside className="space-y-4">
-            <div className="rounded-lg border border-[var(--rule)] bg-white p-4">
-              <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[var(--title)]">
+            <div className="surface-card p-4">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[var(--ink)]">
                 <DeimosIcon name="decision" className="h-3.5 w-3.5" />{t("register.configAdvice")}
               </p>
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              <p className="text-xs text-[var(--ink-soft)] leading-relaxed">
                 {t("register.configAdviceHint")}
               </p>
             </div>
-            <div className="rounded-lg bg-[#101112] p-4 font-[family-name:var(--font-mono)] text-[10px] leading-5 text-white/55">
-              <p className="mb-2 text-[#7AF0A0]">MCP READY</p>
-              <p>identity → capability</p>
-              <p>policy → toolset</p>
-              <p className="mt-2 text-[#66A8FF]">observable by default</p>
+            <div className="panel-inverse p-4 font-code text-[10px] leading-5">
+              <p className="mb-2 panel-inverse-accent">MCP READY</p>
+              <p className="panel-inverse-muted">identity → capability</p>
+              <p className="panel-inverse-muted">policy → toolset</p>
+              <p className="mt-2 text-[var(--accent-link)]">observable by default</p>
             </div>
           </aside>
         </div>

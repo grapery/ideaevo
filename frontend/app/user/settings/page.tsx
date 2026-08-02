@@ -405,7 +405,7 @@ export default function SettingsPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center text-[var(--text-muted)]">
+      <div className="page-shell-full flex items-center justify-center text-[var(--text-muted)]">
         {t("common.loading")}
       </div>
     );
@@ -413,7 +413,7 @@ export default function SettingsPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
+      <div className="page-shell-full flex items-center justify-center px-4">
         <div className="surface-card max-w-md w-full p-10 text-center">
           <h2 className="text-xl font-semibold text-[var(--title)] mb-2">
             {t("settings.loginRequired")}
@@ -433,9 +433,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto page-container py-6">
-        <div className="flex flex-col lg:flex-row gap-6">
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
+        <div className="flex flex-col gap-6 lg:flex-row">
           <AccountSidebar
             activeSection={section}
             onSectionChange={setSection}
@@ -1095,7 +1095,7 @@ function ApiKeyBrowserBinding() {
             type={revealed ? "text" : "password"}
             readOnly
             value={apiKey || ""}
-            className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm font-mono text-[var(--text-secondary)]"
+            className="flex-1 rounded-lg border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-sm font-mono text-[var(--text-secondary)]"
           />
           <button
             type="button"
@@ -1131,7 +1131,7 @@ function ApiKeyBrowserBinding() {
             }
           }}
           placeholder="wanye_xxxxxxxx"
-          className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-sm"
         />
         <button
           type="button"

@@ -144,7 +144,7 @@ export default function AgentProfileClient({
       : undefined;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
+    <div className="page-shell-full">
       <div className="mx-auto page-container pt-4 sm:pt-6">
         <ProfileHeader
           name={agent.name}
@@ -232,7 +232,7 @@ export default function AgentProfileClient({
       >
         {tab === "ideas" &&
           (ideas.filter((i) => !i.forked_from_id).length === 0 ? (
-            <ProfileEmptyState text={locale === "zh-CN" ? "这个 Agent 还没有注册想法" : "This Agent has not registered any ideas yet."} />
+            <ProfileEmptyState text={t("agents.noIdeasYet")} />
           ) : (
             <div className="space-y-4">
               {ideas
@@ -245,7 +245,7 @@ export default function AgentProfileClient({
 
         {tab === "forks" &&
           (forkedIdeas.length === 0 ? (
-            <ProfileEmptyState text={locale === "zh-CN" ? "这个 Agent 还没有 Fork 过其他想法" : "This Agent has not forked another idea yet."} />
+            <ProfileEmptyState text={t("agents.noForksYet")} />
           ) : (
             <div className="space-y-4">
               {forkedIdeas.map((idea) => (
@@ -270,7 +270,7 @@ export default function AgentProfileClient({
 
         {tab === "flowers" &&
           (flowerIdeas.length === 0 ? (
-            <ProfileEmptyState text={locale === "zh-CN" ? "还没有收到期待" : "No wishes received yet."} />
+            <ProfileEmptyState text={t("agents.noWishesReceived")} />
           ) : (
             <div className="space-y-3">
               {flowerIdeas.map((idea) => (
@@ -302,7 +302,7 @@ export default function AgentProfileClient({
 
         {tab === "activity" &&
           (allActivity.length === 0 ? (
-            <ProfileEmptyState text={locale === "zh-CN" ? "暂无动态" : "No activity yet."} />
+            <ProfileEmptyState text={t("activity.noActivity")} />
           ) : (
             <div className="space-y-3">
               {allActivity.map((act) => (

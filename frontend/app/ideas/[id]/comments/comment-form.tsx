@@ -19,9 +19,19 @@ import type { Idea } from "@/lib/types";
 export function CommentForm({
   ideaId,
   status,
+  parentId,
+  compact = false,
+  autofocus = false,
+  onCancel,
+  onSuccess,
 }: {
   ideaId: string;
   status?: Idea["status"];
+  parentId?: string;
+  compact?: boolean;
+  autofocus?: boolean;
+  onCancel?: () => void;
+  onSuccess?: () => void;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -31,20 +41,20 @@ export function CommentForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 非 active 状态的 idea 不可评论（只读）。
   const inactive = status !== undefined && status !== "active";
-  if (inactive) {
+  if (inactive && !parentId) {
     return (
       <div className="surface-card p-5 text-sm text-[var(--text-muted)]">
         {t("idea.readonlyHint")}
       </div>
     );
   }
+  if (inactive) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!content.trim()) {
-      setError("请输入评论内容");
+      setError(t("chat.errCommentEmpty"));
       return;
     }
     if (!canAct) {
@@ -59,11 +69,15 @@ export function CommentForm({
         method: "POST",
         apiKey: useSession ? undefined : apiKey,
         useSession,
-        body: JSON.stringify({ content, sentiment }),
+        body: JSON.stringify({
+          content: content.trim(),
+          sentiment: parentId ? "neutral" : sentiment,
+          ...(parentId ? { parent_id: parentId } : {}),
+        }),
       });
-      notify.success("评论已发表！");
+      notify.success(t("chat.commentPublished"));
       setContent("");
-      // 刷新页面数据以显示新评论
+      onSuccess?.();
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err, t("common.operationFailed")));
@@ -72,26 +86,72 @@ export function CommentForm({
     }
   }
 
+  const sentiments = [
+    { value: "positive", label: t("idea.sentimentAgree") },
+    { value: "neutral", label: t("idea.sentimentDiscuss") },
+    { value: "constructive", label: t("idea.sentimentSuggest") },
+  ];
+
+  if (compact) {
+    return (
+      <form onSubmit={handleSubmit} className="mt-2 space-y-2">
+        <Textarea
+          name="comment-reply"
+          variant="subtle"
+          value={content}
+          onChange={(e) => {
+            setContent(e.target.value);
+            setError("");
+          }}
+          hasError={!!error}
+          placeholder={t("idea.replyPlaceholder")}
+          rows={2}
+          autoFocus={autofocus}
+        />
+        {error && <p className="text-xs text-[var(--coral)]">{error}</p>}
+        <div className="flex items-center gap-2">
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            disabled={loading || !content.trim()}
+          >
+            {loading ? t("common.loading") : t("idea.reply")}
+          </Button>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="text-xs text-[var(--ink-faint)] hover:text-[var(--ink)]"
+            >
+              {t("common.cancel")}
+            </button>
+          )}
+        </div>
+      </form>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="surface-card p-5">
-      <FormField id="comment-content" label={t("idea.comments")} error={error}>
+      <FormField id="comment-content" label={t("idea.postComment")} error={error}>
         <Textarea
           name="comment"
           variant="subtle"
           value={content}
-          onChange={(e) => { setContent(e.target.value); setError(""); }}
+          onChange={(e) => {
+            setContent(e.target.value);
+            setError("");
+          }}
           hasError={!!error}
-          placeholder="发表你的 Deimos 评论…"
+          placeholder={t("chat.commentPlaceholder")}
           rows={3}
+          autoFocus={autofocus}
         />
       </FormField>
-      <div className="mt-4 flex items-center justify-between gap-2 flex-wrap">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-2">
-          {[
-            { value: "positive", label: "Agree" },
-            { value: "neutral", label: "Discuss" },
-            { value: "constructive", label: "Suggest" },
-          ].map((s) => (
+          {sentiments.map((s) => (
             <button
               key={s.value}
               type="button"
@@ -109,7 +169,7 @@ export function CommentForm({
           disabled={loading || !content.trim()}
           icon={<DeimosIcon name="comment" className="h-4 w-4" />}
         >
-          {loading ? t("common.loading") : t("idea.comments")}
+          {loading ? t("common.loading") : t("idea.postComment")}
         </Button>
       </div>
     </form>

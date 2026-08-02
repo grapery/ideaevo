@@ -65,40 +65,38 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="page-container py-7">
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="font-code text-[10px] text-[var(--accent-link)]">OWNER WORKSPACE / LIVE</p>
-            <h1 className="font-display mt-2 text-[30px] font-bold tracking-[-0.025em] text-[var(--ink)]">
+            <p className="page-eyebrow">OWNER WORKSPACE / LIVE</p>
+            <h1 className="page-heading">
               {t("dashboard.workbench", { name: profile.user.name })}
             </h1>
-            <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
-              {t("dashboard.desc")}
-            </p>
+            <p className="page-heading-desc">{t("dashboard.desc")}</p>
           </div>
-          <Link href="/user/settings" className="btn-outline h-8 px-4 text-[11px]">
+          <Link href="/user/settings" className="btn-outline h-8 px-4 text-[12px]">
             WORKSPACE SETTINGS
           </Link>
         </div>
 
-        <section className="mt-5 grid min-h-[152px] gap-5 rounded-[8px] bg-[#0a0a0a] p-5 text-white lg:grid-cols-[1fr_340px]">
+        <section className="panel-inverse mt-5 grid min-h-[152px] gap-5 p-5 lg:grid-cols-[1fr_340px]">
           <div>
-            <p className="font-code text-[10px] text-[#9bff00]">QUICK DECISION</p>
+            <p className="font-code text-[10px] panel-inverse-accent">QUICK DECISION</p>
             <h2 className="font-display mt-4 text-[22px] font-bold">{t("dashboard.todayPrompt")}</h2>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Link href="/ideas/new" className="rounded-[5px] bg-white px-3 py-2 text-[11px] font-semibold text-black">
+              <Link href="/ideas/new" className="rounded-[var(--radius-btn)] bg-[var(--bg-surface)] px-3 py-2 text-[12px] font-semibold text-[var(--ink)]">
                 + NEW IDEA
               </Link>
-              <Link href="/chat" className="rounded-[5px] border border-[#3b3b40] px-3 py-2 font-code text-[10px] text-[#d6d9de]">
+              <Link href="/chat" className="rounded-[var(--radius-btn)] border border-white/20 px-3 py-2 font-code text-[10px] text-white/80 hover:border-white/40">
                 ASK AGENT
               </Link>
-              <Link href="/search" className="rounded-[5px] border border-[#3b3b40] px-3 py-2 font-code text-[10px] text-[#d6d9de]">
+              <Link href="/search" className="rounded-[var(--radius-btn)] border border-white/20 px-3 py-2 font-code text-[10px] text-white/80 hover:border-white/40">
                 SEARCH EVIDENCE
               </Link>
             </div>
           </div>
-          <div className="rounded-[6px] border border-[#2e5c24] bg-[#132316] p-4 font-code text-[10px] leading-5 text-[#9bff00]">
+          <div className="rounded-[var(--radius-card)] border border-[var(--panel-inverse-accent)]/30 bg-black/30 p-4 font-code text-[10px] leading-5 panel-inverse-accent">
             <p>PROCESS MEMORY / {notifications.length} EVENTS</p>
             <p className="mt-3">✓ session state saved</p>
             <p>✓ Agent identities available: {agents.length}</p>
@@ -108,7 +106,7 @@ export default function DashboardPage() {
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {metricCards.map(([label, value, detail]) => (
-            <div key={String(label)} className="rounded-[7px] border border-[var(--rule)] bg-white p-4">
+            <div key={String(label)} className="surface-card p-4">
               <p className="font-code text-[9px] text-[var(--ink-faint)]">{label}</p>
               <p className="font-display mt-3 text-[25px] font-bold text-[var(--ink)]">{value}</p>
               <p className="mt-1 font-code text-[9px] text-[var(--accent-link)]">{detail}</p>
@@ -118,7 +116,7 @@ export default function DashboardPage() {
 
         <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_336px]">
           <main className="space-y-4">
-            <section className="rounded-[8px] border border-[var(--rule)] bg-white">
+            <section className="surface-card">
               <div className="flex h-11 items-center justify-between border-b border-[var(--rule)] px-4">
                 <p className="font-code text-[10px] text-[var(--ink)]">TODAY / ACTION REQUIRED</p>
                 <Link href="/notifications" className="font-code text-[9px] text-[var(--accent-link)]">OPEN INBOX →</Link>
@@ -142,24 +140,24 @@ export default function DashboardPage() {
               )}
             </section>
 
-            <section className="rounded-[8px] border border-[#9bbcff] bg-[#edf3ff] p-5">
-              <div className="flex items-center gap-3 text-[#1e5ee9]">
+            <section className="callout-link p-5">
+              <div className="flex items-center gap-3 text-[var(--accent-link)]">
                 <DeimosIcon name="semantic-search" className="h-5 w-5" />
                 <p className="font-code text-[10px] font-medium">TEAM VALUE RECORD</p>
               </div>
-              <p className="mt-4 text-[13px] leading-6 text-[#174aa9]">
+              <p className="mt-4 text-[13px] leading-6 text-[var(--accent-link)]">
                 {t("dashboard.workspaceHint")}
               </p>
             </section>
           </main>
 
           <aside className="space-y-4">
-            <section className="rounded-[8px] border border-[var(--rule)] bg-white p-4">
+            <section className="surface-card p-4">
               <p className="font-code text-[10px] text-[var(--ink)]">OWNED AGENTS / {agents.length}</p>
               <div className="mt-4 space-y-3">
                 {agents.slice(0, 4).map((agent) => (
                   <Link key={agent.id} href={`/agents/${agent.id}`} className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-[5px] bg-[#0a0a0a] font-code text-[10px] text-white">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-btn)] bg-[var(--panel-inverse)] font-code text-[10px] text-white">
                       {agent.name.charAt(0).toUpperCase()}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -174,11 +172,11 @@ export default function DashboardPage() {
               </Link>
             </section>
 
-            <section className="rounded-[8px] bg-[#0a0a0a] p-4 font-code text-[10px] leading-6 text-[#d6d9de]">
-              <p className="text-[#9bff00]">QUICK ACTIONS</p>
-              <Link href="/chat" className="mt-3 block hover:text-white">/chat&nbsp;&nbsp;delegate a task</Link>
-              <Link href="/ideas/new" className="block hover:text-white">/publish&nbsp;&nbsp;register an idea</Link>
-              <Link href="/docs/mcp" className="block hover:text-white">/mcp&nbsp;&nbsp;connect tools</Link>
+            <section className="panel-inverse p-4 font-code text-[10px] leading-6">
+              <p className="panel-inverse-accent">QUICK ACTIONS</p>
+              <Link href="/chat" className="mt-3 block panel-inverse-muted hover:text-white">/chat&nbsp;&nbsp;delegate a task</Link>
+              <Link href="/ideas/new" className="block panel-inverse-muted hover:text-white">/publish&nbsp;&nbsp;register an idea</Link>
+              <Link href="/docs/mcp" className="block panel-inverse-muted hover:text-white">/mcp&nbsp;&nbsp;connect tools</Link>
             </section>
           </aside>
         </div>

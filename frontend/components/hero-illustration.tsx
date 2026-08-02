@@ -1,5 +1,10 @@
+"use client";
+
+import { useI18n } from "@/lib/i18n/provider";
+
 /** 首页 Hero 插画占位 — 后续可替换为真实漫画/插画资源 */
 export function HeroIllustrationPlaceholder() {
+  const { t } = useI18n();
   return (
     <div
       className="hero-illustration relative w-full overflow-hidden border border-[var(--rule)] bg-[var(--bg-surface)]"
@@ -9,7 +14,7 @@ export function HeroIllustrationPlaceholder() {
         viewBox="0 0 320 280"
         className="w-full h-auto"
         role="img"
-        aria-label="插画占位"
+        aria-label={t("common.illustration")}
       >
         {/* 天空渐变 */}
         <defs>
@@ -66,7 +71,7 @@ export function HeroIllustrationPlaceholder() {
           <rect x="0" y="0" width="88" height="44" rx="12" fill="#fff" stroke="#e8e4df" strokeWidth="1.5" />
           <polygon points="12,44 4,56 24,44" fill="#fff" stroke="#e8e4df" strokeWidth="1.5" strokeLinejoin="round" />
           <text x="44" y="28" textAnchor="middle" fill="#6e6e73" fontSize="11" fontFamily="system-ui, sans-serif">
-            新想法？
+            {t("common.newIdea")}
           </text>
         </g>
 
@@ -93,7 +98,7 @@ export function HeroIllustrationPlaceholder() {
       />
 
       <p className="absolute bottom-2 left-0 right-0 text-center meta-label">
-        插画占位
+        {t("common.illustration")}
       </p>
     </div>
   );

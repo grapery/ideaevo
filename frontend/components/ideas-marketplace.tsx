@@ -42,12 +42,13 @@ export function IdeasMarketplace({
   trending = [],
   initialStatus = "",
   initialSort = "popular",
-  hotTags = ["MCP", "RAG", "协作", "自动化", "Agent"],
+  hotTags: hotTagsProp,
   basePath = "/",
   defaultSort = "popular",
 }: MarketplaceProps) {
   const router = useRouter();
   const { t } = useI18n();
+  const hotTags = hotTagsProp ?? ["MCP", "RAG", t("market.catCreative"), t("market.catAutomation"), "Agent"];
 
   const categoryGroups = useMemo(() => {
     const counts = new Map<string, number>();
@@ -90,27 +91,21 @@ export function IdeasMarketplace({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="page-container py-6">
-        <section className="grid min-h-[128px] grid-cols-1 gap-6 rounded-[8px] border border-[var(--rule)] bg-white px-6 py-5 lg:grid-cols-[minmax(0,1fr)_412px]">
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
+        <section className="grid min-h-[128px] grid-cols-1 gap-6 surface-card px-6 py-5 lg:grid-cols-[minmax(0,1fr)_412px]">
           <div className="min-w-0">
-            <p className="font-code text-[10px] font-medium tracking-[0.13em] text-[var(--ink-faint)]">
-              {t("market.eyebrow")}
-            </p>
-            <h1 className="font-display mt-2 text-[28px] font-bold leading-[34px] tracking-[-0.025em] text-[var(--ink)]">
-              {t("market.title")}
-            </h1>
-            <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
-              {t("market.subtitle")}
-            </p>
+            <p className="page-eyebrow">{t("market.eyebrow")}</p>
+            <h1 className="page-heading">{t("market.title")}</h1>
+            <p className="page-heading-desc">{t("market.subtitle")}</p>
           </div>
 
-          <div className="hidden rounded-[6px] bg-[#0a0a0a] px-3.5 py-3 font-code text-[10px] leading-[20px] lg:block">
-            <p className="font-medium text-[#ff8a00]">{t("market.trace")}</p>
-            <p className="mt-1 text-[#d6d9de]">
+          <div className="panel-inverse hidden px-3.5 py-3 font-code text-[10px] leading-[20px] lg:block">
+            <p className="font-medium text-[var(--primary)]">{t("market.trace")}</p>
+            <p className="mt-1 panel-inverse-muted">
               09:42&nbsp;&nbsp;radar.search&nbsp;&nbsp;→&nbsp;&nbsp;{total} {t("market.semanticMatches")}
             </p>
-            <p className="text-[#9bff00]">
+            <p className="panel-inverse-accent">
               09:43&nbsp;&nbsp;verifier.check&nbsp;&nbsp;→&nbsp;&nbsp;
               {lifecycleCounts.implemented} {t("market.implemented")}
             </p>
@@ -118,12 +113,12 @@ export function IdeasMarketplace({
         </section>
 
         <div className="mt-6 grid items-start gap-6 lg:grid-cols-[216px_minmax(0,760px)] xl:grid-cols-[216px_minmax(0,760px)_352px]">
-          <aside className="hidden min-h-[744px] rounded-[8px] border border-[var(--rule)] bg-white p-4 lg:block">
+          <aside className="hidden min-h-[744px] surface-card p-4 lg:block">
             <p className="font-code text-[10px] font-medium text-[var(--ink-faint)]">{t("market.discoverBy")}</p>
             <button
               type="button"
               onClick={() => updateParams("", initialSort)}
-              className="mt-3 flex h-[34px] w-full items-center justify-between rounded-[6px] bg-[var(--primary-soft)] px-3 text-left text-[12px] font-semibold text-[#b75b00]"
+              className="mt-3 flex h-[34px] w-full items-center justify-between rounded-[var(--radius-btn)] bg-[var(--primary-soft)] px-3 text-left text-[12px] font-semibold text-[var(--primary)]"
             >
               <span>{t("market.allIdeas")}</span>
               <span>{stats.ideaCount.toLocaleString()}</span>
@@ -169,7 +164,7 @@ export function IdeasMarketplace({
           </aside>
 
           <main className="min-w-0">
-            <div className="flex h-10 items-center gap-5 rounded-[6px] border border-[var(--rule)] bg-white px-4">
+            <div className="flex h-10 items-center gap-5 rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] px-4">
               {statusFilters.map((filter) => (
                 <button
                   key={filter.value || "hot"}
@@ -207,7 +202,7 @@ export function IdeasMarketplace({
             </div>
 
             {ideas.length === 0 ? (
-              <div className="mt-3 rounded-[8px] border border-[var(--rule)] bg-white p-12 text-center">
+              <div className="mt-3 surface-card p-12 text-center">
                 <p className="font-display text-[18px] font-semibold text-[var(--ink)]">{t("market.noIdeas")}</p>
                 <p className="mt-2 text-[13px] text-[var(--ink-faint)]">{t("market.noIdeasHint")}</p>
                 <Link href="/ideas/new" className="btn-primary mt-5">+ {t("market.publish")}</Link>
@@ -222,7 +217,7 @@ export function IdeasMarketplace({
           </main>
 
           <aside className="hidden space-y-3 xl:block">
-            <section className="rounded-[8px] border border-[var(--rule)] bg-white p-4">
+            <section className="surface-card p-4">
               <p className="font-code text-[10px] font-medium tracking-[0.1em] text-[var(--ink)]">{t("market.signals")}</p>
               <dl className="mt-7 space-y-2 font-code text-[11px] text-[var(--ink)]">
                 <div className="flex gap-3"><dt>{stats.ideaCount.toLocaleString()}</dt><dd>{t("market.ideasIndexed")}</dd></div>
@@ -232,7 +227,7 @@ export function IdeasMarketplace({
               </dl>
             </section>
 
-            <section className="rounded-[8px] border border-[var(--rule)] bg-white p-4">
+            <section className="surface-card p-4">
               <p className="font-code text-[10px] font-medium tracking-[0.1em] text-[var(--ink)]">{t("market.trending")}</p>
               <div className="mt-7 space-y-3">
                 {(trending.length > 0 ? trending.slice(0, 3) : ideas.slice(0, 3)).map((item, index) => (
@@ -252,12 +247,12 @@ export function IdeasMarketplace({
               </p>
             </section>
 
-            <section className="rounded-[8px] border border-[#9bbcff] bg-[#edf3ff] p-4">
-              <p className="font-code text-[10px] font-medium text-[#1e5ee9]">{t("market.agentOperate")}</p>
-              <p className="mt-7 font-code text-[10px] leading-5 text-[#1e5ee9]">
+            <section className="callout-link p-4">
+              <p className="font-code text-[10px] font-medium text-[var(--accent-link)]">{t("market.agentOperate")}</p>
+              <p className="mt-7 font-code text-[10px] leading-5 text-[var(--accent-link)]">
                 {t("market.agentOperateHint")}
               </p>
-              <Link href="/docs/mcp" className="mt-6 inline-flex font-code text-[10px] font-medium text-[#1e5ee9] hover:underline">
+              <Link href="/docs/mcp" className="mt-6 inline-flex font-code text-[10px] font-medium text-[var(--accent-link)] hover:underline">
                 {t("market.connectAgent")}&nbsp;&nbsp;→
               </Link>
             </section>
