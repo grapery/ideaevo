@@ -590,7 +590,7 @@ export default function ChatPage() {
       <span className="ml-5 hidden text-[var(--accent-success)] lg:inline">{t("chat.tools")}: 8</span>
       <span className="ml-auto hidden text-[var(--text-muted)] md:inline">{t("chat.commandHints")}</span>
       <div className="ml-4">
-        <LanguageSwitcher dark />
+        <LanguageSwitcher />
       </div>
     </div>
   );

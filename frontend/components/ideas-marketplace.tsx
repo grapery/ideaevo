@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Agent, Idea, TrendingIdea } from "@/lib/types";
 import { AppLink as Link } from "./app-link";
 import { IdeaCard } from "./idea-card";
+import { DeimosIcon } from "./deimos-icon";
 import { useI18n } from "@/lib/i18n/provider";
 
 const statusFilters = [
@@ -56,11 +57,10 @@ export function IdeasMarketplace({
       const category = idea.category?.trim();
       if (category) counts.set(category, (counts.get(category) || 0) + 1);
     }
-    const result = [...counts.entries()]
+    return [...counts.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 4)
       .map(([label, count]) => ({ label, count }));
-    return result;
   }, [ideas]);
 
   const lifecycleCounts = useMemo(
@@ -70,7 +70,7 @@ export function IdeasMarketplace({
       archived: ideas.filter((idea) => idea.status === "archived").length,
       buried: ideas.filter((idea) => idea.status === "buried").length,
     }),
-    [ideas]
+    [ideas],
   );
 
   function updateParams(status: string, sort: string) {
@@ -80,87 +80,155 @@ export function IdeasMarketplace({
     router.push(`${basePath}${params.toString() ? `?${params}` : ""}`);
   }
 
+  const metrics = [
+    {
+      label: t("market.ideasIndexed"),
+      value: stats.ideaCount,
+      icon: "document" as const,
+      href: basePath,
+    },
+    {
+      label: t("market.ideasToday"),
+      value: stats.todayNew,
+      icon: "pulse" as const,
+      href: "/activity",
+      tone: stats.todayNew > 0 ? ("attention" as const) : undefined,
+    },
+    {
+      label: t("market.implemented"),
+      value: lifecycleCounts.implemented,
+      icon: "lifecycle" as const,
+      href: `${basePath}?status=implemented`,
+      tone: "link" as const,
+    },
+    {
+      label: t("market.activeAgents"),
+      value: stats.agentCount,
+      icon: "agent" as const,
+      href: "/activity",
+    },
+  ];
+
   return (
     <div className="page-shell-full">
       <div className="page-container page-pad">
-        <section className="grid min-h-[128px] grid-cols-1 gap-6 surface-card px-6 py-5 lg:grid-cols-[minmax(0,1fr)_412px]">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--rule)] pb-4">
           <div className="min-w-0">
-            <p className="page-eyebrow">{t("market.eyebrow")}</p>
-            <h1 className="page-heading">{t("market.title")}</h1>
-            <p className="page-heading-desc">{t("market.subtitle")}</p>
+            <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[var(--ink)] sm:text-[20px]">
+              {t("market.title")}
+            </h1>
+            <p className="mt-0.5 max-w-2xl text-[12px] leading-5 text-[var(--ink-faint)]">
+              {t("market.subtitle")}
+            </p>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/ideas/new" className="btn-primary btn-sm">
+              <DeimosIcon name="publish" className="h-3.5 w-3.5" />
+              {t("market.publish")}
+            </Link>
+            <Link href="/search" className="btn-outline btn-sm">
+              <DeimosIcon name="semantic-search" className="h-3.5 w-3.5" />
+              {t("dashboard.searchEvidence")}
+            </Link>
+          </div>
+        </header>
 
-          <div className="panel-inverse hidden px-3.5 py-3 font-code text-[10px] leading-[20px] lg:block">
-            <p className="font-medium text-[var(--primary)]">{t("market.trace")}</p>
-            <p className="mt-1 panel-inverse-muted">
-              09:42&nbsp;&nbsp;radar.search&nbsp;&nbsp;→&nbsp;&nbsp;{total} {t("market.semanticMatches")}
-            </p>
-            <p className="panel-inverse-accent">
-              09:43&nbsp;&nbsp;verifier.check&nbsp;&nbsp;→&nbsp;&nbsp;
-              {lifecycleCounts.implemented} {t("market.implemented")}
-            </p>
-          </div>
+        <section className="dashboard-metrics mt-4" aria-label={t("market.signals")}>
+          {metrics.map((metric) => (
+            <Link key={metric.label} href={metric.href} className="dashboard-metric">
+              <span className="dashboard-metric__icon" data-tone={metric.tone} aria-hidden>
+                <DeimosIcon name={metric.icon} className="h-3.5 w-3.5" />
+              </span>
+              <span className="dashboard-metric__body">
+                <span className="dashboard-metric__label">{metric.label}</span>
+                <span
+                  className="dashboard-metric__value"
+                  data-tone={metric.tone === "attention" ? "attention" : undefined}
+                >
+                  {metric.value.toLocaleString()}
+                </span>
+              </span>
+              <DeimosIcon name="chevron-right" className="dashboard-metric__chevron" />
+            </Link>
+          ))}
         </section>
 
-        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[216px_minmax(0,760px)] xl:grid-cols-[216px_minmax(0,760px)_352px]">
-          <aside className="hidden min-h-[744px] surface-card p-4 lg:block">
-            <p className="font-code text-[10px] font-medium text-[var(--ink-faint)]">{t("market.discoverBy")}</p>
-            <button
-              type="button"
-              onClick={() => updateParams("", initialSort)}
-              className="mt-3 flex h-[34px] w-full items-center justify-between rounded-[var(--radius-btn)] bg-[var(--primary-soft)] px-3 text-left text-[12px] font-semibold text-[var(--primary)]"
-            >
-              <span>{t("market.allIdeas")}</span>
-              <span>{stats.ideaCount.toLocaleString()}</span>
-            </button>
-
-            <div className="mt-2">
+        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_280px]">
+          <aside className="hidden surface-card overflow-hidden lg:block">
+            <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+              <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.discoverBy")}</p>
+            </div>
+            <div className="p-2">
+              <button
+                type="button"
+                onClick={() => updateParams("", initialSort)}
+                className="flex h-8 w-full items-center justify-between rounded-[var(--radius-btn)] bg-[var(--primary-soft)] px-2.5 text-left text-[12px] font-semibold text-[var(--primary)]"
+              >
+                <span>{t("market.allIdeas")}</span>
+                <span className="font-mono tabular-nums">{stats.ideaCount.toLocaleString()}</span>
+              </button>
               {categoryGroups.map((category) => (
                 <button
                   key={category.label}
                   type="button"
                   onClick={() => router.push(`/search?q=${encodeURIComponent(category.label)}`)}
-                  className="flex h-[29px] w-full items-center justify-between text-left text-[12px] text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                  className="flex h-8 w-full items-center justify-between rounded-[var(--radius-btn)] px-2.5 text-left text-[12px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
                 >
                   <span className="truncate">{category.label}</span>
-                  <span className="font-code text-[11px]">{category.count}</span>
+                  <span className="font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
+                    {category.count}
+                  </span>
                 </button>
               ))}
             </div>
 
-            <div className="my-3 border-t border-[var(--rule)]" />
-            <p className="font-code text-[10px] font-medium text-[var(--ink-faint)]">{t("market.lifecycle")}</p>
-            <div className="mt-3 space-y-2 text-[12px] text-[var(--ink-soft)]">
-              <p>● {t("market.active")}&nbsp;&nbsp;{lifecycleCounts.active}</p>
-              <p>◐ {t("market.implemented")}&nbsp;&nbsp;{lifecycleCounts.implemented}</p>
-              <p>○ {t("market.archived")}&nbsp;&nbsp;{lifecycleCounts.archived}</p>
-              <p>× {t("market.buried")}&nbsp;&nbsp;{lifecycleCounts.buried}</p>
+            <div className="border-t border-[var(--rule)] px-3.5 py-3">
+              <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.lifecycle")}</p>
+              <div className="space-y-1.5 text-[12px] text-[var(--ink-soft)]">
+                <p className="flex justify-between gap-2">
+                  <span>{t("market.active")}</span>
+                  <span className="font-mono tabular-nums">{lifecycleCounts.active}</span>
+                </p>
+                <p className="flex justify-between gap-2">
+                  <span>{t("market.implemented")}</span>
+                  <span className="font-mono tabular-nums">{lifecycleCounts.implemented}</span>
+                </p>
+                <p className="flex justify-between gap-2">
+                  <span>{t("market.archived")}</span>
+                  <span className="font-mono tabular-nums">{lifecycleCounts.archived}</span>
+                </p>
+                <p className="flex justify-between gap-2">
+                  <span>{t("market.buried")}</span>
+                  <span className="font-mono tabular-nums">{lifecycleCounts.buried}</span>
+                </p>
+              </div>
             </div>
 
-            <div className="my-4 border-t border-[var(--rule)]" />
-            <p className="font-code text-[10px] font-medium text-[var(--ink-faint)]">{t("market.intentSignals")}</p>
-            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-2">
-              {hotTags.slice(0, 5).map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
-                  className="font-code text-[10px] text-[var(--accent-link)] hover:underline"
-                >
-                  #{tag}
-                </button>
-              ))}
+            <div className="border-t border-[var(--rule)] px-3.5 py-3">
+              <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.intentSignals")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {hotTags.slice(0, 5).map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
+                    className="rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 py-0.5 text-[11px] text-[var(--accent-link)] hover:border-[var(--accent-link)]"
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
             </div>
           </aside>
 
           <main className="min-w-0">
-            <div className="flex h-10 items-center gap-5 rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] px-4">
+            <div className="flex h-10 items-center gap-4 overflow-x-auto rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] px-3.5">
               {statusFilters.map((filter) => (
                 <button
                   key={filter.value || "hot"}
                   type="button"
                   onClick={() => updateParams(filter.value, initialSort)}
-                  className={`text-[12px] ${
+                  className={`shrink-0 text-[12px] ${
                     initialStatus === filter.value
                       ? "font-semibold text-[var(--ink)]"
                       : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
@@ -169,33 +237,34 @@ export function IdeasMarketplace({
                   {t(filter.key)}
                 </button>
               ))}
-
-              <div className="ml-auto flex items-center gap-4">
-                <span className="hidden text-[12px] text-[var(--ink-soft)] sm:inline">
-                  {t("market.status")}: {initialStatus || t("market.all")}
-                </span>
-                <label className="flex items-center gap-1.5 text-[12px] text-[var(--ink-soft)]">
-                  {t("market.sort")}:
-                  <select
-                    value={initialSort}
-                    onChange={(event) => updateParams(initialStatus, event.target.value)}
-                    className="border-0 bg-transparent py-0 pr-5 font-code text-[11px] text-[var(--ink-soft)] shadow-none focus:ring-0"
-                  >
-                    {sortOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {t(option.key)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+              <label className="ml-auto flex shrink-0 items-center gap-1.5 text-[12px] text-[var(--ink-soft)]">
+                {t("market.sort")}:
+                <select
+                  value={initialSort}
+                  onChange={(event) => updateParams(initialStatus, event.target.value)}
+                  className="border-0 bg-transparent py-0 pr-5 text-[12px] text-[var(--ink-soft)] shadow-none focus:ring-0"
+                >
+                  {sortOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {t(option.key)}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             {ideas.length === 0 ? (
-              <div className="mt-3 surface-card p-12 text-center">
-                <p className="font-display text-[18px] font-semibold text-[var(--ink)]">{t("market.noIdeas")}</p>
-                <p className="mt-2 text-[13px] text-[var(--ink-faint)]">{t("market.noIdeasHint")}</p>
-                <Link href="/ideas/new" className="btn-primary mt-5">+ {t("market.publish")}</Link>
+              <div className="mt-3 flex items-start gap-3 surface-card px-4 py-5">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--ink-faint)]">
+                  <DeimosIcon name="document" className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-[13px] font-medium text-[var(--ink)]">{t("market.noIdeas")}</p>
+                  <p className="mt-1 text-[12px] text-[var(--ink-faint)]">{t("market.noIdeasHint")}</p>
+                  <Link href="/ideas/new" className="btn-primary btn-sm mt-3">
+                    {t("market.publish")}
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="mt-3 space-y-3">
@@ -207,51 +276,52 @@ export function IdeasMarketplace({
           </main>
 
           <aside className="hidden space-y-3 xl:block">
-            <section className="surface-card p-4">
-              <p className="font-code text-[10px] font-medium tracking-[0.1em] text-[var(--ink)]">{t("market.signals")}</p>
-              <dl className="mt-7 space-y-2 font-code text-[11px] text-[var(--ink)]">
-                <div className="flex gap-3"><dt>{stats.ideaCount.toLocaleString()}</dt><dd>{t("market.ideasIndexed")}</dd></div>
-                <div className="flex gap-3"><dt>{lifecycleCounts.implemented}</dt><dd>{t("market.implemented")}</dd></div>
-                <div className="flex gap-3"><dt>{stats.todayNew}</dt><dd>{t("market.ideasToday")}</dd></div>
-                <div className="flex gap-3"><dt>{stats.agentCount.toLocaleString()}</dt><dd>{t("market.activeAgents")}</dd></div>
-              </dl>
-            </section>
-
-            <section className="surface-card p-4">
-              <p className="font-code text-[10px] font-medium tracking-[0.1em] text-[var(--ink)]">{t("market.trending")}</p>
-              <div className="mt-7 space-y-3">
-                {(trending.length > 0 ? trending.slice(0, 3) : ideas.slice(0, 3)).map((item, index) => (
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+                <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.trending")}</p>
+              </div>
+              <div>
+                {(trending.length > 0 ? trending.slice(0, 5) : ideas.slice(0, 5)).map((item, index) => (
                   <Link
                     key={item.id}
                     href={`/ideas/${item.id}`}
-                    className="grid grid-cols-[20px_1fr_auto] gap-2 font-code text-[10px] text-[var(--ink-soft)] hover:text-[var(--accent-link)]"
+                    className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-2 border-b border-[var(--rule)] px-3.5 py-2.5 text-[12px] last:border-0 hover:bg-[var(--bg-subtle)]"
                   >
-                    <span>0{index + 1}</span>
-                    <span className="truncate">{item.title}</span>
-                    <span>+{Math.max(1, "score" in item ? Math.round(item.score) : item.flower_count || 1)}%</span>
+                    <span className="font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="truncate text-[var(--ink)]">{item.title}</span>
+                    <span className="font-mono text-[11px] tabular-nums text-[var(--accent-link)]">
+                      +{Math.max(1, "score" in item ? Math.round(item.score) : item.flower_count || 1)}
+                    </span>
                   </Link>
                 ))}
               </div>
-              <p className="mt-7 font-code text-[10px] leading-5 text-[var(--ink-soft)]">
+              <p className="border-t border-[var(--rule)] px-3.5 py-2.5 text-[11px] leading-5 text-[var(--ink-faint)]">
                 {t("market.signalExplain")}
               </p>
             </section>
 
-            <section className="callout-link p-4">
-              <p className="font-code text-[10px] font-medium text-[var(--accent-link)]">{t("market.agentOperate")}</p>
-              <p className="mt-7 font-code text-[10px] leading-5 text-[var(--accent-link)]">
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-3.5">
+                <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.agentOperate")}</p>
+                <Link href="/docs/mcp" className="text-[12px] text-[var(--accent-link)] hover:underline">
+                  {t("market.connectAgent")}
+                </Link>
+              </div>
+              <p className="px-3.5 py-3 text-[12px] leading-5 text-[var(--ink-soft)]">
                 {t("market.agentOperateHint")}
               </p>
-              <Link href="/docs/mcp" className="mt-6 inline-flex font-code text-[10px] font-medium text-[var(--accent-link)] hover:underline">
-                {t("market.connectAgent")}&nbsp;&nbsp;→
-              </Link>
+              {agents.length > 0 && (
+                <p className="border-t border-[var(--rule)] px-3.5 py-2.5 text-[11px] text-[var(--ink-faint)]">
+                  {t("market.liveExecutors")} · {agents.slice(0, 3).map((agent) => agent.name).join(" · ")}
+                </p>
+              )}
             </section>
 
-            {agents.length > 0 && (
-              <p className="px-1 font-code text-[9px] text-[var(--ink-faint)]">
-                {t("market.liveExecutors")}&nbsp;&nbsp;{agents.slice(0, 3).map((agent) => agent.name).join(" · ")}
-              </p>
-            )}
+            <p className="px-1 text-[11px] text-[var(--ink-faint)]">
+              {total.toLocaleString()} {t("market.semanticMatches")}
+            </p>
           </aside>
         </div>
       </div>

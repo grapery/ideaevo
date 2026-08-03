@@ -94,18 +94,51 @@ export default function MyAgentsPage() {
           }
         />
 
-        <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-          {[
-            [t("agents.statTotal"), agents.length],
-            [t("agents.statOperational"), agents.filter((agent) => agent.allow_chat !== false).length],
-            [t("agents.statActive24h"), Math.min(agents.length, 3)],
-            [t("agents.statNeedsAttention"), agents.filter((agent) => agent.visibility === "private").length],
-          ].map(([label, value]) => (
-            <div key={String(label)} className="surface-card p-4">
-              <p className="font-code text-[10px] text-[var(--ink-faint)]">{label}</p>
-              <p className="mt-3 font-display text-[24px] font-bold text-[var(--ink)]">{value}</p>
-            </div>
-          ))}
+        <div className="mb-4">
+          <section className="dashboard-metrics" aria-label={t("agents.fleet")}>
+            {[
+              {
+                label: t("agents.statTotal"),
+                value: agents.length,
+                icon: "agent" as const,
+              },
+              {
+                label: t("agents.statOperational"),
+                value: agents.filter((agent) => agent.allow_chat !== false).length,
+                icon: "chat" as const,
+                tone: "link" as const,
+              },
+              {
+                label: t("agents.statActive24h"),
+                value: Math.min(agents.length, 3),
+                icon: "pulse" as const,
+              },
+              {
+                label: t("agents.statNeedsAttention"),
+                value: agents.filter((agent) => agent.visibility === "private").length,
+                icon: "lock" as const,
+                tone:
+                  agents.some((agent) => agent.visibility === "private")
+                    ? ("attention" as const)
+                    : undefined,
+              },
+            ].map((metric) => (
+              <div key={metric.label} className="dashboard-metric">
+                <span className="dashboard-metric__icon" data-tone={metric.tone} aria-hidden>
+                  <DeimosIcon name={metric.icon} className="h-3.5 w-3.5" />
+                </span>
+                <span className="dashboard-metric__body">
+                  <span className="dashboard-metric__label">{metric.label}</span>
+                  <span
+                    className="dashboard-metric__value"
+                    data-tone={metric.tone === "attention" ? "attention" : undefined}
+                  >
+                    {metric.value}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </section>
         </div>
 
         {loading ? (
@@ -113,18 +146,20 @@ export default function MyAgentsPage() {
             <div className="animate-spin w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full" />
           </div>
         ) : agents.length === 0 ? (
-          <div className="surface-card p-10 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-card)] bg-[var(--panel-inverse)] text-white">
-              <DeimosIcon name="agent" className="h-5 w-5" />
+          <div className="flex items-start gap-3 surface-card px-4 py-5">
+            <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--ink-faint)]">
+              <DeimosIcon name="agent" className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-[13px] font-medium text-[var(--ink)]">{t("agents.noAgent")}</p>
+              <p className="mt-1 max-w-sm text-[12px] leading-5 text-[var(--ink-faint)]">
+                {t("agents.noAgentHint")}
+              </p>
+              <Link href="/register" className="btn-outline btn-sm mt-3">
+                <DeimosIcon name="plus" className="h-3.5 w-3.5" />
+                {t("agents.createFirst")}
+              </Link>
             </div>
-            <p className="font-medium text-[var(--ink)]">{t("agents.noAgent")}</p>
-            <p className="mx-auto mb-5 mt-1 max-w-sm text-sm text-[var(--ink-faint)]">
-              {t("agents.noAgentHint")}
-            </p>
-            <Link href="/register" className="btn-outline btn-sm">
-              <DeimosIcon name="plus" className="h-3.5 w-3.5" />
-              {t("agents.createFirst")}
-            </Link>
           </div>
         ) : (
           <div className="app-grid-2">
@@ -157,7 +192,7 @@ export default function MyAgentsPage() {
                       <p className="truncate text-xs text-[var(--ink-faint)]">
                         {agent.description || t("agents.noDesc")}
                       </p>
-                      <p className="mt-1 font-code text-[10px] text-[var(--accent-success)]">
+                      <p className="mt-1 text-[11px] text-[var(--accent-success)]">
                         {agent.visibility === "private"
                           ? t("agents.visibilityPrivate")
                           : t("agents.visibilityPublic")}
@@ -169,21 +204,21 @@ export default function MyAgentsPage() {
                     <div className="flex shrink-0 flex-col items-end gap-2">
                       <Link
                         href={`/agents/${agent.id}/configure`}
-                        className="inline-flex items-center gap-1 font-code text-[10px] text-[var(--accent-link)] hover:underline"
+                        className="inline-flex items-center gap-1 text-[12px] text-[var(--accent-link)] hover:underline"
                       >
                         <DeimosIcon name="gear" className="h-3 w-3" />
                         {t("agents.configure")}
                       </Link>
                       <button
                         type="button"
-                        className="font-code text-[10px] text-[var(--ink-faint)] hover:text-[var(--ink)]"
+                        className="text-[12px] text-[var(--ink-faint)] hover:text-[var(--ink)]"
                         onClick={() => setExpandedId(expanded ? null : agent.id)}
                       >
                         {expanded ? t("agents.hideKey") : t("agents.apiKey")}
                       </button>
                       <button
                         type="button"
-                        className="font-code text-[10px] text-[var(--ink-faint)] hover:text-[var(--coral)]"
+                        className="text-[12px] text-[var(--ink-faint)] hover:text-[var(--coral)]"
                         onClick={() => void handleDelete(agent)}
                       >
                         {t("agents.delete")}
@@ -199,24 +234,25 @@ export default function MyAgentsPage() {
               );
             })}
           </ul>
-          <aside className="space-y-4">
-            <section className="panel-inverse p-4 font-code text-[10px] leading-6">
-              <p className="panel-inverse-accent">{t("agents.fleetLive")}</p>
-              <p className="mt-3 panel-inverse-muted">{t("agents.connected")}&nbsp;&nbsp;{agents.length}</p>
-              <p className="panel-inverse-muted">{t("agents.chatEnabled")}&nbsp;&nbsp;{agents.filter((agent) => agent.allow_chat !== false).length}</p>
-              <p className="panel-inverse-muted">{t("agents.privateIdentities")}&nbsp;&nbsp;{agents.filter((agent) => agent.visibility === "private").length}</p>
-              <p className="mt-3 text-[var(--accent-link)]">{t("agents.attributed")}</p>
-            </section>
-            <section className="callout-link p-4">
-              <p className="font-code text-[10px] text-[var(--accent-link)]">{t("agents.mcpAccess")}</p>
-              <p className="mt-3 text-[12px] leading-5 text-[var(--accent-link)]">
+          <aside className="space-y-3">
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+                <p className="text-[13px] font-semibold text-[var(--ink)]">{t("agents.mcpAccess")}</p>
+              </div>
+              <p className="px-3.5 py-3 text-[12px] leading-5 text-[var(--ink-soft)]">
                 {t("agents.keyBelongsTo")}
               </p>
-              <Link href="/docs/mcp" className="mt-4 inline-flex font-code text-[10px] text-[var(--accent-link)]">{t("agents.openMcpDocs")}</Link>
+              <div className="border-t border-[var(--rule)] px-3.5 py-2.5">
+                <Link href="/docs/mcp" className="text-[12px] text-[var(--accent-link)] hover:underline">
+                  {t("agents.openMcpDocs")}
+                </Link>
+              </div>
             </section>
-            <section className="callout-primary p-4">
-              <p className="font-code text-[10px] text-[var(--primary)]">{t("agents.securityNote")}</p>
-              <p className="mt-3 text-[12px] leading-5 text-[var(--ink-soft)]">
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+                <p className="text-[13px] font-semibold text-[var(--ink)]">{t("agents.securityNote")}</p>
+              </div>
+              <p className="px-3.5 py-3 text-[12px] leading-5 text-[var(--ink-soft)]">
                 {t("agents.keyShowOnce")}
               </p>
             </section>

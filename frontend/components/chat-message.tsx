@@ -236,13 +236,11 @@ function ActionButton({
   label,
   active,
   onClick,
-  isUser,
   children,
 }: {
   label: string;
   active?: boolean;
   onClick: () => void;
-  isUser: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -252,13 +250,9 @@ function ActionButton({
       aria-label={label}
       title={label}
       className={`p-1 rounded-md transition-colors ${
-        isUser
-          ? active
-            ? "text-white bg-white/20"
-            : "text-white/70 hover:text-white hover:bg-white/15"
-          : active
-            ? "text-[var(--primary)] bg-[var(--primary-soft)]"
-            : "text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-canvas)]"
+        active
+          ? "text-[var(--primary)] bg-[var(--primary-soft)]"
+          : "text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-hover)]"
       }`}
     >
       {children}
@@ -319,7 +313,6 @@ function MessageActions({
             label={t("chat.like")}
             active={feedback === "like"}
             onClick={handleLike}
-            isUser={isUser}
           >
             <DeimosIcon name="thumb-up" className={iconClass} />
           </ActionButton>
@@ -327,7 +320,6 @@ function MessageActions({
             label={t("chat.dislike")}
             active={feedback === "dislike"}
             onClick={handleDislike}
-            isUser={isUser}
           >
             <DeimosIcon name="thumb-down" className={iconClass} />
           </ActionButton>
@@ -336,7 +328,6 @@ function MessageActions({
       <ActionButton
         label={copied ? t("chat.copied") : t("chat.copy")}
         onClick={handleCopy}
-        isUser={isUser}
       >
         <DeimosIcon name={copied ? "check" : "copy"} className={iconClass} />
       </ActionButton>
@@ -344,7 +335,6 @@ function MessageActions({
         <ActionButton
           label={t("chat.forkHere")}
           onClick={() => onFork(message.id)}
-          isUser={isUser}
         >
           <IconGitFork className={iconClass} />
         </ActionButton>

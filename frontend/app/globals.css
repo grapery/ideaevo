@@ -191,48 +191,12 @@ body {
   }
 }
 
-/* Agent workbench: operational dark surface from Ardot boards 12 / 31. */
+/* Agent workbench: inherit site light tokens; only chat bubble surfaces are scoped. */
 .chat-workbench {
-  --bg-canvas: #0f1115;
-  --bg-surface: #15181d;
-  --bg-subtle: #1c2129;
-  --bg-hover: #2a313c;
-  --title: #f2f4f7;
-  --body: #d5d9e1;
-  --text-secondary: #c2c8d2;
-  --text-muted: #8b949e;
-  --ink: #f2f4f7;
-  --ink-soft: #c2c8d2;
-  --ink-faint: #8b949e;
-  --rule: #343b46;
-  --rule-light: #292f38;
-  --rule-strong: #4a5360;
-  --border: var(--rule);
-  --divider: #2c323b;
-  /* Keep design-system orange for strong CTAs (new chat / send). */
-  --primary: #ff8a00;
-  --primary-hover: #e67e00;
-  --primary-soft: #2a1f12;
-  --primary-light: #3d2a14;
-  --accent-link: #6b8fef;
-  --accent-link-hover: #89a6f5;
-  --accent-link-soft: #1a2338;
-  --accent-success: #6bcf7a;
-  --accent-success-soft: #15231a;
-  --accent-success-light: #1a2e20;
-  --accent-warning: #f0706c;
-  --accent-warning-soft: #2a1818;
-  --coral: var(--accent-warning);
-  --coral-soft: var(--accent-warning-soft);
-  --teal: var(--accent-success);
-  --teal-soft: var(--accent-success-soft);
-  --input-bg: #1a1e24;
-  --chat-user-bg: #3a5bb8;
-  --chat-user-border: #5474d0;
-  --chat-assistant-bg: #1e2430;
-  --chat-assistant-border: #323a48;
-  --avatar-ring: rgba(255, 255, 255, 0.14);
-  --avatar-frame: #3d4654;
+  --chat-user-bg: var(--accent-link);
+  --chat-user-border: var(--accent-link-hover);
+  --chat-assistant-bg: var(--bg-surface);
+  --chat-assistant-border: var(--rule);
   background: var(--bg-canvas);
   color: var(--body);
   font-size: 15px;
@@ -240,16 +204,12 @@ body {
 
 .chat-workbench input,
 .chat-workbench textarea {
-  color: var(--title);
-  caret-color: var(--accent-link);
+  color: var(--ink);
+  caret-color: var(--primary);
 }
 
 .chat-workbench ::placeholder {
   color: var(--text-muted);
-}
-
-.chat-workbench ::-webkit-scrollbar-thumb {
-  background: var(--rule-strong);
 }
 
 body:has(.chat-shell) > header,
@@ -553,10 +513,11 @@ a {
 
 .page-eyebrow {
   margin-bottom: 0.25rem;
-  font-family: var(--font-mono);
-  font-size: 10px;
+  font-family: var(--font-sans);
+  font-size: 11px;
   font-weight: 500;
-  color: var(--accent-link);
+  letter-spacing: 0.01em;
+  color: var(--ink-faint);
 }
 
 /* 文档/营销大标题（about / docs）—— 保持较大字号 */
@@ -761,6 +722,147 @@ a {
   font-weight: 600;
   color: var(--ink);
   font-size: 13px;
+}
+
+/* Dashboard metric strip — wireframe cells with icon + tabular value */
+.dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+}
+@media (min-width: 640px) {
+  .dashboard-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.dashboard-metric {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 12px 14px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.dashboard-metric:hover {
+  background: var(--bg-subtle);
+}
+.dashboard-metric:focus-visible {
+  outline: 2px solid var(--accent-link);
+  outline-offset: -2px;
+  z-index: 1;
+}
+/* Hairline cell rules: mobile 2×2, desktop 1×4 */
+.dashboard-metric:nth-child(odd) {
+  border-right: 1px solid var(--rule);
+}
+.dashboard-metric:nth-child(n + 3) {
+  border-top: 1px solid var(--rule);
+}
+@media (min-width: 640px) {
+  .dashboard-metric {
+    border-right: 1px solid var(--rule);
+    border-top: none;
+  }
+  .dashboard-metric:nth-child(4n) {
+    border-right: none;
+  }
+}
+.dashboard-metric__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-btn);
+  background: var(--bg-subtle);
+  color: var(--ink-soft);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.dashboard-metric:hover .dashboard-metric__icon {
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+.dashboard-metric__icon[data-tone="attention"] {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--rule));
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.dashboard-metric__icon[data-tone="link"] {
+  border-color: color-mix(in srgb, var(--accent-link) 30%, var(--rule));
+  background: var(--accent-link-soft);
+  color: var(--accent-link);
+}
+.dashboard-metric__body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+.dashboard-metric__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: var(--ink-faint);
+}
+.dashboard-metric__value {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.dashboard-metric__value[data-tone="attention"] {
+  color: var(--primary);
+}
+.dashboard-metric__chevron {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  color: var(--ink-disabled);
+  opacity: 0;
+  transform: translateX(-2px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.dashboard-metric:hover .dashboard-metric__chevron {
+  opacity: 1;
+  transform: translateX(0);
+  color: var(--ink-faint);
+}
+@media (min-width: 640px) {
+  .dashboard-metric {
+    padding: 14px 16px;
+    min-height: 68px;
+    gap: 12px;
+  }
+  .dashboard-metric__icon {
+    width: 30px;
+    height: 30px;
+  }
+  .dashboard-metric__value {
+    font-size: 22px;
+  }
 }
 
 /* ============ 表单控件 (Form Controls, ardot) ============ */

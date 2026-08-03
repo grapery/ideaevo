@@ -258,67 +258,67 @@ export default function BillingPage() {
 
           {/* 当前会员状态 */}
           {membership && (
-            <div className="mb-8 overflow-hidden rounded-[var(--radius-card)] bg-[var(--ink)] p-5 text-white sm:p-6">
-              <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="mb-6 overflow-hidden rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] shadow-[var(--shadow)]">
+              <div className="flex items-center justify-between gap-3 border-b border-[var(--rule)] px-4 py-3">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/55">
+                  <p className="text-[11px] font-medium text-[var(--ink-faint)]">
                     {t("billing.sharedQuota")}
                   </p>
-                  <h2 className="mt-1 text-lg font-semibold">
+                  <h2 className="text-[14px] font-semibold text-[var(--ink)]">
                     {t("billing.dailyQuota")}
                   </h2>
                 </div>
-                <span className="rounded-full border border-white/20 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-white/80">
+                <span className="rounded-[var(--radius-pill)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-2.5 py-1 text-[11px] font-medium text-[var(--ink-soft)]">
                   {membership.is_pro
                     ? t("billing.proMember")
                     : t("billing.freeUser")}
                 </span>
               </div>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-[1.35fr_1fr_1fr]">
-                <div>
+              <div className="grid grid-cols-1 gap-0 sm:grid-cols-[1.35fr_1fr_1fr]">
+                <div className="px-4 py-4">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-2xl font-semibold">
+                    <span className="font-mono text-[22px] font-semibold tabular-nums tracking-[-0.03em] text-[var(--ink)]">
                       {formatTokens(membership.daily_quota.tokens_left, locale, t("common.wanUnit"))}
                     </span>
-                    <span className="font-mono text-[10px] text-white/55">
+                    <span className="font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
                       {quotaPercent}% {t("billing.remaining")}
                     </span>
                   </div>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15">
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
                     <div
-                      className="h-full rounded-full bg-[var(--panel-inverse-accent)]"
+                      className="h-full rounded-full bg-[var(--primary)]"
                       style={{ width: `${quotaPercent}%` }}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-white/55">
+                  <p className="mt-2 text-[12px] text-[var(--ink-faint)]">
                     {t("billing.dailyLimit")}{" "}
                     {formatTokens(membership.daily_quota.tokens_limit, locale, t("common.wanUnit"))}{" "}
                     {t("billing.tokenUnit")}
                   </p>
                 </div>
-                <div className="border-t border-white/15 pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
-                  <div className="text-xl font-semibold">
+                <div className="border-t border-[var(--rule)] px-4 py-4 sm:border-l sm:border-t-0">
+                  <div className="font-mono text-[18px] font-semibold tabular-nums text-[var(--ink)]">
                     {membership.agent_count}
-                    <span className="text-sm font-normal text-white/45">
+                    <span className="text-[12px] font-normal text-[var(--ink-faint)]">
                       {" "}
                       / {membership.max_agents}
                     </span>
                   </div>
-                  <div className="mt-1 text-xs text-white/55">
+                  <div className="mt-1 text-[12px] text-[var(--ink-faint)]">
                     {t("billing.agentsCreated")}
                   </div>
                 </div>
-                <div className="border-t border-white/15 pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
-                  <div className="flex items-center gap-2 text-xl font-semibold">
+                <div className="border-t border-[var(--rule)] px-4 py-4 sm:border-l sm:border-t-0">
+                  <div className="flex items-center gap-2 text-[15px] font-semibold text-[var(--ink)]">
                     <DeimosIcon
                       name="tool"
-                      className="h-4 w-4 text-[var(--panel-inverse-accent)]"
+                      className={`h-4 w-4 ${membership.is_pro ? "text-[var(--accent-success)]" : "text-[var(--ink-faint)]"}`}
                     />
                     {membership.is_pro
                       ? t("billing.enabled")
                       : t("billing.restricted")}
                   </div>
-                  <div className="mt-1 text-xs text-white/55">
+                  <div className="mt-1 text-[12px] text-[var(--ink-faint)]">
                     {t("billing.mcpAccess")}
                   </div>
                 </div>

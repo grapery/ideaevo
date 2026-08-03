@@ -6,15 +6,19 @@ import { DeimosIcon, type DeimosIconName } from "./deimos-icon";
 import { useI18n } from "@/lib/i18n/provider";
 
 type SystemPageHeaderProps = {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
-  description: string;
-  icon: DeimosIconName;
+  description?: string;
+  icon?: DeimosIconName;
   backHref?: string;
   backLabel?: string;
   actions?: ReactNode;
 };
 
+/**
+ * Operational page header — dense identity row aligned with /dashboard.
+ * Eyebrow is optional (marketing pages); app pages should prefer title + short desc.
+ */
 export function SystemPageHeader({
   eyebrow,
   title,
@@ -27,27 +31,41 @@ export function SystemPageHeader({
   const { t } = useI18n();
   const resolvedBackLabel = backLabel ?? t("common.back");
   return (
-    <div className="mb-6">
+    <header className="mb-4 border-b border-[var(--rule)] pb-4">
       {backHref && (
         <Link
           href={backHref}
-          className="mb-4 inline-flex items-center gap-1.5 font-code text-[10px] text-[var(--ink-faint)] hover:text-[var(--ink)]"
+          className="mb-3 inline-flex items-center gap-1.5 text-[12px] text-[var(--ink-faint)] hover:text-[var(--ink)]"
         >
           <DeimosIcon name="back" className="h-3.5 w-3.5" />
           {resolvedBackLabel}
         </Link>
       )}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <DeimosIcon name={icon} className="mt-1 h-5 w-5 shrink-0 text-[var(--accent-link)]" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {icon && (
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--ink-soft)]">
+              <DeimosIcon name={icon} className="h-4 w-4" />
+            </span>
+          )}
           <div className="min-w-0">
-            <p className="page-eyebrow">{eyebrow}</p>
-            <h1 className="page-heading">{title}</h1>
-            <p className="page-heading-desc">{description}</p>
+            {eyebrow && (
+              <p className="mb-0.5 text-[11px] font-medium tracking-[0.01em] text-[var(--ink-faint)]">
+                {eyebrow}
+              </p>
+            )}
+            <h1 className="truncate text-[18px] font-semibold tracking-[-0.02em] text-[var(--ink)] sm:text-[20px]">
+              {title}
+            </h1>
+            {description && (
+              <p className="mt-0.5 text-[12px] leading-5 text-[var(--ink-faint)]">
+                {description}
+              </p>
+            )}
           </div>
         </div>
-        {actions && <div className="shrink-0 sm:pb-1">{actions}</div>}
+        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
       </div>
-    </div>
+    </header>
   );
 }

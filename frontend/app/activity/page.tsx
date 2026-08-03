@@ -1,5 +1,6 @@
 import { AppLink as Link } from "@/components/app-link";
 import { IconGitFork, IconHeart, IconWish } from "@/components/icons";
+import { DeimosIcon } from "@/components/deimos-icon";
 import { fetchPublic } from "@/lib/server-fetch";
 import { ActivityFeedTabs } from "@/components/activity-feed-tabs";
 import { getServerI18n } from "@/lib/i18n/server";
@@ -52,28 +53,6 @@ async function getActivityFeed(): Promise<ActivityFeed> {
   }
 }
 
-function StatCard({
-  label,
-  value,
-  trend,
-}: {
-  label: string;
-  value: number | string;
-  trend?: string;
-}) {
-  return (
-    <div className="surface-card p-4">
-      <p className="text-[12px] font-medium text-[var(--ink-faint)]">{label}</p>
-      <p className="mt-2 font-display text-[28px] font-bold leading-none tabular-nums text-[var(--ink)]">
-        {value}
-      </p>
-      {trend && (
-        <p className="mt-2 text-[12px] text-[var(--accent-link)]">{trend}</p>
-      )}
-    </div>
-  );
-}
-
 function RankingCard({
   title,
   ideas,
@@ -87,42 +66,39 @@ function RankingCard({
   icon: React.ComponentType<{ className?: string }>;
   t: (key: TranslationKey) => string;
 }) {
-  const metricLabelKey: TranslationKey =
-    metric === "like_count"
-      ? "activity.metricLike"
-      : metric === "fork_count"
-        ? "activity.metricFork"
-        : "activity.metricWish";
   return (
-    <div className="surface-card p-4">
-      <h3 className="flex items-center gap-2 text-[13px] font-semibold text-[var(--ink)]">
-        <Icon className="h-4 w-4" />
-        {title}
-      </h3>
+    <div className="surface-card overflow-hidden">
+      <div className="flex h-10 items-center gap-2 border-b border-[var(--rule)] px-3.5">
+        <Icon className="h-3.5 w-3.5 text-[var(--ink-soft)]" />
+        <h3 className="text-[13px] font-semibold text-[var(--ink)]">{title}</h3>
+      </div>
       {ideas.length === 0 ? (
-        <p className="mt-3 text-sm text-[var(--ink-faint)]">{t("common.noData")}</p>
+        <p className="px-3.5 py-4 text-[12px] text-[var(--ink-faint)]">{t("common.noData")}</p>
       ) : (
-        <ol className="mt-4 space-y-3">
+        <ol>
           {ideas.map((idea, i) => {
             const metricValue =
               metric === "wish_count"
                 ? idea.wish_count ?? idea.flower_count
                 : idea[metric];
             return (
-            <li key={idea.id} className="flex items-center gap-3">
-              <span className="w-5 shrink-0 font-code text-[11px] text-[var(--ink-faint)]">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <Link
-                href={`/ideas/${idea.id}`}
-                className="min-w-0 flex-1 truncate text-[13px] text-[var(--ink)] hover:text-[var(--primary)]"
+              <li
+                key={idea.id}
+                className="flex items-center gap-2.5 border-b border-[var(--rule)] px-3.5 py-2.5 last:border-0"
               >
-                {idea.title}
-              </Link>
-              <span className="shrink-0 text-[11px] tabular-nums text-[var(--ink-faint)]">
-                {metricValue} {t(metricLabelKey)}
-              </span>
-            </li>
+                <span className="w-5 shrink-0 font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <Link
+                  href={`/ideas/${idea.id}`}
+                  className="min-w-0 flex-1 truncate text-[12px] text-[var(--ink)] hover:text-[var(--accent-link)]"
+                >
+                  {idea.title}
+                </Link>
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
+                  {metricValue}
+                </span>
+              </li>
             );
           })}
         </ol>
@@ -135,72 +111,84 @@ export default async function ActivityFeedPage() {
   const { t } = await getServerI18n();
   const { stats, activities, total_ideas: totalIdeas, rankings } = await getActivityFeed();
 
+  const metrics = [
+    {
+      label: t("activity.statIdeasToday"),
+      value: stats.today_new_ideas,
+      icon: "pulse" as const,
+      tone: stats.today_new_ideas > 0 ? ("attention" as const) : undefined,
+    },
+    {
+      label: t("activity.statActiveAgents"),
+      value: stats.active_agents,
+      icon: "agent" as const,
+      tone: "link" as const,
+    },
+    {
+      label: t("activity.statActions"),
+      value: stats.total_actions,
+      icon: "activity" as const,
+    },
+    {
+      label: t("activity.statIdeasTotal"),
+      value: totalIdeas,
+      icon: "document" as const,
+    },
+  ];
+
   return (
     <div className="page-shell-full">
       <div className="page-container page-pad">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="page-eyebrow">{t("activity.eyebrow")}</p>
-            <h1 className="page-heading">{t("activity.allActivity")}</h1>
-            <p className="page-heading-desc">{t("activity.desc")}</p>
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--rule)] pb-4">
+          <div className="min-w-0">
+            <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[var(--ink)] sm:text-[20px]">
+              {t("activity.allActivity")}
+            </h1>
+            <p className="mt-0.5 text-[12px] leading-5 text-[var(--ink-faint)]">
+              {t("activity.desc")}
+            </p>
           </div>
-          <Link href="/ideas/new" className="btn-primary h-9 px-4 text-[13px]">
+          <Link href="/ideas/new" className="btn-primary btn-sm">
             {t("activity.publishIdea")}
           </Link>
-        </div>
+        </header>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard
-            label={t("activity.statIdeasToday")}
-            value={stats.today_new_ideas}
-            trend={t("activity.statIdeasTodayHint")}
-          />
-          <StatCard
-            label={t("activity.statActiveAgents")}
-            value={stats.active_agents}
-            trend={t("activity.statActiveAgentsHint")}
-          />
-          <StatCard
-            label={t("activity.statActions")}
-            value={stats.total_actions}
-            trend={t("activity.statActionsHint")}
-          />
-          <StatCard
-            label={t("activity.statIdeasTotal")}
-            value={totalIdeas}
-            trend={t("activity.statIdeasTotalHint")}
-          />
-        </div>
+        <section className="dashboard-metrics mt-4" aria-label={t("activity.signalNow")}>
+          {metrics.map((metric) => (
+            <div key={metric.label} className="dashboard-metric">
+              <span className="dashboard-metric__icon" data-tone={metric.tone} aria-hidden>
+                <DeimosIcon name={metric.icon} className="h-3.5 w-3.5" />
+              </span>
+              <span className="dashboard-metric__body">
+                <span className="dashboard-metric__label">{metric.label}</span>
+                <span
+                  className="dashboard-metric__value"
+                  data-tone={metric.tone === "attention" ? "attention" : undefined}
+                >
+                  {metric.value.toLocaleString()}
+                </span>
+              </span>
+            </div>
+          ))}
+        </section>
 
-        <div className="mt-5 app-grid-2">
-          <main className="min-w-0 surface-card p-4 sm:p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-[14px] font-semibold text-[var(--ink)]">
+        <div className="mt-4 app-grid-2">
+          <main className="min-w-0 surface-card overflow-hidden">
+            <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-4">
+              <p className="text-[13px] font-semibold text-[var(--ink)]">
                 {t("activity.streamTitle")}
               </p>
               <p className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--accent-success)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-success)]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
                 {t("activity.live")}
               </p>
             </div>
-            <ActivityFeedTabs initialGlobal={activities} />
+            <div className="p-3 sm:p-4">
+              <ActivityFeedTabs initialGlobal={activities} />
+            </div>
           </main>
 
-          <aside className="space-y-4">
-            <section className="panel-inverse p-4">
-              <p className="text-[12px] font-medium panel-inverse-accent">
-                {t("activity.signalNow")}
-              </p>
-              <p className="mt-3 text-[13px] leading-6 panel-inverse-muted">
-                {t("activity.signalIdeas", { count: stats.today_new_ideas })}
-              </p>
-              <p className="text-[13px] leading-6 panel-inverse-muted">
-                {t("activity.signalAgents", { count: stats.active_agents })}
-              </p>
-              <p className="text-[13px] leading-6 panel-inverse-muted">
-                {t("activity.signalActions", { count: stats.total_actions })}
-              </p>
-            </section>
+          <aside className="space-y-3">
             <RankingCard
               title={t("activity.hotIdeas")}
               ideas={rankings.popular}

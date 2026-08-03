@@ -289,32 +289,31 @@ export default function NotificationsPage() {
     <div className="page-shell">
       <div className="page-container page-pad">
         {/* Header */}
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-[var(--rule)] pb-5">
-          <div>
-            <p className="page-eyebrow">{t("notif.eyebrow")}</p>
-            <h1 className="page-heading">{t("notif.center")}</h1>
-            <p className="page-heading-desc">
-              {t("notif.recentHint")}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--rule)] pb-4">
+          <div className="min-w-0">
+            <h1 className="flex flex-wrap items-center gap-2 text-[18px] font-semibold tracking-[-0.02em] text-[var(--ink)] sm:text-[20px]">
+              {t("notif.center")}
               {unread > 0 && (
-                <span className="ml-2 rounded-full bg-[var(--accent-warning-soft)] px-2 py-0.5 text-xs font-medium text-[var(--accent-warning)]">
+                <span className="rounded-full bg-[var(--accent-warning-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent-warning)]">
                   {t("notif.unreadCount", { count: unread })}
                 </span>
               )}
-            </p>
+            </h1>
+            <p className="mt-0.5 text-[12px] text-[var(--ink-faint)]">{t("notif.recentHint")}</p>
           </div>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={markAllRead}
               disabled={unread === 0}
-              className="btn-default disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-default btn-sm disabled:cursor-not-allowed disabled:opacity-40"
             >
               <DeimosIcon name="check" className="h-3.5 w-3.5" />
               {t("notif.markAllRead")}
             </button>
             <Link
               href="/user/settings?section=notifications"
-              className="btn-default"
+              className="btn-default btn-sm"
             >
               <DeimosIcon name="gear" className="h-3.5 w-3.5" />
               {t("notif.settings")}
@@ -348,17 +347,18 @@ export default function NotificationsPage() {
                 {t("common.loading")}
               </div>
             ) : groups.length === 0 ? (
-              <div className="surface-card p-12 text-center text-[var(--text-muted)]">
-                <DeimosIcon
-                  name="bell"
-                  className="mx-auto mb-3 h-9 w-9 text-[var(--ink-faint)]"
-                />
-                <p className="font-medium text-[var(--ink-soft)]">
-                  {t("notif.empty")}
-                </p>
-                <p className="mt-1 text-xs">
-                  {t("notif.emptyHint")}
-                </p>
+              <div className="flex items-start gap-3 surface-card px-4 py-5">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--ink-faint)]">
+                  <DeimosIcon name="bell" className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-[13px] font-medium text-[var(--ink)]">
+                    {t("notif.empty")}
+                  </p>
+                  <p className="mt-1 text-[12px] text-[var(--ink-faint)]">
+                    {t("notif.emptyHint")}
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="space-y-6">
@@ -478,15 +478,14 @@ export default function NotificationsPage() {
           </main>
 
           {/* Summary sidebar */}
-          <aside className="w-full space-y-4">
-            <div className="panel-inverse p-5">
-              <p className="mb-2 font-code text-[10px] uppercase tracking-[0.12em] panel-inverse-accent">
-                {t("notif.liveSignals")}
-              </p>
-              <h3 className="mb-4 text-sm font-semibold">
-                {t("notif.todayOverview")}
-              </h3>
-              <div className="space-y-2 text-sm">
+          <aside className="w-full space-y-3">
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+                <h3 className="text-[13px] font-semibold text-[var(--ink)]">
+                  {t("notif.todayOverview")}
+                </h3>
+              </div>
+              <div className="divide-y divide-[var(--rule)]">
                 {(
                   [
                     {
@@ -522,19 +521,19 @@ export default function NotificationsPage() {
                 ).map((row) => (
                   <div
                     key={row.id}
-                    className="flex items-center justify-between"
+                    className="flex items-center justify-between px-3.5 py-2.5"
                   >
-                    <span className="flex items-center gap-2 text-white/55">
-                      <DeimosIcon name={row.icon} className="h-3.5 w-3.5" />
+                    <span className="flex items-center gap-2 text-[12px] text-[var(--ink-soft)]">
+                      <DeimosIcon name={row.icon} className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
                       {t(row.labelKey)}
                     </span>
-                    <span className="font-semibold text-white">
+                    <span className="font-mono text-[13px] font-semibold tabular-nums text-[var(--ink)]">
                       {row.value}
                     </span>
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
 
             <div className="surface-card p-4">
               <h3 className="flex items-center gap-1.5 text-sm font-semibold text-[var(--title)]">

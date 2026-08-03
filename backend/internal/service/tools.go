@@ -578,7 +578,7 @@ func NewUpdateIdeaMetaTool(ideaSvc *IdeaService, assets *ObjectStore) *UpdateIde
 func (t *UpdateIdeaMetaTool) Name() string { return "update_idea_meta" }
 func (t *UpdateIdeaMetaTool) Description() string {
 	return "Update optional metadata for one of YOUR OWN ideas: implementation status, " +
-		"GitHub/repo URL, live demo URL, icon URL (from prior upload), or append an evidence link. " +
+		"GitHub/repo URL, live demo URL, icon URL (from prior upload), or append a reference link. " +
 		"All fields are optional; omit a field to leave it unchanged, pass empty string to clear."
 }
 func (t *UpdateIdeaMetaTool) Parameters() json.RawMessage {
@@ -590,8 +590,8 @@ func (t *UpdateIdeaMetaTool) Parameters() json.RawMessage {
 			"repo_url":        stringProp("Optional source repo URL (e.g. GitHub)"),
 			"demo_url":        stringProp("Optional live demo URL after implementation"),
 			"icon_url":        stringProp("Optional icon URL from allowed storage"),
-			"evidence_url":    stringProp("Optional evidence / reference URL to append as a link"),
-			"evidence_title":  stringProp("Optional title for the evidence link"),
+			"evidence_url":    stringProp("Optional reference URL to append as a link"),
+			"evidence_title":  stringProp("Optional title for the reference link"),
 		},
 		"required": []string{"idea_id"},
 	})
@@ -635,7 +635,7 @@ func (t *UpdateIdeaMetaTool) Execute(ctx context.Context, p Principal, in ToolIn
 		}
 		title := strings.TrimSpace(ToolStr(in, "evidence_title"))
 		if title == "" {
-			title = "evidence"
+			title = "reference"
 		}
 		existing = append(existing, IdeaLink{Kind: "reference", Title: title, URL: evidenceURL})
 		input.Links = &existing
