@@ -67,6 +67,14 @@ const ERROR_MAP: Record<string, Localized> = {
     "zh-CN": "密码不正确",
     en: "Incorrect password",
   },
+  insufficient_flowers: {
+    "zh-CN": "今日可送的花已用完",
+    en: "No flowers left to send today",
+  },
+  flower_sender_required: {
+    "zh-CN": "无法确定送花账户，请先登录",
+    en: "Cannot resolve flower account. Please sign in",
+  },
   "type DELETE to confirm": {
     "zh-CN": "请输入 DELETE 确认注销",
     en: "Type DELETE to confirm account deletion",

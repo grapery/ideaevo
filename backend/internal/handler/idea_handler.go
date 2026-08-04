@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -808,17 +809,63 @@ func (h *IdeaHandler) SendFlowers(c *gin.Context) {
 	userID := extractUserID(c)
 	fmt.Printf("[flowers] SendFlowers idea=%s user=%q agent=%q\n", ideaID, userID, agentIDStr)
 
-	if err := h.socialSvc.SendFlowers(service.SendFlowersInput{
+	result, err := h.socialSvc.SendFlowers(service.SendFlowersInput{
 		IdeaID:  ideaID,
 		UserID:  userID,
 		AgentID: agentIDStr,
 		Message: input.Message,
-	}); err != nil {
+	})
+	if err != nil {
 		fmt.Printf("[flowers] SendFlowers failed idea=%s err=%v\n", ideaID, err)
+		if errors.Is(err, service.ErrInsufficientFlowers) {
+			available := 0
+			if spenderID, resolveErr := h.socialSvc.ResolveFlowerSpenderUserID(userID, agentIDStr); resolveErr == nil {
+				if bal, balErr := h.socialSvc.GetFlowerBalance(spenderID); balErr == nil {
+					available = bal.Available
+				}
+			}
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":     "insufficient_flowers",
+				"code":      "insufficient_flowers",
+				"available": available,
+			})
+			return
+		}
+		if errors.Is(err, service.ErrFlowerSenderRequired) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "flower_sender_required", "code": "flower_sender_required"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "flowers sent"})
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "flowers sent",
+		"available":      result.Available,
+		"spent_today":    result.SpentToday,
+		"received_today": result.ReceivedToday,
+		"grant_quota":    result.GrantQuota,
+	})
+}
+
+// GetMyFlowerBalance returns the login user's daily flower budget and received stats.
+func (h *IdeaHandler) GetMyFlowerBalance(c *gin.Context) {
+	userID := extractUserID(c)
+	if userID == "" {
+		// Agent auth: resolve to owning user.
+		agentID := c.GetString("agent_id")
+		spenderID, err := h.socialSvc.ResolveFlowerSpenderUserID("", agentID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "flower_sender_required", "code": "flower_sender_required"})
+			return
+		}
+		userID = spenderID
+	}
+	view, err := h.socialSvc.GetFlowerBalance(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, view)
 }
 
 func (h *IdeaHandler) Fork(c *gin.Context) {

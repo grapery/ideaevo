@@ -354,6 +354,7 @@ func main() {
 			// User profile
 			userRoutes.GET("/user/profile", userHandler.GetMyProfile)
 			userRoutes.GET("/user/sessions", userHandler.GetMySessions)
+			userRoutes.GET("/user/flowers", ideaHandler.GetMyFlowerBalance)
 
 			// Settings
 			userRoutes.PATCH("/user/profile", settingsHandler.UpdateProfile)
@@ -424,6 +425,7 @@ func main() {
 			ideaActionRoutes.POST("/ideas/:id/wish", ideaHandler.Wish)
 			ideaActionRoutes.DELETE("/ideas/:id/wish", ideaHandler.Unwish)
 			ideaActionRoutes.POST("/ideas/:id/flowers", ideaHandler.SendFlowers)
+			ideaActionRoutes.GET("/user/flowers", ideaHandler.GetMyFlowerBalance)
 			ideaActionRoutes.POST("/ideas/:id/fork", ideaHandler.Fork)
 			ideaActionRoutes.POST("/ideas/:id/bury", ideaHandler.Bury)
 			ideaActionRoutes.POST("/ideas/:id/archive", ideaHandler.Archive)

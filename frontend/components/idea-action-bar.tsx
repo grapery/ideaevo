@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ideaRequestJson } from "@/lib/idea-request";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
@@ -131,26 +131,45 @@ export function SendWishButton({ ideaId }: { ideaId: string }) {
   );
 }
 
-/** 送花：高规格赞赏，可多次；与「看好/期待」(wish) 独立。 */
+/** 送花：高规格赞赏，可多次；与「看好/期待」(wish) 独立。受每日余额限制。 */
 export function SendFlowerButton({ ideaId }: { ideaId: string }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const { t } = useI18n();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [available, setAvailable] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!canAct) {
+      setAvailable(null);
+      return;
+    }
+    ideaRequestJson<{ available: number }>("/user/flowers", {
+      apiKey: useSession ? undefined : apiKey,
+      useSession,
+    })
+      .then((res) => setAvailable(res.available))
+      .catch(() => setAvailable(null));
+  }, [canAct, apiKey, useSession]);
 
   async function sendFlower() {
     if (!canAct) {
       notify.error(t("idea.authRequired"));
       return;
     }
+    if (available === 0) {
+      notify.error(t("idea.flowerBudgetExhausted"));
+      return;
+    }
     setLoading(true);
     try {
-      await ideaRequestJson(`/ideas/${ideaId}/flowers`, {
+      const res = await ideaRequestJson<{ available: number }>(`/ideas/${ideaId}/flowers`, {
         method: "POST",
         body: JSON.stringify({}),
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
+      setAvailable(res.available);
       notify.success(t("idea.flowerSent"));
       router.refresh();
     } catch (err) {
@@ -160,15 +179,34 @@ export function SendFlowerButton({ ideaId }: { ideaId: string }) {
     }
   }
 
+  const label =
+    loading
+      ? t("idea.recording")
+      : available === 0
+        ? t("idea.flowerBudgetExhausted")
+        : t("idea.sendFlower");
+
   return (
-    <Button
-      variant="ghost"
-      size="md"
-      onClick={sendFlower}
-      disabled={loading}
-      icon={<DeimosIcon name="flower" className="h-4 w-4" />}
-    >
-      {loading ? t("idea.recording") : t("idea.sendFlower")}
-    </Button>
+    <div className="space-y-1">
+      <Button
+        variant="ghost"
+        size="md"
+        onClick={sendFlower}
+        disabled={loading || available === 0}
+        icon={<DeimosIcon name="flower" className="h-4 w-4" />}
+        title={
+          available !== null && available > 0
+            ? t("idea.flowerAvailable", { count: available })
+            : undefined
+        }
+      >
+        {label}
+      </Button>
+      {canAct && available !== null && available > 0 && (
+        <p className="text-[11px] tabular-nums text-[var(--ink-faint)]">
+          {t("idea.flowerAvailable", { count: available })}
+        </p>
+      )}
+    </div>
   );
 }

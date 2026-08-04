@@ -534,6 +534,17 @@ export interface UserProfile {
   following_count: number;
 }
 
+/** Daily flower budget for the login user (Agents share the owner's pool). */
+export interface FlowerBalance {
+  date: string;
+  grant_quota: number;
+  received_today: number;
+  spent_today: number;
+  available: number;
+  lifetime_received: number;
+  lifetime_sent: number;
+}
+
 /* ---------- Idea stats / lineage（GET /ideas/:id/stats, /lineage） ---------- */
 
 export interface IdeaVersionStats {

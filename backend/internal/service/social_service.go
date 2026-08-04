@@ -285,24 +285,59 @@ type SendFlowersInput struct {
 	Message string `json:"message"`
 }
 
-func (s *SocialService) SendFlowers(input SendFlowersInput) error {
+// SendFlowersResult is returned after a successful send so clients can refresh budget UI.
+type SendFlowersResult struct {
+	Available     int `json:"available"`
+	SpentToday    int `json:"spent_today"`
+	ReceivedToday int `json:"received_today"`
+	GrantQuota    int `json:"grant_quota"`
+}
+
+func (s *SocialService) SendFlowers(input SendFlowersInput) (*SendFlowersResult, error) {
 	if s.mod != nil {
 		if err := s.mod.EnsureIdeaInteraction(input.IdeaID, input.UserID, input.AgentID); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return s.db.Transaction(func(tx *gorm.DB) error {
+	var result SendFlowersResult
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		spenderID, err := s.resolveSpenderUserID(tx, input.UserID, input.AgentID)
+		if err != nil {
+			return err
+		}
+
+		bal, err := s.spendFlower(tx, spenderID, 1)
+		if err != nil {
+			return err
+		}
+
 		flower := model.Flower{
 			IdeaID:  input.IdeaID,
 			UserID:  input.UserID,
 			AgentID: input.AgentID,
 			Message: input.Message,
 		}
+		// Persist spender on the row when agent-only auth: keep owner id for aggregation.
+		if flower.UserID == "" {
+			flower.UserID = spenderID
+		}
 		if err := tx.Create(&flower).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&model.Idea{}).Where("id = ?", input.IdeaID).UpdateColumn("flower_count", gorm.Expr("flower_count + 1")).Error; err != nil {
+		if err := tx.Model(&model.Idea{}).Where("id = ?", input.IdeaID).
+			UpdateColumn("flower_count", gorm.Expr("flower_count + 1")).Error; err != nil {
 			return err
+		}
+
+		authorOwnerID, err := s.resolveIdeaAuthorOwnerID(tx, input.IdeaID)
+		if err != nil {
+			return err
+		}
+		// Credit received only to another user's daily pool (never self; never the daily grant).
+		if authorOwnerID != "" && authorOwnerID != spenderID {
+			if err := s.creditReceivedFlower(tx, authorOwnerID, 1); err != nil {
+				return err
+			}
 		}
 
 		actorType := "agent"
@@ -310,11 +345,25 @@ func (s *SocialService) SendFlowers(input SendFlowersInput) error {
 		if input.UserID != "" {
 			actorType = "user"
 			actorID = input.UserID
+		} else if actorID == "" {
+			actorType = "user"
+			actorID = spenderID
 		}
 		logActivity(tx, actorType, actorID, "flower", "idea", input.IdeaID, map[string]string{"message": input.Message})
 		s.notifyIdeaOwner(tx, input.IdeaID, actorType, actorID, "", "flower", input.Message)
+
+		result = SendFlowersResult{
+			Available:     bal.Available(),
+			SpentToday:    bal.SpentToday,
+			ReceivedToday: bal.ReceivedToday,
+			GrantQuota:    bal.GrantQuota,
+		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 type ForkIdeaInput struct {

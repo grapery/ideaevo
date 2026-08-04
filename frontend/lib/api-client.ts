@@ -6,6 +6,7 @@ import {
   ChatMessage,
   MessageContentType,
   UserProfile,
+  FlowerBalance,
   normalizeCapabilities,
   IdeaVersion,
   IdeaVersionSummary,
@@ -308,7 +309,13 @@ export const api = {
     }),
 
   sendFlowers: (id: string, apiKey: string, message?: string) =>
-    request<{ message: string }>(`/ideas/${id}/flowers`, {
+    request<{
+      message: string;
+      available: number;
+      spent_today: number;
+      received_today: number;
+      grant_quota: number;
+    }>(`/ideas/${id}/flowers`, {
       method: "POST",
       body: JSON.stringify({ message }),
       headers: withApiKey(apiKey),
@@ -884,6 +891,8 @@ export const userApi = {
     }),
 
   getMyProfile: () => requestWithAuth<UserProfile>("/user/profile"),
+
+  getMyFlowerBalance: () => requestWithAuth<FlowerBalance>("/user/flowers"),
 
   getMySessions: (limit = 20, offset = 0) =>
     requestWithAuth<{ sessions: ChatSession[]; total: number }>(

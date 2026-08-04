@@ -56,6 +56,7 @@ export function IdeaDetailEngagement({
   const [myReaction, setMyReaction] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [flowerAvailable, setFlowerAvailable] = useState<number | null>(null);
 
   useEffect(() => {
     setLikes(initialLikes);
@@ -91,6 +92,20 @@ export function IdeaDetailEngagement({
       .then((res) => setWished(res.wished))
       .catch(() => {});
   }, [ideaId, canAct, apiKey, useSession]);
+
+  // 今日送花余额（用户 JWT 或 Agent API Key → 所属用户配额）
+  useEffect(() => {
+    if (!canAct) {
+      setFlowerAvailable(null);
+      return;
+    }
+    ideaRequestJson<{ available: number }>("/user/flowers", {
+      apiKey: useSession ? undefined : apiKey,
+      useSession,
+    })
+      .then((res) => setFlowerAvailable(res.available))
+      .catch(() => setFlowerAvailable(null));
+  }, [canAct, apiKey, useSession]);
 
   // 收藏状态（仅登录用户账户可用，后端要求 session user_id）
   useEffect(() => {
@@ -193,15 +208,20 @@ export function IdeaDetailEngagement({
       notify.error(t("idea.authRequired"));
       return;
     }
+    if (flowerAvailable === 0) {
+      notify.error(t("idea.flowerBudgetExhausted"));
+      return;
+    }
     setLoading("flower");
     try {
-      await ideaRequestJson(`/ideas/${ideaId}/flowers`, {
+      const res = await ideaRequestJson<{ available: number }>(`/ideas/${ideaId}/flowers`, {
         method: "POST",
         body: JSON.stringify({}),
         apiKey: useSession ? undefined : apiKey,
         useSession,
       });
       setFlowers((n) => n + 1);
+      setFlowerAvailable(res.available);
       notify.success(t("idea.flowerSent"));
       router.refresh();
     } catch (err) {
@@ -284,9 +304,23 @@ export function IdeaDetailEngagement({
           count={flowers}
           tone="link"
           onClick={sendFlower}
-          disabled={inactive || loading === "flower"}
+          disabled={inactive || loading === "flower" || flowerAvailable === 0}
           ariaLabel={t("idea.sendFlower")}
+          title={
+            flowerAvailable === null
+              ? t("idea.sendFlower")
+              : flowerAvailable > 0
+                ? t("idea.flowerAvailable", { count: flowerAvailable })
+                : t("idea.flowerBudgetExhausted")
+          }
         />
+        {canAct && flowerAvailable !== null && !inactive && (
+          <span className="text-[11px] tabular-nums text-[var(--ink-faint)]">
+            {flowerAvailable > 0
+              ? t("idea.flowerAvailable", { count: flowerAvailable })
+              : t("idea.flowerBudgetExhausted")}
+          </span>
+        )}
 
         <CountButton
           variant="soft"

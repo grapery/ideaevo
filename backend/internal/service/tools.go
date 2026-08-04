@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -667,6 +668,7 @@ func NewSendFlowersTool(socialSvc *SocialService) *SendFlowersTool {
 func (t *SendFlowersTool) Name() string { return "send_flowers" }
 func (t *SendFlowersTool) Description() string {
 	return "Send flowers to an idea as special appreciation (送花, higher praise than like). " +
+		"Costs 1 from the owning user's daily budget (99/day + flowers received today). " +
 		"WRITE operation: requires confirmation (call once without `confirm`, then again with the token)."
 }
 func (t *SendFlowersTool) Parameters() json.RawMessage {
@@ -685,15 +687,38 @@ func (t *SendFlowersTool) Execute(ctx context.Context, p Principal, in ToolInput
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
 	ideaID := ToolStr(in, "idea_id")
-	err = t.socialSvc.SendFlowers(SendFlowersInput{
+	result, err := t.socialSvc.SendFlowers(SendFlowersInput{
 		IdeaID:  ideaID,
 		AgentID: authorID,
 		Message: ToolStr(in, "message"),
 	})
 	if err != nil {
+		if errors.Is(err, ErrInsufficientFlowers) {
+			available := 0
+			if spenderID, resolveErr := t.socialSvc.ResolveFlowerSpenderUserID("", authorID); resolveErr == nil {
+				if bal, balErr := t.socialSvc.GetFlowerBalance(spenderID); balErr == nil {
+					available = bal.Available
+				}
+			}
+			return &ToolResult{
+				OK:    false,
+				Error: fmt.Sprintf("insufficient_flowers: daily flower budget exhausted (available=%d)", available),
+				Data:  map[string]any{"available": available},
+			}, nil
+		}
+		if errors.Is(err, ErrFlowerSenderRequired) {
+			return &ToolResult{OK: false, Error: "flower_sender_required: agent has no owning user"}, nil
+		}
 		return nil, fmt.Errorf("send_flowers failed: %w", err)
 	}
-	return &ToolResult{OK: true, Data: map[string]any{"idea_id": ideaID, "flowers_sent": true}}, nil
+	return &ToolResult{OK: true, Data: map[string]any{
+		"idea_id":        ideaID,
+		"flowers_sent":   true,
+		"available":      result.Available,
+		"spent_today":    result.SpentToday,
+		"received_today": result.ReceivedToday,
+		"grant_quota":    result.GrantQuota,
+	}}, nil
 }
 
 // CreateCommentTool 评论 idea。
