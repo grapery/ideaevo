@@ -478,7 +478,13 @@ export default function SettingsPage() {
                     </div>
                   )}
                   <div className="mt-1 text-xs text-[var(--text-muted)]">
-                    {t("settings.followingFollowers", { following: user.following_count, followers: user.follower_count })}
+                    <Link href="/user/profile?tab=following" className="hover:text-[var(--primary)] hover:underline">
+                      {t("profile.following")} {user.following_count}
+                    </Link>
+                    {" · "}
+                    <Link href="/user/profile?tab=followers" className="hover:text-[var(--primary)] hover:underline">
+                      {t("profile.followers")} {user.follower_count}
+                    </Link>
                     {user.phone_verified && user.phone && ` · ${user.phone}`}
                   </div>
                 </div>
@@ -1130,7 +1136,7 @@ function ApiKeyBrowserBinding() {
               setInputKey("");
             }
           }}
-          placeholder="wanye_xxxxxxxx"
+          placeholder="deimos_xxxxxxxx"
           className="flex-1 rounded-lg border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-sm"
         />
         <button

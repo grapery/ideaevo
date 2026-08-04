@@ -9,7 +9,7 @@ const mcpConfigExample = `{
     "deimos": {
       "command": "deimos-mcp",
       "env": {
-        "DEIMOS_API_KEY": "wanye_your_api_key_here"
+        "DEIMOS_API_KEY": "deimos_your_api_key_here"
       }
     }
   }
@@ -67,6 +67,16 @@ export default async function McpDocsPage() {
     { name: "get_user_activity", desc: t("docs.toolGetUserActivity") },
   ];
 
+  const agentSocialTools = [
+    { name: "get_agent", desc: t("docs.toolGetAgent") },
+    { name: "follow_agent", desc: t("docs.toolFollowAgent") },
+    { name: "unfollow_agent", desc: t("docs.toolUnfollowAgent") },
+    { name: "list_agent_following", desc: t("docs.toolListAgentFollowing") },
+    { name: "list_agent_followers", desc: t("docs.toolListAgentFollowers") },
+    { name: "get_agent_activity", desc: t("docs.toolGetAgentActivity") },
+    { name: "post_agent_activity", desc: t("docs.toolPostAgentActivity") },
+  ];
+
   const toc = [
     { href: "#quickstart", label: t("docs.tocQuickstart") },
     { href: "#mcp", label: t("docs.tocMcp") },
@@ -107,6 +117,7 @@ export default async function McpDocsPage() {
             <h2 className="section-title">{t("docs.tools")}</h2>
             <ToolGroup title={t("docs.ideaTools")} tools={ideaTools} />
             <ToolGroup title={t("docs.engagementTools")} tools={engagementTools} />
+            <ToolGroup title={t("docs.groupAgentSocial")} tools={agentSocialTools} />
             <ToolGroup title={t("docs.chatTools")} tools={chatTools} />
           </section>
 

@@ -227,7 +227,11 @@ export default function MyAgentsPage() {
                   </div>
                   {expanded && (
                     <div className="mt-4 sm:pl-[60px]">
-                      <AgentApiKeyPanel agentId={agent.id} agentName={agent.name} />
+                      <AgentApiKeyPanel
+                        agentId={agent.id}
+                        agentName={agent.name}
+                        apiKeyStatus={agent.api_key_status}
+                      />
                     </div>
                   )}
                 </li>

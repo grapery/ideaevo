@@ -84,6 +84,7 @@ func (s *AgentService) Register(input RegisterAgentInput) (*RegisterAgentResult,
 		Name:         input.Name,
 		Description:  input.Description,
 		APIKeyHash:   hash,
+		APIKeyStatus: "active",
 		Capabilities: string(capJSON),
 		OwnerUserID:  input.OwnerUserID,
 		SystemPrompt: input.SystemPrompt,
@@ -111,7 +112,8 @@ func (s *AgentService) Register(input RegisterAgentInput) (*RegisterAgentResult,
 	}, nil
 }
 
-// RotateAPIKey 为 Agent 重新生成 API Key（仅 owner；新 Key 仅返回一次）。
+// RotateAPIKey 为 Agent 重新生成（或首次创建）API Key（仅 owner；新 Key 仅返回一次）。
+// 撤销后再次调用等同于「创建」新 Key。
 func (s *AgentService) RotateAPIKey(ownerUserID, agentID string) (string, error) {
 	var agent model.Agent
 	if err := s.db.First(&agent, "id = ?", agentID).Error; err != nil {
@@ -129,10 +131,40 @@ func (s *AgentService) RotateAPIKey(ownerUserID, agentID string) (string, error)
 		return "", fmt.Errorf("generate api key: %w", err)
 	}
 	hash := hashAPIKey(apiKey)
-	if err := s.db.Model(&agent).Update("api_key_hash", hash).Error; err != nil {
+	if err := s.db.Model(&agent).Updates(map[string]any{
+		"api_key_hash":   hash,
+		"api_key_status": "active",
+	}).Error; err != nil {
 		return "", fmt.Errorf("update api key: %w", err)
 	}
 	return apiKey, nil
+}
+
+// RevokeAPIKey 撤销 Agent 的 API Key（仅 owner）。Agent 保留，旧 Key 立即失效；需再次 Rotate 才能使用。
+func (s *AgentService) RevokeAPIKey(ownerUserID, agentID string) error {
+	var agent model.Agent
+	if err := s.db.First(&agent, "id = ?", agentID).Error; err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+	if agent.OwnerUserID == "" {
+		return fmt.Errorf("forbidden: system agents cannot revoke keys")
+	}
+	if agent.OwnerUserID != ownerUserID {
+		return fmt.Errorf("forbidden: not the agent owner")
+	}
+	if agent.APIKeyStatus == "revoked" {
+		return nil
+	}
+
+	// Unusable unique hash so ValidateAPIKey never matches; keep uniqueIndex happy.
+	sentinel, err := generateAPIKey()
+	if err != nil {
+		return fmt.Errorf("generate revoke sentinel: %w", err)
+	}
+	return s.db.Model(&agent).Updates(map[string]any{
+		"api_key_hash":   hashAPIKey("revoked:" + sentinel),
+		"api_key_status": "revoked",
+	}).Error
 }
 
 // UpdateAgent 更新 Agent 配置。仅 owner（或系统 agent）可更新。
@@ -507,6 +539,9 @@ func (s *AgentService) ValidateAPIKey(apiKey string) (*model.Agent, error) {
 	if err := s.db.Where("api_key_hash = ?", hash).First(&agent).Error; err != nil {
 		return nil, fmt.Errorf("invalid api key")
 	}
+	if agent.APIKeyStatus == "revoked" {
+		return nil, fmt.Errorf("invalid api key")
+	}
 	return &agent, nil
 }
 
@@ -586,7 +621,31 @@ func (s *AgentService) PostAgentThought(agentID, content string) {
 	})
 }
 
-// GetAgentFollowing returns agents that the given agent follows (via agent_follows table).
+// ListAgentActivity returns activity logs where the agent is the actor (its interaction record).
+func (s *AgentService) ListAgentActivity(agentID string, limit, offset int) ([]model.ActivityLog, int64, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	var total int64
+	q := s.db.Model(&model.ActivityLog{}).Where("actor_type = ? AND actor_id = ?", "agent", agentID)
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var logs []model.ActivityLog
+	if err := q.Order("created_at DESC").Limit(limit).Offset(offset).Find(&logs).Error; err != nil {
+		return nil, 0, err
+	}
+	s.enrichActivityTargets(logs)
+	return logs, total, nil
+}
+
+// GetAgentFollowing returns agents that the given agent follows (via agent_peer_follows).
 func (s *AgentService) GetAgentFollowing(agentID string, limit, offset int) ([]model.Agent, int64, error) {
 	var follows []model.AgentPeerFollow
 	var total int64
@@ -596,7 +655,7 @@ func (s *AgentService) GetAgentFollowing(agentID string, limit, offset int) ([]m
 		return nil, 0, err
 	}
 	if len(follows) == 0 {
-		return []model.Agent{}, 0, nil
+		return []model.Agent{}, total, nil
 	}
 	ids := make([]string, len(follows))
 	for i, f := range follows {
@@ -606,7 +665,59 @@ func (s *AgentService) GetAgentFollowing(agentID string, limit, offset int) ([]m
 	if err := s.db.Where("id IN ?", ids).Find(&agents).Error; err != nil {
 		return nil, 0, err
 	}
-	EnrichAgents(agents)
-	s.attachFollowerCounts(agents)
-	return agents, total, nil
+	byID := make(map[string]model.Agent, len(agents))
+	for _, a := range agents {
+		byID[a.ID] = a
+	}
+	ordered := make([]model.Agent, 0, len(follows))
+	for _, f := range follows {
+		if a, ok := byID[f.TargetAgentID]; ok {
+			ordered = append(ordered, a)
+		}
+	}
+	EnrichAgents(ordered)
+	s.attachFollowerCounts(ordered)
+	return ordered, total, nil
+}
+
+// GetAgentPeerFollowers returns agents that follow the given agent (peer graph).
+func (s *AgentService) GetAgentPeerFollowers(agentID string, limit, offset int) ([]model.Agent, int64, error) {
+	var follows []model.AgentPeerFollow
+	var total int64
+	q := s.db.Model(&model.AgentPeerFollow{}).Where("target_agent_id = ?", agentID)
+	q.Count(&total)
+	if err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&follows).Error; err != nil {
+		return nil, 0, err
+	}
+	if len(follows) == 0 {
+		return []model.Agent{}, total, nil
+	}
+	ids := make([]string, len(follows))
+	for i, f := range follows {
+		ids[i] = f.FollowerAgentID
+	}
+	var agents []model.Agent
+	if err := s.db.Where("id IN ?", ids).Find(&agents).Error; err != nil {
+		return nil, 0, err
+	}
+	byID := make(map[string]model.Agent, len(agents))
+	for _, a := range agents {
+		byID[a.ID] = a
+	}
+	ordered := make([]model.Agent, 0, len(follows))
+	for _, f := range follows {
+		if a, ok := byID[f.FollowerAgentID]; ok {
+			ordered = append(ordered, a)
+		}
+	}
+	EnrichAgents(ordered)
+	s.attachFollowerCounts(ordered)
+	return ordered, total, nil
+}
+
+// CountAgentFollowing returns how many peer agents this agent follows.
+func (s *AgentService) CountAgentFollowing(agentID string) (int64, error) {
+	var n int64
+	err := s.db.Model(&model.AgentPeerFollow{}).Where("follower_agent_id = ?", agentID).Count(&n).Error
+	return n, err
 }

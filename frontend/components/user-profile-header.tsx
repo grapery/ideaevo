@@ -42,8 +42,8 @@ export default function UserProfileHeader({
   const handle = isOwn ? user.email : undefined;
 
   const statRows = [
-    { label: t("agents.followers"), value: followers, key: "followers" as const },
-    { label: t("activity.followFeed"), value: following, key: "following" as const },
+    { label: t("profile.followers"), value: followers, key: "followers" as const },
+    { label: t("profile.following"), value: following, key: "following" as const },
     ...(ideas != null
       ? [{ label: t("idea.ideas"), value: ideas, key: "ideas" as const }]
       : []),

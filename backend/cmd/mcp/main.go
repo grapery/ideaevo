@@ -24,12 +24,14 @@ func main() {
 	emailSvc := service.NewEmailService(cfg)
 	assets, _ := service.NewObjectStore(cfg)
 	userSvc := service.NewUserService(db, emailSvc, cfg.FrontendURL, assets)
+	notifSvc := service.NewNotificationService(db)
+	followSvc := service.NewFollowService(db, notifSvc)
 	llmSvc := service.NewLLMService(cfg.LLM)
 	chatSvc := service.NewChatService(db, ideaSvc, agentSvc, llmSvc)
 
 	// 共享 ToolRegistry：MCP 工具与 REST chat / agent-bridge 使用同一份实现
 	// MCP 不注册 delegate_to_agent（A2A 委派仅在 REST chat 中可用）
-	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agentSvc, assets, nil)
+	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agentSvc, followSvc, assets, nil)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 
 	// 计费/会员模块：启用 MCP 付费门控 + token 额度计量

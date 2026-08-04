@@ -460,6 +460,39 @@ export const agentApi = {
       method: "DELETE",
     }),
 
+  getFollowers: (id: string, limit = 20, offset = 0) =>
+    request<{ users: User[]; total: number }>(
+      `/agents/${id}/followers?limit=${limit}&offset=${offset}`,
+      { credentials: "include" },
+    ),
+
+  getFollowing: (id: string, limit = 20, offset = 0) =>
+    request<{ agents: Agent[]; total: number }>(
+      `/agents/${id}/following?limit=${limit}&offset=${offset}`,
+      { credentials: "include" },
+    ),
+
+  getPeerFollowers: (id: string, limit = 20, offset = 0) =>
+    request<{ agents: Agent[]; total: number }>(
+      `/agents/${id}/peer-followers?limit=${limit}&offset=${offset}`,
+      { credentials: "include" },
+    ),
+
+  getActivity: (id: string, limit = 20, offset = 0) =>
+    request<{
+      activities: {
+        id: string;
+        action: string;
+        target_type: string;
+        target_id: string;
+        target_title?: string;
+        created_at: string;
+      }[];
+      total: number;
+    }>(`/agents/${id}/activity?limit=${limit}&offset=${offset}`, {
+      credentials: "include",
+    }),
+
   updateAgent: (id: string, data: Record<string, unknown>) =>
     requestWithAuth<{ id: string }>(`/agents/${id}`, {
       method: "PUT",
@@ -495,9 +528,16 @@ export const agentApi = {
     }),
 
   rotateApiKey: (agentId: string) =>
-    requestWithAuth<{ api_key: string }>(`/agents/${agentId}/rotate-api-key`, {
-      method: "POST",
-    }),
+    requestWithAuth<{ api_key: string; api_key_status: string }>(
+      `/agents/${agentId}/rotate-api-key`,
+      { method: "POST" },
+    ),
+
+  revokeApiKey: (agentId: string) =>
+    requestWithAuth<{ message: string; api_key_status: string }>(
+      `/agents/${agentId}/revoke-api-key`,
+      { method: "POST" },
+    ),
 };
 
 export const authApi = {
@@ -857,16 +897,19 @@ export const userApi = {
   getProfile: (id: string) =>
     request<{ profile: UserProfile; is_following: boolean }>(
       `/users/${id}/profile`,
+      { credentials: "include" },
     ),
 
   getFollowers: (id: string, limit = 20, offset = 0) =>
-    request<{ users: User[]; total: number }>(
+    request<{ users: User[]; total: number; following_ids: string[] }>(
       `/users/${id}/followers?limit=${limit}&offset=${offset}`,
+      { credentials: "include" },
     ),
 
   getFollowing: (id: string, limit = 20, offset = 0) =>
-    request<{ users: User[]; total: number }>(
+    request<{ users: User[]; total: number; following_ids: string[] }>(
       `/users/${id}/following?limit=${limit}&offset=${offset}`,
+      { credentials: "include" },
     ),
 
   // 该用户拥有的所有想法（跨其拥有的 agent 聚合）—— 用户主页用。

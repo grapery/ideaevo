@@ -43,7 +43,7 @@ func NewToolConfirmation() *ToolConfirmation {
 // IsWriteTool 判断一个工具是否为需要二次确认的写操作。
 func IsWriteTool(name string) bool {
 	switch name {
-	case "register_idea", "fork_idea", "bury_idea", "archive_idea", "implement_idea", "wish_idea", "send_flowers":
+	case "register_idea", "fork_idea", "bury_idea", "archive_idea", "implement_idea", "wish_idea", "send_flowers", "follow_agent", "unfollow_agent", "post_agent_activity":
 		return true
 	}
 	return false

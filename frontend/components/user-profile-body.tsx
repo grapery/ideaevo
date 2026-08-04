@@ -5,12 +5,11 @@ import Link from "next/link";
 import { AppLink as AppLinkComponent } from "@/components/app-link";
 import { userApi, chatApi, billingApi } from "@/lib/api-client";
 import { getApiBase } from "@/lib/api-base";
-import { useAuth } from "@/lib/auth-context";
 import { useApiKey } from "@/lib/api-key-context";
 import { Idea, User, ChatSession, Agent, MembershipView } from "@/lib/types";
 import { IdeaCard } from "@/components/idea-card";
 import { ActivityList, ActivityLog } from "@/components/activity-list";
-import UserCard from "@/components/user-card";
+import { FollowUserRow } from "@/components/follow-user-row";
 import {
   ProfileLayout,
   AboutCard,
@@ -27,6 +26,17 @@ const AppLink = AppLinkComponent as unknown as React.ComponentType<{
 }>;
 
 type Tab = "overview" | "ideas" | "agents" | "activity" | "followers" | "following" | "sessions" | "api";
+
+const VALID_TABS = new Set<Tab>([
+  "overview",
+  "ideas",
+  "agents",
+  "activity",
+  "followers",
+  "following",
+  "sessions",
+  "api",
+]);
 
 interface ProfileStats {
   idea_count?: number;
@@ -68,9 +78,18 @@ export function UserProfileBody({
   isOwn: boolean;
   stats: ProfileStats;
 }) {
-  const { user: currentUser } = useAuth();
   const { t, locale } = useI18n();
   const [tab, setTab] = useState<Tab>("overview");
+
+  // 支持 ?tab=followers|following 深链（如从统计数字进入）。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = new URLSearchParams(window.location.search).get("tab");
+    if (raw && VALID_TABS.has(raw as Tab)) {
+      if ((raw === "sessions" || raw === "api") && !isOwn) return;
+      setTab(raw as Tab);
+    }
+  }, [isOwn]);
 
   // 各 tab 数据，按需懒加载。
   const [ideas, setIdeas] = useState<Idea[] | null>(null);
@@ -78,6 +97,8 @@ export function UserProfileBody({
   const [activity, setActivity] = useState<ActivityLog[] | null>(null);
   const [followers, setFollowers] = useState<User[] | null>(null);
   const [following, setFollowing] = useState<User[] | null>(null);
+  const [followerFollowingIds, setFollowerFollowingIds] = useState<Set<string>>(new Set());
+  const [followingFollowingIds, setFollowingFollowingIds] = useState<Set<string>>(new Set());
   const [sessions, setSessions] = useState<ChatSession[] | null>(null);
   const [followersTotal, setFollowersTotal] = useState(stats.follower_count ?? 0);
   const [followingTotal, setFollowingTotal] = useState(stats.following_count ?? 0);
@@ -122,8 +143,10 @@ export function UserProfileBody({
       const res = await userApi.getFollowers(userId, 50);
       setFollowers(res.users ?? []);
       setFollowersTotal(res.total ?? 0);
+      setFollowerFollowingIds(new Set(res.following_ids ?? []));
     } catch {
       setFollowers([]);
+      setFollowerFollowingIds(new Set());
     }
   }, [userId]);
 
@@ -132,8 +155,10 @@ export function UserProfileBody({
       const res = await userApi.getFollowing(userId, 50);
       setFollowing(res.users ?? []);
       setFollowingTotal(res.total ?? 0);
+      setFollowingFollowingIds(new Set(res.following_ids ?? []));
     } catch {
       setFollowing([]);
+      setFollowingFollowingIds(new Set());
     }
   }, [userId]);
 
@@ -170,7 +195,7 @@ export function UserProfileBody({
   useEffect(() => {
     function onTabChange(e: Event) {
       const key = (e as CustomEvent<string>).detail;
-      if (key) setTab(key as Tab);
+      if (key && VALID_TABS.has(key as Tab)) setTab(key as Tab);
     }
     window.addEventListener("profile-tab-change", onTabChange as EventListener);
     return () => window.removeEventListener("profile-tab-change", onTabChange as EventListener);
@@ -182,13 +207,13 @@ export function UserProfileBody({
       { key: "ideas", label: t("idea.ideas"), count: stats.idea_count ?? 0 },
       { key: "agents", label: t("header.agents"), count: stats.agent_count ?? 0 },
       { key: "activity", label: t("header.activity") },
-      { key: "followers", label: t("agents.followers"), count: followersTotal },
-      { key: "following", label: t("activity.followFeed"), count: followingTotal },
+      { key: "followers", label: t("profile.followers"), count: followersTotal },
+      { key: "following", label: t("profile.following"), count: followingTotal },
       { key: "sessions", label: t("idea.chat"), ownOnly: true },
       { key: "api", label: t("settings.apiKeyTitle"), ownOnly: true },
     ] as { key: Tab; label: string; count?: number; ownOnly?: boolean }[]
   )
-    .filter((tab) => !tab.ownOnly || isOwn)
+    .filter((tabItem) => !tabItem.ownOnly || isOwn)
     .map(({ key, label, count }) => ({ key, label, count }));
 
   const ideaCount = stats.idea_count ?? 0;
@@ -224,8 +249,8 @@ export function UserProfileBody({
             <div className="space-y-2.5">
               <StatRow label={t("idea.ideas")} value={ideaCount} />
               <StatRow label={t("header.agents")} value={stats.agent_count ?? 0} />
-              <StatRow label={t("agents.followers")} value={followersTotal} />
-              <StatRow label={t("activity.followFeed")} value={followingTotal} />
+              <StatRow label={t("profile.followers")} value={followersTotal} />
+              <StatRow label={t("profile.following")} value={followingTotal} />
               {isOwn && <StatRow label={t("idea.chat")} value={stats.session_count ?? 0} />}
             </div>
           </AboutCard>
@@ -362,11 +387,21 @@ export function UserProfileBody({
         ) : followers.length === 0 ? (
           <ProfileEmptyState text={t("profile.noFollowers")} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+          <div className="surface-card overflow-hidden">
             {followers.map((u) => (
-              <div key={u.id} className="surface-card p-4">
-                <UserCard user={u} />
-              </div>
+              <FollowUserRow
+                key={u.id}
+                user={u}
+                initialFollowing={followerFollowingIds.has(u.id)}
+                onFollowingChange={(next) => {
+                  setFollowerFollowingIds((prev) => {
+                    const s = new Set(prev);
+                    if (next) s.add(u.id);
+                    else s.delete(u.id);
+                    return s;
+                  });
+                }}
+              />
             ))}
           </div>
         ))}
@@ -375,13 +410,40 @@ export function UserProfileBody({
         (following === null ? (
           <Loading />
         ) : following.length === 0 ? (
-          <ProfileEmptyState text={t("profile.notFollowing")} />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-            {following.map((u) => (
-              <div key={u.id} className="surface-card p-4">
-                <UserCard user={u} />
+          <div className="space-y-3">
+            <ProfileEmptyState text={t("profile.notFollowing")} />
+            {isOwn && (
+              <div className="text-center">
+                <Link
+                  href="/agents"
+                  className="inline-block text-sm text-[var(--primary)] hover:underline"
+                >
+                  {t("profile.discoverCreators")} →
+                </Link>
               </div>
+            )}
+          </div>
+        ) : (
+          <div className="surface-card overflow-hidden">
+            {following.map((u) => (
+              <FollowUserRow
+                key={u.id}
+                user={u}
+                initialFollowing={followingFollowingIds.has(u.id)}
+                onFollowingChange={(next) => {
+                  setFollowingFollowingIds((prev) => {
+                    const s = new Set(prev);
+                    if (next) s.add(u.id);
+                    else s.delete(u.id);
+                    return s;
+                  });
+                  // 自己的「关注」列表取消关注后直接移除该行。
+                  if (isOwn && !next) {
+                    setFollowing((list) => list?.filter((x) => x.id !== u.id) ?? []);
+                    setFollowingTotal((n) => Math.max(0, n - 1));
+                  }
+                }}
+              />
             ))}
           </div>
         ))}
@@ -565,7 +627,7 @@ function ApiKeyTab() {
               value={inputKey}
               onChange={(e) => setInputKey(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSet()}
-              placeholder="wanye_xxxxxxxx"
+              placeholder="deimos_xxxxxxxx"
               className="flex-1 rounded-lg border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-sm"
             />
             <button onClick={handleSet} className="btn-outline px-5 py-2 text-sm font-medium">

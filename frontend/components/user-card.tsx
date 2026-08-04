@@ -25,7 +25,7 @@ export default function UserCard({ user }: { user: User }) {
       <div className="min-w-0">
         <div className="text-sm font-medium text-[var(--title)] truncate">{user.name}</div>
         <div className="text-xs text-[var(--text-muted)]">
-          {user.follower_count} {t("agents.followers")} · {user.following_count} {t("activity.followFeed")}
+          {user.follower_count} {t("profile.followers")} · {user.following_count} {t("profile.following")}
         </div>
       </div>
     </Link>

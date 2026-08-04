@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useState, useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { Agent, Idea, capabilityLabels } from "@/lib/types";
+import { Agent, Idea, User, capabilityLabels } from "@/lib/types";
+import { agentApi } from "@/lib/api-client";
 import { DeimosIcon, activityDeimosIcon } from "@/components/deimos-icon";
 import { IconActionButton } from "@/components/ui/icon-action-button";
 import { IdeaCard } from "@/components/idea-card";
 import { FollowAgentButton } from "@/components/follow-agent-button";
+import { FollowUserRow } from "@/components/follow-user-row";
 import { ProfileHeader } from "@/components/profile-header";
 import {
   ProfileLayout,
@@ -25,8 +27,8 @@ export interface AgentStats {
   total_forks: number;
   recent_activity: {
     id: string;
-    actor_type: string;
-    actor_id: string;
+    actor_type?: string;
+    actor_id?: string;
     action: string;
     target_type: string;
     target_id: string;
@@ -35,7 +37,7 @@ export interface AgentStats {
   }[];
 }
 
-type TabKey = "ideas" | "forks" | "flowers" | "activity";
+type TabKey = "ideas" | "forks" | "flowers" | "activity" | "followers" | "following";
 
 const actionVerbKeys: Record<string, TranslationKey> = {
   register: "idea.published",
@@ -109,6 +111,49 @@ export default function AgentProfileClient({
     () => false
   );
 
+  const [followers, setFollowers] = useState<User[] | null>(null);
+  const [followersTotal, setFollowersTotal] = useState(agent.follower_count ?? 0);
+  const [followingAgents, setFollowingAgents] = useState<Agent[] | null>(null);
+  const [followingTotal, setFollowingTotal] = useState(0);
+  const [activityList, setActivityList] = useState<AgentStats["recent_activity"] | null>(null);
+  const [activityTotal, setActivityTotal] = useState(stats?.recent_activity?.length ?? 0);
+
+  useEffect(() => {
+    if (tab === "followers" && followers === null) {
+      agentApi
+        .getFollowers(agent.id, 50)
+        .then((res) => {
+          setFollowers(res.users ?? []);
+          setFollowersTotal(res.total ?? 0);
+        })
+        .catch(() => {
+          setFollowers([]);
+        });
+    }
+    if (tab === "following" && followingAgents === null) {
+      agentApi
+        .getFollowing(agent.id, 50)
+        .then((res) => {
+          setFollowingAgents(res.agents ?? []);
+          setFollowingTotal(res.total ?? 0);
+        })
+        .catch(() => {
+          setFollowingAgents([]);
+        });
+    }
+    if (tab === "activity" && activityList === null) {
+      agentApi
+        .getActivity(agent.id, 50)
+        .then((res) => {
+          setActivityList(res.activities ?? []);
+          setActivityTotal(res.total ?? 0);
+        })
+        .catch(() => {
+          setActivityList(stats?.recent_activity ?? []);
+        });
+    }
+  }, [tab, agent.id, followers, followingAgents, activityList, stats?.recent_activity]);
+
   const forkedIdeas = useMemo(() => ideas.filter((i) => i.forked_from_id), [ideas]);
   const flowerIdeas = useMemo(
     () =>
@@ -117,7 +162,7 @@ export default function AgentProfileClient({
         .sort((a, b) => (b.wish_count ?? b.flower_count) - (a.wish_count ?? a.flower_count)),
     [ideas]
   );
-  const allActivity = stats?.recent_activity ?? [];
+  const allActivity = activityList ?? stats?.recent_activity ?? [];
 
   const totalLikes = stats?.total_likes ?? 0;
   const totalFlowers = stats?.total_flowers ?? 0;
@@ -129,7 +174,9 @@ export default function AgentProfileClient({
     { key: "ideas", label: t("agents.tabIdeas"), count: originalCount || totalIdeas },
     { key: "forks", label: t("agents.tabForks"), count: forkedIdeas.length },
     { key: "flowers", label: t("agents.tabWishes"), count: flowerIdeas.length },
-    { key: "activity", label: t("agents.tabActivity"), count: allActivity.length },
+    { key: "followers", label: t("profile.followers"), count: followersTotal },
+    { key: "following", label: t("profile.following"), count: followingTotal },
+    { key: "activity", label: t("agents.tabActivity"), count: activityTotal || allActivity.length },
   ];
 
   const metaPills = [
@@ -169,14 +216,24 @@ export default function AgentProfileClient({
             <>
               <span className="badge-pill badge-active">{t("agents.badge")}</span>
               {(agent.follower_count ?? 0) > 0 && (
-                <span className="text-xs text-[var(--text-muted)]">
-                  {agent.follower_count} {t("agents.followers")}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setTab("followers")}
+                  className="text-xs text-[var(--text-muted)] hover:text-[var(--primary)] hover:underline"
+                >
+                  {agent.follower_count} {t("profile.followers")}
+                </button>
               )}
             </>
           }
           stats={[
-            { label: t("agents.tabIdeas"), value: totalIdeas, icon: <DeimosIcon name="document" className="h-3.5 w-3.5" /> },
+            { label: t("agents.tabIdeas"), value: totalIdeas, icon: <DeimosIcon name="document" className="h-3.5 w-3.5" />, onClick: () => setTab("ideas") },
+            {
+              label: t("profile.followers"),
+              value: followersTotal,
+              icon: <DeimosIcon name="users" className="h-3.5 w-3.5" />,
+              onClick: () => setTab("followers"),
+            },
             {
               label: t("agents.tabWishes"),
               value: totalFlowers,
@@ -221,6 +278,8 @@ export default function AgentProfileClient({
           <AboutCard title={t("agents.achievements")} className="profile-float-card !rounded-[var(--radius-float)]">
             <div className="space-y-2.5">
               <StatRow label={t("agents.statIdeas")} value={totalIdeas} />
+              <StatRow label={t("profile.followers")} value={followersTotal} />
+              <StatRow label={t("profile.following")} value={followingTotal} />
               <StatRow label={t("agents.statWishes")} value={totalFlowers} />
               <StatRow label={t("agents.statForked")} value={totalForks} />
               {agent.created_at && (
@@ -303,8 +362,60 @@ export default function AgentProfileClient({
             </div>
           ))}
 
+        {tab === "followers" &&
+          (followers === null ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
+            </div>
+          ) : followers.length === 0 ? (
+            <ProfileEmptyState text={t("profile.noFollowers")} />
+          ) : (
+            <div className="surface-card overflow-hidden">
+              {followers.map((u) => (
+                <FollowUserRow key={u.id} user={u} initialFollowing={false} />
+              ))}
+            </div>
+          ))}
+
+        {tab === "following" &&
+          (followingAgents === null ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
+            </div>
+          ) : followingAgents.length === 0 ? (
+            <ProfileEmptyState text={t("profile.notFollowing")} />
+          ) : (
+            <div className="surface-card overflow-hidden divide-y divide-[var(--divider)]">
+              {followingAgents.map((a) => (
+                <Link
+                  key={a.id}
+                  href={`/agents/${a.id}`}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-subtle)] transition-colors"
+                >
+                  {a.avatar_url ? (
+                    <img src={a.avatar_url} alt="" className="h-12 w-12 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-medium text-[var(--primary)]">
+                      {a.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="truncate text-[15px] font-semibold text-[var(--title)]">{a.name}</div>
+                    <div className="mt-0.5 text-[13px] text-[var(--text-muted)] line-clamp-1">
+                      {a.description || t("agents.noDesc")}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ))}
+
         {tab === "activity" &&
-          (allActivity.length === 0 ? (
+          (activityList === null && !stats?.recent_activity ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
+            </div>
+          ) : allActivity.length === 0 ? (
             <ProfileEmptyState text={t("activity.noActivity")} />
           ) : (
             <div className="space-y-3">

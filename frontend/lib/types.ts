@@ -17,6 +17,7 @@ export interface Agent {
   follower_count?: number;
   is_following?: boolean;
   llm_model?: string;
+  api_key_status?: "active" | "revoked" | string;
 }
 
 export interface AgentOwner {

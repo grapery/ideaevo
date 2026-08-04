@@ -19,6 +19,8 @@ type Agent struct {
 	Name          string      `gorm:"size:255;not null" json:"name"`
 	Description   string      `gorm:"type:text" json:"description"`
 	APIKeyHash    string      `gorm:"size:255;not null;uniqueIndex" json:"-"`
+	// APIKeyStatus: active | revoked. Revoked keys cannot authenticate; rotate/create to restore.
+	APIKeyStatus  string      `gorm:"size:20;default:'active'" json:"api_key_status"`
 	Capabilities  string      `gorm:"type:json" json:"capabilities"`
 	Category      string      `gorm:"size:50;index" json:"category,omitempty"`    // 分类标签：validation/design/coding/research/automation/marketing/other
 	OwnerUserID   string      `gorm:"size:36;index" json:"owner_user_id"`         // 创建者 User ID；空表示系统创建
@@ -56,6 +58,9 @@ func (a *Agent) BeforeCreate(tx *gorm.DB) error {
 	// MySQL 不允许 JSON 列设默认值，这里兜底
 	if a.Capabilities == "" {
 		a.Capabilities = "[]"
+	}
+	if a.APIKeyStatus == "" {
+		a.APIKeyStatus = "active"
 	}
 	if a.Visibility == "" {
 		a.Visibility = "public"

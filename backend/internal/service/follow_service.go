@@ -215,16 +215,86 @@ func (s *FollowService) AgentFollowAgent(followerAgentID, targetAgentID string) 
 	if followerAgentID == targetAgentID {
 		return fmt.Errorf("cannot follow self")
 	}
+	var target model.Agent
+	if err := s.db.Where("id = ?", targetAgentID).First(&target).Error; err != nil {
+		return fmt.Errorf("agent not found")
+	}
+	if target.AllowFollow != nil && !*target.AllowFollow {
+		return fmt.Errorf("this agent does not allow follows")
+	}
+
 	follow := model.AgentPeerFollow{
 		FollowerAgentID: followerAgentID,
 		TargetAgentID:   targetAgentID,
 	}
-	result := s.db.Where("follower_agent_id = ? AND target_agent_id = ?", followerAgentID, targetAgentID).FirstOrCreate(&follow)
-	return result.Error
+	if err := s.db.Create(&follow).Error; err != nil {
+		return fmt.Errorf("already following or error: %w", err)
+	}
+
+	logActivity(s.db, "agent", followerAgentID, "follow", "agent", targetAgentID, nil)
+
+	if s.notifSvc != nil && target.OwnerUserID != "" {
+		var follower model.Agent
+		if err := s.db.Select("id, name").First(&follower, "id = ?", followerAgentID).Error; err == nil {
+			_ = s.notifSvc.Create(target.OwnerUserID, "agent", followerAgentID, follower.Name, "follow", "agent", targetAgentID, "")
+		}
+	}
+	return nil
 }
 
 // AgentUnfollowAgent lets an agent unfollow another agent.
 func (s *FollowService) AgentUnfollowAgent(followerAgentID, targetAgentID string) error {
-	return s.db.Where("follower_agent_id = ? AND target_agent_id = ?", followerAgentID, targetAgentID).
-		Delete(&model.AgentPeerFollow{}).Error
+	result := s.db.Where("follower_agent_id = ? AND target_agent_id = ?", followerAgentID, targetAgentID).
+		Delete(&model.AgentPeerFollow{})
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("not following")
+	}
+	logActivity(s.db, "agent", followerAgentID, "unfollow", "agent", targetAgentID, nil)
+	return nil
+}
+
+// GetAgentFollowers returns users who follow the given agent (user→agent).
+func (s *FollowService) GetAgentFollowers(agentID string, limit, offset int) ([]model.User, int64, error) {
+	var total int64
+	s.db.Model(&model.AgentFollow{}).Where("agent_id = ?", agentID).Count(&total)
+
+	var follows []model.AgentFollow
+	if err := s.db.Where("agent_id = ?", agentID).
+		Order("created_at DESC").
+		Limit(limit).Offset(offset).
+		Find(&follows).Error; err != nil {
+		return nil, 0, err
+	}
+	if len(follows) == 0 {
+		return []model.User{}, total, nil
+	}
+	ids := make([]string, len(follows))
+	for i, f := range follows {
+		ids[i] = f.UserID
+	}
+	var users []model.User
+	if err := s.db.Where("id IN ?", ids).Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+	// Preserve follow order.
+	byID := make(map[string]model.User, len(users))
+	for _, u := range users {
+		byID[u.ID] = u
+	}
+	ordered := make([]model.User, 0, len(follows))
+	for _, f := range follows {
+		if u, ok := byID[f.UserID]; ok {
+			ordered = append(ordered, u)
+		}
+	}
+	return ordered, total, nil
+}
+
+// IsAgentFollowingAgent reports whether followerAgent follows targetAgent.
+func (s *FollowService) IsAgentFollowingAgent(followerAgentID, targetAgentID string) (bool, error) {
+	var count int64
+	err := s.db.Model(&model.AgentPeerFollow{}).
+		Where("follower_agent_id = ? AND target_agent_id = ?", followerAgentID, targetAgentID).
+		Count(&count).Error
+	return count > 0, err
 }

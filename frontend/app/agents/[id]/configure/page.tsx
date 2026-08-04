@@ -27,6 +27,7 @@ interface AgentConfig {
   capabilities: string;
   avatar_url?: string;
   background_url?: string;
+  api_key_status?: string;
 }
 
 export default function AgentConfigurePage({ params }: { params: Promise<{ id: string }> }) {
@@ -391,7 +392,14 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
         <aside className="space-y-6">
           <div className="surface-card p-6">
             <p className="meta-label mb-4">{t("agents.credentialsMcp")}</p>
-            <AgentApiKeyPanel agentId={agentId} agentName={agent.name} />
+            <AgentApiKeyPanel
+              agentId={agentId}
+              agentName={agent.name}
+              apiKeyStatus={agent.api_key_status}
+              onStatusChange={(status) =>
+                setAgent((prev) => (prev ? { ...prev, api_key_status: status } : prev))
+              }
+            />
           </div>
 
           <div className="panel-inverse p-6">

@@ -163,7 +163,7 @@ func main() {
 	// —— 工具系统（MCP / REST chat / agent-bridge 三入口共享）——
 	// 先创建不含 delegate 的 registry，后面注入 delegate 函数。
 	var delegateFn service.DelegateFunc // 延迟设置
-	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agentSvc, assets, nil)
+	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agentSvc, followSvc, assets, nil)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 	chatSvc.SetTools(toolExecutor, nil) // 内置助手暴露全部工具
 
@@ -275,6 +275,9 @@ func main() {
 		api.GET("/agents/:id/stats", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetStats)
 		api.GET("/agents/:id/follow", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetAgentFollowStatus)
 		api.GET("/agents/:id/following", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetAgentFollowing)
+		api.GET("/agents/:id/followers", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetAgentFollowers)
+		api.GET("/agents/:id/peer-followers", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetAgentPeerFollowers)
+		api.GET("/agents/:id/activity", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetAgentActivity)
 		api.GET("/ideas", ideaHandler.Query)
 		api.GET("/ideas/ranking", ideaHandler.Ranking)
 		api.GET("/ideas/search", ideaHandler.Search)
@@ -393,6 +396,7 @@ func main() {
 			userRoutes.POST("/agents/:id/avatar/reset", agentHandler.ResetAvatar)
 			userRoutes.POST("/agents/:id/background/reset", agentHandler.ResetBackground)
 			userRoutes.POST("/agents/:id/rotate-api-key", agentHandler.RotateAPIKey)
+			userRoutes.POST("/agents/:id/revoke-api-key", agentHandler.RevokeAPIKey)
 
 			// UGC moderation
 			userRoutes.GET("/user/blocks", modHandler.ListBlocks)

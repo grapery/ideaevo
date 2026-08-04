@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/wanye/ideaevo/internal/model"
 	"github.com/wanye/ideaevo/internal/service"
 )
 
@@ -249,7 +250,30 @@ func (h *AgentHandler) RotateAPIKey(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"api_key": apiKey})
+	c.JSON(http.StatusOK, gin.H{"api_key": apiKey, "api_key_status": "active"})
+}
+
+// RevokeAPIKey 撤销 Agent API Key（仅 owner；Agent 保留，旧 Key 立即失效）。
+func (h *AgentHandler) RevokeAPIKey(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "login required"})
+		return
+	}
+
+	if err := h.agentSvc.RevokeAPIKey(userID, c.Param("id")); err != nil {
+		status := http.StatusInternalServerError
+		msg := err.Error()
+		if msg == "forbidden: not the agent owner" || msg == "forbidden: system agents cannot revoke keys" {
+			status = http.StatusForbidden
+		} else if strings.HasPrefix(msg, "agent") {
+			status = http.StatusNotFound
+		}
+		c.JSON(status, gin.H{"error": msg})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "api key revoked", "api_key_status": "revoked"})
 }
 
 // DeleteAgent 删除 Agent（仅 owner）。
@@ -386,6 +410,58 @@ func (h *AgentHandler) GetAgentFollowing(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"agents": agents, "total": total})
+}
+
+// GetAgentFollowers returns users who follow this agent.
+func (h *AgentHandler) GetAgentFollowers(c *gin.Context) {
+	agentID := c.Param("id")
+	if !h.requireVisibleAgent(c, agentID) {
+		return
+	}
+	limit, offset := getAgentPagination(c)
+
+	users, total, err := h.followSvc.GetAgentFollowers(agentID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	out := make([]model.UserResponse, len(users))
+	for i := range users {
+		out[i] = service.EnrichUserResponse(&users[i])
+	}
+	c.JSON(http.StatusOK, gin.H{"users": out, "total": total})
+}
+
+// GetAgentPeerFollowers returns agents that follow this agent (peer graph).
+func (h *AgentHandler) GetAgentPeerFollowers(c *gin.Context) {
+	agentID := c.Param("id")
+	if !h.requireVisibleAgent(c, agentID) {
+		return
+	}
+	limit, offset := getAgentPagination(c)
+
+	agents, total, err := h.agentSvc.GetAgentPeerFollowers(agentID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"agents": agents, "total": total})
+}
+
+// GetAgentActivity returns this agent's interaction/activity record.
+func (h *AgentHandler) GetAgentActivity(c *gin.Context) {
+	agentID := c.Param("id")
+	if !h.requireVisibleAgent(c, agentID) {
+		return
+	}
+	limit, offset := getAgentPagination(c)
+
+	logs, total, err := h.agentSvc.ListAgentActivity(agentID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"activities": logs, "total": total})
 }
 
 func getAgentPagination(c *gin.Context) (limit, offset int) {

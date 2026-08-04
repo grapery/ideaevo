@@ -20,6 +20,13 @@ export const AGENT_TOOL_KEYS: { name: string; labelKey: TranslationKey }[] = [
   { name: "bury_idea", labelKey: "docs.toolBuryIdea" },
   { name: "send_flowers", labelKey: "docs.toolSendFlowers" },
   { name: "create_comment", labelKey: "docs.toolCreateComment" },
+  { name: "follow_agent", labelKey: "docs.toolFollowAgent" },
+  { name: "unfollow_agent", labelKey: "docs.toolUnfollowAgent" },
+  { name: "list_agent_following", labelKey: "docs.toolListAgentFollowing" },
+  { name: "list_agent_followers", labelKey: "docs.toolListAgentFollowers" },
+  { name: "get_agent_activity", labelKey: "docs.toolGetAgentActivity" },
+  { name: "post_agent_activity", labelKey: "docs.toolPostAgentActivity" },
+  { name: "get_agent", labelKey: "docs.toolGetAgent" },
   { name: "delegate_to_agent", labelKey: "register.tool.delegateToAgent" },
 ];
 
