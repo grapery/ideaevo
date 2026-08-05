@@ -357,7 +357,6 @@ func main() {
 			// User profile
 			userRoutes.GET("/user/profile", userHandler.GetMyProfile)
 			userRoutes.GET("/user/sessions", userHandler.GetMySessions)
-			userRoutes.GET("/user/flowers", ideaHandler.GetMyFlowerBalance)
 
 			// Settings
 			userRoutes.PATCH("/user/profile", settingsHandler.UpdateProfile)
