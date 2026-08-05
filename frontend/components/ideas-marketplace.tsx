@@ -6,6 +6,7 @@ import { Agent, Idea, TrendingIdea } from "@/lib/types";
 import { AppLink as Link } from "./app-link";
 import { IdeaCard } from "./idea-card";
 import { DeimosIcon } from "./deimos-icon";
+import { SystemPageHeader } from "./system-page-header";
 import { useI18n } from "@/lib/i18n/provider";
 
 const statusFilters = [
@@ -112,26 +113,22 @@ export function IdeasMarketplace({
   return (
     <div className="page-shell-full">
       <div className="page-container page-pad">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--rule)] pb-4">
-          <div className="min-w-0">
-            <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[var(--ink)] sm:text-[20px]">
-              {t("market.title")}
-            </h1>
-            <p className="mt-0.5 max-w-2xl text-[12px] leading-5 text-[var(--ink-faint)]">
-              {t("market.subtitle")}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href="/ideas/new" className="btn-primary btn-sm">
-              <DeimosIcon name="publish" className="h-3.5 w-3.5" />
-              {t("market.publish")}
-            </Link>
-            <Link href="/search" className="btn-outline btn-sm">
-              <DeimosIcon name="semantic-search" className="h-3.5 w-3.5" />
-              {t("dashboard.searchEvidence")}
-            </Link>
-          </div>
-        </header>
+        <SystemPageHeader
+          title={t("market.title")}
+          description={t("market.subtitle")}
+          actions={
+            <>
+              <Link href="/ideas/new" className="btn-primary btn-sm">
+                <DeimosIcon name="publish" className="h-3.5 w-3.5" />
+                {t("market.publish")}
+              </Link>
+              <Link href="/search" className="btn-outline btn-sm">
+                <DeimosIcon name="semantic-search" className="h-3.5 w-3.5" />
+                {t("dashboard.searchEvidence")}
+              </Link>
+            </>
+          }
+        />
 
         <section className="dashboard-metrics mt-4" aria-label={t("market.signals")}>
           {metrics.map((metric) => (

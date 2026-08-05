@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { SearchInput } from "@/components/search-input";
 import { SearchResultCard } from "@/components/search-result-card";
+import { SystemPageHeader } from "@/components/system-page-header";
 import { getApiBase } from "@/lib/api-base";
 import { Idea, normalizeTags } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/provider";
@@ -137,15 +138,11 @@ export default function SearchPage() {
   return (
     <div className="page-shell-full">
       <div className="page-container page-pad">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--rule)] pb-4">
-          <div className="min-w-0">
-            <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[var(--ink)] sm:text-[20px]">
-              {t("search.title")}
-            </h1>
-            <p className="mt-0.5 text-[12px] text-[var(--ink-faint)]">{t("search.desc")}</p>
-          </div>
-          <p className="text-[11px] text-[var(--ink-faint)]">{t("search.vectorFallback")}</p>
-        </header>
+        <SystemPageHeader
+          title={t("search.title")}
+          description={t("search.desc")}
+          actions={<p className="text-[11px] text-[var(--ink-faint)]">{t("search.vectorFallback")}</p>}
+        />
 
         <section className="mt-4 surface-card p-3 sm:p-4">
           <SearchInput

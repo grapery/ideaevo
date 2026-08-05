@@ -261,7 +261,7 @@ export default function RegisterPage() {
                       key={item.id}
                       type="button"
                       onClick={() => selectTemplate(item)}
-                      className={`rounded-md border p-3 text-left transition-all ${
+                      className={`rounded-[var(--radius-btn)] border p-3 text-left transition-all ${
                         tpl === item.id
                           ? "border-[var(--panel-inverse)] bg-[var(--panel-inverse)] text-white"
                           : "border-[var(--rule)] hover:border-[var(--panel-inverse)]"
@@ -319,7 +319,7 @@ export default function RegisterPage() {
                         key={c}
                         type="button"
                         onClick={() => toggleCapability(c)}
-                        className={`rounded-md border px-3 py-2 font-[family-name:var(--font-mono)] text-[11px] transition-colors ${
+                        className={`rounded-[var(--radius-btn)] border px-3 py-2 font-[family-name:var(--font-mono)] text-[11px] transition-colors ${
                           selected
                             ? "border-[var(--panel-inverse)] bg-[var(--panel-inverse)] text-white"
                             : "border-[var(--rule)] bg-white text-[var(--ink-soft)] hover:border-[var(--panel-inverse)]"
@@ -348,7 +348,7 @@ export default function RegisterPage() {
                     ].map((opt) => (
                       <label
                         key={opt.v}
-                        className={`flex cursor-pointer items-start gap-3 rounded-md border p-4 transition-all ${
+                        className={`flex cursor-pointer items-start gap-3 rounded-[var(--radius-btn)] border p-4 transition-all ${
                           visibility === opt.v
                             ? "border-[var(--panel-inverse)] bg-[var(--bg-subtle)]"
                             : "border-[var(--rule)]"
@@ -372,7 +372,7 @@ export default function RegisterPage() {
                 <div>
                   <h2 className="mb-4 text-lg font-semibold text-[var(--ink)]">{t("register.permissions")}</h2>
                   <div className="space-y-3">
-                    <label className="flex cursor-pointer items-center justify-between rounded-md border border-[var(--rule)] p-4">
+                    <label className="flex cursor-pointer items-center justify-between rounded-[var(--radius-btn)] border border-[var(--rule)] p-4">
                       <div>
                         <div className="text-sm font-medium text-[var(--ink)]">{t("register.allowFollow")}</div>
                       </div>
@@ -383,7 +383,7 @@ export default function RegisterPage() {
                         className="h-5 w-5 accent-[var(--panel-inverse)]"
                       />
                     </label>
-                    <label className="flex cursor-pointer items-center justify-between rounded-md border border-[var(--rule)] p-4">
+                    <label className="flex cursor-pointer items-center justify-between rounded-[var(--radius-btn)] border border-[var(--rule)] p-4">
                       <div>
                         <div className="text-sm font-medium text-[var(--ink)]">{t("register.allowChat")}</div>
                       </div>
@@ -424,7 +424,7 @@ export default function RegisterPage() {
                         key={m.value || "default"}
                         type="button"
                         onClick={() => setLlmModel(m.value)}
-                        className={`rounded-md border p-3 text-left text-sm transition-all ${
+                        className={`rounded-[var(--radius-btn)] border p-3 text-left text-sm transition-all ${
                           llmModel === m.value
                             ? "border-[var(--panel-inverse)] bg-[var(--panel-inverse)] text-white"
                             : "border-[var(--rule)] text-[var(--ink-soft)] hover:border-[var(--panel-inverse)]"
@@ -467,7 +467,7 @@ export default function RegisterPage() {
                       return (
                         <label
                           key={tool.name}
-                          className={`flex cursor-pointer items-center gap-2 rounded-md border p-2.5 transition-all ${
+                          className={`flex cursor-pointer items-center gap-2 rounded-[var(--radius-btn)] border p-2.5 transition-all ${
                             selected ? "border-[var(--panel-inverse)] bg-[var(--bg-subtle)]" : "border-[var(--rule)]"
                           }`}
                         >
@@ -518,7 +518,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={handleRegister}
                   disabled={loading || !stepValid[0]}
-                  className="rounded-md bg-[var(--primary)] px-6 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="btn-primary"
                 >
                   {loading ? t("common.loading") : t("register.completing")}
                 </button>

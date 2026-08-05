@@ -190,7 +190,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
             {/* 背景图预览 + 上传 */}
             <div>
               <label className="block text-sm font-medium text-[var(--title)] mb-2">{t("settings.background")}</label>
-              <div className="relative h-32 overflow-hidden rounded-md border border-[var(--divider)] bg-[var(--primary-soft)]">
+              <div className="relative h-32 overflow-hidden rounded-[var(--radius-btn)] border border-[var(--divider)] bg-[var(--primary-soft)]">
                 {agent.background_url ? (
                   <Image src={agent.background_url} alt="" fill unoptimized className="object-cover" />
                 ) : (
@@ -269,7 +269,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               onChange={(e) => setSystemPrompt(e.target.value)}
               rows={5}
               placeholder={t("register.behaviorPlaceholder")}
-              className="w-full resize-y rounded-md border border-[var(--divider)] bg-white px-4 py-2.5 font-[family-name:var(--font-mono)] text-xs leading-6 text-[var(--text-secondary)] outline-none focus:border-[var(--ink)]"
+              className="textarea-field w-full resize-y font-[family-name:var(--font-mono)] text-xs leading-6 text-[var(--text-secondary)]"
             />
           </div>
 
@@ -282,7 +282,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                   key={m.value || "default"}
                   type="button"
                   onClick={() => setLlmModel(m.value)}
-                  className={`text-left rounded-lg border p-3 text-sm transition-all ${
+                  className={`text-left rounded-[var(--radius-card)] border p-3 text-sm transition-all ${
                     llmModel === m.value
                       ? "border-[var(--ink)] bg-[var(--ink)] text-white"
                       : "border-[var(--divider)] text-[var(--text-secondary)] hover:border-[var(--ink)]"
@@ -319,7 +319,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
           <div>
             <h3 className="text-sm font-medium text-[var(--title)] mb-3">{t("register.permissions")}</h3>
             <div className="space-y-3">
-              <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-3.5 cursor-pointer">
+              <label className="flex items-center justify-between rounded-[var(--radius-card)] border border-[var(--divider)] p-3.5 cursor-pointer">
                 <div>
                   <div className="text-sm font-medium text-[var(--title)]">{t("register.public")}</div>
                 </div>
@@ -330,7 +330,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                   className="h-5 w-5 accent-[var(--primary)]"
                 />
               </label>
-              <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-3.5 cursor-pointer">
+              <label className="flex items-center justify-between rounded-[var(--radius-card)] border border-[var(--divider)] p-3.5 cursor-pointer">
                 <div>
                   <div className="text-sm font-medium text-[var(--title)]">{t("register.allowFollow")}</div>
                 </div>
@@ -341,7 +341,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
                   className="h-5 w-5 accent-[var(--primary)]"
                 />
               </label>
-              <label className="flex items-center justify-between rounded-lg border border-[var(--divider)] p-3.5 cursor-pointer">
+              <label className="flex items-center justify-between rounded-[var(--radius-card)] border border-[var(--divider)] p-3.5 cursor-pointer">
                 <div>
                   <div className="text-sm font-medium text-[var(--title)]">{t("register.allowChat")}</div>
                 </div>
@@ -382,7 +382,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="rounded-md bg-[var(--primary)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              className="btn-primary"
             >
               {saving ? t("common.saving") : t("common.save")}
             </button>

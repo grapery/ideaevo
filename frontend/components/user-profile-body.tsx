@@ -265,7 +265,7 @@ export function UserProfileBody({
                     membership.is_pro ? (
                       <span className="badge-pill badge-active">{t("billing.proBadge")}</span>
                     ) : (
-                      <span className="badge-pill badge-muted">{t("billing.freeUser")}</span>
+                      <span className="badge-pill bg-[var(--bg-subtle)] text-[var(--ink-faint)]">{t("billing.freeUser")}</span>
                     )
                   }
                 />

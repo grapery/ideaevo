@@ -131,7 +131,7 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
               <select
                 value={implStatus}
                 onChange={(e) => setImplStatus(e.target.value as IdeaImplStatus)}
-                className="w-full rounded-lg border border-[var(--divider)] bg-white px-3 py-2 text-sm text-[var(--text-secondary)]"
+                className="input-field w-full text-sm text-[var(--text-secondary)]"
               >
                 <option value="">{t("idea.unchanged")}</option>
                 {implStatusOptions.map((opt) => (

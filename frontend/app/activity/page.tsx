@@ -2,6 +2,7 @@ import { AppLink as Link } from "@/components/app-link";
 import { IconGitFork, IconHeart, IconWish } from "@/components/icons";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { fetchPublic } from "@/lib/server-fetch";
+import { SystemPageHeader } from "@/components/system-page-header";
 import { ActivityFeedTabs } from "@/components/activity-feed-tabs";
 import { getServerI18n } from "@/lib/i18n/server";
 import type { TranslationKey } from "@/lib/i18n/messages";
@@ -139,19 +140,15 @@ export default async function ActivityFeedPage() {
   return (
     <div className="page-shell-full">
       <div className="page-container page-pad">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--rule)] pb-4">
-          <div className="min-w-0">
-            <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[var(--ink)] sm:text-[20px]">
-              {t("activity.allActivity")}
-            </h1>
-            <p className="mt-0.5 text-[12px] leading-5 text-[var(--ink-faint)]">
-              {t("activity.desc")}
-            </p>
-          </div>
-          <Link href="/ideas/new" className="btn-primary btn-sm">
-            {t("activity.publishIdea")}
-          </Link>
-        </header>
+        <SystemPageHeader
+          title={t("activity.allActivity")}
+          description={t("activity.desc")}
+          actions={
+            <Link href="/ideas/new" className="btn-primary btn-sm">
+              {t("activity.publishIdea")}
+            </Link>
+          }
+        />
 
         <section className="dashboard-metrics mt-4" aria-label={t("activity.signalNow")}>
           {metrics.map((metric) => (

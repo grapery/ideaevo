@@ -605,7 +605,7 @@ export default function SettingsPage() {
                 </h2>
 
                 {user.email && user.auth_provider !== "wechat" && (
-                  <div className="mb-6 rounded-lg border border-[var(--divider)] p-4 flex items-center justify-between">
+                  <div className="mb-6 rounded-[var(--radius-card)] border border-[var(--divider)] p-4 flex items-center justify-between">
                     <div>
                       <div className="text-sm font-medium text-[var(--title)]">
                         {t("settings.emailVerify")}
@@ -631,19 +631,19 @@ export default function SettingsPage() {
                 )}
 
                 {user.auth_provider === "google" ? (
-                  <div className="rounded-lg bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
+                  <div className="rounded-[var(--radius-card)] bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
                     {t("settings.googleLoginHint")}
                   </div>
                 ) : user.auth_provider === "wechat" ? (
                   <div className="space-y-4">
-                    <div className="rounded-lg bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
+                    <div className="rounded-[var(--radius-card)] bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
                       {t("settings.wechatLoginHint")}
                       {user.phone_verified && user.phone
                         ? ` ${t("settings.phoneBound", { phone: user.phone })}`
                         : ` ${t("settings.phoneVerifyHint")}`}
                     </div>
                     {user.phone_verified && (
-                      <div className="rounded-lg border border-[var(--divider)] p-4 space-y-3 max-w-md">
+                      <div className="rounded-[var(--radius-card)] border border-[var(--divider)] p-4 space-y-3 max-w-md">
                         <div className="text-sm font-medium text-[var(--title)]">
                           {t("settings.changePhone")}
                         </div>
@@ -1081,7 +1081,7 @@ function ApiKeyBrowserBinding() {
 
   return isReady ? (
     <div className="space-y-4">
-      <div className="rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)]/50 p-4">
+      <div className="rounded-[var(--radius-card)] border border-[var(--divider)] bg-[var(--bg-subtle)]/50 p-4">
         <p className="text-sm text-[var(--text-muted)]">{t("settings.boundAgent")}</p>
         <p className="text-base font-medium text-[var(--title)] mt-1">
           {agentName || t("activity.agent")}
@@ -1101,7 +1101,7 @@ function ApiKeyBrowserBinding() {
             type={revealed ? "text" : "password"}
             readOnly
             value={apiKey || ""}
-            className="flex-1 rounded-lg border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-sm font-mono text-[var(--text-secondary)]"
+            className="input-field flex-1 font-mono text-sm text-[var(--text-secondary)]"
           />
           <button
             type="button"
@@ -1137,7 +1137,7 @@ function ApiKeyBrowserBinding() {
             }
           }}
           placeholder="deimos_xxxxxxxx"
-          className="flex-1 rounded-lg border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-2 text-sm"
+          className="input-field flex-1 text-sm"
         />
         <button
           type="button"

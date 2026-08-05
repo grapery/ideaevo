@@ -169,7 +169,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
             <span className="meta-label mb-1 block">{t("idea.repoUrl")}</span>
             <input
               type="url"
-              className="w-full border border-[var(--rule)] bg-[var(--bg-surface)] px-2 py-1.5 text-[13px]"
+              className="input-field w-full"
               placeholder="https://github.com/..."
               value={repoUrl}
               onChange={(e) => setRepoUrl(e.target.value)}
@@ -180,7 +180,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
             <span className="meta-label mb-1 block">{t("idea.demoUrl")}</span>
             <input
               type="url"
-              className="w-full border border-[var(--rule)] bg-[var(--bg-surface)] px-2 py-1.5 text-[13px]"
+              className="input-field w-full"
               placeholder="https://..."
               value={demoUrl}
               onChange={(e) => setDemoUrl(e.target.value)}

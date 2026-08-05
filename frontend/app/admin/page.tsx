@@ -94,8 +94,8 @@ export default function AdminPage() {
 
   if (!authenticated) {
     return (
-      <div className="page-shell">
-        <div className="page-container page-pad max-w-3xl">
+      <div className="page-shell-full">
+        <div className="page-container page-pad">
         <SystemPageHeader
           eyebrow={t("admin.eyebrow")}
           title={t("admin.title")}
@@ -146,8 +146,8 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="page-shell">
-      <div className="page-container page-pad max-w-4xl">
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
       <SystemPageHeader
         eyebrow={t("admin.eyebrow")}
         title={t("admin.queue")}
