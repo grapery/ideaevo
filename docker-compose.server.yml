@@ -99,6 +99,7 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - ideaevo-network
+      - grapery-network
     healthcheck:
       # 鉴权后 / 返回 401，改用「能连上端口即健康」的探活。
       test: ["CMD-SHELL", "wget -qO- --timeout=3 http://localhost:9090/ || exit 0"]
