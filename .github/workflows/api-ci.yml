@@ -347,11 +347,15 @@ jobs:
             export WEB_IMAGE="$WEB_IMAGE"
             docker compose -f docker-compose.server.yml -p ideaevo-dev pull api
             docker compose -f docker-compose.server.yml -p ideaevo-dev up -d api
+            # MCP 复用 api 镜像（command 切换启动 /usr/local/bin/mcp），无需单独 pull。
+            docker compose -f docker-compose.server.yml -p ideaevo-dev up -d mcp
             sleep 12
             echo "=== container status ==="
-            docker ps -a --filter "name=ideaevo-api" --format "{{.Names}}\t{{.Status}}"
-            echo "=== last logs ==="
+            docker ps -a --filter "name=ideaevo-" --format "{{.Names}}\t{{.Status}}"
+            echo "=== api logs ==="
             docker logs ideaevo-api --tail 10 2>&1 || true
+            echo "=== mcp logs ==="
+            docker logs ideaevo-mcp --tail 10 2>&1 || true
             docker compose -f docker-compose.server.yml -p ideaevo-dev ps
             curl -sf http://localhost:8090/health && echo "✅ api healthy" || echo "⚠️ api health check failed"
 
@@ -468,8 +472,10 @@ jobs:
             export IDEAEVO_API_PORT="$API_PORT"
             docker compose -f docker-compose.server.yml -p ideaevo-prod pull api
             docker compose -f docker-compose.server.yml -p ideaevo-prod up -d api
+            docker compose -f docker-compose.server.yml -p ideaevo-prod up -d mcp
             sleep 12
             docker logs ideaevo-api --tail 10 2>&1 || true
+            docker logs ideaevo-mcp --tail 10 2>&1 || true
             curl -sf "http://localhost:${API_PORT}/health" && echo "✅ api healthy" || echo "⚠️ api health check failed"
 
       - name: Deploy notification
