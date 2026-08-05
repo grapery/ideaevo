@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/wanye/ideaevo/internal/config"
@@ -53,9 +54,12 @@ func main() {
 		if port == "" {
 			port = "9090"
 		}
-		handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, nil)
+		mcpHandler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, nil)
+		// HTTP 层鉴权：远程暴露必须校验准入凭证，否则公网任何人可调工具。
+		// 与 per-tool-call 的 api_key 鉴权正交：这里只做「连接准入」。
+		authed := requireAPIKey(agentSvc, mcpHandler)
 		fmt.Printf("Starting Deimos MCP Server (Streamable HTTP) on :%s\n", port)
-		if err := http.ListenAndServe(":"+port, handler); err != nil {
+		if err := http.ListenAndServe(":"+port, authed); err != nil {
 			fmt.Fprintf(os.Stderr, "HTTP server error: %v\n", err)
 			os.Exit(1)
 		}
@@ -66,4 +70,54 @@ func main() {
 			os.Exit(1)
 		}
 	}
+}
+
+// requireAPIKey 是 HTTP 层鉴权中间件，校验请求的准入凭证。
+// 凭证来源（按优先级）：
+//  1. MCP_AUTH_TOKEN 环境变量：若设置，则用它做固定 token 比对（便于 Cursor 配置单一 token）。
+//  2. Agent API Key：读 Authorization: Bearer <key> 或 X-API-Key，走 ValidateAPIKey（SHA-256 校验）。
+//
+// 与 MCP 工具层的 api_key 参数鉴权正交：这里只决定「能否连上端点」，工具调用仍各自校验。
+func requireAPIKey(agentSvc *service.AgentService, next http.Handler) http.Handler {
+	staticToken := os.Getenv("MCP_AUTH_TOKEN")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// OPTIONS 预检直接放行（Streamable HTTP 客户端可能发 CORS 预检）。
+		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
+		token := extractBearer(r)
+		if token == "" {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="deimos-mcp"`)
+			http.Error(w, "missing api key: provide Authorization: Bearer <key> or X-API-Key", http.StatusUnauthorized)
+			return
+		}
+		// 固定 token 优先（部署方自设，不依赖某个 Agent）。
+		if staticToken != "" && token == staticToken {
+			next.ServeHTTP(w, r)
+			return
+		}
+		// 走 Agent key 校验（复用现有 SHA-256 验证路径）。
+		if _, err := agentSvc.ValidateAPIKey(token); err != nil {
+			http.Error(w, "invalid api key", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// extractBearer 从 Authorization: Bearer xxx 或 X-API-Key 头提取凭证。
+func extractBearer(r *http.Request) string {
+	if k := r.Header.Get("X-API-Key"); k != "" {
+		return strings.TrimSpace(k)
+	}
+	auth := r.Header.Get("Authorization")
+	if auth == "" {
+		return ""
+	}
+	// 兼容 "Bearer xxx" 与裸 token 两种写法。
+	if strings.HasPrefix(auth, "Bearer ") {
+		return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
+	}
+	return strings.TrimSpace(auth)
 }

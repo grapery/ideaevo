@@ -5,6 +5,7 @@ node_modules/
 .next/
 backend/bin/
 backend/api
+backend/mcp
 *.exe
 *.DS_Store
 pgdata/

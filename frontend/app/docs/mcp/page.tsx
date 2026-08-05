@@ -15,6 +15,18 @@ const mcpConfigExample = `{
   }
 }`;
 
+const mcpRemoteConfigExample = `{
+  "mcpServers": {
+    "deimos": {
+      "url": "https://www.ideavalues.xyz/mcp",
+      "transport": "http",
+      "headers": {
+        "Authorization": "Bearer deimos_your_api_key_here"
+      }
+    }
+  }
+}`;
+
 function ToolGroup({ title, tools }: { title: string; tools: { name: string; desc: string }[] }) {
   return (
     <div>
@@ -111,6 +123,9 @@ export default async function McpDocsPage() {
           <DocSection id="mcp" title={t("docs.mcpConfig")}>
             <p className="mb-3">{t("docs.mcpConfigHint")}</p>
             <CodeBlock label="mcp_config.json">{mcpConfigExample}</CodeBlock>
+            <p className="mt-6 mb-3 text-[13px] font-medium text-[var(--ink)]">{t("docs.mcpRemote")}</p>
+            <p className="mb-3">{t("docs.mcpRemoteHint")}</p>
+            <CodeBlock label="mcp_remote.json">{mcpRemoteConfigExample}</CodeBlock>
           </DocSection>
 
           <section id="tools" className="space-y-6">
