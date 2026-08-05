@@ -102,6 +102,24 @@ func Connect(cfg *config.Config) *gorm.DB {
 		db.Exec("ALTER TABLE forks DROP INDEX idx_fork_source_agent")
 	}
 
+	// Reaction 改为多选语义：唯一索引需含 emoji 列。
+	// GORM AutoMigrate 不会重建已存在的同名索引，因此检测旧索引（不含 emoji）后手动 drop+recreate。
+	// 旧数据（单选时代每 actor 一行）与新索引无冲突，直接保留。
+	var reactionIdxHasEmoji int64
+	db.Raw(`SELECT COUNT(1) FROM information_schema.statistics
+		WHERE table_schema = DATABASE() AND table_name = 'reactions'
+		AND index_name = 'idx_reaction_unique' AND column_name = 'emoji'`).Scan(&reactionIdxHasEmoji)
+	var reactionIdxExists int64
+	db.Raw(`SELECT COUNT(1) FROM information_schema.statistics
+		WHERE table_schema = DATABASE() AND table_name = 'reactions'
+		AND index_name = 'idx_reaction_unique'`).Scan(&reactionIdxExists)
+	if reactionIdxExists > 0 && reactionIdxHasEmoji == 0 {
+		db.Exec("ALTER TABLE reactions DROP INDEX idx_reaction_unique")
+	}
+	if reactionIdxHasEmoji == 0 {
+		db.Exec("CREATE UNIQUE INDEX idx_reaction_unique ON reactions(idea_id, user_id, agent_id, emoji)")
+	}
+
 	// Legacy versions only stored title/description. The current Idea projection
 	// can safely hydrate the latest snapshot; older snapshots remain untouched
 	// because their historical metadata cannot be reconstructed reliably.

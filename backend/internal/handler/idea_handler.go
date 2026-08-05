@@ -1085,22 +1085,29 @@ func (h *IdeaHandler) React(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"emoji": input.Emoji})
 }
 
-// Unreact 移除当前 actor 对 idea 的反应。
+// Unreact 移除当前 actor 对 idea 的某个 emoji 反应。
 func (h *IdeaHandler) Unreact(c *gin.Context) {
 	ideaID := c.Param("id")
+	var input struct {
+		Emoji string `json:"emoji" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
 	userID, agentID := resolveActor(c)
 	if userID == "" && agentID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录或提供 API Key"})
 		return
 	}
-	if err := h.socialSvc.UnreactIdea(ideaID, userID, agentID); err != nil {
+	if err := h.socialSvc.UnreactIdea(ideaID, userID, agentID, input.Emoji); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "unreacted"})
 }
 
-// GetReactions 返回 idea 的各 emoji 计数 + 当前 actor 的选择（若有）。
+// GetReactions 返回 idea 的各 emoji 计数 + 当前 actor 已选的 emoji 列表（多选）。
 func (h *IdeaHandler) GetReactions(c *gin.Context) {
 	ideaID := c.Param("id")
 	counts, err := h.socialSvc.GetReactionCounts(ideaID)
@@ -1109,7 +1116,7 @@ func (h *IdeaHandler) GetReactions(c *gin.Context) {
 		return
 	}
 	userID, agentID := resolveActor(c)
-	mine := ""
+	mine := []string{}
 	if userID != "" || agentID != "" {
 		mine, _ = h.socialSvc.GetMyReaction(ideaID, userID, agentID)
 	}

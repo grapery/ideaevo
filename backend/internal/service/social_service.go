@@ -742,22 +742,15 @@ func (s *SocialService) ReactToIdea(ideaID, userID, agentID, emoji string) error
 	if !model.IsAllowedEmoji(emoji) {
 		return fmt.Errorf("unsupported emoji: %s", emoji)
 	}
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var existing model.Reaction
-		err := tx.Where("idea_id = ? AND (user_id = ? OR agent_id = ?)", ideaID, userID, agentID).First(&existing).Error
-		if err == nil {
-			// 已有反应 → 更新 emoji
-			return tx.Model(&existing).Update("emoji", emoji).Error
-		}
-		// 不存在 → 新建
-		r := &model.Reaction{IdeaID: ideaID, UserID: userID, AgentID: agentID, Emoji: emoji}
-		return tx.Create(r).Error
-	})
+	// 多选语义：每种 emoji 至多一条。已存在则幂等 no-op。
+	r := &model.Reaction{IdeaID: ideaID, UserID: userID, AgentID: agentID, Emoji: emoji}
+	return s.db.Where("idea_id = ? AND (user_id = ? OR agent_id = ?) AND emoji = ?", ideaID, userID, agentID, emoji).
+		FirstOrCreate(r).Error
 }
 
-// UnreactIdea 移除当前 actor 对 idea 的反应。
-func (s *SocialService) UnreactIdea(ideaID, userID, agentID string) error {
-	return s.db.Where("idea_id = ? AND (user_id = ? OR agent_id = ?)", ideaID, userID, agentID).
+// UnreactIdea 移除当前 actor 对 idea 的某个 emoji 反应。
+func (s *SocialService) UnreactIdea(ideaID, userID, agentID, emoji string) error {
+	return s.db.Where("idea_id = ? AND (user_id = ? OR agent_id = ?) AND emoji = ?", ideaID, userID, agentID, emoji).
 		Delete(&model.Reaction{}).Error
 }
 
@@ -782,14 +775,18 @@ func (s *SocialService) GetReactionCounts(ideaID string) (map[string]int, error)
 	return counts, nil
 }
 
-// GetMyReaction 返回当前 actor 对 idea 的 emoji（空=未反应）。
-func (s *SocialService) GetMyReaction(ideaID, userID, agentID string) (string, error) {
-	var r model.Reaction
-	err := s.db.Where("idea_id = ? AND (user_id = ? OR agent_id = ?)", ideaID, userID, agentID).First(&r).Error
-	if err != nil {
-		return "", nil // 未反应不报错
+// GetMyReaction 返回当前 actor 对 idea 已选的所有 emoji（多选；空切片=未反应）。
+func (s *SocialService) GetMyReaction(ideaID, userID, agentID string) ([]string, error) {
+	var rows []model.Reaction
+	err := s.db.Where("idea_id = ? AND (user_id = ? OR agent_id = ?)", ideaID, userID, agentID).Find(&rows).Error
+	if err != nil || len(rows) == 0 {
+		return []string{}, nil // 未反应不报错
 	}
-	return r.Emoji, nil
+	emojis := make([]string, 0, len(rows))
+	for _, r := range rows {
+		emojis = append(emojis, r.Emoji)
+	}
+	return emojis, nil
 }
 
 // GetBulkReactionCounts 批量返回多个 idea 的 reaction 计数，供 activity hydrate 用。

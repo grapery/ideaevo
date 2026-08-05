@@ -12,23 +12,23 @@ const EMOJIS = ["👍", "🎉", "🚀", "❤️", "👀"];
 
 /**
  * ReactionBar — GitHub 式 emoji 反应。
- * 点击「+」触发器弹出 emoji 选择气泡，单选一个 emoji（切换/取消）。
- * 有计数时显示已选 emoji 的 pill。
+ * 点击「+」触发器弹出 emoji 选择气泡，可多选多个 emoji（各自 toggle）。
+ * 有计数时显示对应 emoji 的 pill。
  */
 export function ReactionBar({
   ideaId,
   initialCounts = {},
-  initialMine = "",
+  initialMine = [],
   compact = false,
 }: {
   ideaId: string;
   initialCounts?: Record<string, number>;
-  initialMine?: string;
+  initialMine?: string[];
   compact?: boolean;
 }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const [counts, setCounts] = useState<Record<string, number>>(initialCounts);
-  const [mine, setMine] = useState(initialMine);
+  const [mine, setMine] = useState<string[]>(initialMine);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const popRef = useRef<HTMLDivElement>(null);
@@ -55,11 +55,12 @@ export function ReactionBar({
       setLoading(true);
       setOpen(false);
       const prevCounts = { ...counts };
-      const prevMine = mine;
+      const prevMine = [...mine];
+      const selected = mine.includes(emoji);
 
-      if (mine === emoji) {
-        // 取消
-        setMine("");
+      if (selected) {
+        // 取消该 emoji
+        setMine((m) => m.filter((e) => e !== emoji));
         setCounts((c) => {
           const n = { ...c };
           if (n[emoji]) n[emoji]--;
@@ -71,6 +72,7 @@ export function ReactionBar({
             method: "DELETE",
             apiKey: useSession ? undefined : apiKey,
             useSession,
+            body: JSON.stringify({ emoji }),
           });
         } catch (err) {
           setCounts(prevCounts);
@@ -78,14 +80,10 @@ export function ReactionBar({
           notify.error(getErrorMessage(err, t("common.operationFailed")));
         }
       } else {
-        // 新选或切换
-        setMine(emoji);
+        // 新增该 emoji（多选，不影响已选的其它 emoji）
+        setMine((m) => [...m, emoji]);
         setCounts((c) => {
           const n = { ...c };
-          if (prevMine && n[prevMine]) {
-            n[prevMine]--;
-            if (n[prevMine] <= 0) delete n[prevMine];
-          }
           n[emoji] = (n[emoji] || 0) + 1;
           return n;
         });
@@ -120,7 +118,7 @@ export function ReactionBar({
       {/* 已有反应的 pill（可点击切换/取消） */}
       {countedEmojis.map((emoji) => {
         const count = counts[emoji];
-        const selected = mine === emoji;
+        const selected = mine.includes(emoji);
         return (
           <button
             key={emoji}
@@ -160,7 +158,7 @@ export function ReactionBar({
                   onClick={() => toggle(emoji)}
                   disabled={loading}
                   className={`btn-icon h-8 w-8 text-base disabled:opacity-50 ${
-                    mine === emoji ? "border-[var(--ink)]" : ""
+                    mine.includes(emoji) ? "border-[var(--ink)]" : ""
                   }`}
                 >
                   {emoji}

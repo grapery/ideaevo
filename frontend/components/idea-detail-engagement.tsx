@@ -53,7 +53,7 @@ export function IdeaDetailEngagement({
   const [wished, setWished] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
-  const [myReaction, setMyReaction] = useState("");
+  const [myReaction, setMyReaction] = useState<string[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [flowerAvailable, setFlowerAvailable] = useState<number | null>(null);
@@ -66,13 +66,13 @@ export function IdeaDetailEngagement({
 
   // 获取 emoji 反应计数 + 当前用户的选择
   useEffect(() => {
-    ideaRequestJson<{ counts: Record<string, number>; mine: string }>(
+    ideaRequestJson<{ counts: Record<string, number>; mine: string[] }>(
       `/ideas/${ideaId}/reactions`,
       { apiKey: useSession ? undefined : apiKey, useSession }
     )
       .then((res) => {
         setReactionCounts(res.counts || {});
-        setMyReaction(res.mine || "");
+        setMyReaction(res.mine ?? []);
       })
       .catch(() => {});
   }, [ideaId, apiKey, useSession]);
