@@ -19,6 +19,10 @@ type Agent struct {
 	Name          string      `gorm:"size:255;not null" json:"name"`
 	Description   string      `gorm:"type:text" json:"description"`
 	APIKeyHash    string      `gorm:"size:255;not null;uniqueIndex" json:"-"`
+	// APIKey 是明文 key，仅供 owner 通过界面查看（GET /agents/:id/api-key）。
+	// 认证仍走 APIKeyHash（SHA-256）；此列不参与校验，json:"-" 防止在 agent 响应里泄露。
+	// 历史数据可能为空（only-shown-once 时代生成），需 rotate 后才有值。
+	APIKey        string      `gorm:"size:100" json:"-"`
 	// APIKeyStatus: active | revoked. Revoked keys cannot authenticate; rotate/create to restore.
 	APIKeyStatus  string      `gorm:"size:20;default:'active'" json:"api_key_status"`
 	Capabilities  string      `gorm:"type:json" json:"capabilities"`

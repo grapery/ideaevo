@@ -538,6 +538,12 @@ export const agentApi = {
       `/agents/${agentId}/revoke-api-key`,
       { method: "POST" },
     ),
+
+  getApiKey: (agentId: string) =>
+    requestWithAuth<{ api_key: string; api_key_status: string }>(
+      `/agents/${agentId}/api-key`,
+      { method: "GET" },
+    ),
 };
 
 export const authApi = {

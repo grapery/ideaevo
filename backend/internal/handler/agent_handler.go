@@ -276,6 +276,31 @@ func (h *AgentHandler) RevokeAPIKey(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "api key revoked", "api_key_status": "revoked"})
 }
 
+// GetAPIKey 返回 Agent 的明文 API Key（仅 owner；仅供界面查看，认证仍走 hash）。
+// 空字符串表示 revoked 或 only-shown-once 时代的历史 agent（无明文留存）。
+func (h *AgentHandler) GetAPIKey(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "login required"})
+		return
+	}
+
+	apiKey, status, err := h.agentSvc.GetAPIKey(userID, c.Param("id"))
+	if err != nil {
+		code := http.StatusInternalServerError
+		msg := err.Error()
+		if strings.HasPrefix(msg, "forbidden:") {
+			code = http.StatusForbidden
+		} else if strings.HasPrefix(msg, "agent") {
+			code = http.StatusNotFound
+		}
+		c.JSON(code, gin.H{"error": msg})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"api_key": apiKey, "api_key_status": status})
+}
+
 // DeleteAgent 删除 Agent（仅 owner）。
 func (h *AgentHandler) DeleteAgent(c *gin.Context) {
 	userID := c.GetString("user_id")

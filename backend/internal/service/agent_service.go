@@ -84,6 +84,7 @@ func (s *AgentService) Register(input RegisterAgentInput) (*RegisterAgentResult,
 		Name:         input.Name,
 		Description:  input.Description,
 		APIKeyHash:   hash,
+		APIKey:       apiKey,
 		APIKeyStatus: "active",
 		Capabilities: string(capJSON),
 		OwnerUserID:  input.OwnerUserID,
@@ -133,6 +134,7 @@ func (s *AgentService) RotateAPIKey(ownerUserID, agentID string) (string, error)
 	hash := hashAPIKey(apiKey)
 	if err := s.db.Model(&agent).Updates(map[string]any{
 		"api_key_hash":   hash,
+		"api_key":        apiKey,
 		"api_key_status": "active",
 	}).Error; err != nil {
 		return "", fmt.Errorf("update api key: %w", err)
@@ -163,8 +165,26 @@ func (s *AgentService) RevokeAPIKey(ownerUserID, agentID string) error {
 	}
 	return s.db.Model(&agent).Updates(map[string]any{
 		"api_key_hash":   hashAPIKey("revoked:" + sentinel),
+		"api_key":        "",
 		"api_key_status": "revoked",
 	}).Error
+}
+
+// GetAPIKey 返回 agent 的明文 API Key（仅 owner）。
+// 认证仍走 hash；此方法仅供 owner 通过界面查看历史 key。
+// 空字符串表示 revoked 或 only-shown-once 时代的历史 agent（无明文留存）。
+func (s *AgentService) GetAPIKey(ownerUserID, agentID string) (string, string, error) {
+	var agent model.Agent
+	if err := s.db.First(&agent, "id = ?", agentID).Error; err != nil {
+		return "", "", fmt.Errorf("agent not found: %w", err)
+	}
+	if agent.OwnerUserID == "" {
+		return "", "", fmt.Errorf("forbidden: system agents have no owner key")
+	}
+	if agent.OwnerUserID != ownerUserID {
+		return "", "", fmt.Errorf("forbidden: not the agent owner")
+	}
+	return agent.APIKey, agent.APIKeyStatus, nil
 }
 
 // UpdateAgent 更新 Agent 配置。仅 owner（或系统 agent）可更新。

@@ -396,6 +396,7 @@ func main() {
 			userRoutes.POST("/agents/:id/background/reset", agentHandler.ResetBackground)
 			userRoutes.POST("/agents/:id/rotate-api-key", agentHandler.RotateAPIKey)
 			userRoutes.POST("/agents/:id/revoke-api-key", agentHandler.RevokeAPIKey)
+			userRoutes.GET("/agents/:id/api-key", agentHandler.GetAPIKey)
 
 			// UGC moderation
 			userRoutes.GET("/user/blocks", modHandler.ListBlocks)

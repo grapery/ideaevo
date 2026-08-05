@@ -39,6 +39,27 @@ export function AgentApiKeyPanel({
     setStatus(initialStatus || "active");
   }, [initialStatus]);
 
+  // 挂载时拉取已保存的明文 key（仅 active 状态），让用户离开页面再回来仍可查看/复用。
+  // revoked 不请求；历史 agent（only-shown-once 时代）api_key 为空，UI 会在 revealedKey 为空时引导轮换。
+  useEffect(() => {
+    if (initialStatus === "revoked") return;
+    let cancelled = false;
+    agentApi
+      .getApiKey(agentId)
+      .then((res) => {
+        if (!cancelled && res.api_key) {
+          setRevealedKey(res.api_key);
+          setShowKey(false);
+        }
+      })
+      .catch(() => {
+        /* 静默：查看失败不打扰用户，仍可 rotate 获取 */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [agentId, initialStatus]);
+
   const isBound = boundAgentId === agentId && !!apiKey;
   const isRevoked = status === "revoked";
 
@@ -114,7 +135,7 @@ export function AgentApiKeyPanel({
           <p className="text-xs text-[var(--text-muted)] mt-1">{t("agentKey.hint")}</p>
         </div>
         <span
-          className={`badge-pill ${isRevoked ? "badge-muted" : "badge-active"}`}
+          className={`badge-pill ${isRevoked ? "bg-[var(--bg-subtle)] text-[var(--ink-faint)]" : "badge-active"}`}
         >
           {isRevoked ? t("agentKey.statusRevoked") : t("agentKey.statusActive")}
         </span>
