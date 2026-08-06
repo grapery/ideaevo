@@ -38,6 +38,14 @@ type ctxKeyHTTPAgent struct{}
 // 供 cmd/mcp 的鉴权中间件注入身份。
 func HTTPAgentContextKey() any { return ctxKeyHTTPAgent{} }
 
+// ptrStr 安全解引用 *string，nil 返回空串。
+func ptrStr(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
 type Server struct {
 	mcpServer *mcp.Server
 	agentSvc  *service.AgentService
@@ -276,40 +284,43 @@ func marshalResult(v any) (*mcp.CallToolResult, error) {
 }
 
 // ---- 工具入参 struct ----
+// api_key 统一用指针 + omitempty：远程 MCP 客户端经 HTTP Authorization 头鉴权后，
+// 身份注入 context，无需每个工具再传 api_key（schema 里标为 optional）。
+// stdio 客户端仍可通过 api_key 参数传身份（向后兼容）。
 
 type unlikeInput struct {
-	APIKey string `json:"api_key" jsonschema:"your Deimos API key"`
-	IdeaID string `json:"idea_id" jsonschema:"ID of the idea to unlike"`
+	APIKey *string `json:"api_key,omitempty" jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+	IdeaID string  `json:"idea_id"           jsonschema:"ID of the idea to unlike"`
 }
 
 type getMeInput struct {
-	APIKey string `json:"api_key" jsonschema:"your Deimos API key"`
+	APIKey *string `json:"api_key,omitempty" jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
 }
 
 type createChatSessionInput struct {
-	APIKey  string `json:"api_key"            jsonschema:"your Deimos API key"`
-	AgentID string `json:"agent_id"           jsonschema:"ID of the agent to chat with"`
-	IdeaID  string `json:"idea_id,omitempty"  jsonschema:"optional idea ID to bind the session to"`
-	Title   string `json:"title,omitempty"    jsonschema:"optional session title"`
+	APIKey  *string `json:"api_key,omitempty"   jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+	AgentID string  `json:"agent_id"            jsonschema:"ID of the agent to chat with"`
+	IdeaID  string  `json:"idea_id,omitempty"   jsonschema:"optional idea ID to bind the session to"`
+	Title   string  `json:"title,omitempty"     jsonschema:"optional session title"`
 }
 
 type sendChatMessageInput struct {
-	APIKey    string `json:"api_key"   jsonschema:"your Deimos API key"`
-	SessionID string `json:"session_id" jsonschema:"ID of the chat session"`
-	Content   string `json:"content"   jsonschema:"message content"`
+	APIKey    *string `json:"api_key,omitempty"   jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+	SessionID string  `json:"session_id"          jsonschema:"ID of the chat session"`
+	Content   string  `json:"content"             jsonschema:"message content"`
 }
 
 type getChatHistoryInput struct {
-	APIKey    string `json:"api_key"              jsonschema:"your Deimos API key"`
-	SessionID string `json:"session_id"          jsonschema:"ID of the chat session"`
-	Limit     int    `json:"limit,omitempty"      jsonschema:"max messages to return (default 50)"`
-	BeforeID  string `json:"before_id,omitempty"  jsonschema:"get messages before this message ID"`
+	APIKey    *string `json:"api_key,omitempty"    jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+	SessionID string  `json:"session_id"           jsonschema:"ID of the chat session"`
+	Limit     int     `json:"limit,omitempty"      jsonschema:"max messages to return (default 50)"`
+	BeforeID  string  `json:"before_id,omitempty"  jsonschema:"get messages before this message ID"`
 }
 
 type listChatSessionsInput struct {
-	APIKey string `json:"api_key"          jsonschema:"your Deimos API key"`
-	Limit  int    `json:"limit,omitempty"  jsonschema:"max sessions to return (default 20)"`
-	Offset int    `json:"offset,omitempty" jsonschema:"pagination offset"`
+	APIKey *string `json:"api_key,omitempty"  jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+	Limit  int     `json:"limit,omitempty"    jsonschema:"max sessions to return (default 20)"`
+	Offset int     `json:"offset,omitempty"   jsonschema:"pagination offset"`
 }
 
 type getUserProfileInput struct {
@@ -325,7 +336,7 @@ type getUserActivityInput struct {
 // ---- 工具 handler ----
 
 func (s *Server) handleUnlike(ctx context.Context, req *mcp.CallToolRequest, in unlikeInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(ctx, in.APIKey, false)
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -334,7 +345,7 @@ func (s *Server) handleUnlike(ctx context.Context, req *mcp.CallToolRequest, in 
 }
 
 func (s *Server) handleGetMe(ctx context.Context, req *mcp.CallToolRequest, in getMeInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(ctx, in.APIKey, true)
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -347,7 +358,7 @@ func (s *Server) handleGetMe(ctx context.Context, req *mcp.CallToolRequest, in g
 }
 
 func (s *Server) handleCreateChatSession(ctx context.Context, req *mcp.CallToolRequest, in createChatSessionInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(ctx, in.APIKey, false)
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -366,7 +377,7 @@ func (s *Server) handleCreateChatSession(ctx context.Context, req *mcp.CallToolR
 }
 
 func (s *Server) handleSendChatMessage(ctx context.Context, req *mcp.CallToolRequest, in sendChatMessageInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(ctx, in.APIKey, false)
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -383,7 +394,7 @@ func (s *Server) handleSendChatMessage(ctx context.Context, req *mcp.CallToolReq
 }
 
 func (s *Server) handleGetChatHistory(ctx context.Context, req *mcp.CallToolRequest, in getChatHistoryInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(ctx, in.APIKey, true)
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -403,7 +414,7 @@ func (s *Server) handleGetChatHistory(ctx context.Context, req *mcp.CallToolRequ
 }
 
 func (s *Server) handleListChatSessions(ctx context.Context, req *mcp.CallToolRequest, in listChatSessionsInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(ctx, in.APIKey, true)
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), true)
 	if err != nil {
 		return nil, nil, err
 	}
