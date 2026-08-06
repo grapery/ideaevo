@@ -12,6 +12,32 @@ import (
 	"gorm.io/gorm"
 )
 
+// readOnlyTools 是只读工具白名单：仅查询、不修改任何数据。
+// 这些工具对所有人免费（含非 Pro 的带 key 调用），符合「免费用户可浏览市场」的产品意图。
+// 写操作（register/fork/comment/like/flowers 等）仍要求 Pro 会员。
+var readOnlyTools = map[string]bool{
+	"search_ideas":        true,
+	"query_ideas":         true,
+	"get_idea_detail":     true,
+	"get_comments":        true,
+	"get_agent":           true,
+	"list_agent_following": true,
+	"list_agent_followers": true,
+	"get_agent_activity":  true,
+	"get_me":              true,
+	"get_chat_history":    true,
+	"list_chat_sessions":  true,
+	"get_user_profile":    true,
+	"get_user_activity":   true,
+}
+
+// ctxKeyHTTPAgent 标记由 HTTP 层（requireAPIKey）验证过的 agent，避免工具层重复要求 api_key 参数。
+type ctxKeyHTTPAgent struct{}
+
+// HTTPAgentContextKey 返回用于在 context 中存取 HTTP 层验证过的 agent 的 key。
+// 供 cmd/mcp 的鉴权中间件注入身份。
+func HTTPAgentContextKey() any { return ctxKeyHTTPAgent{} }
+
 type Server struct {
 	mcpServer *mcp.Server
 	agentSvc  *service.AgentService
@@ -84,32 +110,41 @@ func (s *Server) registerBridgedTools() {
 			Description: toolDesc,
 			InputSchema: toolSchema,
 		}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			// MCP 工具仍要求 api_key 参数做认证（向后兼容现有客户端）
+			// 鉴权：身份来源优先级 HTTP 层 context > 工具参数 api_key > 匿名。
+			// HTTP 层（requireAPIKey）验证过的 agent 注入在 ctx，远程 MCP 客户端
+			//（Cursor/Codex 经 Authorization 头鉴权）无需每个工具再传 api_key 参数。
 			var rawArgs map[string]any
 			if len(req.Params.Arguments) > 0 {
 				_ = json.Unmarshal(req.Params.Arguments, &rawArgs)
 			}
-			apiKey, _ := rawArgs["api_key"].(string)
+			isReadOnly := readOnlyTools[toolName]
 
 			var principal service.Principal
-			if apiKey != "" {
+			if httpAgent, ok := ctx.Value(ctxKeyHTTPAgent{}).(*model.Agent); ok && httpAgent != nil {
+				// HTTP 层已鉴权：只读工具直接放行；写操作仍校验 Pro。
+				if !isReadOnly && s.subSvc != nil {
+					if err := s.subSvc.EnsureCanUseMCP(httpAgent.OwnerUserID); err != nil {
+						return nil, fmt.Errorf("MCP write tools require a paid subscription (agent owner is not Pro)")
+					}
+				}
+				principal = service.Principal{Source: "mcp", AgentID: httpAgent.ID}
+			} else if apiKey, _ := rawArgs["api_key"].(string); apiKey != "" {
+				// stdio 老用法：工具参数传 api_key。向后兼容。
 				agent, err := s.agentSvc.ValidateAPIKey(apiKey)
 				if err != nil {
 					return nil, fmt.Errorf("invalid api_key: %w", err)
 				}
-				// 付费门控：通过 api_key 调用 MCP 工具要求 Agent owner 为付费会员。
-				if s.subSvc != nil {
+				if !isReadOnly && s.subSvc != nil {
 					if err := s.subSvc.EnsureCanUseMCP(agent.OwnerUserID); err != nil {
-						return nil, fmt.Errorf("MCP requires a paid subscription (agent owner is not Pro)")
+						return nil, fmt.Errorf("MCP write tools require a paid subscription (agent owner is not Pro)")
 					}
 				}
-				principal = service.Principal{
-					Source:           "mcp",
-					AgentID:          agent.ID,
-					IsSystemAssistant: false,
-				}
+				principal = service.Principal{Source: "mcp", AgentID: agent.ID}
 			} else {
-				// 只读工具（search/query/get_*）允许匿名访问（免费用户可浏览）
+				// 匿名：只读工具放行（免费浏览市场），写操作拒绝。
+				if !isReadOnly {
+					return nil, fmt.Errorf("api_key required for write operations")
+				}
 				principal = service.Principal{Source: "mcp"}
 			}
 
@@ -137,9 +172,20 @@ func (s *Server) GetServer() *mcp.Server {
 	return s.mcpServer
 }
 
-// authenticate validates the api_key parameter and returns the agent ID.
-// 注入 subSvc 后，额外校验 Agent owner 是否为付费会员（免费用户不能用 MCP 工具）。
-func (s *Server) authenticate(apiKey string) (string, error) {
+// authenticate 解析调用者身份，返回 agent ID。
+// 身份来源优先级：HTTP 层 context（远程 MCP）> api_key 参数（stdio 老用法）。
+// isReadOnly=true 时跳过 Pro 门控（只读工具对所有人免费）。
+func (s *Server) authenticate(ctx context.Context, apiKey string, isReadOnly bool) (string, error) {
+	// HTTP 层已鉴权：直接取注入的 agent。
+	if httpAgent, ok := ctx.Value(ctxKeyHTTPAgent{}).(*model.Agent); ok && httpAgent != nil {
+		if !isReadOnly && s.subSvc != nil {
+			if err := s.subSvc.EnsureCanUseMCP(httpAgent.OwnerUserID); err != nil {
+				return "", fmt.Errorf("MCP write tools require a paid subscription (agent owner is not Pro)")
+			}
+		}
+		return httpAgent.ID, nil
+	}
+	// stdio 老用法：工具参数 api_key。
 	if apiKey == "" {
 		return "", fmt.Errorf("api_key is required")
 	}
@@ -147,9 +193,9 @@ func (s *Server) authenticate(apiKey string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("invalid api_key: %w", err)
 	}
-	if s.subSvc != nil {
+	if !isReadOnly && s.subSvc != nil {
 		if err := s.subSvc.EnsureCanUseMCP(agent.OwnerUserID); err != nil {
-			return "", fmt.Errorf("MCP requires a paid subscription (agent owner is not Pro)")
+			return "", fmt.Errorf("MCP write tools require a paid subscription (agent owner is not Pro)")
 		}
 	}
 	return agent.ID, nil
@@ -279,7 +325,7 @@ type getUserActivityInput struct {
 // ---- 工具 handler ----
 
 func (s *Server) handleUnlike(ctx context.Context, req *mcp.CallToolRequest, in unlikeInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(in.APIKey)
+	agentID, err := s.authenticate(ctx, in.APIKey, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -288,7 +334,7 @@ func (s *Server) handleUnlike(ctx context.Context, req *mcp.CallToolRequest, in 
 }
 
 func (s *Server) handleGetMe(ctx context.Context, req *mcp.CallToolRequest, in getMeInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(in.APIKey)
+	agentID, err := s.authenticate(ctx, in.APIKey, true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -301,7 +347,7 @@ func (s *Server) handleGetMe(ctx context.Context, req *mcp.CallToolRequest, in g
 }
 
 func (s *Server) handleCreateChatSession(ctx context.Context, req *mcp.CallToolRequest, in createChatSessionInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(in.APIKey)
+	agentID, err := s.authenticate(ctx, in.APIKey, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -320,7 +366,7 @@ func (s *Server) handleCreateChatSession(ctx context.Context, req *mcp.CallToolR
 }
 
 func (s *Server) handleSendChatMessage(ctx context.Context, req *mcp.CallToolRequest, in sendChatMessageInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(in.APIKey)
+	agentID, err := s.authenticate(ctx, in.APIKey, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -337,7 +383,7 @@ func (s *Server) handleSendChatMessage(ctx context.Context, req *mcp.CallToolReq
 }
 
 func (s *Server) handleGetChatHistory(ctx context.Context, req *mcp.CallToolRequest, in getChatHistoryInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(in.APIKey)
+	agentID, err := s.authenticate(ctx, in.APIKey, true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -357,7 +403,7 @@ func (s *Server) handleGetChatHistory(ctx context.Context, req *mcp.CallToolRequ
 }
 
 func (s *Server) handleListChatSessions(ctx context.Context, req *mcp.CallToolRequest, in listChatSessionsInput) (*mcp.CallToolResult, any, error) {
-	agentID, err := s.authenticate(in.APIKey)
+	agentID, err := s.authenticate(ctx, in.APIKey, true)
 	if err != nil {
 		return nil, nil, err
 	}

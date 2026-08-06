@@ -72,12 +72,13 @@ func main() {
 	}
 }
 
-// requireAPIKey 是 HTTP 层鉴权中间件，校验请求的准入凭证。
+// requireAPIKey 是 HTTP 层鉴权中间件，校验请求的准入凭证，并把验证过的 agent 注入 context。
 // 凭证来源（按优先级）：
 //  1. MCP_AUTH_TOKEN 环境变量：若设置，则用它做固定 token 比对（便于 Cursor 配置单一 token）。
 //  2. Agent API Key：读 Authorization: Bearer <key> 或 X-API-Key，走 ValidateAPIKey（SHA-256 校验）。
 //
-// 与 MCP 工具层的 api_key 参数鉴权正交：这里只决定「能否连上端点」，工具调用仍各自校验。
+// 验证成功的 agent 会注入 request context，供工具层复用（远程 MCP 客户端无需每个工具再传 api_key）。
+// 固定 token 模式不绑定 agent，工具层会回退到 api_key 参数鉴权。
 func requireAPIKey(agentSvc *service.AgentService, next http.Handler) http.Handler {
 	staticToken := os.Getenv("MCP_AUTH_TOKEN")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -97,12 +98,14 @@ func requireAPIKey(agentSvc *service.AgentService, next http.Handler) http.Handl
 			next.ServeHTTP(w, r)
 			return
 		}
-		// 走 Agent key 校验（复用现有 SHA-256 验证路径）。
-		if _, err := agentSvc.ValidateAPIKey(token); err != nil {
+		// 走 Agent key 校验（复用现有 SHA-256 验证路径），成功则把 agent 注入 context。
+		agent, err := agentSvc.ValidateAPIKey(token)
+		if err != nil {
 			http.Error(w, "invalid api key", http.StatusUnauthorized)
 			return
 		}
-		next.ServeHTTP(w, r)
+		ctx := context.WithValue(r.Context(), mcphandler.HTTPAgentContextKey(), agent)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
