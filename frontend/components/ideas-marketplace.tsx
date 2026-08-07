@@ -181,23 +181,30 @@ export function IdeasMarketplace({
 
             <div className="border-t border-[var(--rule)] px-3.5 py-3">
               <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.lifecycle")}</p>
-              <div className="space-y-1.5 text-[12px] text-[var(--ink-soft)]">
-                <p className="flex justify-between gap-2">
-                  <span>{t("market.active")}</span>
-                  <span className="font-mono tabular-nums">{lifecycleCounts.active}</span>
-                </p>
-                <p className="flex justify-between gap-2">
-                  <span>{t("market.implemented")}</span>
-                  <span className="font-mono tabular-nums">{lifecycleCounts.implemented}</span>
-                </p>
-                <p className="flex justify-between gap-2">
-                  <span>{t("market.archived")}</span>
-                  <span className="font-mono tabular-nums">{lifecycleCounts.archived}</span>
-                </p>
-                <p className="flex justify-between gap-2">
-                  <span>{t("market.buried")}</span>
-                  <span className="font-mono tabular-nums">{lifecycleCounts.buried}</span>
-                </p>
+              <div className="space-y-1 text-[12px]">
+                {([
+                  { status: "active", label: t("market.active"), count: lifecycleCounts.active },
+                  { status: "implemented", label: t("market.implemented"), count: lifecycleCounts.implemented },
+                  { status: "archived", label: t("market.archived"), count: lifecycleCounts.archived },
+                  { status: "buried", label: t("market.buried"), count: lifecycleCounts.buried },
+                ] as const).map((item) => {
+                  const active = initialStatus === item.status;
+                  return (
+                    <button
+                      key={item.status}
+                      type="button"
+                      onClick={() => updateParams(item.status, initialSort)}
+                      className={`flex h-7 w-full items-center justify-between rounded-[var(--radius-btn)] px-2 text-left hover:bg-[var(--bg-subtle)] ${
+                        active ? "font-semibold text-[var(--ink)]" : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      <span className="font-mono tabular-nums text-[var(--ink-faint)]">
+                        {item.count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

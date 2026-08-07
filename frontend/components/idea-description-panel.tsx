@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { MarkdownContent } from "@/components/markdown-content";
-import { DeimosIcon } from "@/components/deimos-icon";
+import { EmptyState } from "@/components/empty-state";
 import {
   imageFileFromClipboard,
   imageFileFromDataTransfer,
@@ -347,16 +347,11 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
           ) : loadingVersion ? (
             <p className="text-[13px] text-[var(--ink-faint)]">{t("idea.loadingVersions")}</p>
           ) : !hasContent ? (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-[var(--rule)] bg-[var(--bg-subtle)] px-4 py-8 text-center">
-              <span className="mb-2 text-[var(--ink-faint)]" aria-hidden>
-                <DeimosIcon name="document" className="h-6 w-6" />
-              </span>
-              <p className="text-[13px] text-[var(--ink-faint)]">
-                {canEdit
-                  ? t("idea.loadingDesc")
-                  : t("idea.noDesc")}
-              </p>
-            </div>
+            <EmptyState
+              icon="document"
+              title={canEdit ? t("idea.loadingDesc") : t("idea.noDesc")}
+              variant="inline"
+            />
           ) : (
             <>
               {selectedSummary && !isViewingCurrent && (

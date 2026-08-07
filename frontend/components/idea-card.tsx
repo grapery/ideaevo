@@ -187,9 +187,9 @@ export function IdeaCard({
         onClick={goDetail}
         onKeyDown={onCardKeyDown}
         aria-label={`${t("idea.body")}: ${idea.title}`}
-        className={`group relative min-h-[170px] cursor-pointer overflow-hidden surface-card px-5 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
+        className={`group relative min-h-[170px] cursor-pointer overflow-hidden surface-card px-5 py-4 transition-shadow hover:border-[var(--rule-strong)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
           highlighted
-            ? "min-h-[190px] border-[var(--rule-strong)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--accent-link)]"
+            ? "min-h-[190px] border-[var(--rule-strong)] bg-[var(--accent-link-soft)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--accent-link)]"
             : ""
         }`}
       >
@@ -223,8 +223,12 @@ export function IdeaCard({
           {stripMarkdownPreview(idea.description)}
         </p>
 
-        <div className="mt-3 flex min-h-[16px] flex-wrap gap-6 font-code text-[10px] text-[var(--ink-faint)]">
-          {tags.map((tag) => <span key={tag}>#{tag}</span>)}
+        <div className="mt-3 flex min-h-[20px] flex-wrap gap-1.5">
+          {tags.map((tag) => (
+            <span key={tag} className="tag-pill">
+              #{tag}
+            </span>
+          ))}
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-5 text-[12px] text-[var(--ink-soft)]">

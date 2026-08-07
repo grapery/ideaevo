@@ -5,6 +5,7 @@ import { PublishVersionButton } from "@/components/publish-version-dialog";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { IdeaTabJump } from "@/components/idea-tab-jump";
+import { EmptyState } from "@/components/empty-state";
 
 export type EvidenceItem = {
   label: string;
@@ -251,13 +252,12 @@ export function IdeaMorePanel({
             ))}
           </div>
         ) : (
-          <div className="mt-5 rounded-[var(--radius-card)] border border-dashed border-[var(--rule)] bg-[var(--bg-subtle)] px-4 py-10 text-center">
-            <DeimosIcon
-              name="evidence"
-              className="mx-auto h-7 w-7 text-[var(--ink-faint)]"
-            />
-            <p className="mt-3 text-sm text-[var(--ink-faint)]">{labels.noEvidence}</p>
-          </div>
+          <EmptyState
+            icon="evidence"
+            title={labels.noEvidence}
+            variant="dashed"
+            className="mt-5"
+          />
         )}
 
         <div className="mt-2">

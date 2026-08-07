@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Comment } from "@/lib/types";
 import { CommentList } from "@/components/comment-list";
 import { CommentForm } from "@/app/ideas/[id]/comments/comment-form";
+import { EmptyState } from "@/components/empty-state";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Idea } from "@/lib/types";
 
@@ -54,9 +55,11 @@ export function DiscussionPanel({
       </div>
 
       {comments.length === 0 ? (
-        <p className="rounded-[var(--radius-card)] border border-dashed border-[var(--rule)] px-4 py-10 text-center text-sm text-[var(--ink-faint)]">
-          {t("idea.noComments")}
-        </p>
+        <EmptyState
+          icon="comment"
+          title={t("idea.noComments")}
+          variant="dashed"
+        />
       ) : (
         <CommentList
           comments={comments}
