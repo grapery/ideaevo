@@ -261,13 +261,9 @@ export default async function IdeaDetailPage({
                   {(idea.cover_url || idea.video_url) && <IdeaCoverHero idea={idea} />}
                   <IdeaMediaGallery idea={idea} />
 
-                  <div className="rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-4 pb-1">
-                    <IdeaDescriptionPanel idea={idea} />
-                  </div>
+                  <IdeaDescriptionPanel idea={idea} />
 
-                  <div className="rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-4 pb-1">
-                    <IdeaMetaPanel idea={idea} />
-                  </div>
+                  <IdeaMetaPanel idea={idea} />
 
                   {tags.length > 0 && (
                     <div className="flex flex-wrap gap-2">

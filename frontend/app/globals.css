@@ -664,6 +664,15 @@ a {
   margin: 0 0 1em;
 }
 
+/* 评论 markdown：比正文略紧凑（14px），段落/链接/代码继承评论语境 */
+.comment-markdown .markdown-body,
+.comment-markdown.markdown-body {
+  font-size: 14px;
+}
+.comment-markdown p {
+  font-size: 14px;
+}
+
 .page-section {
   padding-block: 1.5rem;
 }

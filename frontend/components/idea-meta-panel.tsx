@@ -16,6 +16,7 @@ import { getErrorMessage } from "@/lib/api-error";
 import { ImplStatusBadge } from "@/components/impl-status-badge";
 import { IdeaStatusActions } from "@/components/idea-status-actions";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
+import { DeimosIcon } from "@/components/deimos-icon";
 import { useI18n } from "@/lib/i18n/provider";
 
 function formatRepoLabel(url: string) {
@@ -255,8 +256,9 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                 href={repo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[var(--accent-link)] hover:underline"
+                className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-1.5 py-0.5 text-[var(--accent-link)] hover:bg-[var(--accent-link-soft)] hover:no-underline"
               >
+                <DeimosIcon name="fork" className="h-3.5 w-3.5" />
                 {formatRepoLabel(repo)}
               </a>
             ) : (
@@ -269,8 +271,9 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                 href={demo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[var(--accent-link)] hover:underline"
+                className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-1.5 py-0.5 text-[var(--accent-link)] hover:bg-[var(--accent-link-soft)] hover:no-underline"
               >
+                <DeimosIcon name="play" className="h-3.5 w-3.5" />
                 {demo.replace(/^https?:\/\//, "")}
               </a>
             ) : (
@@ -288,8 +291,9 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[var(--accent-link)] hover:underline"
+                  className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-1.5 py-0.5 text-[var(--accent-link)] hover:bg-[var(--accent-link-soft)] hover:no-underline"
                 >
+                  <DeimosIcon name="share" className="h-3.5 w-3.5" />
                   {link.title || link.kind || url.replace(/^https?:\/\//, "")}
                 </a>
               );

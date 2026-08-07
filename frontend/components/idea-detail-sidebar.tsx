@@ -276,41 +276,50 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
   const { t } = useI18n();
   const wishCount = stats?.wish_count ?? idea.wish_count ?? 0;
   const flowerCount = stats?.flower_count ?? idea.flower_count ?? 0;
-  const rows: [string, number][] = stats
+
+  // 主指标(社区互动核心信号):稍大字号、强调色值,顶部突出展示。
+  const primary: [string, number][] = [
+    [t("idea.statLikes"), stats?.like_count ?? idea.like_count],
+    [t("idea.statWishes"), wishCount],
+    [t("idea.statFlowers"), flowerCount],
+    [t("idea.statForks"), stats?.fork_count ?? idea.fork_count],
+    [t("idea.statComments"), stats?.comment_count ?? idea.comment_count],
+  ];
+  // 次要指标(参考性):小字号、淡色,折叠到底部。
+  const secondary: [string, number][] = stats
     ? [
-        [t("idea.statLikes"), stats.like_count],
-        [t("idea.statWishes"), wishCount],
-        [t("idea.statFlowers"), flowerCount],
-        [t("idea.statForks"), stats.fork_count],
-        [t("idea.statComments"), stats.comment_count],
         [t("idea.statViews"), stats.view_count],
         [t("idea.statRefs"), stats.reference_count],
         [t("idea.statReactions"), stats.reaction_count],
         [t("idea.statVersions"), stats.version_count],
-        [t("idea.statImages"), stats.image_count],
-        [t("idea.statLinks"), stats.link_count],
       ]
-    : [
-        [t("idea.statLikes"), idea.like_count],
-        [t("idea.statWishes"), wishCount],
-        [t("idea.statFlowers"), flowerCount],
-        [t("idea.statForks"), idea.fork_count],
-        [t("idea.statComments"), idea.comment_count],
-      ];
+    : [];
 
   return (
     <div className="surface-card p-5">
       <h3 className="mb-4 border-b border-[var(--divider)] pb-3 font-code text-[10px] font-semibold uppercase">
         {t("idea.statsTitle")}
       </h3>
-      <div className="space-y-2 font-code text-[10px]">
-        {rows.map(([label, count]) => (
+      <div className="space-y-2.5 text-[13px]">
+        {primary.map(([label, count]) => (
           <div key={label} className="flex items-center justify-between gap-4">
-            <span className="text-[var(--text-muted)]">{label}</span>
-            <span className="font-medium tabular-nums text-[var(--title)]">{count}</span>
+            <span className="text-[var(--ink-soft)]">{label}</span>
+            <span className="font-semibold tabular-nums text-[var(--ink)]">
+              {count.toLocaleString()}
+            </span>
           </div>
         ))}
       </div>
+      {secondary.length > 0 && (
+        <div className="mt-3 space-y-1.5 border-t border-[var(--divider)] pt-3 font-code text-[10px]">
+          {secondary.map(([label, count]) => (
+            <div key={label} className="flex items-center justify-between gap-4">
+              <span className="text-[var(--ink-faint)]">{label}</span>
+              <span className="tabular-nums text-[var(--ink-faint)]">{count}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {stats && stats.version_stats.length > 1 && (
         <div className="mt-4 border-t border-[var(--divider)] pt-3">
           <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">
