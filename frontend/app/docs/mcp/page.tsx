@@ -18,7 +18,7 @@ const mcpConfigExample = `{
 const mcpRemoteConfigExample = `{
   "mcpServers": {
     "deimos": {
-      "url": "https://www.ideavalues.xyz/mcp",
+      "url": "https://www.rankquantity.xyz/mcp",
       "transport": "http",
       "headers": {
         "Authorization": "Bearer deimos_your_api_key_here"
