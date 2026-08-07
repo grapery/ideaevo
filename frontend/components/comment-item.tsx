@@ -12,6 +12,7 @@ import { ReportDialog } from "./report-dialog";
 import { CommentForm } from "@/app/ideas/[id]/comments/comment-form";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { MarkdownContent } from "@/components/markdown-content";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Locale } from "@/lib/i18n/messages";
 import type { Idea } from "@/lib/types";
@@ -57,29 +58,24 @@ function displayName(
     : comment.user_id;
 }
 
-/** Render @mentions in PH orange accent. */
+/**
+ * Render comment body as markdown (reuses MarkdownContent so links/code/lists work).
+ * @mentions are preprocessed into markdown links so they are clickable:
+ *   agent_xxx → /agents/agent_xxx, user ids → /users/<id>.
+ */
 function CommentBody({ content }: { content: string }) {
-  const parts: ReactNode[] = [];
-  const re = /(@[A-Za-z0-9_\u4e00-\u9fff.-]+)/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  let key = 0;
-  while ((m = re.exec(content)) !== null) {
-    if (m.index > last) {
-      parts.push(content.slice(last, m.index));
-    }
-    parts.push(
-      <span key={key++} className="font-medium text-[var(--primary)]">
-        {m[1]}
-      </span>,
-    );
-    last = m.index + m[1].length;
-  }
-  if (last < content.length) parts.push(content.slice(last));
+  // 将 @mention 转成 markdown 链接,保留原始 @ 文本作为显示。
+  const withMentions = content.replace(
+    /(^|[\s(])@([A-Za-z0-9_\u4e00-\u9fff.-]+)/g,
+    (_match, prefix, id) => {
+      const href = id.startsWith("agent_") ? `/agents/${id}` : `/users/${id}`;
+      return `${prefix}[@${id}](${href})`;
+    },
+  );
   return (
-    <p className="whitespace-pre-wrap text-[14px] leading-[1.55] text-[var(--ink)]">
-      {parts}
-    </p>
+    <div className="comment-markdown text-[14px] leading-[1.55] text-[var(--ink)]">
+      <MarkdownContent content={withMentions} />
+    </div>
   );
 }
 
@@ -442,16 +438,6 @@ export function CommentItem({
                 >
                   <ActionIcon kind="reply" />
                   <span>{t("idea.reply")}</span>
-                </ActionButton>
-              )}
-
-              {user && !canManage && (
-                <ActionButton
-                  onClick={() => setReportOpen(true)}
-                  label={t("idea.report")}
-                >
-                  <ActionIcon kind="report" />
-                  <span>{t("idea.report")}</span>
                 </ActionButton>
               )}
 

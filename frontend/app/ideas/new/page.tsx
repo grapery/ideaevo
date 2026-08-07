@@ -37,6 +37,9 @@ export default function NewIdeaPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("other");
+  const [tagsRaw, setTagsRaw] = useState("");
+  const [repoUrl, setRepoUrl] = useState("");
+  const [demoUrl, setDemoUrl] = useState("");
   const [agentId, setAgentId] = useState("");
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
@@ -95,6 +98,12 @@ export default function NewIdeaPage() {
         title: titleValue,
         description: d,
         category,
+        tags: tagsRaw
+          .split(/[,，]/)
+          .map((tg) => tg.trim())
+          .filter(Boolean),
+        repo_url: repoUrl.trim() || undefined,
+        demo_url: demoUrl.trim() || undefined,
         agent_id: agentId || undefined,
       });
       notify.success(t("idea.publishedToast"));
@@ -158,7 +167,12 @@ export default function NewIdeaPage() {
             </p>
 
             <div className="mt-5">
-              <FormField id="new-title" label={t("idea.publishTitleField")} required>
+              <FormField
+                id="new-title"
+                label={t("idea.publishTitleField")}
+                required
+                hint={`${title.length}/500`}
+              >
                 <Input
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
@@ -176,7 +190,38 @@ export default function NewIdeaPage() {
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder={t("idea.publishDescPlaceholder")}
                   rows={12}
+                  maxLength={10000}
                   className="w-full font-code text-[12px] leading-6"
+                />
+              </FormField>
+            </div>
+
+            <div className="mt-5">
+              <FormField id="new-tags" label={t("idea.tagsComma")} hint={t("idea.tagsHint")}>
+                <Input
+                  value={tagsRaw}
+                  onChange={(event) => setTagsRaw(event.target.value)}
+                  placeholder={t("idea.tagsPlaceholder")}
+                  className="h-10"
+                />
+              </FormField>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <FormField id="new-repo" label={t("idea.repoUrl")}>
+                <Input
+                  value={repoUrl}
+                  onChange={(event) => setRepoUrl(event.target.value)}
+                  placeholder="https://github.com/..."
+                  className="h-10"
+                />
+              </FormField>
+              <FormField id="new-demo" label={t("idea.demoUrl")}>
+                <Input
+                  value={demoUrl}
+                  onChange={(event) => setDemoUrl(event.target.value)}
+                  placeholder="https://..."
+                  className="h-10"
                 />
               </FormField>
             </div>

@@ -125,7 +125,19 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
           </FormField>
           <div className="grid grid-cols-2 gap-3">
             <FormField id="pv-category" label={t("idea.category")}>
-              <Input value={category} onChange={(e) => setCategory(e.target.value)} />
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="input-field w-full text-sm text-[var(--text-secondary)]"
+              >
+                <option value="tool">{t("market.catTool")}</option>
+                <option value="service">{t("market.catService")}</option>
+                <option value="integration">{t("market.catIntegration")}</option>
+                <option value="automation">{t("market.catAutomation")}</option>
+                <option value="creative">{t("market.catCreative")}</option>
+                <option value="data">{t("market.catData")}</option>
+                <option value="other">{t("market.catOther")}</option>
+              </select>
             </FormField>
             <FormField id="pv-status" label={t("idea.implStatus")}>
               <select

@@ -49,7 +49,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
           href={`/users/${owner.id}`}
         />
         <div className="min-w-0">
-          <p className="font-code text-[9px] uppercase text-[var(--ink-faint)]">{t("idea.publisher")}</p>
+          <p className="font-code text-[9px] uppercase text-[var(--ink-faint)]">{t("idea.creator")}</p>
           <Link
             href={`/users/${owner.id}`}
             className="block truncate text-[13px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
