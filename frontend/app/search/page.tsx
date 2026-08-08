@@ -61,6 +61,7 @@ export default function SearchPage() {
   const [activeStatus, setActiveStatus] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
   const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const apiBase = getApiBase();
 
@@ -87,6 +88,8 @@ export default function SearchPage() {
         const items: SearchResult[] = data.results || [];
         setResults((previous) => (pageNumber === 1 ? items : [...previous, ...items]));
         setPage(pageNumber);
+        // 不足一页(10 条)说明已到末尾,不再显示"加载更多"
+        setHasMore(items.length >= 10);
       } catch (error) {
         if ((error as Error).name !== "AbortError") setResults([]);
       } finally {
@@ -173,6 +176,52 @@ export default function SearchPage() {
         </section>
 
         <div className="mt-4 grid items-start gap-4 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_260px]">
+          {/* 移动端可折叠筛选(桌面端走左侧栏) */}
+          <details className="surface-card lg:hidden">
+            <summary className="flex h-10 cursor-pointer list-none items-center justify-between px-3.5 text-[13px] font-semibold text-[var(--ink)]">
+              <span>{t("search.filters")}</span>
+              <DeimosIcon name="chevron-right" className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
+            </summary>
+            <div className="border-t border-[var(--rule)] px-2 py-2">
+              <p className="mb-1.5 px-1.5 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.status")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {statusFilters.map((filter) => (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    onClick={() => setActiveStatus(filter.value)}
+                    className={`rounded-[var(--radius-btn)] px-2.5 py-1 text-left text-[12px] ${
+                      activeStatus === filter.value
+                        ? "bg-[var(--accent-link-soft)] font-medium text-[var(--accent-link)]"
+                        : "border border-[var(--rule)] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
+                    }`}
+                  >
+                    {t(filter.label)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-[var(--rule)] px-2 py-2">
+              <p className="mb-1.5 px-1.5 text-[11px] font-medium text-[var(--ink-faint)]">{t("idea.category")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {categories.map((category) => (
+                  <button
+                    key={category.value}
+                    type="button"
+                    onClick={() => setActiveCategory(category.value)}
+                    className={`rounded-[var(--radius-btn)] px-2.5 py-1 text-left text-[12px] ${
+                      activeCategory === category.value
+                        ? "bg-[var(--primary-soft)] font-medium text-[var(--primary)]"
+                        : "border border-[var(--rule)] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
+                    }`}
+                  >
+                    {t(category.label)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </details>
+
           <aside className="hidden surface-card overflow-hidden lg:block">
             <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
               <p className="text-[13px] font-semibold text-[var(--ink)]">{t("search.filters")}</p>
@@ -265,7 +314,7 @@ export default function SearchPage() {
                 {results.map((result) => (
                   <SearchResultCard key={result.idea.id} idea={result.idea} similarity={result.similarity} />
                 ))}
-                {results.length >= 10 && (
+                {hasMore && (
                   <button
                     type="button"
                     onClick={() => void handleSearch(query, page + 1, activeStatus, activeCategory)}

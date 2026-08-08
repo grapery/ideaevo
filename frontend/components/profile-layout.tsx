@@ -56,7 +56,7 @@ export function ProfileLayout({
         <div className="app-grid-2">
           <main className="min-w-0">{children}</main>
           {sidebar && (
-            <aside className="hidden space-y-4 lg:block">{sidebar}</aside>
+            <aside className="space-y-4 lg:block">{sidebar}</aside>
           )}
         </div>
       </div>
