@@ -11,6 +11,7 @@ import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { SystemPageHeader } from "@/components/system-page-header";
 import { AgentApiKeyPanel } from "@/components/agent-api-key-panel";
 import { notify } from "@/components/ui/notify";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { getErrorMessage } from "@/lib/api-error";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -21,6 +22,7 @@ export default function MyAgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Agent | null>(null);
 
   const load = useCallback(async () => {
     await Promise.resolve();
@@ -45,19 +47,14 @@ export default function MyAgentsPage() {
 
   const handleDelete = useCallback(
     async (agent: Agent) => {
-      if (
-        !window.confirm(
-          t("agents.deleteConfirm", { name: agent.name })
-        )
-      ) {
-        return;
-      }
       try {
         await agentApi.deleteAgent(agent.id);
         setAgents((prev) => prev.filter((a) => a.id !== agent.id));
         notify.success(t("agents.deleted"));
       } catch (err) {
         notify.error(getErrorMessage(err, t("agents.deleteFailed")));
+      } finally {
+        setDeleteTarget(null);
       }
     },
     [t]
@@ -108,20 +105,6 @@ export default function MyAgentsPage() {
                 icon: "chat" as const,
                 tone: "link" as const,
               },
-              {
-                label: t("agents.statActive24h"),
-                value: Math.min(agents.length, 3),
-                icon: "pulse" as const,
-              },
-              {
-                label: t("agents.statNeedsAttention"),
-                value: agents.filter((agent) => agent.visibility === "private").length,
-                icon: "lock" as const,
-                tone:
-                  agents.some((agent) => agent.visibility === "private")
-                    ? ("attention" as const)
-                    : undefined,
-              },
             ].map((metric) => (
               <div key={metric.label} className="dashboard-metric">
                 <span className="dashboard-metric__icon" data-tone={metric.tone} aria-hidden>
@@ -129,10 +112,7 @@ export default function MyAgentsPage() {
                 </span>
                 <span className="dashboard-metric__body">
                   <span className="dashboard-metric__label">{metric.label}</span>
-                  <span
-                    className="dashboard-metric__value"
-                    data-tone={metric.tone === "attention" ? "attention" : undefined}
-                  >
+                  <span className="dashboard-metric__value">
                     {metric.value}
                   </span>
                 </span>
@@ -219,7 +199,7 @@ export default function MyAgentsPage() {
                       <button
                         type="button"
                         className="text-[12px] text-[var(--ink-faint)] hover:text-[var(--coral)]"
-                        onClick={() => void handleDelete(agent)}
+                        onClick={() => setDeleteTarget(agent)}
                       >
                         {t("agents.delete")}
                       </button>
@@ -272,6 +252,15 @@ export default function MyAgentsPage() {
           {t("agents.bindKeyHint")}
         </p>
       </div>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && void handleDelete(deleteTarget)}
+        title={t("common.delete")}
+        description={deleteTarget ? t("agents.deleteConfirm", { name: deleteTarget.name }) : ""}
+        confirmLabel={t("common.delete")}
+        tone="danger"
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { commentApi } from "@/lib/api-client";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { ReportDialog } from "./report-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CommentForm } from "@/app/ideas/[id]/comments/comment-form";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { DeimosIcon } from "@/components/deimos-icon";
@@ -224,6 +225,7 @@ export function CommentItem({
   const [draft, setDraft] = useState(comment.content);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [replying, setReplying] = useState(false);
   const [liked, setLiked] = useState(!!comment.liked);
@@ -269,7 +271,6 @@ export function CommentItem({
   }
 
   async function remove() {
-    if (!window.confirm(t("idea.confirmDeleteComment"))) return;
     setDeleting(true);
     try {
       await commentApi.delete(comment.id);
@@ -279,6 +280,7 @@ export function CommentItem({
       notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setDeleting(false);
+      setDeleteConfirmOpen(false);
     }
   }
 
@@ -508,7 +510,7 @@ export function CommentItem({
                             role="menuitem"
                             onClick={() => {
                               setMenuOpen(false);
-                              remove();
+                              setDeleteConfirmOpen(true);
                             }}
                             disabled={deleting}
                             className="block w-full px-3 py-1.5 text-left text-[12px] text-[var(--coral)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
@@ -562,6 +564,16 @@ export function CommentItem({
           targetId={comment.id}
         />
       )}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={remove}
+        title={t("common.delete")}
+        description={t("idea.confirmDeleteComment")}
+        confirmLabel={t("common.delete")}
+        tone="danger"
+        loading={deleting}
+      />
     </article>
   );
 }

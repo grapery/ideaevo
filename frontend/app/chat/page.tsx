@@ -879,52 +879,52 @@ export default function ChatPage() {
         </div>
       </Modal>
 
-      {showNewDialog && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="rounded-md border border-[var(--rule)] bg-[var(--bg-surface)] p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-lg font-semibold text-[var(--title)] mb-4">
-              {t("chat.newChat")}
-            </h3>
-            <div className="space-y-4">
-              <FormField id="new-agent-id" label={t("chat.agentId")}>
-                <Input
-                  name="agent-id"
-                  value={newAgentId}
-                  onChange={(e) => setNewAgentId(e.target.value)}
-                  placeholder={t("chat.agentIdPlaceholder")}
-                />
-              </FormField>
-              <FormField id="new-chat-title" label={t("chat.optionalTitle")}>
-                <Input
-                  name="title"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder={t("chat.titlePlaceholder")}
-                />
-              </FormField>
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowNewDialog(false)}
-                  className="btn-default btn-sm"
-                >
-                  {t("common.cancel")}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreateSession}
-                  disabled={!newAgentId || creatingSession}
-                  className="btn-outline px-4 py-2 text-sm disabled:opacity-40"
-                >
-                  {creatingSession
-                    ? t("common.loading")
-                    : t("chat.create")}
-                </button>
-              </div>
-            </div>
-          </div>
+      <Modal
+        open={showNewDialog}
+        onClose={() => setShowNewDialog(false)}
+        disableClose={creatingSession}
+        title={t("chat.newChat")}
+        className="max-w-md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowNewDialog(false)}
+              disabled={creatingSession}
+              className="btn-default btn-sm"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateSession}
+              disabled={!newAgentId || creatingSession}
+              className="btn-primary btn-sm disabled:opacity-40"
+            >
+              {creatingSession ? t("common.loading") : t("chat.create")}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FormField id="new-agent-id" label={t("chat.agentId")}>
+            <Input
+              name="agent-id"
+              value={newAgentId}
+              onChange={(e) => setNewAgentId(e.target.value)}
+              placeholder={t("chat.agentIdPlaceholder")}
+            />
+          </FormField>
+          <FormField id="new-chat-title" label={t("chat.optionalTitle")}>
+            <Input
+              name="title"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder={t("chat.titlePlaceholder")}
+            />
+          </FormField>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

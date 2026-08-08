@@ -6,6 +6,7 @@ import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { IconActionButton } from "@/components/ui/icon-action-button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/provider";
 
 /**
@@ -27,26 +28,17 @@ export function BlockButton({
 }) {
   const [blocked, setBlocked] = useState(initialBlocked);
   const [loading, setLoading] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const { t } = useI18n();
 
-  async function toggle() {
+  async function doBlock() {
+    setConfirmOpen(false);
     setLoading(true);
     try {
-      if (blocked) {
-        await modApi.unblockUser(userId);
-        setBlocked(false);
-        onChange?.(false);
-        notify.success(t("block.unblocked"));
-      } else {
-        if (!window.confirm(t("block.confirm"))) {
-          setLoading(false);
-          return;
-        }
-        await modApi.blockUser(userId);
-        setBlocked(true);
-        onChange?.(true);
-        notify.success(t("block.blocked"));
-      }
+      await modApi.blockUser(userId);
+      setBlocked(true);
+      onChange?.(true);
+      notify.success(t("block.blocked"));
     } catch (err) {
       notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
@@ -54,20 +46,34 @@ export function BlockButton({
     }
   }
 
-  if (iconOnly) {
-    return (
-      <IconActionButton
-        onClick={toggle}
-        disabled={loading}
-        label={blocked ? t("block.unblockUser") : t("block.blockUser")}
-        tone={blocked ? "danger" : "default"}
-        className={className}
-        icon={<DeimosIcon name={blocked ? "check" : "shield"} className="h-[18px] w-[18px]" />}
-      />
-    );
+  async function toggle() {
+    if (blocked) {
+      setLoading(true);
+      try {
+        await modApi.unblockUser(userId);
+        setBlocked(false);
+        onChange?.(false);
+        notify.success(t("block.unblocked"));
+      } catch (err) {
+        notify.error(getErrorMessage(err, t("common.operationFailed")));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    setConfirmOpen(true);
   }
 
-  return (
+  const trigger = iconOnly ? (
+    <IconActionButton
+      onClick={toggle}
+      disabled={loading}
+      label={blocked ? t("block.unblockUser") : t("block.blockUser")}
+      tone={blocked ? "danger" : "default"}
+      className={className}
+      icon={<DeimosIcon name={blocked ? "check" : "shield"} className="h-[18px] w-[18px]" />}
+    />
+  ) : (
     <button
       type="button"
       onClick={toggle}
@@ -80,5 +86,21 @@ export function BlockButton({
           ? t("block.unblockUser")
           : t("block.blockUser")}
     </button>
+  );
+
+  return (
+    <>
+      {trigger}
+      <ConfirmDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={doBlock}
+        title={t("block.blockUser")}
+        description={t("block.confirm")}
+        confirmLabel={t("block.blockUser")}
+        tone="danger"
+        loading={loading}
+      />
+    </>
   );
 }
