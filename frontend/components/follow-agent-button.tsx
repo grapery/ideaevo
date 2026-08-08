@@ -54,17 +54,19 @@ export function FollowAgentButton({
       return;
     }
     setLoading(true);
+    // 乐观更新:立即翻转 UI,失败时回滚。
+    const prev = following;
+    setFollowing(!following);
     try {
-      if (following) {
+      if (prev) {
         await agentApi.unfollow(agentId);
-        setFollowing(false);
         notify.success(t("idea.unfollowedToast"));
       } else {
         await agentApi.follow(agentId);
-        setFollowing(true);
         notify.success(t("idea.followedAgentToast"));
       }
     } catch (err) {
+      setFollowing(prev);
       notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(false);
