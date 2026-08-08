@@ -861,7 +861,7 @@ export default function ChatPage() {
       <Modal
         open={pendingDeleteId !== null}
         onClose={() => setPendingDeleteId(null)}
-        title={t("chat.createTask")}
+        title={t("chat.deleteTaskSession")}
         description={t("chat.deleteTaskDesc")}
         className="max-w-sm"
       >

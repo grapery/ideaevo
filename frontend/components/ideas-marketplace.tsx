@@ -151,6 +151,44 @@ export function IdeasMarketplace({
         </section>
 
         <div className="mt-4 grid items-start gap-4 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_280px]">
+          {/* 移动端可折叠筛选:分类 + 热门标签(桌面端走左侧栏,此处隐藏) */}
+          <details className="surface-card lg:hidden">
+            <summary className="flex h-10 cursor-pointer list-none items-center justify-between px-3.5 text-[13px] font-semibold text-[var(--ink)]">
+              <span>{t("market.discoverBy")}</span>
+              <DeimosIcon name="chevron-right" className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
+            </summary>
+            <div className="border-t border-[var(--rule)] p-2">
+              {categoryGroups.map((category) => (
+                <button
+                  key={category.label}
+                  type="button"
+                  onClick={() => router.push(`/search?q=${encodeURIComponent(category.label)}`)}
+                  className="flex h-8 w-full items-center justify-between rounded-[var(--radius-btn)] px-2.5 text-left text-[12px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
+                >
+                  <span className="truncate">{category.label}</span>
+                  <span className="font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
+                    {category.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="border-t border-[var(--rule)] px-3.5 py-3">
+              <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.intentSignals")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {hotTags.slice(0, 5).map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
+                    className="rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 py-0.5 text-[11px] text-[var(--accent-link)] hover:border-[var(--accent-link)]"
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </details>
+
           <aside className="hidden surface-card overflow-hidden lg:block">
             <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
               <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.discoverBy")}</p>

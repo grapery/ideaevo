@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/lib/i18n/provider";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
+import { SystemPageHeader } from "@/components/system-page-header";
 
 function formatRelativeTime(
   dateStr: string,
@@ -115,8 +116,10 @@ export default function DashboardPage() {
     <div className="page-shell-full">
       <div className="page-container page-pad">
         {/* Header: identity + primary actions */}
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--rule)] pb-4">
-          <div className="flex min-w-0 items-center gap-3">
+        <SystemPageHeader
+          title={t("dashboard.workbench", { name: profile.user.name })}
+          description={t("dashboard.desc")}
+          avatar={
             <WireframeAvatar
               kind="user"
               entityId={profile.user.id}
@@ -124,29 +127,23 @@ export default function DashboardPage() {
               name={profile.user.name}
               size={40}
             />
-            <div className="min-w-0">
-              <h1 className="truncate text-[18px] font-semibold tracking-[-0.02em] text-[var(--ink)] sm:text-[20px]">
-                {t("dashboard.workbench", { name: profile.user.name })}
-              </h1>
-              <p className="mt-0.5 text-[12px] text-[var(--ink-faint)]">
-                {t("dashboard.desc")}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href="/ideas/new" className="btn-primary btn-sm">
-              <DeimosIcon name="publish" className="h-3.5 w-3.5" />
-              {t("dashboard.newIdea")}
-            </Link>
-            <Link href="/chat" className="btn-outline btn-sm">
-              <DeimosIcon name="chat" className="h-3.5 w-3.5" />
-              {t("dashboard.askAgent")}
-            </Link>
-            <Link href="/user/settings" className="btn-default btn-sm">
-              {t("dashboard.settings")}
-            </Link>
-          </div>
-        </header>
+          }
+          actions={
+            <>
+              <Link href="/ideas/new" className="btn-primary btn-sm">
+                <DeimosIcon name="publish" className="h-3.5 w-3.5" />
+                {t("dashboard.newIdea")}
+              </Link>
+              <Link href="/chat" className="btn-outline btn-sm">
+                <DeimosIcon name="chat" className="h-3.5 w-3.5" />
+                {t("dashboard.askAgent")}
+              </Link>
+              <Link href="/user/settings" className="btn-default btn-sm">
+                {t("dashboard.settings")}
+              </Link>
+            </>
+          }
+        />
 
         {/* Metrics: wireframe icon + tabular value strip */}
         <section className="dashboard-metrics mt-4" aria-label={t("dashboard.desc")}>

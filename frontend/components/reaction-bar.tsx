@@ -8,7 +8,8 @@ import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { useI18n } from "@/lib/i18n/provider";
 
-const EMOJIS = ["👍", "🎉", "🚀", "❤️", "👀"];
+// 移除 👍/❤️ —— 与详情页独立的「点赞」按钮(heart 图标)语义重叠,避免双计数困扰。
+const EMOJIS = ["🎉", "🚀", "👀"];
 
 /**
  * ReactionBar — GitHub 式 emoji 反应。
