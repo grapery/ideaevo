@@ -349,7 +349,7 @@ export default function BillingPage() {
                     {t("billing.free")}
                   </h3>
                   <div className="mt-2 text-3xl font-bold text-[var(--title)]">
-                    ¥0
+                    {formatPrice(0, currency)}
                   </div>
                   <p className="mt-1 text-sm text-[var(--text-muted)]">
                     {t("billing.freeForever")}

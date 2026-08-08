@@ -9,6 +9,7 @@ import { commentApi } from "@/lib/api-client";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
 import { ReportDialog } from "./report-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CommentForm } from "@/app/ideas/[id]/comments/comment-form";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { DeimosIcon } from "@/components/deimos-icon";
@@ -150,12 +151,16 @@ function ActionButton({
   disabled,
   children,
   label,
+  ariaExpanded,
+  ariaHasPopup,
 }: {
   onClick?: () => void;
   active?: boolean;
   disabled?: boolean;
   children: ReactNode;
   label: string;
+  ariaExpanded?: boolean;
+  ariaHasPopup?: "menu" | "dialog" | "true" | "false";
 }) {
   return (
     <button
@@ -163,6 +168,8 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
+      aria-expanded={ariaExpanded}
+      aria-haspopup={ariaHasPopup}
       className={`inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[12px] font-medium transition-colors disabled:opacity-50 ${
         active
           ? "text-[var(--primary)]"
@@ -218,6 +225,7 @@ export function CommentItem({
   const [draft, setDraft] = useState(comment.content);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [replying, setReplying] = useState(false);
   const [liked, setLiked] = useState(!!comment.liked);
@@ -233,8 +241,15 @@ export function CommentItem({
         setMenuOpen(false);
       }
     }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
     window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
   }, [menuOpen]);
 
   async function saveEdit() {
@@ -256,7 +271,6 @@ export function CommentItem({
   }
 
   async function remove() {
-    if (!window.confirm(t("idea.confirmDeleteComment"))) return;
     setDeleting(true);
     try {
       await commentApi.delete(comment.id);
@@ -266,6 +280,7 @@ export function CommentItem({
       notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setDeleting(false);
+      setDeleteConfirmOpen(false);
     }
   }
 
@@ -469,15 +484,18 @@ export function CommentItem({
                   <ActionButton
                     onClick={() => setMenuOpen((v) => !v)}
                     label={t("common.more")}
+                    ariaExpanded={menuOpen}
+                    ariaHasPopup="menu"
                   >
                     <DeimosIcon name="menu" className="h-3.5 w-3.5" />
                   </ActionButton>
                   {menuOpen && (
-                    <div className="absolute left-0 z-20 mt-1 min-w-[128px] rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] py-1 shadow-sm">
+                    <div role="menu" className="absolute left-0 z-20 mt-1 min-w-[128px] rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] py-1 shadow-sm">
                       {canManage && (
                         <>
                           <button
                             type="button"
+                            role="menuitem"
                             onClick={() => {
                               setMenuOpen(false);
                               setDraft(comment.content);
@@ -489,9 +507,10 @@ export function CommentItem({
                           </button>
                           <button
                             type="button"
+                            role="menuitem"
                             onClick={() => {
                               setMenuOpen(false);
-                              remove();
+                              setDeleteConfirmOpen(true);
                             }}
                             disabled={deleting}
                             className="block w-full px-3 py-1.5 text-left text-[12px] text-[var(--coral)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
@@ -503,6 +522,7 @@ export function CommentItem({
                       {user && !canManage && (
                         <button
                           type="button"
+                          role="menuitem"
                           onClick={() => {
                             setMenuOpen(false);
                             setReportOpen(true);
@@ -544,6 +564,16 @@ export function CommentItem({
           targetId={comment.id}
         />
       )}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={remove}
+        title={t("common.delete")}
+        description={t("idea.confirmDeleteComment")}
+        confirmLabel={t("common.delete")}
+        tone="danger"
+        loading={deleting}
+      />
     </article>
   );
 }

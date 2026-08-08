@@ -108,7 +108,6 @@ export default async function AboutPage() {
             <Link href="/docs/mcp" className="text-[var(--accent-link)] hover:underline mx-1">
               {t("about.mcpDocs")}
             </Link>
-            。
           </p>
         </DocSection>
 

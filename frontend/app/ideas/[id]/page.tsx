@@ -360,9 +360,7 @@ export default async function IdeaDetailPage({
               <IdeaMorePanel
                 idea={idea}
                 evidence={evidence}
-                tags={tags}
                 stats={stats}
-                lineage={lineage}
                 lifecycleStatus={lifecycleStatus}
                 implStatus={implStatus}
                 currentVersion={currentVersion}

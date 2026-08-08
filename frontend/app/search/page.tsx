@@ -61,8 +61,32 @@ export default function SearchPage() {
   const [activeStatus, setActiveStatus] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
   const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const apiBase = getApiBase();
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  // 加载 localStorage 中的近期搜索(SSR 安全:仅在 effect 中读取)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("deimos_recent_searches");
+      if (raw) setRecentSearches(JSON.parse(raw).slice(0, 8));
+    } catch {
+      // ignore malformed / unavailable storage
+    }
+  }, []);
+
+  const saveRecentSearch = useCallback((q: string) => {
+    setRecentSearches((prev) => {
+      const next = [q, ...prev.filter((item) => item !== q)].slice(0, 8);
+      try {
+        localStorage.setItem("deimos_recent_searches", JSON.stringify(next));
+      } catch {
+        // ignore quota / unavailable storage
+      }
+      return next;
+    });
+  }, []);
 
   const handleSearch = useCallback(
     async (rawQuery: string, pageNumber: number, status: string, category: string) => {
@@ -87,6 +111,10 @@ export default function SearchPage() {
         const items: SearchResult[] = data.results || [];
         setResults((previous) => (pageNumber === 1 ? items : [...previous, ...items]));
         setPage(pageNumber);
+        // 不足一页(10 条)说明已到末尾,不再显示"加载更多"
+        setHasMore(items.length >= 10);
+        // 首次搜索时记录到近期搜索历史
+        if (pageNumber === 1) saveRecentSearch(searchQuery);
       } catch (error) {
         if ((error as Error).name !== "AbortError") setResults([]);
       } finally {
@@ -96,7 +124,7 @@ export default function SearchPage() {
         }
       }
     },
-    [apiBase]
+    [apiBase, saveRecentSearch]
   );
 
   useEffect(() => {
@@ -173,6 +201,52 @@ export default function SearchPage() {
         </section>
 
         <div className="mt-4 grid items-start gap-4 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_260px]">
+          {/* 移动端可折叠筛选(桌面端走左侧栏) */}
+          <details className="surface-card lg:hidden">
+            <summary className="flex h-10 cursor-pointer list-none items-center justify-between px-3.5 text-[13px] font-semibold text-[var(--ink)]">
+              <span>{t("search.filters")}</span>
+              <DeimosIcon name="chevron-right" className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
+            </summary>
+            <div className="border-t border-[var(--rule)] px-2 py-2">
+              <p className="mb-1.5 px-1.5 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.status")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {statusFilters.map((filter) => (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    onClick={() => setActiveStatus(filter.value)}
+                    className={`rounded-[var(--radius-btn)] px-2.5 py-1 text-left text-[12px] ${
+                      activeStatus === filter.value
+                        ? "bg-[var(--accent-link-soft)] font-medium text-[var(--accent-link)]"
+                        : "border border-[var(--rule)] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
+                    }`}
+                  >
+                    {t(filter.label)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-[var(--rule)] px-2 py-2">
+              <p className="mb-1.5 px-1.5 text-[11px] font-medium text-[var(--ink-faint)]">{t("idea.category")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {categories.map((category) => (
+                  <button
+                    key={category.value}
+                    type="button"
+                    onClick={() => setActiveCategory(category.value)}
+                    className={`rounded-[var(--radius-btn)] px-2.5 py-1 text-left text-[12px] ${
+                      activeCategory === category.value
+                        ? "bg-[var(--primary-soft)] font-medium text-[var(--primary)]"
+                        : "border border-[var(--rule)] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
+                    }`}
+                  >
+                    {t(category.label)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </details>
+
           <aside className="hidden surface-card overflow-hidden lg:block">
             <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
               <p className="text-[13px] font-semibold text-[var(--ink)]">{t("search.filters")}</p>
@@ -219,14 +293,36 @@ export default function SearchPage() {
 
           <main className="min-w-0">
             {!searched ? (
-              <div className="flex items-start gap-3 surface-card px-4 py-5">
-                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--accent-link)]">
-                  <DeimosIcon name="semantic-search" className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-[13px] font-medium text-[var(--ink)]">{t("search.inputQuestion")}</p>
-                  <p className="mt-1 text-[12px] text-[var(--ink-faint)]">{t("search.desc")}</p>
+              <div className="surface-card px-4 py-5">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--accent-link)]">
+                    <DeimosIcon name="semantic-search" className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-[13px] font-medium text-[var(--ink)]">{t("search.inputQuestion")}</p>
+                    <p className="mt-1 text-[12px] text-[var(--ink-faint)]">{t("search.desc")}</p>
+                  </div>
                 </div>
+                {recentSearches.length > 0 && (
+                  <div className="mt-4 border-t border-[var(--rule)] pt-3">
+                    <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("search.recent")}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recentSearches.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => {
+                            setQuery(item);
+                            submitSearch(item);
+                          }}
+                          className="max-w-[200px] truncate rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-2.5 py-1 text-[12px] text-[var(--accent-link)] hover:border-[var(--accent-link)]"
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : results.length === 0 ? (
               <div className="flex items-start gap-3 surface-card px-4 py-5">
@@ -265,7 +361,7 @@ export default function SearchPage() {
                 {results.map((result) => (
                   <SearchResultCard key={result.idea.id} idea={result.idea} similarity={result.similarity} />
                 ))}
-                {results.length >= 10 && (
+                {hasMore && (
                   <button
                     type="button"
                     onClick={() => void handleSearch(query, page + 1, activeStatus, activeCategory)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Idea } from "@/lib/types";
 import { normalizeStringArray } from "@/lib/types";
 import { DeimosIcon } from "./deimos-icon";
@@ -17,6 +17,16 @@ export function IdeaMediaGallery({ idea }: { idea: Idea }) {
   const hasVideo = Boolean(idea.video_url);
   const images = normalizeStringArray(idea.image_urls);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  // Escape 关闭灯箱
+  useEffect(() => {
+    if (!lightboxSrc) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setLightboxSrc(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxSrc]);
 
   if (!hasVideo && images.length === 0) {
     return null;
@@ -54,6 +64,9 @@ export function IdeaMediaGallery({ idea }: { idea: Idea }) {
 
       {lightboxSrc ? (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("idea.preview")}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
           onClick={() => setLightboxSrc(null)}
         >
@@ -61,7 +74,7 @@ export function IdeaMediaGallery({ idea }: { idea: Idea }) {
             type="button"
             onClick={() => setLightboxSrc(null)}
             className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
-            aria-label={t("common.cancel")}
+            aria-label={t("common.close")}
           >
             <DeimosIcon name="close" className="h-5 w-5" />
           </button>

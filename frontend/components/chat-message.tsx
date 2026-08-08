@@ -76,6 +76,47 @@ function JsonBlock({ content }: { content: string }) {
   );
 }
 
+/** 代码块 + 复制按钮(仅块级代码;行内代码不带) */
+/** 从 React children 中提取纯文本(用于代码块复制) */
+function nodeToText(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(nodeToText).join("");
+  if (node && typeof node === "object" && "props" in node) {
+    return nodeToText((node as { props: { children?: React.ReactNode } }).props.children);
+  }
+  return "";
+}
+
+function CodeBlockWithCopy({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    const text = nodeToText(children);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      notify.error(t("common.operationFailed"));
+    }
+  }
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        onClick={copy}
+        className="absolute right-2 top-2 z-10 rounded border border-[var(--rule)] bg-[var(--bg-surface)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ink-faint)] opacity-0 transition-opacity hover:text-[var(--ink)] group-hover:opacity-100"
+        aria-label={t("chat.copyCode")}
+      >
+        {copied ? t("chat.copied") : t("chat.copyCode")}
+      </button>
+      <code className="block overflow-x-auto rounded-lg bg-[var(--bg-canvas)] p-3 text-[13px] leading-6 font-mono">
+        {children}
+      </code>
+    </div>
+  );
+}
+
 function MarkdownBody({ content }: { content: string }) {
   return (
     <ReactMarkdown
@@ -122,11 +163,7 @@ function MarkdownBody({ content }: { content: string }) {
         code: ({ className, children }) => {
           const isBlock = className?.includes("language-");
           if (isBlock) {
-            return (
-              <code className="block overflow-x-auto rounded-lg bg-[var(--bg-canvas)] p-3 text-[13px] leading-6 font-mono">
-                {children}
-              </code>
-            );
+            return <CodeBlockWithCopy>{children}</CodeBlockWithCopy>;
           }
           return (
             <code className="rounded bg-[var(--bg-canvas)] px-1.5 py-0.5 text-[0.88em] font-mono text-[var(--title)]">
@@ -273,7 +310,7 @@ function MessageActions({
   onFeedback?: (messageId: string, rating: "like" | "dislike" | null) => void;
   onFork?: (messageId: string) => void;
 }) {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const persisted = isPersistedMessage(message.id);
   const feedback = message.user_feedback;

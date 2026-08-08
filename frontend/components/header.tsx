@@ -227,6 +227,14 @@ export function Header() {
             <div className="fixed inset-x-3 top-14 overflow-hidden rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] py-1 shadow-[var(--shadow-float)]">
               <LanguageSwitcher mobile />
               <Link
+                href="/search"
+                className={menuLinkClass}
+                onClick={() => setMenuOpen(false)}
+              >
+                <DeimosIcon name="semantic-search" className="h-3.5 w-3.5" />
+                {t("header.search")}
+              </Link>
+              <Link
                 href="/ideas"
                 className={menuLinkClass}
                 onClick={() => setMenuOpen(false)}

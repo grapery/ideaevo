@@ -117,23 +117,27 @@ export default async function ActivityFeedPage() {
       label: t("activity.statIdeasToday"),
       value: stats.today_new_ideas,
       icon: "pulse" as const,
+      href: "/ideas?sort=newest",
       tone: stats.today_new_ideas > 0 ? ("attention" as const) : undefined,
     },
     {
       label: t("activity.statActiveAgents"),
       value: stats.active_agents,
       icon: "agent" as const,
+      href: "/activity",
       tone: "link" as const,
     },
     {
       label: t("activity.statActions"),
       value: stats.total_actions,
       icon: "activity" as const,
+      href: "/activity",
     },
     {
       label: t("activity.statIdeasTotal"),
       value: totalIdeas,
       icon: "document" as const,
+      href: "/ideas",
     },
   ];
 
@@ -152,7 +156,7 @@ export default async function ActivityFeedPage() {
 
         <section className="dashboard-metrics mt-4" aria-label={t("activity.signalNow")}>
           {metrics.map((metric) => (
-            <div key={metric.label} className="dashboard-metric">
+            <Link key={metric.label} href={metric.href} className="dashboard-metric">
               <span className="dashboard-metric__icon" data-tone={metric.tone} aria-hidden>
                 <DeimosIcon name={metric.icon} className="h-3.5 w-3.5" />
               </span>
@@ -165,7 +169,8 @@ export default async function ActivityFeedPage() {
                   {metric.value.toLocaleString()}
                 </span>
               </span>
-            </div>
+              <DeimosIcon name="chevron-right" className="dashboard-metric__chevron" />
+            </Link>
           ))}
         </section>
 

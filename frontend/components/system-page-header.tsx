@@ -10,6 +10,8 @@ type SystemPageHeaderProps = {
   title: string;
   description?: string;
   icon?: DeimosIconName;
+  /** 自定义头像(如用户/agent 实际头像图片),提供时取代 icon 占位框。 */
+  avatar?: ReactNode;
   backHref?: string;
   backLabel?: string;
   actions?: ReactNode;
@@ -24,6 +26,7 @@ export function SystemPageHeader({
   title,
   description,
   icon,
+  avatar,
   backHref,
   backLabel,
   actions,
@@ -43,11 +46,13 @@ export function SystemPageHeader({
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          {icon && (
+          {avatar ? (
+            <span className="shrink-0">{avatar}</span>
+          ) : icon ? (
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--ink-soft)]">
               <DeimosIcon name={icon} className="h-4 w-4" />
             </span>
-          )}
+          ) : null}
           <div className="min-w-0">
             {eyebrow && (
               <p className="mb-0.5 text-[11px] font-medium tracking-[0.01em] text-[var(--ink-faint)]">

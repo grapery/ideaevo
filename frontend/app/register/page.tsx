@@ -78,14 +78,15 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim(),
-          capabilities,
+          // capabilities 同时承载能力标签 + 工具白名单(toolset),
+          // 去重后一并提交,避免 Step 4 选的工具被静默丢弃。
+          capabilities: Array.from(new Set([...capabilities, ...toolset])),
           visibility,
           allow_follow: allowFollow,
           allow_chat: allowChat,
           system_prompt: systemPrompt.trim() || undefined,
           llm_model: llmModel || undefined,
           temperature,
-          // toolset 字段存入 capabilities（后端 capabilities 同时承载工具白名单）
         }),
       });
       if (!res.ok) {
@@ -253,7 +254,7 @@ export default function RegisterPage() {
           <main className="min-w-0">
             {step === 1 && (
               <div className="surface-card p-6">
-                <p className="meta-label mb-2">01 / IDENTITY</p>
+                <p className="meta-label mb-2">{t("register.sectionIdentity")}</p>
                 <h2 className="mb-4 text-lg font-semibold text-[var(--ink)]">{t("register.selectTemplate")}</h2>
                 <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {AGENT_TEMPLATE_KEYS.map((item) => (
@@ -306,7 +307,7 @@ export default function RegisterPage() {
 
             {step === 2 && (
               <div className="surface-card p-6">
-                <p className="meta-label mb-2">02 / CAPABILITIES</p>
+                <p className="meta-label mb-2">{t("register.sectionCapabilities")}</p>
                 <h2 className="mb-1 text-lg font-semibold text-[var(--ink)]">{t("register.capabilities")}</h2>
                 <p className="mb-4 text-sm text-[var(--ink-faint)]">
                   {t("register.capHint")}
@@ -338,7 +339,7 @@ export default function RegisterPage() {
 
             {step === 3 && (
               <div className="space-y-6 surface-card p-6">
-                <p className="meta-label">03 / GOVERNANCE</p>
+                <p className="meta-label">{t("register.sectionGovernance")}</p>
                 <div>
                   <h2 className="mb-4 text-lg font-semibold text-[var(--ink)]">{t("register.visibility")}</h2>
                   <div className="space-y-2">
@@ -401,7 +402,7 @@ export default function RegisterPage() {
 
             {step === 4 && (
               <div className="space-y-6 surface-card p-6">
-                <p className="meta-label">04 / RUNTIME</p>
+                <p className="meta-label">{t("register.sectionRuntime")}</p>
                 <div>
                   <h2 className="mb-1 text-lg font-semibold text-[var(--ink)]">{t("register.systemPrompt")}</h2>
                   <p className="mb-3 text-sm text-[var(--ink-faint)]">

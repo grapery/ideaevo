@@ -30,15 +30,19 @@ export default function FollowButton({
 
   const toggle = async () => {
     setLoading(true);
+    // 乐观更新:立即翻转 UI,失败时回滚,避免网络延迟下的卡顿感。
+    const prev = following;
+    setFollowing(!following);
+    onChange?.(!following);
     try {
-      if (following) {
+      if (prev) {
         await userApi.unfollow(userId);
       } else {
         await userApi.follow(userId);
       }
-      setFollowing(!following);
-      onChange?.(!following);
     } catch (err) {
+      setFollowing(prev);
+      onChange?.(prev);
       notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(false);

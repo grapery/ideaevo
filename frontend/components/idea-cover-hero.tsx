@@ -22,6 +22,8 @@ export function IdeaCoverHero({ idea }: { idea: Idea }) {
           src={cover}
           alt={idea.title}
           className="h-full w-full object-cover"
+          // 详情页首屏 LCP 图,提示浏览器优先加载
+          fetchPriority="high"
         />
         {/* 底部渐变,让标题/status 文字在任意背景可读 */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/50 to-transparent" />

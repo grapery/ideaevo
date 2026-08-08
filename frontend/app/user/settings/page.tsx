@@ -40,7 +40,7 @@ const DEFAULT_NOTIF_PREFS: NotificationPreferences = {
 
 export default function SettingsPage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const searchParams = useSearchParams();
   const [section, setSection] = useState<Section>("profile");
 
@@ -861,7 +861,7 @@ export default function SettingsPage() {
                           </div>
                           <div className="text-xs text-[var(--text-muted)] mt-0.5">
                             {t("chat.messageCount", { count: s.message_count })} ·{" "}
-                            {new Date(s.updated_at).toLocaleString("zh-CN")}
+                            {new Date(s.updated_at).toLocaleString(locale === "en" ? "en-US" : "zh-CN")}
                           </div>
                         </Link>
                       </li>

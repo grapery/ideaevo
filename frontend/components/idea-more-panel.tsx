@@ -1,10 +1,8 @@
 import Link from "next/link";
-import type { Idea, IdeaLineage, IdeaStats } from "@/lib/types";
-import { IdeaMetaPanel } from "@/components/idea-meta-panel";
+import type { Idea, IdeaStats } from "@/lib/types";
 import { PublishVersionButton } from "@/components/publish-version-dialog";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { DeimosIcon } from "@/components/deimos-icon";
-import { IdeaTabJump } from "@/components/idea-tab-jump";
 import { EmptyState } from "@/components/empty-state";
 
 export type EvidenceItem = {
@@ -17,9 +15,7 @@ export type EvidenceItem = {
 type IdeaMorePanelProps = {
   idea: Idea;
   evidence: EvidenceItem[];
-  tags: string[];
   stats: IdeaStats | null;
-  lineage: IdeaLineage | null;
   lifecycleStatus: string;
   implStatus: string;
   currentVersion: number;
@@ -85,9 +81,7 @@ function EvidenceIcon({ kind }: { kind?: EvidenceItem["kind"] }) {
 export function IdeaMorePanel({
   idea,
   evidence,
-  tags,
   stats,
-  lineage,
   lifecycleStatus,
   implStatus,
   currentVersion,
@@ -259,10 +253,6 @@ export function IdeaMorePanel({
             className="mt-5"
           />
         )}
-
-        <div className="mt-2">
-          <IdeaMetaPanel idea={idea} />
-        </div>
       </div>
 
       {/* Taxonomy + Maker / Lineage */}
@@ -278,20 +268,6 @@ export function IdeaMorePanel({
                 </span>
               ) : (
                 <p className="text-[13px] text-[var(--ink-faint)]">{labels.noCategory}</p>
-              )}
-            </div>
-            <div>
-              <p className="mb-1.5 text-[12px] text-[var(--ink-faint)]">{labels.tags}</p>
-              {tags.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => (
-                    <span key={tag} className="tag-pill">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[13px] text-[var(--ink-faint)]">{labels.noTags}</p>
               )}
             </div>
           </div>
@@ -334,39 +310,6 @@ export function IdeaMorePanel({
                 </p>
               )}
             </div>
-          </div>
-
-          <div className="mt-5 border-t border-[var(--rule-light)] pt-4">
-            <p className="mb-2 text-[12px] font-medium text-[var(--ink)]">{labels.lineage}</p>
-            <div className="space-y-1.5 text-[12px] leading-5 text-[var(--ink-soft)]">
-              {lineage?.source_idea ? (
-                <p>
-                  {labels.sourceIdea} ·{" "}
-                  <Link
-                    href={`/ideas/${lineage.source_idea.id}`}
-                    className="text-[var(--accent-link)] hover:underline"
-                  >
-                    {lineage.source_idea.title}
-                  </Link>
-                </p>
-              ) : null}
-              <p>
-                {labels.currentBranch} · {idea.title}
-              </p>
-              <p className="font-code text-[11px] text-[var(--ink-faint)]">
-                {labels.totalForks(lineage?.stats.total_forks ?? idea.fork_count)}
-                {" · "}
-                {labels.activeBranches(
-                  lineage?.stats.active_branches ?? 0,
-                )}
-              </p>
-            </div>
-            <IdeaTabJump
-              tab="evolution"
-              className="mt-3 inline-block text-[12px] text-[var(--accent-link)] hover:underline"
-            >
-              {labels.viewGraph} →
-            </IdeaTabJump>
           </div>
         </div>
       </div>

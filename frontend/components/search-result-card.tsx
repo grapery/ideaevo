@@ -4,6 +4,8 @@ import { AppLink as Link } from "./app-link";
 import { Idea, normalizeTags } from "@/lib/types";
 import { stripMarkdownPreview } from "@/lib/markdown-utils";
 import { WireframeAvatar } from "./wireframe-avatar";
+import { StatusBadge } from "./status-badge";
+import { ImplStatusBadge } from "./impl-status-badge";
 import { useI18n } from "@/lib/i18n/provider";
 
 export function SearchResultCard({
@@ -21,7 +23,7 @@ export function SearchResultCard({
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="group block surface-card p-4 hover:border-[var(--accent-link)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
+      className="group block surface-card p-5 transition-shadow hover:border-[var(--rule-strong)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
       aria-label={t("search.viewIdea", { title: idea.title })}
     >
       <div className="flex items-start justify-between gap-5">
@@ -31,16 +33,22 @@ export function SearchResultCard({
             entityId={idea.id}
             avatarUrl={idea.icon_url}
             name={idea.title}
-            size={40}
+            size={42}
           />
           <div className="min-w-0">
-            <p className="font-code text-[9px] text-[var(--accent-link)]">
+            <Link
+              href={idea.agent?.is_personal ? `/users/${idea.agent?.owner?.id ?? ""}` : `/agents/${idea.agent_id}`}
+              className={`font-code text-[10px] font-medium hover:underline ${
+                idea.agent?.is_personal ? "text-[var(--primary)]" : "text-[var(--accent-link)]"
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
               {idea.agent?.is_personal
                 ? t("idea.humanPublished")
                 : t("idea.agentBadge")}{" "}
               · {agentName}
-            </p>
-            <h3 className="font-display mt-2 line-clamp-2 text-[17px] font-bold leading-[23px] text-[var(--ink)] group-hover:text-[var(--accent-link)]">
+            </Link>
+            <h3 className="font-display mt-2 line-clamp-2 text-[21px] font-bold leading-[28px] tracking-[-0.02em] text-[var(--ink)] group-hover:text-[var(--accent-link)]">
               {idea.title}
             </h3>
           </div>
@@ -55,25 +63,33 @@ export function SearchResultCard({
         </div>
       </div>
 
-      <p className="mt-2 line-clamp-2 min-h-[38px] text-[12px] leading-[19px] text-[var(--ink-soft)]">
+      <p className="mt-1.5 line-clamp-2 text-[13px] leading-[20px] text-[var(--ink-soft)]">
         {stripMarkdownPreview(idea.description)}
       </p>
 
-      <div className="mt-3 flex min-h-[16px] flex-wrap gap-5 font-code text-[9px] text-[var(--ink-faint)]">
+      <div className="mt-3 flex min-h-[20px] flex-wrap gap-1.5">
         {tags.map((tag) => (
-          <span key={tag}>#{tag}</span>
+          <span key={tag} className="tag-pill">
+            #{tag}
+          </span>
         ))}
       </div>
 
-      <div className="mt-3 flex items-center gap-5 border-t border-[var(--rule)] pt-3 font-code text-[9px] text-[var(--ink-soft)]">
-        <span>{idea.status.toUpperCase()}</span>
-        <span>
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[var(--rule)] pt-3 text-[12px] text-[var(--ink-soft)]">
+        {idea.status !== "active" ? (
+          <StatusBadge status={idea.status} />
+        ) : idea.impl_status ? (
+          <ImplStatusBadge status={idea.impl_status} />
+        ) : (
+          <StatusBadge status={idea.status} />
+        )}
+        <span className="hover:text-[var(--accent-link)]">
           {t("idea.statLikes")} {idea.like_count}
         </span>
-        <span>
+        <span className="hover:text-[var(--primary)]">
           {t("idea.statWishes")} {idea.wish_count ?? idea.flower_count}
         </span>
-        <span>
+        <span className="hover:text-[var(--accent-link)]">
           {t("idea.statForks")} {idea.fork_count}
         </span>
       </div>

@@ -51,16 +51,16 @@ export function CommentForm({
     }
   }, [replyMention]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 评论不因 idea 状态锁定（与后端一致）；仅展示只读提示给 buried 可选
+  // 评论不因 idea 状态锁定（与后端一致）；仅对 buried 展示只读提示。
+  // 顶层与回复均给出明确提示,而非静默隐藏(避免回复表单突然消失的困惑)。
   const inactive = status === "buried";
-  if (inactive && !parentId) {
+  if (inactive) {
     return (
-      <div className="rounded-[var(--radius-card)] border border-dashed border-[var(--rule)] px-4 py-5 text-sm text-[var(--ink-faint)]">
+      <div className={`rounded-[var(--radius-card)] border border-dashed border-[var(--rule)] text-sm text-[var(--ink-faint)] ${parentId ? "px-3 py-2 text-[12px]" : "px-4 py-5"}`}>
         {t("idea.readonlyHint")}
       </div>
     );
   }
-  if (inactive) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
