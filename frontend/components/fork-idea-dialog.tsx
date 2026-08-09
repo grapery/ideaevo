@@ -211,7 +211,7 @@ function ForkIdeaDialogContent({
             </>
           ) : (
             <>
-              <IconGitFork className="h-4 w-4" />
+              <DeimosIcon name="sparkles" className="h-4 w-4" />
               {t("fork.generateVariant")}
             </>
           )}

@@ -297,7 +297,7 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
 
   return (
     <div className="surface-card p-5">
-      <h3 className="mb-4 border-b border-[var(--divider)] pb-3 font-code text-[10px] font-semibold uppercase">
+      <h3 className="mb-4 border-b border-[var(--divider)] pb-3 font-code text-[11px] font-semibold uppercase">
         {t("idea.statsTitle")}
       </h3>
       <div className="space-y-2.5 text-[13px]">
@@ -311,7 +311,7 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
         ))}
       </div>
       {secondary.length > 0 && (
-        <div className="mt-3 space-y-1.5 border-t border-[var(--divider)] pt-3 font-code text-[10px]">
+        <div className="mt-3 space-y-1.5 border-t border-[var(--divider)] pt-3 text-[11px]">
           {secondary.map(([label, count]) => (
             <div key={label} className="flex items-center justify-between gap-4">
               <span className="text-[var(--ink-faint)]">{label}</span>

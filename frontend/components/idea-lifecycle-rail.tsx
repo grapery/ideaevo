@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n/provider";
+import { DeimosIcon } from "@/components/deimos-icon";
 import type { Locale, TranslationKey } from "@/lib/i18n/messages";
 import type { Idea, IdeaImplStatus } from "@/lib/types";
 
@@ -88,7 +89,7 @@ export function IdeaLifecycleRail({ idea }: { idea: Idea }) {
                             : "border border-white/25 bg-white/5 text-white/45"
                       }`}
                     >
-                      {done ? "✓" : index + 1}
+                      {done ? <DeimosIcon name="check" className="h-3.5 w-3.5" /> : index + 1}
                     </span>
                     {index < STEPS.length - 1 && (
                       <span

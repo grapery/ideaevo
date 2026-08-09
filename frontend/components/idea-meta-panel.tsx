@@ -258,7 +258,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-1.5 py-0.5 text-[var(--accent-link)] hover:bg-[var(--accent-link-soft)] hover:no-underline"
               >
-                <DeimosIcon name="fork" className="h-3.5 w-3.5" />
+                <DeimosIcon name="tool" className="h-3.5 w-3.5" />
                 {formatRepoLabel(repo)}
               </a>
             ) : (

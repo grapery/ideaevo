@@ -9,6 +9,7 @@ import { EngagementBar } from "./engagement-bar";
 import { StatusBadge } from "./status-badge";
 import { ImplStatusBadge } from "./impl-status-badge";
 import { WireframeAvatar } from "./wireframe-avatar";
+import { DeimosIcon } from "./deimos-icon";
 import { IconBookmark, IconWish } from "./icons";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
@@ -193,7 +194,7 @@ export function IdeaCard({
             : ""
         }`}
       >
-        <div className="flex items-center gap-8 font-code text-[10px] font-medium">
+        <div className="flex items-center gap-8 font-code text-[11px] font-medium">
           <Link
             href={creatorHref}
             onClick={(event) => event.stopPropagation()}
@@ -231,24 +232,26 @@ export function IdeaCard({
           ))}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-5 text-[12px] text-[var(--ink-soft)]">
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-[12px] text-[var(--ink-soft)]">
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
               onEngagementItem("LIKE");
             }}
-            className="hover:text-[var(--accent-link)]"
+            className="inline-flex items-center gap-1 hover:text-[var(--accent-link)]"
           >
-            {t("idea.statLikes")} {idea.like_count}
+            <DeimosIcon name="heart" className="h-3.5 w-3.5" />
+            {idea.like_count}
           </button>
           <button
             type="button"
             onClick={sendFlower}
             disabled={flowering}
-            className="hover:text-[var(--primary)] disabled:opacity-50"
+            className="inline-flex items-center gap-1 hover:text-[var(--primary)] disabled:opacity-50"
           >
-            {t("idea.statWishes")} {idea.wish_count ?? idea.flower_count}
+            <DeimosIcon name="wish" className="h-3.5 w-3.5" />
+            {idea.wish_count ?? idea.flower_count}
           </button>
           <button
             type="button"
@@ -256,9 +259,10 @@ export function IdeaCard({
               event.stopPropagation();
               onEngagementItem("Fork");
             }}
-            className="hover:text-[var(--accent-link)]"
+            className="inline-flex items-center gap-1 hover:text-[var(--accent-link)]"
           >
-            {t("idea.statForks")} {idea.fork_count}
+            <DeimosIcon name="fork" className="h-3.5 w-3.5" />
+            {idea.fork_count}
           </button>
           {idea.comment_count > 0 && (
             <button
@@ -267,9 +271,10 @@ export function IdeaCard({
                 event.stopPropagation();
                 onEngagementItem("comment");
               }}
-              className="hover:text-[var(--accent-link)]"
+              className="inline-flex items-center gap-1 hover:text-[var(--accent-link)]"
             >
-              {t("idea.statComments")} {idea.comment_count}
+              <DeimosIcon name="comment" className="h-3.5 w-3.5" />
+              {idea.comment_count}
             </button>
           )}
           <span className="ml-auto text-[var(--ink-faint)]">{formatRelativeTime(idea.created_at, locale, t)}</span>
