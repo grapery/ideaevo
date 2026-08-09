@@ -192,12 +192,19 @@ export default async function IdeaDetailPage({
         {/* Persistent header — stays across tabs (GitHub repo page pattern) */}
         <header className="surface-card p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            {/* 状态徽章组 */}
             <span className="badge-pill badge-implemented">{lifecycleStatus}</span>
             <span className="rounded-full border border-[var(--accent-link)]/25 bg-[var(--accent-link-light)] px-2.5 py-1 text-[var(--accent-link)]">
               {implStatus}
             </span>
             <span className="rounded-full border border-[var(--rule)] px-2.5 py-1 text-[var(--ink-soft)]">{idea.category}</span>
-            {/* 进化谱系:祖先链 + 后代数,让访客一眼看到这个想法的进化位置 */}
+
+            {/* 分隔符 */}
+            {(lineage?.source_idea || idea.fork_count > 0) && (
+              <span className="mx-1 h-3 w-px bg-[var(--rule)]" aria-hidden />
+            )}
+
+            {/* 进化谱系组:祖先 + 后代 */}
             {lineage?.source_idea && (
               <Link
                 href={`/ideas/${lineage.source_idea.id}`}
@@ -209,12 +216,14 @@ export default async function IdeaDetailPage({
               </Link>
             )}
             {idea.fork_count > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--primary)]/25 bg-[var(--primary-soft)] px-2.5 py-1 text-[var(--primary)]">
+              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--primary)]/25 bg-[var(--primary-soft)] px-2.5 py-1 font-medium text-[var(--primary)]">
                 <IconGitFork className="h-3 w-3" />
                 {idea.fork_count} {t("idea.forkDerivativesShort")}
               </span>
             )}
-            <span className="text-[var(--ink-faint)]">
+
+            {/* 发布者(次要信息,靠右) */}
+            <span className="ml-auto text-[var(--ink-faint)]">
               {idea.agent?.is_personal ? t("idea.humanPublished") : t("idea.agentPublished")}
             </span>
           </div>
@@ -268,8 +277,8 @@ export default async function IdeaDetailPage({
               },
             ]}
             overview={
-              <div className="app-grid-2 gap-5">
-                <main id="overview" className="scroll-mt-24 space-y-5 surface-card p-5 sm:p-6">
+              <div className="app-grid-2">
+                <main id="overview" className="scroll-mt-24 space-y-4 surface-card p-5 sm:p-6">
                   <IdeaLifecycleRail idea={idea} />
 
                   {/* 进化健康度:让访客一眼看到这个想法在进化树中的活力 */}
@@ -337,17 +346,17 @@ export default async function IdeaDetailPage({
                   />
                   <IdeaStatsPanel idea={idea} stats={stats} />
 
-                  <section className="panel-inverse p-4">
-                    <p className="font-code text-[10px] uppercase panel-inverse-muted">
+                  <section className="surface-card p-4">
+                    <p className="font-code text-[10px] uppercase tracking-wide text-[var(--ink-faint)]">
                       {t("idea.latestVersionShort", { version: currentVersion })}
                     </p>
-                    <p className="mt-2 font-code text-[10px] text-white/55">
+                    <p className="mt-2 font-code text-[10px] text-[var(--ink-faint)]">
                       {new Date(idea.updated_at).toLocaleDateString(locale)} · {idea.agent?.name || t("idea.creator")}
                     </p>
-                    <p className="mt-5 text-xs leading-5 text-white/70">
+                    <p className="mt-4 text-[12px] leading-5 text-[var(--ink-soft)]">
                       {t("idea.versionSnapshot")}
                     </p>
-                    <div className="mt-5"><PublishVersionButton idea={idea} /></div>
+                    <div className="mt-4"><PublishVersionButton idea={idea} /></div>
                   </section>
                 </aside>
               </div>

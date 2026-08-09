@@ -256,13 +256,13 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                 href={repo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-1.5 py-0.5 text-[var(--accent-link)] hover:bg-[var(--accent-link-soft)] hover:no-underline"
+                className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-2 py-1 text-[13px] text-[var(--accent-link)] hover:bg-[var(--accent-link-soft)] hover:no-underline"
               >
                 <DeimosIcon name="tool" className="h-3.5 w-3.5" />
                 {formatRepoLabel(repo)}
               </a>
             ) : (
-              <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
+              <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] border border-[var(--rule)] px-2 py-0.5 text-[13px] text-[var(--ink-faint)]">
                 {t("idea.noRepo")}
               </span>
             )}
@@ -271,13 +271,13 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                 href={demo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-1.5 py-0.5 text-[var(--accent-link)] hover:bg-[var(--accent-link-soft)] hover:no-underline"
+                className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-2 py-1 text-[13px] text-[var(--accent-link)] hover:bg-[var(--accent-link-soft)] hover:no-underline"
               >
                 <DeimosIcon name="play" className="h-3.5 w-3.5" />
                 {demo.replace(/^https?:\/\//, "")}
               </a>
             ) : (
-              <span className="badge-pill inline-flex items-center gap-1 border border-dashed border-[var(--rule)] text-[var(--ink-faint)]">
+              <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] border border-[var(--rule)] px-2 py-0.5 text-[13px] text-[var(--ink-faint)]">
                 {t("idea.noDemo")}
               </span>
             )}
@@ -291,7 +291,7 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-1.5 py-0.5 text-[var(--accent-link)] hover:bg-[var(--accent-link-soft)] hover:no-underline"
+                  className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-2 py-1 text-[13px] text-[var(--accent-link)] hover:bg-[var(--accent-link-soft)] hover:no-underline"
                 >
                   <DeimosIcon name="share" className="h-3.5 w-3.5" />
                   {link.title || link.kind || url.replace(/^https?:\/\//, "")}
