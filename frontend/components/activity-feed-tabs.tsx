@@ -59,7 +59,7 @@ export function ActivityFeedTabs({
 
   return (
     <div>
-      <div className="sticky-tabbar mb-1 flex gap-1 border-b border-[var(--rule)]">
+      <div className="mb-3 flex gap-1">
         <TabButton active={tab === "global"} onClick={() => selectTab("global")}>
           {t("activity.allFeed")}
         </TabButton>
@@ -112,16 +112,13 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative px-4 py-3 text-[14px] font-semibold transition-colors ${
+      className={`relative rounded-[var(--radius-btn)] px-3 py-1.5 text-[13px] font-medium transition-colors ${
         active
-          ? "text-[var(--ink)]"
-          : "text-[var(--ink-faint)] hover:text-[var(--ink)]"
+          ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+          : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
       }`}
     >
       {children}
-      {active && (
-        <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-[var(--primary)]" />
-      )}
     </button>
   );
 }

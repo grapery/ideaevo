@@ -96,7 +96,8 @@ function RankingCard({
                 >
                   {idea.title}
                 </Link>
-                <span className="shrink-0 font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--bg-subtle)] px-2 py-0.5 font-mono text-[11px] tabular-nums text-[var(--ink-soft)]">
+                  <Icon className="h-3 w-3 text-[var(--ink-faint)]" />
                   {metricValue}
                 </span>
               </li>
