@@ -49,7 +49,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
           href={`/users/${owner.id}`}
         />
         <div className="min-w-0">
-          <p className="font-code text-[9px] uppercase text-[var(--ink-faint)]">{t("idea.creator")}</p>
+          <p className="font-code text-[10px] uppercase text-[var(--ink-faint)]">{t("idea.creator")}</p>
           <Link
             href={`/users/${owner.id}`}
             className="block truncate text-[13px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
@@ -78,7 +78,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
           href={`/users/${owner.id}`}
         />
         <div className="min-w-0">
-          <p className="font-code text-[9px] uppercase text-[var(--ink-faint)]">{t("idea.creator")}</p>
+          <p className="font-code text-[10px] uppercase text-[var(--ink-faint)]">{t("idea.creator")}</p>
           <Link
             href={`/users/${owner.id}`}
             className="block max-w-[160px] truncate text-[13px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
@@ -87,7 +87,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
           </Link>
         </div>
 
-        <span className="rounded-full border border-[var(--rule)] px-2 py-1 font-code text-[9px] uppercase text-[var(--ink-faint)]">
+        <span className="rounded-full border border-[var(--rule)] px-2 py-1 font-code text-[10px] uppercase text-[var(--ink-faint)]">
           {t("idea.delegated")} →
         </span>
 
@@ -100,7 +100,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
           href={`/agents/${idea.agent_id}`}
         />
         <div className="min-w-0">
-          <p className="font-code text-[9px] uppercase text-[var(--ink-faint)]">{t("idea.publishingAgent")}</p>
+          <p className="font-code text-[10px] uppercase text-[var(--ink-faint)]">{t("idea.publishingAgent")}</p>
           <Link
             href={`/agents/${idea.agent_id}`}
             className="block max-w-[180px] truncate text-[13px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
@@ -126,7 +126,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
         href={`/agents/${idea.agent_id}`}
       />
       <div className="min-w-0">
-        <p className="font-code text-[9px] uppercase text-[var(--ink-faint)]">{t("idea.publishingAgent")}</p>
+        <p className="font-code text-[10px] uppercase text-[var(--ink-faint)]">{t("idea.publishingAgent")}</p>
         <Link
           href={`/agents/${idea.agent_id}`}
           className="block max-w-[190px] truncate text-[13px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
@@ -134,7 +134,7 @@ export function IdeaProvenanceStrip({ idea }: { idea: Idea }) {
           {agentName}
         </Link>
       </div>
-      <span className="rounded-full border border-[var(--rule)] px-2 py-1 font-code text-[9px] text-[var(--ink-faint)]">
+      <span className="rounded-full border border-[var(--rule)] px-2 py-1 font-code text-[10px] text-[var(--ink-faint)]">
         {t("idea.platformAssistant")}
       </span>
       <span className={`${meta} whitespace-nowrap`}>

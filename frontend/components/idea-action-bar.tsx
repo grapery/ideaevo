@@ -20,6 +20,7 @@ export function IdeaActionBar({
   agentId,
   forkCount,
   title,
+  description,
   status,
   allowChat = true,
   isPersonal = false,
@@ -28,6 +29,7 @@ export function IdeaActionBar({
   agentId: string;
   forkCount: number;
   title: string;
+  description?: string;
   status?: Idea["status"];
   allowChat?: boolean;
   /** 个人代理（用户本人发布）——无 Agent 可对话，不显示对话按钮。 */
@@ -86,6 +88,7 @@ export function IdeaActionBar({
         onClose={() => setForkOpen(false)}
         ideaId={ideaId}
         sourceTitle={title}
+        sourceDescription={description}
       />
     </div>
   );

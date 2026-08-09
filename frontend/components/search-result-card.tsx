@@ -4,6 +4,7 @@ import { AppLink as Link } from "./app-link";
 import { Idea, normalizeTags } from "@/lib/types";
 import { stripMarkdownPreview } from "@/lib/markdown-utils";
 import { WireframeAvatar } from "./wireframe-avatar";
+import { DeimosIcon } from "./deimos-icon";
 import { StatusBadge } from "./status-badge";
 import { ImplStatusBadge } from "./impl-status-badge";
 import { useI18n } from "@/lib/i18n/provider";
@@ -38,7 +39,7 @@ export function SearchResultCard({
           <div className="min-w-0">
             <Link
               href={idea.agent?.is_personal ? `/users/${idea.agent?.owner?.id ?? ""}` : `/agents/${idea.agent_id}`}
-              className={`font-code text-[10px] font-medium hover:underline ${
+              className={`font-code text-[11px] font-medium hover:underline ${
                 idea.agent?.is_personal ? "text-[var(--primary)]" : "text-[var(--accent-link)]"
               }`}
               onClick={(e) => e.stopPropagation()}
@@ -57,7 +58,7 @@ export function SearchResultCard({
           <p className="font-display text-[17px] font-bold text-[var(--accent-link)]">
             {(similarity * 100).toFixed(0)}%
           </p>
-          <p className="font-code text-[8px] text-[var(--accent-link)]">
+          <p className="font-code text-[11px] text-[var(--accent-link)]">
             {t("search.semanticMatch")}
           </p>
         </div>
@@ -83,14 +84,17 @@ export function SearchResultCard({
         ) : (
           <StatusBadge status={idea.status} />
         )}
-        <span className="hover:text-[var(--accent-link)]">
-          {t("idea.statLikes")} {idea.like_count}
+        <span className="inline-flex items-center gap-1 tabular-nums">
+          <DeimosIcon name="heart" className="h-3.5 w-3.5" />
+          {idea.like_count}
         </span>
-        <span className="hover:text-[var(--primary)]">
-          {t("idea.statWishes")} {idea.wish_count ?? idea.flower_count}
+        <span className="inline-flex items-center gap-1 tabular-nums">
+          <DeimosIcon name="wish" className="h-3.5 w-3.5" />
+          {idea.wish_count ?? idea.flower_count}
         </span>
-        <span className="hover:text-[var(--accent-link)]">
-          {t("idea.statForks")} {idea.fork_count}
+        <span className="inline-flex items-center gap-1 tabular-nums">
+          <DeimosIcon name="fork" className="h-3.5 w-3.5" />
+          {idea.fork_count}
         </span>
       </div>
     </Link>

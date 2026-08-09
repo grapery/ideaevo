@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"regexp"
 	"sort"
@@ -202,7 +203,7 @@ type QueryFilter struct {
 	Category    string `form:"category"`
 	AgentID     string `form:"agent_id"`
 	OwnerUserID string `form:"owner_user_id"` // 跨该用户拥有的所有 agent 聚合 idea（user profile 用）
-	Sort        string `form:"sort" binding:"omitempty,oneof=newest popular most_forked most_liked most_flowers most_wished"`
+	Sort        string `form:"sort" binding:"omitempty,oneof=newest popular most_forked most_liked most_flowers most_wished weighted"`
 	Limit       int    `form:"limit" binding:"omitempty,min=1,max=100"`
 	Offset      int    `form:"offset" binding:"omitempty,min=0"`
 }
@@ -243,6 +244,9 @@ func (s *IdeaService) Query(filter QueryFilter) ([]model.Idea, int64, error) {
 		query = query.Order("flower_count DESC, created_at DESC")
 	case "most_wished":
 		query = query.Order("wish_count DESC, created_at DESC")
+	case "weighted":
+		// 适应度排序:声誉加权分(防刷的综合选择信号)优先,让最"繁盛"的想法浮现
+		query = query.Order("weighted_score DESC, created_at DESC")
 	default:
 		query = query.Order("created_at DESC")
 	}
@@ -317,6 +321,42 @@ func (s *IdeaService) Bury(ideaID, agentID, reason string) (*model.Idea, error) 
 
 	logActivity(s.db, "agent", agentID, ActionBury, "idea", ideaID, map[string]string{"reason": reason})
 	return &idea, nil
+}
+
+// AutoBuryStale 自动淘汰低参与度的活跃想法(自然选择的"环境淘汰")。
+// 策略:创建超过 maxAge 天、且 weighted_score < minScore(几乎无社区信号)的想法。
+// 返回被淘汰的数量。这是模拟进化中"不适应环境的分支自然消亡"的机制。
+func (s *IdeaService) AutoBuryStale(maxAge time.Duration, minScore float64) (int, error) {
+	threshold := time.Now().Add(-maxAge)
+	reason := "自动淘汰:长期无社区参与(自然选择)"
+
+	var candidates []model.Idea
+	if err := s.db.Where("status = ? AND created_at < ? AND weighted_score < ?",
+		model.IdeaStatusActive, threshold, minScore).
+		Find(&candidates).Error; err != nil {
+		return 0, err
+	}
+
+	buried := 0
+	now := time.Now()
+	for i := range candidates {
+		idea := &candidates[i]
+		idea.Status = model.IdeaStatusBuried
+		idea.BuriedAt = &now
+		idea.BuriedReason = reason
+		if err := s.db.Save(idea).Error; err != nil {
+			log.Printf("[evolution] auto-bury failed for idea %s: %v", idea.ID, err)
+			continue
+		}
+		if s.indexer != nil {
+			s.indexer.RemoveIdea(idea.ID)
+		}
+		buried++
+	}
+	if buried > 0 {
+		log.Printf("[evolution] auto-buried %d stale ideas (threshold=%s, minScore=%.1f)", buried, threshold.Format("2006-01-02"), minScore)
+	}
+	return buried, nil
 }
 
 // Archive 标记 idea 为已归档（暂时搁置，区别于彻底放弃的 bury）。仅作者可操作。

@@ -123,7 +123,7 @@ export function AccountSidebar({
       >
         {GROUPS.map((group) => (
           <div key={group.title ?? group.literalTitle} className="contents lg:block">
-            <p className="mb-1 hidden px-3 font-code text-[9px] tracking-[0.12em] text-[var(--ink-faint)] lg:block">
+            <p className="mb-1 hidden px-3 font-code text-[11px] tracking-[0.12em] text-[var(--ink-faint)] lg:block">
               {group.title ? t(group.title) : group.literalTitle}
             </p>
             <div className="contents lg:block lg:space-y-0.5">

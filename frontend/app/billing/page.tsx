@@ -331,14 +331,14 @@ export default function BillingPage() {
             <section id="plans" className="mb-6 scroll-mt-20">
               <div className="mb-3 flex items-end justify-between gap-4">
                 <div>
-                  <p className="font-code text-[9px] text-[var(--accent-link)]">
+                  <p className="font-code text-[11px] text-[var(--accent-link)]">
                     {t("billing.membershipQuota")}
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-[var(--ink)]">
                     {t("billing.choosePlan")}
                   </h2>
                 </div>
-                <span className="hidden font-code text-[9px] text-[var(--ink-faint)] sm:block">
+                <span className="hidden font-code text-[11px] text-[var(--ink-faint)] sm:block">
                   {t("billing.noAutoRenew")}
                 </span>
               </div>
@@ -502,14 +502,14 @@ export default function BillingPage() {
             <div className="surface-card p-5">
               <div className="mb-4 flex items-end justify-between gap-4 border-b border-[var(--divider)] pb-4">
                 <div>
-                  <p className="font-code text-[9px] text-[var(--accent-link)]">
+                  <p className="font-code text-[11px] text-[var(--accent-link)]">
                     {t("billing.ordersRefunds")}
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-[var(--ink)]">
                     {t("billing.paymentRecords")}
                   </h2>
                 </div>
-                <span className="font-code text-[9px] text-[var(--ink-faint)]">
+                <span className="font-code text-[11px] text-[var(--ink-faint)]">
                   {t("billing.orderCount", { count: orders.length })}
                 </span>
               </div>

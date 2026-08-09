@@ -20,6 +20,8 @@ type ForkIdeaDialogProps = {
   ideaId: string;
   /** 被 fork 的原想法标题，用于上下文展示与预填。 */
   sourceTitle: string;
+  /** 被 fork 的原想法描述,默认继承到新分支(降低变异摩擦)。 */
+  sourceDescription?: string;
 };
 
 const TITLE_MAX = 120;
@@ -34,14 +36,16 @@ function ForkIdeaDialogContent({
   onClose,
   ideaId,
   sourceTitle,
+  sourceDescription = "",
 }: ForkIdeaDialogProps) {
   const { t } = useI18n();
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const router = useRouter();
 
   const defaultTitle = sourceTitle;
+  // 继承父描述:fork = "继承后编辑"而非"从零写起",降低变异摩擦
   const [title, setTitle] = useState(defaultTitle);
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(sourceDescription);
   const [reason, setReason] = useState("");
   const [errors, setErrors] = useState<{
     title?: string;
@@ -50,6 +54,34 @@ function ForkIdeaDialogContent({
     form?: string;
   }>({});
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  // AI 生成变异草案:调用 LLM 对父想法进行创造性变异,填充表单
+  async function handleGenerate() {
+    if (!canAct) {
+      setErrors({ form: t("idea.authRequired") });
+      return;
+    }
+    setGenerating(true);
+    try {
+      const data = await ideaRequestJson<{ title: string; description: string }>(
+        `/ideas/${ideaId}/generate-variant`,
+        {
+          method: "POST",
+          apiKey: useSession ? undefined : apiKey,
+          useSession,
+          body: JSON.stringify({}),
+        },
+      );
+      if (data.title) setTitle(data.title.slice(0, TITLE_MAX));
+      if (data.description) setDescription(data.description);
+      notify.success(t("fork.variantGenerated"));
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("fork.variantFailed")));
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   function validateTitle(v: string): string {
     const trimmed = v.trim();
@@ -68,14 +100,13 @@ function ForkIdeaDialogContent({
 
     const titleErr = validateTitle(title);
     const descErr = description.trim() ? "" : t("fork.errDescRequired");
-    const reasonErr = reason.trim() ? "" : t("fork.errReasonRequired");
+    // reason 改为可选:降低 fork 摩擦,鼓励想法大量变异
     const nextErrors = {
       title: titleErr || undefined,
       description: descErr || undefined,
-      reason: reasonErr || undefined,
     };
     setErrors(nextErrors);
-    if (titleErr || descErr || reasonErr) return;
+    if (titleErr || descErr) return;
 
     setLoading(true);
     try {
@@ -166,6 +197,26 @@ function ForkIdeaDialogContent({
       </div>
 
       <form id="fork-idea-form" onSubmit={handleSubmit} className="space-y-4">
+        {/* AI 变异引擎:一键生成创造性变体,让想法像基因一样低成本裂变 */}
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={generating}
+          className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] border border-[var(--primary)]/30 bg-[var(--primary-soft)] px-4 py-2.5 text-[13px] font-medium text-[var(--primary)] transition-colors hover:bg-[var(--primary-light)] disabled:opacity-50"
+        >
+          {generating ? (
+            <>
+              <ButtonSpinner className="h-4 w-4" />
+              {t("fork.generatingVariant")}
+            </>
+          ) : (
+            <>
+              <DeimosIcon name="sparkles" className="h-4 w-4" />
+              {t("fork.generateVariant")}
+            </>
+          )}
+        </button>
+
         <FormField
           id="fork-title"
           label={t("fork.titleLabel")}
@@ -191,6 +242,7 @@ function ForkIdeaDialogContent({
           label={t("fork.descLabel")}
           required
           error={errors.description}
+          hint={sourceDescription ? t("fork.inheritedHint") : undefined}
         >
           <Textarea
             id="fork-description"
@@ -209,8 +261,6 @@ function ForkIdeaDialogContent({
         <FormField
           id="fork-reason"
           label={t("fork.reasonLabel")}
-          required
-          error={errors.reason}
           hint={t("fork.reasonHint")}
         >
           <Textarea
