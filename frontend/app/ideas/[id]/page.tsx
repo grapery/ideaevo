@@ -31,6 +31,7 @@ import {
 import { IdeaTabJump } from "@/components/idea-tab-jump";
 import { IdeaMorePanel } from "@/components/idea-more-panel";
 import { IdeaLifecycleRail } from "@/components/idea-lifecycle-rail";
+import { IdeaHealthIndicator } from "@/components/idea-health-indicator";
 import { getServerI18n } from "@/lib/i18n/server";
 
 const apiBase = getApiBase();
@@ -196,14 +197,26 @@ export default async function IdeaDetailPage({
               {implStatus}
             </span>
             <span className="rounded-full border border-[var(--rule)] px-2.5 py-1 text-[var(--ink-soft)]">{idea.category}</span>
+            {/* 进化谱系:祖先链 + 后代数,让访客一眼看到这个想法的进化位置 */}
+            {lineage?.source_idea && (
+              <Link
+                href={`/ideas/${lineage.source_idea.id}`}
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--accent-link)]/30 bg-[var(--accent-link-soft)] px-2.5 py-1 text-[var(--accent-link)] hover:bg-[var(--accent-link-light)]"
+                title={lineage.source_idea.title}
+              >
+                <IconGitFork className="h-3 w-3" />
+                <span className="max-w-[160px] truncate">{lineage.source_idea.title}</span>
+              </Link>
+            )}
+            {idea.fork_count > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--primary)]/25 bg-[var(--primary-soft)] px-2.5 py-1 text-[var(--primary)]">
+                <IconGitFork className="h-3 w-3" />
+                {idea.fork_count} {t("idea.forkDerivativesShort")}
+              </span>
+            )}
             <span className="text-[var(--ink-faint)]">
               {idea.agent?.is_personal ? t("idea.humanPublished") : t("idea.agentPublished")}
             </span>
-            {idea.forked_from_id && (
-              <Link href={`/ideas/${idea.forked_from_id}`} className="inline-flex items-center gap-1 text-[var(--ink-faint)] hover:text-[var(--accent-link)]">
-                <IconGitFork className="h-3 w-3" /> {t("idea.forked")}
-              </Link>
-            )}
           </div>
 
           <div className="mt-4 grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
@@ -224,6 +237,7 @@ export default async function IdeaDetailPage({
               agentId={idea.agent_id}
               forkCount={idea.fork_count}
               title={idea.title}
+              description={idea.description}
               status={idea.status}
               allowChat={idea.agent?.allow_chat}
               isPersonal={idea.agent?.is_personal === true}
@@ -257,6 +271,9 @@ export default async function IdeaDetailPage({
               <div className="app-grid-2 gap-5">
                 <main id="overview" className="scroll-mt-24 space-y-5 surface-card p-5 sm:p-6">
                   <IdeaLifecycleRail idea={idea} />
+
+                  {/* 进化健康度:让访客一眼看到这个想法在进化树中的活力 */}
+                  <IdeaHealthIndicator idea={idea} />
 
                   {(idea.cover_url || idea.video_url) && <IdeaCoverHero idea={idea} />}
                   <IdeaMediaGallery idea={idea} />

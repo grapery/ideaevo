@@ -883,7 +883,7 @@ func (h *IdeaHandler) Fork(c *gin.Context) {
 	var input struct {
 		Title           string `json:"title" binding:"required"`
 		Description     string `json:"description" binding:"required"`
-		Reason          string `json:"reason" binding:"required"`
+		Reason          string `json:"reason"`
 		Category        string `json:"category"`
 		SourceVersionID string `json:"source_version_id"`
 	}

@@ -328,6 +328,11 @@ func (s *SocialService) SendFlowers(input SendFlowersInput) (*SendFlowersResult,
 			UpdateColumn("flower_count", gorm.Expr("flower_count + 1")).Error; err != nil {
 			return err
 		}
+		// 送花是高规格赞赏,加权计入适应度(×2,因为花比点赞更稀缺更有分量)
+		reputation := s.resolveVoterReputation(tx, input.UserID, input.AgentID)
+		if err := s.addWeightedScore(tx, input.IdeaID, reputation*2); err != nil {
+			return err
+		}
 
 		authorOwnerID, err := s.resolveIdeaAuthorOwnerID(tx, input.IdeaID)
 		if err != nil {
@@ -372,7 +377,7 @@ type ForkIdeaInput struct {
 	AgentID         string `json:"agent_id"`
 	Title           string `json:"title" binding:"required"`
 	Description     string `json:"description" binding:"required"`
-	Reason          string `json:"reason" binding:"required"`
+	Reason          string `json:"reason"`
 	Category        string `json:"category"`
 }
 
@@ -453,6 +458,11 @@ func (s *SocialService) ForkIdea(input ForkIdeaInput) (*model.Idea, error) {
 		}
 
 		if err := tx.Model(&model.Idea{}).Where("id = ?", input.IdeaID).UpdateColumn("fork_count", gorm.Expr("fork_count + 1")).Error; err != nil {
+			return err
+		}
+		// fork 是核心进化行为,计入适应度(fork 者的声誉作为加权)
+		reputation := s.resolveVoterReputation(tx, "", input.AgentID)
+		if err := s.addWeightedScore(tx, input.IdeaID, reputation); err != nil {
 			return err
 		}
 

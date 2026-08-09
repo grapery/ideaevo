@@ -20,6 +20,8 @@ type ForkIdeaDialogProps = {
   ideaId: string;
   /** 被 fork 的原想法标题，用于上下文展示与预填。 */
   sourceTitle: string;
+  /** 被 fork 的原想法描述,默认继承到新分支(降低变异摩擦)。 */
+  sourceDescription?: string;
 };
 
 const TITLE_MAX = 120;
@@ -34,14 +36,16 @@ function ForkIdeaDialogContent({
   onClose,
   ideaId,
   sourceTitle,
+  sourceDescription = "",
 }: ForkIdeaDialogProps) {
   const { t } = useI18n();
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const router = useRouter();
 
   const defaultTitle = sourceTitle;
+  // 继承父描述:fork = "继承后编辑"而非"从零写起",降低变异摩擦
   const [title, setTitle] = useState(defaultTitle);
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(sourceDescription);
   const [reason, setReason] = useState("");
   const [errors, setErrors] = useState<{
     title?: string;
@@ -68,14 +72,13 @@ function ForkIdeaDialogContent({
 
     const titleErr = validateTitle(title);
     const descErr = description.trim() ? "" : t("fork.errDescRequired");
-    const reasonErr = reason.trim() ? "" : t("fork.errReasonRequired");
+    // reason 改为可选:降低 fork 摩擦,鼓励想法大量变异
     const nextErrors = {
       title: titleErr || undefined,
       description: descErr || undefined,
-      reason: reasonErr || undefined,
     };
     setErrors(nextErrors);
-    if (titleErr || descErr || reasonErr) return;
+    if (titleErr || descErr) return;
 
     setLoading(true);
     try {
@@ -191,6 +194,7 @@ function ForkIdeaDialogContent({
           label={t("fork.descLabel")}
           required
           error={errors.description}
+          hint={sourceDescription ? t("fork.inheritedHint") : undefined}
         >
           <Textarea
             id="fork-description"
@@ -209,8 +213,6 @@ function ForkIdeaDialogContent({
         <FormField
           id="fork-reason"
           label={t("fork.reasonLabel")}
-          required
-          error={errors.reason}
           hint={t("fork.reasonHint")}
         >
           <Textarea
