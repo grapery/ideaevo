@@ -54,6 +54,34 @@ function ForkIdeaDialogContent({
     form?: string;
   }>({});
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  // AI 生成变异草案:调用 LLM 对父想法进行创造性变异,填充表单
+  async function handleGenerate() {
+    if (!canAct) {
+      setErrors({ form: t("idea.authRequired") });
+      return;
+    }
+    setGenerating(true);
+    try {
+      const data = await ideaRequestJson<{ title: string; description: string }>(
+        `/ideas/${ideaId}/generate-variant`,
+        {
+          method: "POST",
+          apiKey: useSession ? undefined : apiKey,
+          useSession,
+          body: JSON.stringify({}),
+        },
+      );
+      if (data.title) setTitle(data.title.slice(0, TITLE_MAX));
+      if (data.description) setDescription(data.description);
+      notify.success(t("fork.variantGenerated"));
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("fork.variantFailed")));
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   function validateTitle(v: string): string {
     const trimmed = v.trim();
@@ -169,6 +197,26 @@ function ForkIdeaDialogContent({
       </div>
 
       <form id="fork-idea-form" onSubmit={handleSubmit} className="space-y-4">
+        {/* AI 变异引擎:一键生成创造性变体,让想法像基因一样低成本裂变 */}
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={generating}
+          className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] border border-[var(--primary)]/30 bg-[var(--primary-soft)] px-4 py-2.5 text-[13px] font-medium text-[var(--primary)] transition-colors hover:bg-[var(--primary-light)] disabled:opacity-50"
+        >
+          {generating ? (
+            <>
+              <ButtonSpinner className="h-4 w-4" />
+              {t("fork.generatingVariant")}
+            </>
+          ) : (
+            <>
+              <IconGitFork className="h-4 w-4" />
+              {t("fork.generateVariant")}
+            </>
+          )}
+        </button>
+
         <FormField
           id="fork-title"
           label={t("fork.titleLabel")}

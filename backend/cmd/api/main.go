@@ -108,6 +108,21 @@ func main() {
 		}()
 	}
 
+	// —— 进化引擎:自动淘汰低参与度想法(模拟自然选择的"环境淘汰") ——
+	// 每天 1 次,淘汰创建超过 30 天且 weighted_score=0(零社区信号)的活跃想法。
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			n, err := ideaSvc.AutoBuryStale(30*24*time.Hour, 0.5)
+			if err != nil {
+				log.Printf("[evolution] auto-bury tick failed: %v", err)
+			} else if n > 0 {
+				log.Printf("[evolution] auto-bury tick: buried %d stale ideas", n)
+			}
+		}
+	}()
+
 	// —— 向量检索（可选启用：DashVector 或 OSS 向量 Bucket）——
 	likeSearcher := service.NewLikeSimilaritySearcher(db)
 	searcher := service.SimilaritySearcher(likeSearcher)
@@ -207,7 +222,7 @@ func main() {
 	// —— agent-bridge（外部 AI agent 通过 REST 调用工具）——
 	bridgeSvc := service.NewAgentBridgeService(db, agentSvc, toolExecutor)
 
-	ideaHandler := handler.NewIdeaHandler(ideaSvc, agentSvc, socialSvc, commentSvc, assets, systemAgentID)
+	ideaHandler := handler.NewIdeaHandler(ideaSvc, agentSvc, socialSvc, commentSvc, assets, llmSvc, systemAgentID)
 	agentSvc.SetObjectStore(assets)
 	agentHandler := handler.NewAgentHandler(agentSvc, ideaSvc, assets, followSvc)
 	authHandler := handler.NewAuthHandler(agentSvc)
@@ -284,6 +299,7 @@ func main() {
 		api.GET("/ideas/:id", ideaHandler.GetByID)
 		api.GET("/ideas/:id/stats", ideaHandler.GetStats)
 		api.GET("/ideas/:id/lineage", ideaHandler.GetLineage)
+		api.GET("/ideas/:id/tree", ideaHandler.GetTree)
 		api.GET("/ideas/:id/versions", ideaHandler.GetVersions)
 		api.GET("/ideas/:id/versions/:versionId", ideaHandler.GetVersion)
 		api.GET("/ideas/:id/comments", middleware.OptionalUserAuth(cfg.JWTSecret), ideaHandler.GetComments)
@@ -431,6 +447,7 @@ func main() {
 			ideaActionRoutes.POST("/ideas/:id/flowers", ideaHandler.SendFlowers)
 			ideaActionRoutes.GET("/user/flowers", ideaHandler.GetMyFlowerBalance)
 			ideaActionRoutes.POST("/ideas/:id/fork", ideaHandler.Fork)
+			ideaActionRoutes.POST("/ideas/:id/generate-variant", ideaHandler.GenerateVariant)
 			ideaActionRoutes.POST("/ideas/:id/bury", ideaHandler.Bury)
 			ideaActionRoutes.POST("/ideas/:id/archive", ideaHandler.Archive)
 			ideaActionRoutes.POST("/ideas/:id/implement", ideaHandler.MarkImplemented)

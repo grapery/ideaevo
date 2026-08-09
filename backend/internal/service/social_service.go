@@ -503,6 +503,95 @@ type IdeaLineage struct {
 	Stats          IdeaLineageStats   `json:"stats"`
 }
 
+// IdeaTreeNode 是进化树的一个节点(想法 + 它的子分支)。
+type IdeaTreeNode struct {
+	Idea     model.Idea     `json:"idea"`
+	Children []IdeaTreeNode `json:"children,omitempty"`
+}
+
+// IdeaTree 是完整的进化树(祖先链 + 后代树),一次请求返回。
+type IdeaTree struct {
+	Ancestors []model.Idea `json:"ancestors"` // 从根到当前想法的祖先链(不含当前)
+	Current   IdeaTreeNode `json:"current"`   // 当前想法 + 递归后代
+}
+
+// GetIdeaTree 返回完整的进化树:祖先链(沿 forked_from_id 向上)
+// + 后代树(沿 forks 表向下递归 depth 层)。
+// 解决前端 N+1 请求拼祖先链的问题。
+func (s *SocialService) GetIdeaTree(ideaID string, maxDepth int) (*IdeaTree, error) {
+	if maxDepth <= 0 || maxDepth > 10 {
+		maxDepth = 5
+	}
+
+	// 1) 祖先链:沿 forked_from_id 向上走(有界循环,防环)
+	var ancestors []model.Idea
+	currentID := ideaID
+	visited := map[string]bool{ideaID: true}
+	for i := 0; i < 20; i++ {
+		var idea model.Idea
+		if err := s.db.First(&idea, "id = ?", currentID).Error; err != nil {
+			break
+		}
+		if idea.ForkedFromID == nil || *idea.ForkedFromID == "" {
+			break
+		}
+		parentID := *idea.ForkedFromID
+		if visited[parentID] {
+			break // 防环
+		}
+		visited[parentID] = true
+		var parent model.Idea
+		if err := s.db.Preload("Agent").First(&parent, "id = ?", parentID).Error; err != nil {
+			break
+		}
+		EnrichIdea(&parent)
+		ancestors = append(ancestors, parent)
+		currentID = parentID
+	}
+
+	// 2) 后代树:沿 forks 表向下递归
+	current, err := s.buildTreeNode(ideaID, maxDepth, visited)
+	if err != nil {
+		return nil, err
+	}
+
+	return &IdeaTree{
+		Ancestors: ancestors,
+		Current:   *current,
+	}, nil
+}
+
+// buildTreeNode 递归构建后代树(有界深度,防环)。
+func (s *SocialService) buildTreeNode(ideaID string, depth int, visited map[string]bool) (*IdeaTreeNode, error) {
+	var idea model.Idea
+	if err := s.db.Preload("Agent").First(&idea, "id = ?", ideaID).Error; err != nil {
+		return nil, fmt.Errorf("idea not found: %w", err)
+	}
+	EnrichIdea(&idea)
+	node := &IdeaTreeNode{Idea: idea}
+
+	if depth <= 0 {
+		return node, nil
+	}
+
+	children, err := s.GetPublicForkChildren(ideaID)
+	if err != nil {
+		return node, nil // 子树出错不中断整棵树
+	}
+	for _, child := range children {
+		if visited[child.ID] {
+			continue // 防环
+		}
+		visited[child.ID] = true
+		childNode, err := s.buildTreeNode(child.ID, depth-1, visited)
+		if err != nil {
+			continue
+		}
+		node.Children = append(node.Children, *childNode)
+	}
+	return node, nil
+}
+
 // GetIdeaLineage returns authoritative version-aware provenance in one query
 // contract so clients never infer a fork's source from the parent's latest version.
 func (s *SocialService) GetIdeaLineage(ideaID string) (*IdeaLineage, error) {

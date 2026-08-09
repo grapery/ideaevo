@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -23,16 +24,18 @@ type IdeaHandler struct {
 	socialSvc     *service.SocialService
 	commentSvc      *service.CommentService
 	assets        *service.ObjectStore
+	llmSvc        *service.LLMService
 	systemAgentID string
 }
 
-func NewIdeaHandler(ideaSvc *service.IdeaService, agentSvc *service.AgentService, socialSvc *service.SocialService, commentSvc *service.CommentService, assets *service.ObjectStore, systemAgentID string) *IdeaHandler {
+func NewIdeaHandler(ideaSvc *service.IdeaService, agentSvc *service.AgentService, socialSvc *service.SocialService, commentSvc *service.CommentService, assets *service.ObjectStore, llmSvc *service.LLMService, systemAgentID string) *IdeaHandler {
 	return &IdeaHandler{
 		ideaSvc:       ideaSvc,
 		agentSvc:      agentSvc,
 		socialSvc:     socialSvc,
 		commentSvc:      commentSvc,
 		assets:        assets,
+		llmSvc:        llmSvc,
 		systemAgentID: systemAgentID,
 	}
 }
@@ -556,6 +559,22 @@ func (h *IdeaHandler) GetLineage(c *gin.Context) {
 	c.JSON(http.StatusOK, lineage)
 }
 
+// GetTree 返回完整的进化树(祖先链 + 后代树),一次请求替代前端 N+1 拼接。
+func (h *IdeaHandler) GetTree(c *gin.Context) {
+	depth := 5
+	if d := c.Query("depth"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 && parsed <= 10 {
+			depth = parsed
+		}
+	}
+	tree, err := h.socialSvc.GetIdeaTree(c.Param("id"), depth)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+	c.JSON(http.StatusOK, tree)
+}
+
 func (h *IdeaHandler) GetBookmarkStatus(c *gin.Context) {
 	userID := extractUserID(c)
 	if userID == "" {
@@ -912,6 +931,91 @@ func (h *IdeaHandler) Fork(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, newIdea)
+}
+
+// GenerateVariant 调用 LLM 为已有想法生成一个"变异"草案(不落库)。
+// 返回的 title/description 可直接用于后续 fork,降低变异成本,让想法像基因一样大量裂变。
+func (h *IdeaHandler) GenerateVariant(c *gin.Context) {
+	ideaID := c.Param("id")
+	idea, err := h.ideaSvc.GetByID(ideaID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
+		return
+	}
+
+	var input struct {
+		Hint string `json:"hint"` // 可选:用户指定的变异方向(如"更激进""面向中国用户")
+	}
+	_ = c.ShouldBindJSON(&input)
+
+	systemPrompt := `你是一个"想法进化引擎"。你的任务是对给定的想法进行创造性变异(variation),
+	就像基因突变一样——保留核心价值,但在方向、受众、技术路径或商业模式上产生有意义的分歧。
+
+	要求:
+	1. 输出必须是 JSON: {"title": "...", "description": "..."}
+	2. title 保持简短(≤60字),要体现与原想法的差异
+	3. description 用 Markdown,300-800字,清晰说明这个变体与原想法有何不同、为何值得独立探索
+	4. 不要照抄原文,要有实质性的创新方向
+	5. 只输出 JSON,不要任何额外文字`
+
+	hintPart := ""
+	if strings.TrimSpace(input.Hint) != "" {
+		hintPart = "\n\n变异方向提示:" + input.Hint
+	}
+
+	userMsg := fmt.Sprintf("原想法标题: %s\n\n原想法描述:\n%s%s\n\n请生成一个有意义的变异变体。", idea.Title, idea.Description, hintPart)
+
+	resp, err := h.llmSvc.Chat(systemPrompt, []service.LLMMessage{
+		{Role: "user", Content: userMsg},
+	})
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "AI 生成失败,请稍后重试"})
+		return
+	}
+
+	// 尝试从 LLM 输出中提取 JSON(title + description)
+	title, desc := parseVariantJSON(resp.Content)
+	if title == "" {
+		title = idea.Title + " (变体)"
+	}
+	if desc == "" {
+		desc = resp.Content
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"title":       title,
+		"description": desc,
+		"source_id":   ideaID,
+	})
+}
+
+// parseVariantJSON 从 LLM 输出中提取 {"title":"...","description":"..."} JSON。
+// 容忍 markdown code fence 包裹和前后多余文字。
+func parseVariantJSON(raw string) (title, description string) {
+	// 去掉可能的 ```json ... ``` 包裹
+	s := strings.TrimSpace(raw)
+	s = strings.TrimPrefix(s, "```json")
+	s = strings.TrimPrefix(s, "```")
+	s = strings.TrimSuffix(s, "```")
+	s = strings.TrimSpace(s)
+
+	// 找到第一个 { 和最后一个 }
+	start := strings.Index(s, "{")
+	end := strings.LastIndex(s, "}")
+	if start < 0 || end < 0 || end <= start {
+		return "", ""
+	}
+	jsonStr := s[start : end+1]
+
+	var parsed struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+	}
+	// 用标准库解析;失败则返回空(调用方有 fallback)
+	if err := json.Unmarshal([]byte(jsonStr), &parsed); err != nil {
+		return "", ""
+	}
+	return strings.TrimSpace(parsed.Title), strings.TrimSpace(parsed.Description)
 }
 
 // Share 记录一次分享事件（轻量：不复制 idea、不改计数），使该想法出现在 feed 流里。

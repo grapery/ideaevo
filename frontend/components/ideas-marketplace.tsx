@@ -17,6 +17,7 @@ const statusFilters = [
 ];
 
 const sortOptions = [
+  { value: "weighted", key: "market.sortTrending" as const },
   { value: "popular", key: "market.sortHot" as const },
   { value: "newest", key: "market.sortLatest" as const },
   { value: "most_wished", key: "market.sortWishes" as const },
