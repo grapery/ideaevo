@@ -41,12 +41,11 @@ export function ForkDerivativesPanel({
             className="group relative flex items-center justify-between gap-3 py-2.5 before:absolute before:left-[-14px] before:top-1/2 before:h-2.5 before:w-2.5 before:-translate-y-1/2 before:rounded-full before:border-2 before:border-[var(--accent-link)] before:bg-[var(--bg-surface)] transition-colors hover:bg-[var(--bg-subtle)]"
           >
             <span className="min-w-0 flex-1 truncate pl-1 text-[13px] font-medium text-[var(--ink)] group-hover:text-[var(--accent-link)]">
-              <IconGitFork className="mr-1.5 inline h-3 w-3 shrink-0 text-[var(--accent-link)]" />
               {idea.title}
             </span>
             <span className="flex shrink-0 items-center gap-3 text-[11px] tabular-nums text-[var(--ink-faint)]">
               {idea.fork_count > 0 && (
-                <span className="inline-flex items-center gap-0.5 text-[var(--primary)]" title={t("idea.forkDerivatives")}>
+                <span className="inline-flex items-center gap-0.5" title={t("idea.forkDerivatives")}>
                   <IconGitFork className="h-3 w-3" />
                   {idea.fork_count}
                 </span>

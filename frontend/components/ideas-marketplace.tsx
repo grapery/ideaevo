@@ -233,8 +233,10 @@ export function IdeasMarketplace({
                       key={item.status}
                       type="button"
                       onClick={() => updateParams(item.status, initialSort)}
-                      className={`flex h-7 w-full items-center justify-between rounded-[var(--radius-btn)] px-2 text-left hover:bg-[var(--bg-subtle)] ${
-                        active ? "font-semibold text-[var(--ink)]" : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                      className={`flex h-8 w-full items-center justify-between rounded-[var(--radius-btn)] px-2.5 text-left ${
+                        active
+                          ? "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]"
+                          : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
                       }`}
                     >
                       <span>{item.label}</span>
@@ -265,22 +267,22 @@ export function IdeasMarketplace({
           </aside>
 
           <main className="min-w-0">
-            <div className="flex h-10 items-center gap-4 overflow-x-auto rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] px-3.5">
+            <div className="flex h-10 items-center gap-1 overflow-x-auto border-b border-[var(--rule)]">
               {statusFilters.map((filter) => (
                 <button
                   key={filter.value || "hot"}
                   type="button"
                   onClick={() => updateParams(filter.value, initialSort)}
-                  className={`shrink-0 text-[12px] ${
+                  className={`relative shrink-0 px-3 text-[13px] transition-colors ${
                     initialStatus === filter.value
-                      ? "font-semibold text-[var(--ink)]"
+                      ? "font-semibold text-[var(--accent-link)] after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:rounded-full after:bg-[var(--accent-link)]"
                       : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
                   }`}
                 >
                   {t(filter.key)}
                 </button>
               ))}
-              <label className="ml-auto flex shrink-0 items-center gap-1.5 text-[12px] text-[var(--ink-soft)]">
+              <label className="ml-auto flex shrink-0 items-center gap-1.5 py-2 pr-1 text-[12px] text-[var(--ink-soft)]">
                 {t("market.sort")}:
                 <select
                   value={initialSort}

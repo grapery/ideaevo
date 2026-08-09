@@ -80,16 +80,16 @@
   --muted: var(--text-muted);
 
   /* ---- 形状 (Shape) ---- */
-  --radius-card: 6px;          /* ardot 卡片圆角 6-8px */
+  --radius-card: 8px;          /* ardot 卡片圆角 6-8px */
   --radius-float: 8px;         /* 浮层/弹窗 */
   --radius-pill: 999px;        /* 胶囊 */
   --radius-btn: 6px;           /* 按钮 */
   --radius-input: 6px;
 
   /* ---- 阴影 (Elevation) ---- */
-  --shadow: 0 1px 2px rgba(31, 35, 41, 0.04);
-  --shadow-md: 0 2px 4px rgba(31, 35, 41, 0.06), 0 1px 2px rgba(31, 35, 41, 0.04);
-  --shadow-lg: 0 4px 12px rgba(31, 35, 41, 0.08), 0 2px 4px rgba(31, 35, 41, 0.04);
+  --shadow: 0 1px 3px rgba(31, 35, 41, 0.07), 0 1px 2px rgba(31, 35, 41, 0.05);
+  --shadow-md: 0 2px 6px rgba(31, 35, 41, 0.08), 0 1px 3px rgba(31, 35, 41, 0.06);
+  --shadow-lg: 0 4px 12px rgba(31, 35, 41, 0.10), 0 2px 4px rgba(31, 35, 41, 0.06);
   --shadow-float: 0 6px 24px rgba(31, 35, 41, 0.1), 0 2px 8px rgba(31, 35, 41, 0.06);
 
   --input-bg: #ffffff;

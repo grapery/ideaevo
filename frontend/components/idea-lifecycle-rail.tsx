@@ -53,8 +53,8 @@ export function IdeaLifecycleRail({ idea }: { idea: Idea }) {
   const isPaused = idea.impl_status === "paused";
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--panel-inverse)] bg-[var(--panel-inverse)] text-white">
-      <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-stretch sm:justify-between sm:gap-8 sm:p-6">
+    <div className="overflow-hidden rounded-[var(--radius-card)] bg-[var(--panel-inverse)] text-white">
+      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-stretch sm:justify-between sm:gap-8 sm:p-5">
         {/* Lifecycle track */}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
