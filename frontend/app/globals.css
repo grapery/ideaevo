@@ -23,7 +23,7 @@
   /* ---- 文字层 (Ink) ---- */
   --ink: #1f2329;              /* 正文主色 */
   --ink-soft: #4e5969;         /* 表头/二级文字 */
-  --ink-faint: #86909c;        /* 辅助信息/占位符 */
+  --ink-faint: #6b7280;        /* 辅助信息/占位符 (加深以满足 WCAG AA 4.5:1) */
   --ink-disabled: #c9cdd4;     /* 禁用 */
 
   /* ---- 边框/分隔 (Rule) ---- */
@@ -284,6 +284,17 @@ select:focus {
   border-color: var(--accent-link);
   box-shadow: 0 0 0 2px var(--accent-link-soft);
   outline: none;
+}
+
+/* 全局键盘焦点可见样式:确保所有交互元素在 Tab 导航时有清晰的焦点反馈 */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-link);
+  outline-offset: 2px;
+  border-radius: var(--radius-btn);
 }
 
 @media (prefers-reduced-motion: no-preference) {

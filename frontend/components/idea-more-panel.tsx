@@ -323,7 +323,7 @@ export function IdeaMorePanel({
           <p className="mt-2 max-w-xl text-[13px] leading-6 text-white/70">
             {labels.versionHint}
           </p>
-          <p className="mt-2 font-code text-[10px] text-white/45">
+          <p className="mt-2 font-code text-[10px] text-white/60">
             {new Date(idea.updated_at).toLocaleDateString(locale)} · {agentName}
           </p>
         </div>

@@ -335,7 +335,7 @@ export function IdeasMarketplace({
                     </span>
                     <span className="truncate text-[var(--ink)]">{item.title}</span>
                     <span className="font-mono text-[11px] tabular-nums text-[var(--accent-link)]">
-                      +{Math.max(1, "score" in item ? Math.round(item.score) : item.flower_count || 1)}
+                      +{Math.max(1, "score" in item ? Math.round(item.score) : Math.max(item.like_count, item.flower_count, 1))}
                     </span>
                   </Link>
                 ))}

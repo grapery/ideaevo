@@ -86,7 +86,7 @@ export function IdeaLifecycleRail({ idea }: { idea: Idea }) {
                           ? "bg-[var(--panel-inverse-accent)] text-[var(--panel-inverse)] shadow-[0_0_0_4px_rgba(155,255,0,0.18)]"
                           : done
                             ? "bg-white text-[var(--panel-inverse)]"
-                            : "border border-white/25 bg-white/5 text-white/45"
+                            : "border border-white/25 bg-white/5 text-white/60"
                       }`}
                     >
                       {done ? <DeimosIcon name="check" className="h-3.5 w-3.5" /> : index + 1}
@@ -108,12 +108,12 @@ export function IdeaLifecycleRail({ idea }: { idea: Idea }) {
                         ? "text-[var(--panel-inverse-accent)]"
                         : done
                           ? "text-white"
-                          : "text-white/40"
+                          : "text-white/55"
                     }`}
                   >
                     {t(step.labelKey)}
                   </p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-white/40 sm:text-[12px]">
+                  <p className="mt-0.5 text-[11px] leading-4 text-white/55 sm:text-[12px]">
                     {current
                       ? t("idea.lifecycleCurrent")
                       : done
@@ -168,7 +168,7 @@ function TimeChip({
           : "border-white/12 bg-white/5"
       }`}
     >
-      <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-white/45">
+      <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-white/60">
         {label}
       </p>
       <time dateTime={dateTime} className="mt-1 block">
@@ -179,7 +179,7 @@ function TimeChip({
         >
           {relative}
         </span>
-        <span className="mt-0.5 block text-[12px] leading-4 text-white/45">
+        <span className="mt-0.5 block text-[12px] leading-4 text-white/60">
           {absolute}
         </span>
       </time>

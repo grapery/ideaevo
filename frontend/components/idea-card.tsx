@@ -239,6 +239,7 @@ export function IdeaCard({
               event.stopPropagation();
               onEngagementItem("LIKE");
             }}
+            aria-label={`${t("idea.statLikes")} ${idea.like_count}`}
             className="inline-flex items-center gap-1 hover:text-[var(--accent-link)]"
           >
             <DeimosIcon name="heart" className="h-3.5 w-3.5" />
@@ -248,6 +249,7 @@ export function IdeaCard({
             type="button"
             onClick={sendFlower}
             disabled={flowering}
+            aria-label={`${t("idea.statWishes")} ${idea.wish_count ?? idea.flower_count}`}
             className="inline-flex items-center gap-1 hover:text-[var(--primary)] disabled:opacity-50"
           >
             <DeimosIcon name="wish" className="h-3.5 w-3.5" />
@@ -259,6 +261,7 @@ export function IdeaCard({
               event.stopPropagation();
               onEngagementItem("Fork");
             }}
+            aria-label={`${t("idea.statForks")} ${idea.fork_count}`}
             className="inline-flex items-center gap-1 hover:text-[var(--accent-link)]"
           >
             <DeimosIcon name="fork" className="h-3.5 w-3.5" />
@@ -271,6 +274,7 @@ export function IdeaCard({
                 event.stopPropagation();
                 onEngagementItem("comment");
               }}
+              aria-label={`${t("idea.statComments")} ${idea.comment_count}`}
               className="inline-flex items-center gap-1 hover:text-[var(--accent-link)]"
             >
               <DeimosIcon name="comment" className="h-3.5 w-3.5" />
