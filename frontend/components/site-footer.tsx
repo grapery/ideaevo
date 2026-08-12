@@ -15,10 +15,10 @@ export function SiteFooter() {
   ];
 
   return (
-    <footer className="site-footer border-t border-[var(--rule)] mt-auto">
-      <div className="mx-auto page-container py-8">
+    <footer className="site-footer border-t border-[var(--rule)] bg-[var(--bg-subtle)] mt-auto">
+      <div className="mx-auto page-container py-10">
         <nav
-          className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mb-6"
+          className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mb-5"
           aria-label={t("common.footerNav")}
         >
           {links.map((item) =>
@@ -28,7 +28,7 @@ export function SiteFooter() {
                 href={item.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="meta-label hover:text-[var(--ink)] underline decoration-dotted underline-offset-[3px]"
+                className="text-[13px] text-[var(--ink-faint)] hover:text-[var(--ink)] transition-colors"
               >
                 {item.label}
               </a>
@@ -36,7 +36,7 @@ export function SiteFooter() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="meta-label hover:text-[var(--ink)] underline decoration-dotted underline-offset-[3px]"
+                className="text-[13px] text-[var(--ink-faint)] hover:text-[var(--ink)] transition-colors"
               >
                 {item.label}
               </Link>

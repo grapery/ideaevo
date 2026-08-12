@@ -38,7 +38,7 @@ function formatRelativeTime(
 type IdeaCardProps = {
   idea: Idea;
   preview?: boolean;
-  variant?: "default" | "market";
+  variant?: "default" | "market" | "compact";
   highlighted?: boolean;
 };
 
@@ -188,9 +188,9 @@ export function IdeaCard({
         onClick={goDetail}
         onKeyDown={onCardKeyDown}
         aria-label={`${t("idea.body")}: ${idea.title}`}
-        className={`group relative min-h-[170px] cursor-pointer overflow-hidden surface-card px-5 py-4 transition-shadow hover:border-[var(--rule-strong)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
+        className={`group relative min-h-[170px] cursor-pointer overflow-hidden surface-card px-5 py-4 transition-all hover:border-[var(--rule-strong)] hover:bg-[var(--bg-hover)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
           highlighted
-            ? "min-h-[190px] border-[var(--rule-strong)] bg-[var(--accent-link-soft)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--accent-link)]"
+            ? "min-h-[190px] border-[var(--rule-strong)] bg-[var(--bg-subtle)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--action)]"
             : ""
         }`}
       >
@@ -283,6 +283,40 @@ export function IdeaCard({
           )}
           <span className="ml-auto text-[var(--ink-faint)]">{formatRelativeTime(idea.created_at, locale, t)}</span>
         </div>
+      </article>
+    );
+  }
+
+  if (variant === "compact") {
+    return (
+      <article
+        role="link"
+        tabIndex={0}
+        onClick={goDetail}
+        onKeyDown={onCardKeyDown}
+        aria-label={`${t("idea.body")}: ${idea.title}`}
+        className="group card-listing cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
+      >
+        <WireframeAvatar
+          kind="idea"
+          entityId={idea.id}
+          avatarUrl={idea.icon_url}
+          name={idea.title}
+          size={40}
+          className="h-10 w-10 shrink-0 rounded-[8px]"
+        />
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-[14px] font-semibold leading-tight text-[var(--ink)] group-hover:text-[var(--accent-link)]">
+            {idea.title}
+          </h3>
+          <p className="mt-0.5 line-clamp-1 text-[12px] leading-snug text-[var(--ink-faint)]">
+            {stripMarkdownPreview(idea.description)}
+          </p>
+        </div>
+        <DeimosIcon
+          name="chevron-right"
+          className="h-4 w-4 shrink-0 text-[var(--ink-faint)] opacity-0 transition-opacity group-hover:opacity-100"
+        />
       </article>
     );
   }

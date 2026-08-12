@@ -12,7 +12,7 @@ import { LanguageSwitcher } from "./language-switcher";
 import { useI18n } from "@/lib/i18n/provider";
 
 const navLinkClass =
-  "inline-flex h-12 items-center text-[13px] text-[var(--ink-soft)] hover:text-[var(--ink)]";
+  "inline-flex h-14 items-center text-[13px] text-[var(--ink-soft)] hover:text-[var(--ink)] transition-colors";
 
 const menuLinkClass =
   "flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-hover)] hover:text-[var(--ink)]";
@@ -135,7 +135,7 @@ export function Header() {
   );
 
   return (
-    <header className="sticky top-0 z-50 h-12 border-b border-[var(--rule)] bg-[var(--bg-surface)]">
+    <header className="sticky top-0 z-50 h-14 border-b border-[var(--rule)] bg-[var(--bg-surface)]/90 backdrop-blur supports-[backdrop-filter]:bg-[var(--bg-surface)]/75">
       <div className="page-container flex h-full items-center gap-5 lg:gap-7">
         <Logo compact />
 

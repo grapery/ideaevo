@@ -1,35 +1,36 @@
 @import "tailwindcss";
 
 /*
- * Ardot 生产设计系统（Deimos web boards 09-32）
- * 以当前 live canvas 为实现基线:
- *   - App 背景 #F4F6F8 / 内容面板白底
- *   - 4 语义色: Primary 橙 #FF8A00 (强行动) / Link 蓝 #3370FF (深链/对象名) /
- *              Success 绿 #34C759 (已启用/正常) / Warning 红 #F54A45 (停用/重点跟进)
- *   - 文字层级: 正文 #1F2329 / 表头二级 #4E5969 / 辅助 #86909C
- *   - 排版: H1 20-24/Bold, Section 16-18/Bold, 表头 12-13/Medium, 正文 13-14, 辅助 12
- *   - 形状: 卡片圆角 6-8px, 表格行高 42-48px, spacing scale 12/16/24
- *   - 桌面端默认紧凑密度, 高扫描效率, 不用营销式大留白
+ * Deimos 设计系统（v2 — 中性 zinc 基线, 参考 mcpservers.org / shadcn+Geist 美学）
+ * 在 ardot 紧凑骨架上引入克制中性风:
+ *   - App 背景 #FAFAFA (zinc-50) / 内容面板白底
+ *   - 中性 zinc 色系为主: 文字 zinc-950/600/500, 边框 zinc-200/300
+ *   - 默认实心按钮深色 --action #18181B (zinc-900), 橙色 --primary 降为品牌强调
+ *   - 品牌强调: Primary 橙 #FF8A00 (wish/flower/hero 点缀) / Link 蓝 #3370FF (超链接/数据链接)
+ *   - 状态: Success 绿 #34C759 / Warning 红 #F54A45
+ *   - 形状: 卡片圆角 12px (rounded-xl), 按钮/输入 8px, 胶囊 999px
+ *   - 代码块 GitHub 风 #F6F8FA
+ *   - 向后兼容别名全部保留, 旧组件零破坏
  */
 :root {
-  /* ---- 表面层 (Surface) ---- */
-  --bg-canvas: #f4f6f8;        /* App 全局背景 */
+  /* ---- 表面层 (Surface, 中性 zinc) ---- */
+  --bg-canvas: #fafafa;        /* App 全局背景 (zinc-50) */
   --bg-surface: #ffffff;       /* 内容面板/卡片白底 */
-  --bg-subtle: #f7f8fa;        /* 次级面板/hover 底色 */
-  --bg-hover: #f2f3f5;         /* hover 反馈 */
+  --bg-subtle: #f4f4f5;        /* 次级面板/hover 底色 (zinc-100) */
+  --bg-hover: #f4f4f5;         /* hover 反馈 (zinc-100) */
   --background: var(--bg-canvas);
-  --foreground: #1f2329;
+  --foreground: #09090b;
 
-  /* ---- 文字层 (Ink) ---- */
-  --ink: #1f2329;              /* 正文主色 */
-  --ink-soft: #4e5969;         /* 表头/二级文字 */
-  --ink-faint: #6b7280;        /* 辅助信息/占位符 (加深以满足 WCAG AA 4.5:1) */
-  --ink-disabled: #c9cdd4;     /* 禁用 */
+  /* ---- 文字层 (Ink, 中性 zinc) ---- */
+  --ink: #09090b;              /* 正文主色 (zinc-950) */
+  --ink-soft: #52525b;         /* 表头/二级文字 (zinc-600) */
+  --ink-faint: #71717a;        /* 辅助信息/占位符 (zinc-500, 满足 WCAG AA) */
+  --ink-disabled: #d4d4d8;     /* 禁用 (zinc-300) */
 
-  /* ---- 边框/分隔 (Rule) ---- */
-  --rule: #e5e6eb;             /* 标准边框 */
-  --rule-light: #f2f3f5;       /* 浅分隔 */
-  --rule-strong: #c9cdd4;      /* 强边框/hover */
+  /* ---- 边框/分隔 (Rule, 中性 zinc) ---- */
+  --rule: #e4e4e7;             /* 标准边框 (zinc-200) */
+  --rule-light: #f4f4f5;       /* 浅分隔 (zinc-100) */
+  --rule-strong: #d4d4d8;      /* 强边框/hover (zinc-300) */
 
   --card: var(--bg-surface);
   --card-hover: var(--bg-subtle);
@@ -72,6 +73,20 @@
   --cta: var(--primary);
   --cta-hover: var(--primary-hover);
 
+  /* ---- 行动色 (Action, mcpservers 深色主按钮) ---- */
+  --action: #18181b;           /* 默认实心按钮深色 (zinc-900) */
+  --action-hover: #27272a;     /* hover (zinc-800) */
+  --action-soft: #f4f4f5;      /* 浅底 (zinc-100) */
+  --action-foreground: #ffffff;
+
+  /* ---- 品牌强调 (Brand, 橙色降级为单一强调) ---- */
+  --brand: var(--primary);
+  --brand-hover: var(--primary-hover);
+
+  /* ---- 代码块 (GitHub 风) ---- */
+  --code-bg: #f6f8fa;
+  --code-text: #1f232b;
+
   /* ---- 文字语义 ---- */
   --title: var(--ink);
   --body: var(--ink-soft);
@@ -79,18 +94,18 @@
   --text-muted: var(--ink-faint);
   --muted: var(--text-muted);
 
-  /* ---- 形状 (Shape) ---- */
-  --radius-card: 8px;          /* ardot 卡片圆角 6-8px */
-  --radius-float: 8px;         /* 浮层/弹窗 */
+  /* ---- 形状 (Shape, 圆角加大靠拢 mcpservers) ---- */
+  --radius-card: 12px;         /* 卡片圆角 rounded-xl (mcpservers 目录卡) */
+  --radius-float: 12px;        /* 浮层/弹窗 */
   --radius-pill: 999px;        /* 胶囊 */
-  --radius-btn: 6px;           /* 按钮 */
-  --radius-input: 6px;
+  --radius-btn: 8px;           /* 按钮 */
+  --radius-input: 8px;
 
-  /* ---- 阴影 (Elevation) ---- */
-  --shadow: 0 1px 3px rgba(31, 35, 41, 0.07), 0 1px 2px rgba(31, 35, 41, 0.05);
-  --shadow-md: 0 2px 6px rgba(31, 35, 41, 0.08), 0 1px 3px rgba(31, 35, 41, 0.06);
-  --shadow-lg: 0 4px 12px rgba(31, 35, 41, 0.10), 0 2px 4px rgba(31, 35, 41, 0.06);
-  --shadow-float: 0 6px 24px rgba(31, 35, 41, 0.1), 0 2px 8px rgba(31, 35, 41, 0.06);
+  /* ---- 阴影 (Elevation, zinc 调更中性) ---- */
+  --shadow: 0 1px 3px rgba(9, 9, 11, 0.07), 0 1px 2px rgba(9, 9, 11, 0.05);
+  --shadow-md: 0 2px 6px rgba(9, 9, 11, 0.08), 0 1px 3px rgba(9, 9, 11, 0.06);
+  --shadow-lg: 0 4px 12px rgba(9, 9, 11, 0.10), 0 2px 4px rgba(9, 9, 11, 0.06);
+  --shadow-float: 0 6px 24px rgba(9, 9, 11, 0.1), 0 2px 8px rgba(9, 9, 11, 0.06);
 
   --input-bg: #ffffff;
 
@@ -103,7 +118,7 @@
   --status-archived: #86909c;
   --status-buried: var(--ink-faint);
 
-  --header-height: 48px;      /* ardot 全局栏 48px */
+  --header-height: 56px;      /* 全局栏 56px (靠拢 mcpservers 65px, 保留紧凑) */
 
   /* ---- 布局尺度 (Layout scale) ---- */
   --page-max: 1440px;
@@ -155,6 +170,9 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-light: var(--primary-light);
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-brand: var(--brand);
   --color-title: var(--title);
   --color-body: var(--body);
   --color-input-bg: var(--input-bg);
@@ -382,6 +400,25 @@ a {
   box-shadow: var(--shadow-md);
 }
 
+/* card-listing — mcpservers 目录式横向紧凑卡 (logo + 标题 + 描述)。
+   12px 圆角, zinc 边, hover 锌灰底。 */
+.card-listing {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  padding: 12px 16px;
+  transition: background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.card-listing:hover {
+  background: var(--bg-hover);
+  border-color: var(--rule-strong);
+}
+
 /* ============ Chip / Badge (ardot 风格) ============ */
 .tag-pill,
 .chip {
@@ -439,6 +476,26 @@ a {
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
+}
+
+/* badge-outline — mcpservers 风描边胶囊 (透明底 + 彩字 + zinc 边)。
+   通过 --badge-color / --badge-border 内联覆盖即可着色。 */
+.badge-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+  background: transparent;
+  color: var(--badge-color, var(--ink-soft));
+  border: 1px solid var(--badge-border, var(--rule));
+  white-space: nowrap;
 }
 
 .panel-card {
@@ -1042,22 +1099,22 @@ input[type="search"]::-webkit-search-decoration {
   }
 }
 
-/* ============ 按钮 (Button System, ardot) ============ */
-/* Primary — 实心橙按钮 (强行动: 新建/提交) */
+/* ============ 按钮 (Button System) ============ */
+/* Primary — 实心深色按钮 (mcpservers 风: 新建/提交/保存) */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.375rem;
   border-radius: var(--radius-btn);
-  border: 1px solid var(--primary);
-  background: var(--primary);
+  border: 1px solid var(--action);
+  background: var(--action);
   padding: 0.4375rem 1rem;
   font-size: 13px;
   font-weight: 500;
   line-height: 1.5;
   white-space: nowrap;
-  color: #ffffff;
+  color: var(--action-foreground);
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
@@ -1065,8 +1122,8 @@ input[type="search"]::-webkit-search-decoration {
     box-shadow var(--dur-fast) var(--ease-out);
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
+  background: var(--action-hover);
+  border-color: var(--action-hover);
 }
 .btn-primary:active {
   transform: scale(0.97);
@@ -1130,7 +1187,7 @@ input[type="search"]::-webkit-search-decoration {
 .code-block {
   border-radius: var(--radius-card);
   border: 1px solid var(--rule);
-  background: #1f2329;
+  background: var(--code-bg);
   padding: 1rem;
   overflow-x: auto;
 }
@@ -1156,7 +1213,7 @@ input[type="search"]::-webkit-search-decoration {
 .code-block pre {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: #e8eaed;
+  color: var(--code-text);
   white-space: pre;
   line-height: 1.6;
 }
@@ -1399,9 +1456,9 @@ input[type="search"]::-webkit-search-decoration {
   background: var(--bg-subtle);
 }
 .filter-chip[data-active="true"] {
-  background: var(--primary-soft);
-  border-color: var(--primary);
-  color: var(--primary);
+  background: var(--action);
+  border-color: var(--action);
+  color: var(--action-foreground);
 }
 
 /* ── Tabbar：GitHub/Twitter 风格的下划线 tab ──

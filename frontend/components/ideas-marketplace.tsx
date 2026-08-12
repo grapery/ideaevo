@@ -114,11 +114,15 @@ export function IdeasMarketplace({
   return (
     <div className="page-shell-full">
       <div className="page-container page-pad">
-        <SystemPageHeader
-          title={t("market.title")}
-          description={t("market.subtitle")}
-          actions={
-            <>
+        {basePath === "/" ? (
+          <section className="pb-1 pt-8 text-center sm:pt-12">
+            <h1 className="font-display text-3xl sm:text-[36px] font-bold leading-tight tracking-tight text-[var(--ink)]">
+              {t("market.title")}
+            </h1>
+            <p className="mx-auto mt-3 max-w-2xl text-[15px] leading-relaxed text-[var(--ink-soft)] sm:text-[16px]">
+              {t("market.subtitle")}
+            </p>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
               <Link href="/ideas/new" className="btn-primary btn-sm">
                 <DeimosIcon name="publish" className="h-3.5 w-3.5" />
                 {t("market.publish")}
@@ -127,9 +131,26 @@ export function IdeasMarketplace({
                 <DeimosIcon name="semantic-search" className="h-3.5 w-3.5" />
                 {t("dashboard.searchEvidence")}
               </Link>
-            </>
-          }
-        />
+            </div>
+          </section>
+        ) : (
+          <SystemPageHeader
+            title={t("market.title")}
+            description={t("market.subtitle")}
+            actions={
+              <>
+                <Link href="/ideas/new" className="btn-primary btn-sm">
+                  <DeimosIcon name="publish" className="h-3.5 w-3.5" />
+                  {t("market.publish")}
+                </Link>
+                <Link href="/search" className="btn-outline btn-sm">
+                  <DeimosIcon name="semantic-search" className="h-3.5 w-3.5" />
+                  {t("dashboard.searchEvidence")}
+                </Link>
+              </>
+            }
+          />
+        )}
 
         <section className="dashboard-metrics mt-4" aria-label={t("market.signals")}>
           {metrics.map((metric) => (
