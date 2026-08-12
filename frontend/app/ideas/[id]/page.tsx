@@ -278,7 +278,7 @@ export default async function IdeaDetailPage({
             ]}
             overview={
               <div className="app-grid-2">
-                <main id="overview" className="scroll-mt-24 space-y-4 surface-card p-5 sm:p-6">
+                <main id="overview" className="scroll-mt-24 space-y-4">
                   <IdeaLifecycleRail idea={idea} />
 
                   {/* 进化健康度:让访客一眼看到这个想法在进化树中的活力 */}
@@ -314,8 +314,8 @@ export default async function IdeaDetailPage({
 
                 <aside className="space-y-3">
                   <section className="surface-card p-4">
-                    <p className="text-[12px] font-semibold text-[var(--ink)]">{t("idea.forkLineage")}</p>
-                    <div className="mt-4 space-y-1.5 text-[12px] leading-5 text-[var(--ink-soft)]">
+                    <p className="text-[13px] font-semibold text-[var(--ink)]">{t("idea.forkLineage")}</p>
+                    <div className="mt-3 space-y-1.5 text-[12px] leading-5 text-[var(--ink-soft)]">
                       {lineage?.source_idea && (
                         <p>
                           {t("idea.sourceIdea")} ·{" "}
@@ -326,7 +326,7 @@ export default async function IdeaDetailPage({
                       )}
                       <p>{t("idea.currentBranch")} · {idea.title}</p>
                     </div>
-                    <div className="mt-4 space-y-1 font-code text-[11px] tabular-nums text-[var(--ink-faint)]">
+                    <div className="mt-3 space-y-1 text-[12px] tabular-nums text-[var(--ink-faint)]">
                       <p>{t("idea.totalForks", { count: lineage?.stats.total_forks ?? idea.fork_count })}</p>
                       <p>{t("idea.activeBranches", { count: lineage?.stats.active_branches ?? forkChildren.filter((item) => item.status === "active").length })}</p>
                       <p>{t("idea.contributors", { count: lineage?.stats.contributors ?? 0 })}</p>
@@ -347,16 +347,16 @@ export default async function IdeaDetailPage({
                   <IdeaStatsPanel idea={idea} stats={stats} />
 
                   <section className="surface-card p-4">
-                    <p className="font-code text-[10px] uppercase tracking-wide text-[var(--ink-faint)]">
+                    <p className="text-[13px] font-semibold text-[var(--ink)]">
                       {t("idea.latestVersionShort", { version: currentVersion })}
                     </p>
-                    <p className="mt-2 font-code text-[10px] text-[var(--ink-faint)]">
+                    <p className="mt-1.5 text-[11px] text-[var(--ink-faint)]">
                       {new Date(idea.updated_at).toLocaleDateString(locale)} · {idea.agent?.name || t("idea.creator")}
                     </p>
-                    <p className="mt-4 text-[12px] leading-5 text-[var(--ink-soft)]">
+                    <p className="mt-3 text-[12px] leading-5 text-[var(--ink-soft)]">
                       {t("idea.versionSnapshot")}
                     </p>
-                    <div className="mt-4"><PublishVersionButton idea={idea} /></div>
+                    <div className="mt-3"><PublishVersionButton idea={idea} /></div>
                   </section>
                 </aside>
               </div>

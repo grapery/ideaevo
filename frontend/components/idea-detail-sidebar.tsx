@@ -113,7 +113,7 @@ export function FlowersPanel({
 
   return (
     <div className="rounded-lg border border-[#ffb45a] bg-[#fff4e6] p-5 text-[#914700]">
-      <h3 className="mb-3 border-b border-[#ffcf93] pb-2 font-code text-[10px] font-semibold uppercase">
+      <h3 className="mb-3 border-b border-[#ffcf93] pb-2 text-[12px] font-semibold">
         <DeimosIcon name="flower" className="mr-1 inline-block h-3.5 w-3.5 text-[#ff8a00]" />
         {t("idea.flowerSignals")} / {t("idea.flowerCountLabel", { count: flowerCount })}
       </h3>
@@ -297,7 +297,7 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
 
   return (
     <div className="surface-card p-5">
-      <h3 className="mb-4 border-b border-[var(--divider)] pb-3 font-code text-[11px] font-semibold uppercase">
+      <h3 className="mb-4 border-b border-[var(--divider)] pb-3 text-[13px] font-semibold text-[var(--ink)]">
         {t("idea.statsTitle")}
       </h3>
       <div className="space-y-2.5 text-[13px]">

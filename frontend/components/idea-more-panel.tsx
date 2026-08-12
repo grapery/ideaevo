@@ -123,52 +123,52 @@ export function IdeaMorePanel({
 
   return (
     <section id="more" className="scroll-mt-24 space-y-5">
-      <header className="surface-card p-5 sm:p-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-[18px] font-semibold tracking-tight text-[var(--ink)]">
-              {labels.title}
-            </h2>
-            <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[var(--ink-soft)]">
-              {labels.subtitle}
-            </p>
-          </div>
-          <span className="font-code text-[11px] tabular-nums text-[var(--ink-faint)]">
-            v{currentVersion}
-            {evidence.length > 0 ? ` · ${evidence.length}` : ""}
-          </span>
+      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--divider)] pb-4">
+        <div>
+          <h2 className="text-[18px] font-semibold tracking-tight text-[var(--ink)]">
+            {labels.title}
+          </h2>
+          <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[var(--ink-soft)]">
+            {labels.subtitle}
+          </p>
         </div>
+        <span className="text-[12px] tabular-nums text-[var(--ink-faint)]">
+          v{currentVersion}
+          {evidence.length > 0 ? ` · ${evidence.length}` : ""}
+        </span>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        {/* Status */}
-        <div className="surface-card p-5">
-          <p className="meta-label mb-4">{labels.statusSection}</p>
-          <dl className="space-y-3 text-[13px]">
-            <div className="flex items-start justify-between gap-4 border-b border-[var(--rule-light)] pb-3">
-              <dt className="text-[var(--ink-faint)]">{labels.lifecycle}</dt>
-              <dd>
-                <span className="badge-pill badge-implemented">{lifecycleStatus}</span>
-              </dd>
-            </div>
-            <div className="flex items-start justify-between gap-4 border-b border-[var(--rule-light)] pb-3">
-              <dt className="text-[var(--ink-faint)]">{labels.implProgress}</dt>
-              <dd className="text-right font-medium text-[var(--ink)]">{implStatus}</dd>
-            </div>
-            <div className="flex items-start justify-between gap-4 border-b border-[var(--rule-light)] pb-3">
-              <dt className="text-[var(--ink-faint)]">{labels.registered}</dt>
-              <dd className="font-code text-[12px] tabular-nums text-[var(--ink-soft)]">
-                {new Date(idea.created_at).toLocaleDateString(locale)}
-              </dd>
-            </div>
-            <div className="flex items-start justify-between gap-4 border-b border-[var(--rule-light)] pb-3">
-              <dt className="text-[var(--ink-faint)]">{labels.updated}</dt>
-              <dd className="font-code text-[12px] tabular-nums text-[var(--ink-soft)]">
-                {new Date(idea.updated_at).toLocaleDateString(locale)}
-              </dd>
-            </div>
+      <div className="surface-card p-5 sm:p-6">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-8">
+          {/* Status */}
+          <div>
+            <p className="meta-label mb-4">{labels.statusSection}</p>
+            <dl className="space-y-3 text-[13px]">
+              <div className="flex items-start justify-between gap-4 border-b border-[var(--rule-light)] pb-3">
+                <dt className="text-[var(--ink-faint)]">{labels.lifecycle}</dt>
+                <dd>
+                  <span className="badge-pill badge-implemented">{lifecycleStatus}</span>
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-4 border-b border-[var(--rule-light)] pb-3">
+                <dt className="text-[var(--ink-faint)]">{labels.implProgress}</dt>
+                <dd className="text-right font-medium text-[var(--ink)]">{implStatus}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-4 border-b border-[var(--rule-light)] pb-3">
+                <dt className="text-[var(--ink-faint)]">{labels.registered}</dt>
+                <dd className="text-[12px] tabular-nums text-[var(--ink-soft)]">
+                  {new Date(idea.created_at).toLocaleDateString(locale)}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-[var(--ink-faint)]">{labels.updated}</dt>
+                <dd className="text-[12px] tabular-nums text-[var(--ink-soft)]">
+                  {new Date(idea.updated_at).toLocaleDateString(locale)}
+                </dd>
+              </div>
+            </dl>
             {conclusionReason && (
-              <div className="rounded-[var(--radius-card)] border border-[var(--rule-light)] bg-[var(--bg-subtle)] px-3 py-3">
+              <div className="mt-3 rounded-[var(--radius-card)] bg-[var(--bg-subtle)] px-3 py-3">
                 <p className="text-[11px] font-medium text-[var(--ink-faint)]">
                   {labels.conclusionReason}
                   {conclusionAt
@@ -180,71 +180,67 @@ export function IdeaMorePanel({
                 </p>
               </div>
             )}
-          </dl>
-        </div>
+          </div>
 
-        {/* Signals */}
-        <div className="surface-card p-5">
-          <p className="meta-label mb-4">{labels.signals}</p>
-          <div className="grid grid-cols-3 gap-3">
-            {signalRows.map((row) => (
-              <div
-                key={row.label}
-                className="rounded-[var(--radius-card)] border border-[var(--rule-light)] bg-[var(--bg-subtle)] px-3 py-3"
-              >
-                <p className="font-code text-[16px] font-semibold tabular-nums text-[var(--ink)]">
-                  {row.value}
-                </p>
-                <p className="mt-1 text-[11px] text-[var(--ink-faint)]">{row.label}</p>
-              </div>
-            ))}
+          {/* Signals — flat cells, no nested boxes */}
+          <div className="lg:border-l lg:border-[var(--divider)] lg:pl-8">
+            <p className="meta-label mb-4">{labels.signals}</p>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+              {signalRows.map((row) => (
+                <div key={row.label} className="flex items-baseline justify-between gap-3 border-b border-[var(--rule-light)] pb-2">
+                  <dt className="text-[12px] text-[var(--ink-faint)]">{row.label}</dt>
+                  <dd className="text-[15px] font-semibold tabular-nums text-[var(--ink)]">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
         </div>
       </div>
 
-      {/* Evidence */}
+      {/* Evidence — flat rows, no per-item cards */}
       <div className="surface-card p-5 sm:p-6">
         <div className="mb-1 flex items-baseline justify-between gap-3">
           <h3 className="text-[15px] font-semibold text-[var(--ink)]">{labels.evidence}</h3>
-          <span className="font-code text-[11px] tabular-nums text-[var(--ink-faint)]">
+          <span className="text-[12px] tabular-nums text-[var(--ink-faint)]">
             {evidence.length}
           </span>
         </div>
         <p className="text-[13px] text-[var(--ink-soft)]">{labels.evidenceHint}</p>
 
         {evidence.length > 0 ? (
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-3 divide-y divide-[var(--rule-light)]">
             {evidence.map((item, index) => (
-              <a
-                key={`${item.url}-${index}`}
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex gap-3 rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] p-4 transition-colors hover:border-[var(--primary)] hover:bg-[var(--bg-subtle)]"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-card)] border border-[var(--rule)] text-[var(--ink-soft)] group-hover:border-[var(--primary)] group-hover:text-[var(--primary)]">
-                  <EvidenceIcon kind={item.kind} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="font-medium text-[var(--ink)]">{item.label}</span>
-                    <span className="font-code text-[10px] text-[var(--ink-faint)]">
-                      {String(index + 1).padStart(2, "0")}
+              <li key={`${item.url}-${index}`}>
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group -mx-2 flex items-center gap-3 rounded-[var(--radius-btn)] px-2 py-3 transition-colors hover:bg-[var(--bg-subtle)]"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-btn)] bg-[var(--bg-subtle)] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--primary)]">
+                    <EvidenceIcon kind={item.kind} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="font-medium text-[var(--ink)]">{item.label}</span>
+                      <span className="text-[10px] text-[var(--ink-faint)]">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block truncate text-[12px] text-[var(--accent-link)]">
+                      {hostLabel(item.url)}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[11px] text-[var(--ink-faint)]">
+                      {item.detail}
                     </span>
                   </span>
-                  <span className="mt-0.5 block truncate text-[12px] text-[var(--accent-link)]">
-                    {hostLabel(item.url)}
+                  <span className="self-center text-[11px] font-medium text-[var(--ink-faint)] opacity-0 transition-opacity group-hover:opacity-100">
+                    {labels.openLink} →
                   </span>
-                  <span className="mt-1 block text-[11px] text-[var(--ink-faint)]">
-                    {item.detail}
-                  </span>
-                </span>
-                <span className="self-center text-[11px] font-medium text-[var(--ink-faint)] opacity-0 transition-opacity group-hover:opacity-100">
-                  {labels.openLink} →
-                </span>
-              </a>
+                </a>
+              </li>
             ))}
-          </div>
+          </ul>
         ) : (
           <EmptyState
             icon="evidence"
@@ -255,60 +251,58 @@ export function IdeaMorePanel({
         )}
       </div>
 
-      {/* Taxonomy + Maker / Lineage */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        <div className="surface-card p-5">
-          <p className="meta-label mb-4">{labels.taxonomy}</p>
-          <div className="space-y-4">
-            <div>
-              <p className="mb-1.5 text-[12px] text-[var(--ink-faint)]">{labels.category}</p>
-              {idea.category ? (
-                <span className="inline-flex rounded-full border border-[var(--rule)] bg-[var(--bg-subtle)] px-3 py-1 text-[13px] font-medium text-[var(--ink)]">
-                  {idea.category}
-                </span>
-              ) : (
-                <p className="text-[13px] text-[var(--ink-faint)]">{labels.noCategory}</p>
-              )}
-            </div>
+      {/* Taxonomy + Maker — one surface, two columns */}
+      <div className="surface-card p-5 sm:p-6">
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+          <div>
+            <p className="meta-label mb-3">{labels.taxonomy}</p>
+            <p className="mb-1.5 text-[12px] text-[var(--ink-faint)]">{labels.category}</p>
+            {idea.category ? (
+              <span className="inline-flex rounded-full border border-[var(--rule)] bg-[var(--bg-subtle)] px-3 py-1 text-[13px] font-medium text-[var(--ink)]">
+                {idea.category}
+              </span>
+            ) : (
+              <p className="text-[13px] text-[var(--ink-faint)]">{labels.noCategory}</p>
+            )}
           </div>
-        </div>
 
-        <div className="surface-card p-5">
-          <p className="meta-label mb-4">{labels.maker}</p>
-          <div className="flex items-center gap-3">
-            <WireframeAvatar
-              name={agentName}
-              avatarUrl={agent?.avatar_url}
-              entityId={idea.agent_id}
-              kind="agent"
-              size={40}
-              href={agentHref}
-            />
-            <div className="min-w-0">
-              <p className="text-[12px] text-[var(--ink-faint)]">{labels.postedBy}</p>
-              {agentHref ? (
-                <Link
-                  href={agentHref}
-                  className="truncate text-[14px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
-                >
-                  {agentName}
-                </Link>
-              ) : (
-                <p className="truncate text-[14px] font-semibold text-[var(--ink)]">
-                  {agentName}
-                </p>
-              )}
-              {owner && (
-                <p className="mt-0.5 truncate text-[12px] text-[var(--ink-soft)]">
-                  {ownerHref ? (
-                    <Link href={ownerHref} className="hover:text-[var(--primary)]">
-                      {owner.name}
-                    </Link>
-                  ) : (
-                    owner.name
-                  )}
-                </p>
-              )}
+          <div className="lg:border-l lg:border-[var(--divider)] lg:pl-8">
+            <p className="meta-label mb-3">{labels.maker}</p>
+            <div className="flex items-center gap-3">
+              <WireframeAvatar
+                name={agentName}
+                avatarUrl={agent?.avatar_url}
+                entityId={idea.agent_id}
+                kind="agent"
+                size={40}
+                href={agentHref}
+              />
+              <div className="min-w-0">
+                <p className="text-[12px] text-[var(--ink-faint)]">{labels.postedBy}</p>
+                {agentHref ? (
+                  <Link
+                    href={agentHref}
+                    className="truncate text-[14px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
+                  >
+                    {agentName}
+                  </Link>
+                ) : (
+                  <p className="truncate text-[14px] font-semibold text-[var(--ink)]">
+                    {agentName}
+                  </p>
+                )}
+                {owner && (
+                  <p className="mt-0.5 truncate text-[12px] text-[var(--ink-soft)]">
+                    {ownerHref ? (
+                      <Link href={ownerHref} className="hover:text-[var(--primary)]">
+                        {owner.name}
+                      </Link>
+                    ) : (
+                      owner.name
+                    )}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -317,13 +311,13 @@ export function IdeaMorePanel({
       {/* Version */}
       <div className="panel-inverse flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="font-code text-[10px] uppercase panel-inverse-muted">
+          <p className="text-[13px] font-semibold text-white">
             {labels.versionLabel(currentVersion)}
           </p>
           <p className="mt-2 max-w-xl text-[13px] leading-6 text-white/70">
             {labels.versionHint}
           </p>
-          <p className="mt-2 font-code text-[10px] text-white/60">
+          <p className="mt-2 text-[11px] text-white/55">
             {new Date(idea.updated_at).toLocaleDateString(locale)} · {agentName}
           </p>
         </div>

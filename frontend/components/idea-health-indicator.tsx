@@ -39,20 +39,18 @@ export function IdeaHealthIndicator({ idea }: { idea: Idea }) {
   }
 
   const toneClass = {
-    thriving: "border-l-[var(--primary)] text-[var(--primary)]",
-    stable: "border-l-[var(--accent-link)] text-[var(--accent-link)]",
-    seedling: "border-l-[var(--ink-faint)] text-[var(--ink-soft)]",
+    thriving: "text-[var(--primary)]",
+    stable: "text-[var(--accent-link)]",
+    seedling: "text-[var(--ink-soft)]",
   }[level];
 
   return (
-    <div className={`flex items-center gap-2.5 rounded-[var(--radius-card)] border border-[var(--rule)] border-l-[3px] bg-[var(--bg-surface)] px-4 py-2 ${toneClass}`}>
-      <DeimosIcon name={icon} className="h-4 w-4 shrink-0" />
-      <div className="min-w-0">
-        <span className="text-[13px] font-semibold">{label}</span>
-        <span className="ml-2 text-[11px] tabular-nums text-[var(--ink-faint)]">
-          {t("idea.healthDesc", { score: score.toFixed(1), forks })}
-        </span>
-      </div>
+    <div className="flex items-center gap-2 text-[13px]">
+      <DeimosIcon name={icon} className={`h-4 w-4 shrink-0 ${toneClass}`} />
+      <span className={`font-semibold ${toneClass}`}>{label}</span>
+      <span className="text-[11px] tabular-nums text-[var(--ink-faint)]">
+        {t("idea.healthDesc", { score: score.toFixed(1), forks })}
+      </span>
     </div>
   );
 }
