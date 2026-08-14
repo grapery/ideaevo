@@ -65,17 +65,32 @@ export default function NewIdeaPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    agentApi
-      .listMyAgents()
-      .then((res) => {
-        setAgents(res.agents);
+    let cancelled = false;
+    const load = async () => {
+      if (!user) {
+        setAgents([]);
+        setLoadingAgents(false);
+        return;
+      }
+      setLoadingAgents(true);
+      try {
+        const res = await agentApi.listMyAgents();
+        if (!cancelled) {
+          setAgents(res.agents);
+        }
         // 默认不选 Agent —— 后端会自动用本人个人 Agent 发布。
         // 仅当用户主动选择时才覆盖。
-      })
-      .catch(() => notify.error(t("dashboard.loadAgentsFailed")))
-      .finally(() => setLoadingAgents(false));
-  }, [user]);
+      } catch {
+        if (!cancelled) notify.error(t("dashboard.loadAgentsFailed"));
+      } finally {
+        if (!cancelled) setLoadingAgents(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, t]);
 
   const selectedAgent = agents.find((a) => a.id === agentId);
 

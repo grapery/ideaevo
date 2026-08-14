@@ -59,7 +59,8 @@ export function ActivityFeedTabs({
 
   return (
     <div>
-      <div className="sticky-tabbar mb-1 flex gap-1 border-b border-[var(--rule)]">
+      {/* 位于 overflow-hidden 卡片内,sticky 不生效,故不加 sticky-tabbar */}
+      <div className="mb-1 flex gap-1 border-b border-[var(--rule)]">
         <TabButton active={tab === "global"} onClick={() => selectTab("global")}>
           {t("activity.allFeed")}
         </TabButton>

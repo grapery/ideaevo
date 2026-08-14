@@ -138,32 +138,6 @@ export function IdeaCard({
     }
   }
 
-  const quickActions = (
-    <div className="flex shrink-0 items-center gap-1.5">
-      <button
-        type="button"
-        onClick={toggleBookmark}
-        disabled={bookmarking}
-        aria-label={bookmarked ? t("idea.unbookmark") : t("idea.bookmark")}
-        aria-pressed={bookmarked}
-        className={`btn-icon h-8 w-8 disabled:opacity-50 ${bookmarked ? "text-[var(--primary)]" : ""}`}
-        title={bookmarked ? t("idea.unbookmark") : t("idea.bookmark")}
-      >
-        <IconBookmark filled={bookmarked} />
-      </button>
-      <button
-        type="button"
-        onClick={sendFlower}
-        disabled={inactive || flowering}
-        aria-label={t("idea.wishForThis")}
-        className="btn-icon h-8 w-8 text-[var(--coral)] disabled:opacity-50"
-        title={t("idea.wishForThis")}
-      >
-        <IconWish />
-      </button>
-    </div>
-  );
-
   if (variant === "market") {
     const lifecycleLabel =
       idea.status === "implemented"
@@ -248,9 +222,9 @@ export function IdeaCard({
           <button
             type="button"
             onClick={sendFlower}
-            disabled={flowering}
+            disabled={inactive || flowering}
             aria-label={`${t("idea.statWishes")} ${idea.wish_count ?? idea.flower_count}`}
-            className="inline-flex items-center gap-1 hover:text-[var(--primary)] disabled:opacity-50"
+            className="inline-flex items-center gap-1 hover:text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <DeimosIcon name="wish" className="h-3.5 w-3.5" />
             {idea.wish_count ?? idea.flower_count}
@@ -321,10 +295,37 @@ export function IdeaCard({
     );
   }
 
+  // 快捷操作仅用于 default 变体
+  const quickActions = (
+    <div className="flex shrink-0 items-center gap-1.5">
+      <button
+        type="button"
+        onClick={toggleBookmark}
+        disabled={bookmarking}
+        aria-label={bookmarked ? t("idea.unbookmark") : t("idea.bookmark")}
+        aria-pressed={bookmarked}
+        className={`btn-icon h-8 w-8 disabled:opacity-50 ${bookmarked ? "text-[var(--primary)]" : ""}`}
+        title={bookmarked ? t("idea.unbookmark") : t("idea.bookmark")}
+      >
+        <IconBookmark filled={bookmarked} />
+      </button>
+      <button
+        type="button"
+        onClick={sendFlower}
+        disabled={inactive || flowering}
+        aria-label={t("idea.wishForThis")}
+        className="btn-icon h-8 w-8 text-[var(--coral)] disabled:opacity-50"
+        title={t("idea.wishForThis")}
+      >
+        <IconWish />
+      </button>
+    </div>
+  );
+
   const content = (
     <>
       {idea.cover_url && (
-        <div className="mb-3 h-28 w-full overflow-hidden rounded-lg bg-[var(--fill,#f2f3f7)]">
+        <div className="mb-3 h-28 w-full overflow-hidden rounded-lg bg-[var(--bg-subtle)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={idea.cover_url}

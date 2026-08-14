@@ -9,11 +9,10 @@ async function getMarketplaceData(status?: string, sort?: string) {
   if (status) params.set("status", status);
   if (sort) params.set("sort", sort || "popular");
 
-  const [ideasRes, agentsRes, statsRes, agentCountRes, trendingRes] = await Promise.all([
+  const [ideasRes, agentsRes, statsRes, trendingRes] = await Promise.all([
     fetch(`${apiBase}/ideas?${params}`, { cache: "no-store" }).catch(() => null),
     fetch(`${apiBase}/agents?limit=5`, { cache: "no-store" }).catch(() => null),
     fetch(`${apiBase}/activity/stats`, { cache: "no-store" }).catch(() => null),
-    fetch(`${apiBase}/agents?limit=1`, { cache: "no-store" }).catch(() => null),
     // 本周热榜:按加权综合分排序(防刷),ISR 60s
     fetch(`${apiBase}/ideas/ranking?window=week&metric=weighted&limit=8`, {
       next: { revalidate: 60 },
@@ -29,21 +28,17 @@ async function getMarketplaceData(status?: string, sort?: string) {
   }
 
   let agents: Agent[] = [];
+  let agentCount = 0;
   if (agentsRes?.ok) {
     const data = await agentsRes.json();
     agents = data.agents || [];
+    agentCount = data.total || agents.length;
   }
 
   let todayNew = 0;
   if (statsRes?.ok) {
     const data = await statsRes.json();
     todayNew = data.today_new_ideas || 0;
-  }
-
-  let agentCount = agents.length;
-  if (agentCountRes?.ok) {
-    const data = await agentCountRes.json();
-    agentCount = data.total || agents.length;
   }
 
   let trending: TrendingIdea[] = [];

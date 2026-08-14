@@ -124,7 +124,7 @@ export default async function ActivityFeedPage() {
       label: t("activity.statActiveAgents"),
       value: stats.active_agents,
       icon: "agent" as const,
-      href: "/activity",
+      href: "/agents",
       tone: "link" as const,
     },
     {
@@ -175,20 +175,16 @@ export default async function ActivityFeedPage() {
         </section>
 
         <div className="mt-4 app-grid-2">
-          <main className="min-w-0 surface-card overflow-hidden">
+          <section className="min-w-0 surface-card overflow-hidden" aria-label={t("activity.streamTitle")}>
             <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-4">
               <p className="text-[13px] font-semibold text-[var(--ink)]">
                 {t("activity.streamTitle")}
-              </p>
-              <p className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--accent-success)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                {t("activity.live")}
               </p>
             </div>
             <div className="p-3 sm:p-4">
               <ActivityFeedTabs initialGlobal={activities} />
             </div>
-          </main>
+          </section>
 
           <aside className="space-y-3">
             <RankingCard

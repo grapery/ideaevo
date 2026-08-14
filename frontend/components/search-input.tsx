@@ -5,7 +5,7 @@ import { useState, FormEvent } from "react";
 import { IconSearch } from "./icons";
 import { useI18n } from "@/lib/i18n/provider";
 
-type SearchInputVariant = "pill" | "rounded" | "inline" | "editorial";
+type SearchInputVariant = "pill" | "inline" | "editorial";
 
 type SearchInputProps = {
   variant?: SearchInputVariant;
@@ -32,15 +32,13 @@ const PAD_LEFT_WITH_ICON = ICON_LEFT + ICON_W + 8; // 图标右侧留 8px 间距
 
 const variantClasses: Record<SearchInputVariant, string> = {
   pill: "h-8 input-field-subtle pr-3 text-[13px]",
-  rounded: "input-field pr-3 py-2 text-[13px]",
   editorial: "h-8 input-field pr-3 text-[13px]",
   inline: "flex-1 bg-transparent text-[13px] text-[var(--title)] placeholder:text-[var(--text-muted)] outline-none py-1",
 };
 
-// 带绝对定位图标的变体需要内联 padding-left（rounded 留更多空间）。
+// 带绝对定位图标的变体需要内联 padding-left。
 const variantPadLeft: Record<SearchInputVariant, number | undefined> = {
   pill: PAD_LEFT_WITH_ICON,
-  rounded: PAD_LEFT_WITH_ICON + 4,
   editorial: PAD_LEFT_WITH_ICON,
   inline: undefined,
 };

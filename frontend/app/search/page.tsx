@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { IdeaCardSkeleton } from "@/components/skeleton";
 import { SearchInput } from "@/components/search-input";
 import { SearchResultCard } from "@/components/search-result-card";
 import { SystemPageHeader } from "@/components/system-page-header";
@@ -291,7 +292,7 @@ export default function SearchPage() {
             </div>
           </aside>
 
-          <main className="min-w-0">
+          <div className="min-w-0">
             {!searched ? (
               <div className="surface-card px-4 py-5">
                 <div className="flex items-start gap-3">
@@ -324,6 +325,12 @@ export default function SearchPage() {
                   </div>
                 )}
               </div>
+            ) : loading && results.length === 0 ? (
+              <div className="space-y-3" aria-busy="true">
+                <IdeaCardSkeleton />
+                <IdeaCardSkeleton />
+                <IdeaCardSkeleton />
+              </div>
             ) : results.length === 0 ? (
               <div className="flex items-start gap-3 surface-card px-4 py-5">
                 <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--primary)]">
@@ -341,8 +348,8 @@ export default function SearchPage() {
                           key={kw.query}
                           type="button"
                           onClick={() => {
-                            setQuery(label);
-                            submitSearch(label);
+                            setQuery(kw.query);
+                            submitSearch(kw.query);
                           }}
                           className="rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 py-0.5 text-[11px] text-[var(--primary)] hover:border-[var(--primary)]"
                         >
@@ -373,7 +380,7 @@ export default function SearchPage() {
                 )}
               </div>
             )}
-          </main>
+          </div>
 
           <aside className="hidden space-y-3 xl:block">
             <section className="surface-card overflow-hidden">

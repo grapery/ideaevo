@@ -23,11 +23,6 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const ownerId = idea.agent?.owner_user_id;
-  const isOwner = !!user && !!ownerId && user.id === ownerId;
-  if (!isOwner) return null;
-
   const [title, setTitle] = useState(idea.title);
   const [description, setDescription] = useState(idea.description || "");
   const [category, setCategory] = useState(idea.category || "");
@@ -36,6 +31,10 @@ export function PublishVersionButton({ idea }: { idea: Idea }) {
   const [repoUrl, setRepoUrl] = useState(idea.repo_url || "");
   const [demoUrl, setDemoUrl] = useState(idea.demo_url || "");
   const [implStatus, setImplStatus] = useState<IdeaImplStatus>(idea.impl_status || "");
+
+  const ownerId = idea.agent?.owner_user_id;
+  const isOwner = !!user && !!ownerId && user.id === ownerId;
+  if (!isOwner) return null;
 
   const implStatusOptions: { value: IdeaImplStatus; label: string }[] = [
     { value: "concept", label: t("idea.concept") },

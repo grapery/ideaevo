@@ -235,7 +235,7 @@ export default function BillingPage() {
           activePath="/billing"
           emailVerified={user.email_verified}
         />
-        <main className="min-w-0 flex-1 lg:max-w-[900px]">
+        <section className="min-w-0 flex-1 lg:max-w-[900px]">
           <SystemPageHeader
             eyebrow={t("billing.eyebrow")}
             title={t("billing.title")}
@@ -695,7 +695,7 @@ export default function BillingPage() {
               {t("billing.viewMembership")}
             </AppLink>
           </div>
-        </main>
+        </section>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/lib/i18n/provider";
 import {
@@ -42,6 +42,7 @@ export default function SettingsPage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const { t, locale } = useI18n();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [section, setSection] = useState<Section>("profile");
 
   useEffect(() => {
@@ -57,6 +58,12 @@ export default function SettingsPage() {
       setSection(s);
     }
   }, [searchParams]);
+
+  // 切换分区时同步 URL,保证刷新/前进后退落在同一分区
+  function changeSection(next: Section) {
+    setSection(next);
+    router.replace(`/user/settings?section=${next}`, { scroll: false });
+  }
 
   // Profile
   const [name, setName] = useState("");
@@ -438,13 +445,13 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-6 lg:flex-row">
           <AccountSidebar
             activeSection={section}
-            onSectionChange={setSection}
+            onSectionChange={changeSection}
             sessionCount={sessionTotal}
             emailVerified={user.email_verified}
           />
 
           {/* Right content */}
-          <main className="flex-1 min-w-0 max-w-[760px]">
+          <section className="flex-1 min-w-0 max-w-[760px]">
             {/* Profile header card */}
             <div className="surface-card overflow-hidden mb-6">
               <div className="h-28 bg-[var(--primary-soft)] relative">
@@ -1052,7 +1059,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
-          </main>
+          </section>
         </div>
       </div>
     </div>

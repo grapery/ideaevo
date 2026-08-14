@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/lib/i18n/provider";
 import { notify } from "@/components/ui/notify";
@@ -17,6 +17,7 @@ export default function SignupPage() {
   const { t } = useI18n();
   const { register, loginWithGoogle, loginWithWeChat, user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,9 +26,13 @@ export default function SignupPage() {
   const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 仅接受站内相对路径，防止开放跳转
+  const rawReturnUrl = searchParams.get("returnUrl");
+  const returnUrl = rawReturnUrl && /^\/(?!\/)/.test(rawReturnUrl) ? rawReturnUrl : "/dashboard";
+
   useEffect(() => {
-    if (user) router.push("/dashboard");
-  }, [user, router]);
+    if (user) router.push(returnUrl);
+  }, [user, router, returnUrl]);
 
   function validate() {
     const errs: Record<string, string> = {};

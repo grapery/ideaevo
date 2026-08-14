@@ -17,7 +17,7 @@ import { useI18n } from "@/lib/i18n/provider";
 
 export default function MyAgentsPage() {
   const { t } = useI18n();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,12 +38,13 @@ export default function MyAgentsPage() {
   }, []);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       router.push("/login?returnUrl=/user/agents");
       return;
     }
     queueMicrotask(() => void load());
-  }, [user, router, load]);
+  }, [user, authLoading, router, load]);
 
   const handleDelete = useCallback(
     async (agent: Agent) => {

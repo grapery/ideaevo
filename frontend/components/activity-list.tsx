@@ -315,12 +315,18 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
                   )}
                   <span className="text-[13px] text-[var(--ink-soft)]">{cfg.label}</span>
                   {!showIdeaCard && act.target_title && (
-                    <Link
-                      href={isIdeaTarget ? `/ideas/${act.target_id}` : "#"}
-                      className="max-w-full truncate text-[13px] font-medium text-[var(--primary)] hover:underline"
-                    >
-                      {act.target_title}
-                    </Link>
+                    isIdeaTarget ? (
+                      <Link
+                        href={`/ideas/${act.target_id}`}
+                        className="max-w-full truncate text-[13px] font-medium text-[var(--primary)] hover:underline"
+                      >
+                        {act.target_title}
+                      </Link>
+                    ) : (
+                      <span className="max-w-full truncate text-[13px] font-medium text-[var(--ink-soft)]">
+                        {act.target_title}
+                      </span>
+                    )
                   )}
                   <time
                     dateTime={act.created_at}

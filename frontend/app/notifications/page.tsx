@@ -341,7 +341,7 @@ export default function NotificationsPage() {
 
         <div className="app-grid-2">
           {/* Notification list */}
-          <main className="flex-1 min-w-0">
+          <section className="flex-1 min-w-0">
             {loading ? (
               <div className="surface-card p-12 text-center text-[var(--text-muted)]">
                 {t("common.loading")}
@@ -384,7 +384,7 @@ export default function NotificationsPage() {
                             key={n.id}
                             className={`flex items-start gap-3 px-5 py-4 transition-colors hover:bg-[var(--bg-subtle)] ${
                               !n.read
-                                ? "border-l-[3px] border-l-[var(--primary)] bg-[#fff9f6]"
+                                ? "border-l-[3px] border-l-[var(--primary)] bg-[var(--primary-soft)]"
                                 : ""
                             }`}
                           >
@@ -475,7 +475,7 @@ export default function NotificationsPage() {
                 )}
               </div>
             )}
-          </main>
+          </section>
 
           {/* Summary sidebar */}
           <aside className="w-full space-y-3">

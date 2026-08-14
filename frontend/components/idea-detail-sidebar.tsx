@@ -2,62 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Idea, FlowerSender, IdeaLineage, IdeaStats } from "@/lib/types";
+import { FlowerSender, Idea, IdeaStats } from "@/lib/types";
 import { SendFlowerButton } from "./idea-action-bar";
-import { ForkFlowGraph } from "./fork-flow-graph";
 import { WireframeAvatar } from "./wireframe-avatar";
 import { Modal } from "./ui/modal";
 import { getApiBase } from "@/lib/api-base";
-import { IconGitFork, IconMessage } from "./icons";
 import { DeimosIcon } from "./deimos-icon";
 import { useI18n } from "@/lib/i18n/provider";
-
-const sidebarCardClass = "surface-card p-5";
-const sidebarTitleClass = "heading-sans text-sm pb-2 mb-3 border-b border-[var(--divider)]";
-
-export function ForkTreePanel({
-  idea,
-  lineage,
-}: {
-  idea: Idea;
-  lineage?: IdeaLineage | null;
-}) {
-  const { t } = useI18n();
-  return (
-    <div className="surface-card p-5">
-      <h3 className={`${sidebarTitleClass} mb-3`}>{t("idea.forkLineageShort")}</h3>
-
-      {lineage && (
-        <div className="mb-3 space-y-2 text-xs">
-          {lineage.source_idea && (
-            <div className="rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] p-2.5">
-              <div className="mb-0.5 text-[var(--text-muted)]">{t("idea.forkedFrom")}</div>
-              <Link
-                href={`/ideas/${lineage.source_idea.id}`}
-                className="block truncate font-medium text-[var(--ink)] hover:text-[var(--primary)]"
-              >
-                {lineage.source_idea.title}
-              </Link>
-              {lineage.source_version && (
-                <div className="mt-0.5 text-[var(--text-muted)]">
-                  {t("idea.versionBadge", { version: lineage.source_version.version })}
-                  {lineage.origin?.reason && ` · ${lineage.origin.reason}`}
-                </div>
-              )}
-            </div>
-          )}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[var(--text-muted)]">
-            <span>{t("idea.totalForks", { count: lineage.stats.total_forks })}</span>
-            <span>{t("idea.activeBranches", { count: lineage.stats.active_branches })}</span>
-            <span>{t("idea.contributors", { count: lineage.stats.contributors })}</span>
-          </div>
-        </div>
-      )}
-
-      <ForkFlowGraph idea={idea} lineage={lineage ?? null} children={[]} />
-    </div>
-  );
-}
 
 function senderProfileHref(sender: FlowerSender): string | undefined {
   if (sender.user_id) return `/users/${sender.user_id}`;
@@ -81,8 +32,12 @@ export function FlowersPanel({
   const [loadFailed, setLoadFailed] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
   const [listOpen, setListOpen] = useState(false);
+  // 当前名单对应的计数,送花后(flowerCount 变化)触发重取
+  const [loadedCount, setLoadedCount] = useState(flowerCount);
 
   useEffect(() => {
+    // 服务端已预取送花名单(initialSenders)且计数未变化时,不再重复请求
+    if (initialSenders.length > 0 && flowerCount === loadedCount && retryToken === 0) return;
     let cancelled = false;
     fetch(`${getApiBase()}/ideas/${ideaId}/flowers`, { cache: "no-store" })
       .then((r) => {
@@ -91,7 +46,10 @@ export function FlowersPanel({
       })
       .then((data) => {
         // 后端字段仍为 donors，前端按送花者展示
-        if (!cancelled) setSenders(data.donors || []);
+        if (!cancelled) {
+          setSenders(data.donors || []);
+          setLoadedCount(flowerCount);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -105,7 +63,7 @@ export function FlowersPanel({
     return () => {
       cancelled = true;
     };
-  }, [ideaId, flowerCount, initialSenders.length, retryToken]);
+  }, [ideaId, flowerCount, initialSenders.length, retryToken, loadedCount]);
 
   const displaySenders = senders.slice(0, 12);
   const hiddenCount = Math.max(0, senders.length - displaySenders.length);
@@ -164,18 +122,6 @@ export function FlowersPanel({
       ) : (
         <p className="mb-2.5 text-sm text-[var(--text-muted)]">{t("idea.noFlowers")}</p>
       )}
-      <p className="mb-3 font-code text-[10px] tabular-nums text-[#914700]/70">
-        {t("idea.flowerCountLabel", { count: flowerCount })}
-        {canExpand && (
-          <button
-            type="button"
-            onClick={() => setListOpen(true)}
-            className="ml-2 text-[var(--accent-link)] hover:underline"
-          >
-            {t("common.viewAll")} →
-          </button>
-        )}
-      </p>
       <SendFlowerButton ideaId={ideaId} />
 
       {canExpand && (
@@ -234,40 +180,6 @@ export function FlowersPanel({
           </ul>
         </Modal>
       )}
-    </div>
-  );
-}
-
-export function RelatedIdeasPanel({ ideas, currentId }: { ideas: Idea[]; currentId: string }) {
-  const { t } = useI18n();
-  const related = ideas.filter((i) => i.id !== currentId).slice(0, 3);
-  if (related.length === 0) return null;
-
-  return (
-    <div className={sidebarCardClass}>
-      <h3 className={`${sidebarTitleClass} mb-3`}>{t("idea.relatedIdeas")}</h3>
-      <ul className="space-y-3 text-sm">
-        {related.map((item) => (
-          <li key={item.id}>
-            <Link
-              href={`/ideas/${item.id}`}
-              className="block text-[var(--text-secondary)] hover:text-[var(--primary)]"
-            >
-              <span className="font-medium text-[var(--title)]">{item.title}</span>
-              <span className="mt-1 flex items-center gap-3 text-[11px] tabular-nums text-[var(--text-muted)]">
-                <span className="inline-flex items-center gap-0.5">
-                  <IconMessage className="h-3 w-3" />
-                  {item.comment_count}
-                </span>
-                <span className="inline-flex items-center gap-0.5">
-                  <IconGitFork className="h-3 w-3" />
-                  {item.fork_count}
-                </span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

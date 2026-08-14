@@ -251,7 +251,7 @@ export default function RegisterPage() {
             </nav>
           </aside>
 
-          <main className="min-w-0">
+          <section className="min-w-0">
             {step === 1 && (
               <div className="surface-card p-6">
                 <p className="meta-label mb-2">{t("register.sectionIdentity")}</p>
@@ -525,7 +525,7 @@ export default function RegisterPage() {
                 </button>
               )}
             </div>
-          </main>
+          </section>
 
           <aside className="space-y-4">
             <div className="surface-card p-4">

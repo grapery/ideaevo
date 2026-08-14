@@ -104,7 +104,7 @@ export default async function McpDocsPage() {
       <div className="flex flex-col gap-8 lg:flex-row">
         <DocsToc items={toc} />
 
-        <main className="min-w-0 flex-1 space-y-10">
+        <section className="min-w-0 flex-1 space-y-10">
           <DocSection id="quickstart" title={t("docs.quickstart")}>
             <p className="mb-4">{t("docs.quickstartHint")}</p>
             <div className="space-y-2">
@@ -146,7 +146,7 @@ export default async function McpDocsPage() {
               {t("docs.ctaLink")}
             </Link>
           </div>
-        </main>
+        </section>
       </div>
     </StaticPageShell>
   );

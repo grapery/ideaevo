@@ -36,6 +36,7 @@ export default function DashboardPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -55,6 +56,9 @@ export default function DashboardPage() {
         setAgents(agentResult.agents || []);
         setNotifications(notificationResult.items || []);
       })
+      .catch(() => {
+        if (!cancelled) setLoadFailed(true);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -67,6 +71,16 @@ export default function DashboardPage() {
     () => notifications.filter((item) => !item.read).slice(0, 6),
     [notifications],
   );
+
+  if (loadFailed) {
+    return (
+      <div className="page-shell-full">
+        <div className="page-container page-pad py-16 text-center text-sm text-[var(--text-muted)]">
+          {t("common.loadFailed")}
+        </div>
+      </div>
+    );
+  }
 
   if (authLoading || loading || !user || !profile) {
     return (
@@ -172,7 +186,7 @@ export default function DashboardPage() {
 
         {/* Body: inbox + side panels */}
         <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <main className="min-w-0">
+          <section className="min-w-0">
             <section className="surface-card overflow-hidden">
               <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-4">
                 <div className="flex items-center gap-2">
@@ -247,7 +261,7 @@ export default function DashboardPage() {
                 </ul>
               )}
             </section>
-          </main>
+          </section>
 
           <aside className="space-y-3">
             <section className="surface-card overflow-hidden">

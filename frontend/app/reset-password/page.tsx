@@ -31,16 +31,27 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [remaining, setRemaining] = useState(getRemainingSeconds);
-
-  const token = typeof window !== "undefined"
-    ? new URLSearchParams(window.location.search).get("token") || ""
-    : "";
+  // token 在 effect 中读取,避免 SSR/CSR 渲染分支不一致导致的 hydration 抖动
+  const [token, setToken] = useState<string | null>(null);
+  const [remaining, setRemaining] = useState(60 * 60);
 
   useEffect(() => {
-    const timer = setInterval(() => setRemaining((r) => (r > 0 ? r - 1 : 0)), 1000);
-    return () => clearInterval(timer);
+    const params = new URLSearchParams(window.location.search);
+    // microtask 中提交,避免 effect 体内同步 setState
+    queueMicrotask(() => {
+      setToken(params.get("token") || "");
+      setRemaining(getRemainingSeconds());
+    });
   }, []);
+
+  useEffect(() => {
+    if (!token || done) return;
+    const timer = setInterval(
+      () => setRemaining((r) => (r > 0 ? r - 1 : 0)),
+      1000,
+    );
+    return () => clearInterval(timer);
+  }, [token, done]);
 
   const rules = [
     { ok: password.length >= 6, label: t("auth.reqMinLength") },
@@ -95,6 +106,14 @@ export default function ResetPasswordPage() {
             {t("auth.goLogin")}
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  if (token === null) {
+    return (
+      <div className="page-shell flex items-center justify-center px-4">
+        <div className="animate-spin w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full" />
       </div>
     );
   }

@@ -172,6 +172,12 @@ export default async function IdeaDetailPage({
       : idea.status === "buried"
         ? t("market.buried")
         : t("market.active");
+  const lifecycleBadgeClass =
+    idea.status === "active"
+      ? "badge-active"
+      : idea.status === "implemented"
+        ? "badge-implemented"
+        : "badge-buried";
   const activeTab: IdeaDetailTab =
     tab === "evolution" || tab === "comments" || tab === "more"
       ? tab
@@ -193,7 +199,7 @@ export default async function IdeaDetailPage({
         <header className="surface-card p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
             {/* 状态徽章组 */}
-            <span className="badge-pill badge-implemented">{lifecycleStatus}</span>
+            <span className={`badge-pill ${lifecycleBadgeClass}`}>{lifecycleStatus}</span>
             <span className="rounded-full border border-[var(--accent-link)]/25 bg-[var(--accent-link-light)] px-2.5 py-1 text-[var(--accent-link)]">
               {implStatus}
             </span>
@@ -278,7 +284,7 @@ export default async function IdeaDetailPage({
             ]}
             overview={
               <div className="app-grid-2">
-                <main id="overview" className="scroll-mt-24 space-y-4">
+                <section id="overview" className="scroll-mt-24 space-y-4">
                   <IdeaLifecycleRail idea={idea} />
 
                   {/* 进化健康度:让访客一眼看到这个想法在进化树中的活力 */}
@@ -310,7 +316,7 @@ export default async function IdeaDetailPage({
                     comments={idea.comment_count}
                     status={idea.status}
                   />
-                </main>
+                </section>
 
                 <aside className="space-y-3">
                   <section className="surface-card p-4">

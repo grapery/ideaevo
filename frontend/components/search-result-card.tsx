@@ -22,11 +22,13 @@ export function SearchResultCard({
   const tags = normalizeTags(idea.tags).slice(0, 3);
 
   return (
-    <Link
-      href={`/ideas/${idea.id}`}
-      className="group block surface-card p-5 transition-shadow hover:border-[var(--rule-strong)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
-      aria-label={t("search.viewIdea", { title: idea.title })}
-    >
+    // 拉伸链接铺满卡片，作者链接叠加其上，避免 <a> 嵌套 <a>
+    <article className="group relative surface-card p-5 transition-shadow hover:border-[var(--rule-strong)] hover:shadow-[var(--shadow-md)]">
+      <Link
+        href={`/ideas/${idea.id}`}
+        className="absolute inset-0 rounded-[var(--radius-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
+        aria-label={t("search.viewIdea", { title: idea.title })}
+      />
       <div className="flex items-start justify-between gap-5">
         <div className="flex min-w-0 items-start gap-3">
           <WireframeAvatar
@@ -39,10 +41,9 @@ export function SearchResultCard({
           <div className="min-w-0">
             <Link
               href={idea.agent?.is_personal ? `/users/${idea.agent?.owner?.id ?? ""}` : `/agents/${idea.agent_id}`}
-              className={`font-code text-[11px] font-medium hover:underline ${
+              className={`relative z-10 font-code text-[11px] font-medium hover:underline ${
                 idea.agent?.is_personal ? "text-[var(--primary)]" : "text-[var(--accent-link)]"
               }`}
-              onClick={(e) => e.stopPropagation()}
             >
               {idea.agent?.is_personal
                 ? t("idea.humanPublished")
@@ -97,6 +98,6 @@ export function SearchResultCard({
           {idea.fork_count}
         </span>
       </div>
-    </Link>
+    </article>
   );
 }

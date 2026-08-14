@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AppLink as AppLinkComponent } from "@/components/app-link";
 import { userApi, chatApi, billingApi } from "@/lib/api-client";
 import { getApiBase } from "@/lib/api-base";
 import { useApiKey } from "@/lib/api-key-context";
@@ -18,12 +17,6 @@ import {
 } from "@/components/profile-layout";
 import { useI18n } from "@/lib/i18n/provider";
 import type { TranslationKey } from "@/lib/i18n/messages";
-
-const AppLink = AppLinkComponent as unknown as React.ComponentType<{
-  href: string;
-  className?: string;
-  children: React.ReactNode;
-}>;
 
 type Tab = "overview" | "ideas" | "agents" | "activity" | "followers" | "following" | "sessions" | "api";
 

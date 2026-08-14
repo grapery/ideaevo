@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { authApi } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/api-error";
@@ -11,10 +11,13 @@ export default function VerifyEmailPage() {
   const { t } = useI18n();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
+  // 验证接口不幂等,仅执行一次(语言切换导致 t 变化不重发)
+  const verifiedRef = useRef(false);
 
   useEffect(() => {
+    if (verifiedRef.current) return;
+    verifiedRef.current = true;
     async function verify() {
-      await Promise.resolve();
       const token = new URLSearchParams(window.location.search).get("token");
       if (!token) {
         setStatus("error");

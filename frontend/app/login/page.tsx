@@ -22,9 +22,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 仅接受站内相对路径，防止开放跳转
+  const rawReturnUrl = searchParams.get("returnUrl");
+  const returnUrl = rawReturnUrl && /^\/(?!\/)/.test(rawReturnUrl) ? rawReturnUrl : "/dashboard";
+
   useEffect(() => {
-    if (user) router.push("/dashboard");
-  }, [user, router]);
+    if (user) router.push(returnUrl);
+  }, [user, router, returnUrl]);
 
   const oauthError = searchParams.get("error");
   useEffect(() => {
@@ -58,7 +62,7 @@ export default function LoginPage() {
     try {
       await login(email, password);
       notify.success(t("auth.loginSuccess"));
-      router.push("/dashboard");
+      router.push(returnUrl);
     } catch (err) {
       notify.error(getErrorMessage(err, t("auth.loginFailed")));
     } finally {

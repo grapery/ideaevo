@@ -82,12 +82,44 @@ export function IdeasMarketplace({
     router.push(`${basePath}${params.toString() ? `?${params}` : ""}`);
   }
 
+  // 生命周期筛选:桌面侧栏与移动端折叠面板共用,避免两份拷贝漂移
+  const lifecycleList = (
+    <div className="space-y-1 text-[12px]">
+      {([
+        { status: "active", label: t("market.active"), count: lifecycleCounts.active },
+        { status: "implemented", label: t("market.implemented"), count: lifecycleCounts.implemented },
+        { status: "archived", label: t("market.archived"), count: lifecycleCounts.archived },
+        { status: "buried", label: t("market.buried"), count: lifecycleCounts.buried },
+      ] as const).map((item) => {
+        const active = initialStatus === item.status;
+        return (
+          <button
+            key={item.status}
+            type="button"
+            onClick={() => updateParams(item.status, initialSort)}
+            className={`flex h-8 w-full items-center justify-between rounded-[var(--radius-btn)] px-2.5 text-left ${
+              active
+                ? "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]"
+                : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
+            }`}
+          >
+            <span>{item.label}</span>
+            <span className="font-mono tabular-nums text-[var(--ink-faint)]">
+              {item.count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
   const metrics = [
     {
       label: t("market.ideasIndexed"),
       value: stats.ideaCount,
       icon: "document" as const,
-      href: basePath,
+      // 当前页本身即是全量列表,不再自链接
+      href: undefined as string | undefined,
     },
     {
       label: t("market.ideasToday"),
@@ -107,7 +139,7 @@ export function IdeasMarketplace({
       label: t("market.activeAgents"),
       value: stats.agentCount,
       icon: "agent" as const,
-      href: "/activity",
+      href: "/agents",
     },
   ];
 
@@ -153,23 +185,37 @@ export function IdeasMarketplace({
         )}
 
         <section className="dashboard-metrics mt-4" aria-label={t("market.signals")}>
-          {metrics.map((metric) => (
-            <Link key={metric.label} href={metric.href} className="dashboard-metric">
-              <span className="dashboard-metric__icon" data-tone={metric.tone} aria-hidden>
-                <DeimosIcon name={metric.icon} className="h-3.5 w-3.5" />
-              </span>
-              <span className="dashboard-metric__body">
-                <span className="dashboard-metric__label">{metric.label}</span>
-                <span
-                  className="dashboard-metric__value"
-                  data-tone={metric.tone === "attention" ? "attention" : undefined}
-                >
-                  {metric.value.toLocaleString()}
+          {metrics.map((metric) =>
+            metric.href ? (
+              <Link key={metric.label} href={metric.href} className="dashboard-metric">
+                <span className="dashboard-metric__icon" data-tone={metric.tone} aria-hidden>
+                  <DeimosIcon name={metric.icon} className="h-3.5 w-3.5" />
                 </span>
-              </span>
-              <DeimosIcon name="chevron-right" className="dashboard-metric__chevron" />
-            </Link>
-          ))}
+                <span className="dashboard-metric__body">
+                  <span className="dashboard-metric__label">{metric.label}</span>
+                  <span
+                    className="dashboard-metric__value"
+                    data-tone={metric.tone === "attention" ? "attention" : undefined}
+                  >
+                    {metric.value.toLocaleString()}
+                  </span>
+                </span>
+                <DeimosIcon name="chevron-right" className="dashboard-metric__chevron" />
+              </Link>
+            ) : (
+              <div key={metric.label} className="dashboard-metric">
+                <span className="dashboard-metric__icon" aria-hidden>
+                  <DeimosIcon name={metric.icon} className="h-3.5 w-3.5" />
+                </span>
+                <span className="dashboard-metric__body">
+                  <span className="dashboard-metric__label">{metric.label}</span>
+                  <span className="dashboard-metric__value">
+                    {metric.value.toLocaleString()}
+                  </span>
+                </span>
+              </div>
+            ),
+          )}
         </section>
 
         <div className="mt-4 grid items-start gap-4 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_280px]">
@@ -193,6 +239,10 @@ export function IdeasMarketplace({
                   </span>
                 </button>
               ))}
+            </div>
+            <div className="border-t border-[var(--rule)] px-3.5 py-3">
+              <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.lifecycle")}</p>
+              {lifecycleList}
             </div>
             <div className="border-t border-[var(--rule)] px-3.5 py-3">
               <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.intentSignals")}</p>
@@ -241,33 +291,7 @@ export function IdeasMarketplace({
 
             <div className="border-t border-[var(--rule)] px-3.5 py-3">
               <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.lifecycle")}</p>
-              <div className="space-y-1 text-[12px]">
-                {([
-                  { status: "active", label: t("market.active"), count: lifecycleCounts.active },
-                  { status: "implemented", label: t("market.implemented"), count: lifecycleCounts.implemented },
-                  { status: "archived", label: t("market.archived"), count: lifecycleCounts.archived },
-                  { status: "buried", label: t("market.buried"), count: lifecycleCounts.buried },
-                ] as const).map((item) => {
-                  const active = initialStatus === item.status;
-                  return (
-                    <button
-                      key={item.status}
-                      type="button"
-                      onClick={() => updateParams(item.status, initialSort)}
-                      className={`flex h-8 w-full items-center justify-between rounded-[var(--radius-btn)] px-2.5 text-left ${
-                        active
-                          ? "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]"
-                          : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      <span className="font-mono tabular-nums text-[var(--ink-faint)]">
-                        {item.count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              {lifecycleList}
             </div>
 
             <div className="border-t border-[var(--rule)] px-3.5 py-3">
@@ -287,8 +311,9 @@ export function IdeasMarketplace({
             </div>
           </aside>
 
-          <main className="min-w-0">
-            <div className="flex h-10 items-center gap-1 overflow-x-auto border-b border-[var(--rule)]">
+          <div className="min-w-0">
+            {/* flex-wrap:窄屏下排序控件换行显示,而不是被横向滚动条藏起来 */}
+            <div className="flex flex-wrap items-center gap-x-1 gap-y-2 border-b border-[var(--rule)] pb-2 sm:h-10 sm:pb-0">
               {statusFilters.map((filter) => (
                 <button
                   key={filter.value || "hot"}
@@ -303,7 +328,7 @@ export function IdeasMarketplace({
                   {t(filter.key)}
                 </button>
               ))}
-              <label className="ml-auto flex shrink-0 items-center gap-1.5 py-2 pr-1 text-[12px] text-[var(--ink-soft)]">
+              <label className="ml-auto flex shrink-0 items-center gap-1.5 py-1 pr-1 text-[12px] text-[var(--ink-soft)] sm:py-2">
                 {t("market.sort")}:
                 <select
                   value={initialSort}
@@ -339,9 +364,10 @@ export function IdeasMarketplace({
                 ))}
               </div>
             )}
-          </main>
+          </div>
 
           <aside className="hidden space-y-3 xl:block">
+            {(trending.length > 0 || ideas.length > 0) && (
             <section className="surface-card overflow-hidden">
               <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
                 <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.trending")}</p>
@@ -358,7 +384,7 @@ export function IdeasMarketplace({
                     </span>
                     <span className="truncate text-[var(--ink)]">{item.title}</span>
                     <span className="font-mono text-[11px] tabular-nums text-[var(--accent-link)]">
-                      +{Math.max(1, "score" in item ? Math.round(item.score) : Math.max(item.like_count, item.flower_count, 1))}
+                      +{"score" in item ? Math.max(0, Math.round(item.score)) : Math.max(item.like_count, item.flower_count)}
                     </span>
                   </Link>
                 ))}
@@ -367,6 +393,7 @@ export function IdeasMarketplace({
                 {t("market.signalExplain")}
               </p>
             </section>
+            )}
 
             <section className="surface-card overflow-hidden">
               <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-3.5">

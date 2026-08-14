@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { notificationApi } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthModal } from "@/lib/auth-modal-context";
@@ -11,8 +12,13 @@ import { SearchInput } from "./search-input";
 import { LanguageSwitcher } from "./language-switcher";
 import { useI18n } from "@/lib/i18n/provider";
 
-const navLinkClass =
-  "inline-flex h-14 items-center text-[13px] text-[var(--ink-soft)] hover:text-[var(--ink)] transition-colors";
+function navLinkClass(active: boolean) {
+  return `inline-flex h-14 items-center text-[13px] transition-colors ${
+    active
+      ? "font-semibold text-[var(--ink)] border-b-2 border-[var(--ink)] -mb-px"
+      : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+  }`;
+}
 
 const menuLinkClass =
   "flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-hover)] hover:text-[var(--ink)]";
@@ -21,6 +27,8 @@ export function Header() {
   const { t } = useI18n();
   const { user, logout } = useAuth();
   const { openAuthModal } = useAuthModal();
+  const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -62,6 +70,18 @@ export function Header() {
       document.addEventListener("mousedown", closeMenus);
     return () => document.removeEventListener("mousedown", closeMenus);
   }, [accountOpen, menuOpen]);
+
+  useEffect(() => {
+    // 支持 ⌘K / Ctrl+K 快捷进入 Ask(与「Ask ⌘K」按钮角标一致)
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        router.push("/chat");
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [router]);
 
   const accountLinks = (
     <>
@@ -140,13 +160,25 @@ export function Header() {
         <Logo compact />
 
         <nav className="hidden items-center gap-5 lg:gap-7 md:flex">
-          <Link href="/ideas" className={navLinkClass}>
+          <Link
+            href="/ideas"
+            className={navLinkClass(pathname === "/ideas" || pathname.startsWith("/ideas/"))}
+            aria-current={pathname === "/ideas" || pathname.startsWith("/ideas/") ? "page" : undefined}
+          >
             {t("header.discover")}
           </Link>
-          <Link href="/activity" className={navLinkClass}>
+          <Link
+            href="/activity"
+            className={navLinkClass(pathname === "/activity")}
+            aria-current={pathname === "/activity" ? "page" : undefined}
+          >
             {t("header.activity")}
           </Link>
-          <Link href="/user/agents" className={navLinkClass}>
+          <Link
+            href="/user/agents"
+            className={navLinkClass(pathname.startsWith("/user/agents") || pathname.startsWith("/agents"))}
+            aria-current={pathname.startsWith("/user/agents") || pathname.startsWith("/agents") ? "page" : undefined}
+          >
             {t("header.agents")}
           </Link>
         </nav>

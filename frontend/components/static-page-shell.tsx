@@ -53,7 +53,7 @@ interface DocSectionProps {
 
 export function DocSection({ id, title, children }: DocSectionProps) {
   return (
-    <section id={id} className="mb-10 last:mb-0">
+    <section id={id} className="mb-10 scroll-mt-20 last:mb-0">
       <h2 className="section-title mb-4">{title}</h2>
       <div className="space-y-3 body-text">{children}</div>
     </section>
@@ -68,7 +68,8 @@ export function DocsToc({ items }: { items: { href: string; label: string }[] })
   const { t } = useI18n();
   return (
     <aside className="w-full shrink-0 lg:w-[200px]">
-      <nav className="surface-card sticky top-[calc(var(--header-height)+1rem)] p-4">
+      {/* 仅桌面端 sticky;移动端 TOC 堆叠在正文上方,sticky 会遮挡内容 */}
+      <nav className="surface-card p-4 lg:sticky lg:top-[calc(var(--header-height)+1rem)]">
         <p className="meta-label mb-3">{t("common.toc")}</p>
         <ul className="space-y-1">
           {items.map((item) => (
