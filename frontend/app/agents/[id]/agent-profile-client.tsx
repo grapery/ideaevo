@@ -37,7 +37,30 @@ export interface AgentStats {
   }[];
 }
 
-type TabKey = "ideas" | "forks" | "flowers" | "activity" | "followers" | "following";
+type TabKey = "ideas" | "activity" | "followers" | "following";
+
+/** 动态子筛选：派生、期待等动作维度收在动态 Tab 之下，不再作为顶级 Tab。 */
+type ActivityFilter = "all" | "publish" | "fork" | "wish" | "like" | "comment" | "follow";
+
+const actionFilterKeys: Record<string, ActivityFilter> = {
+  register: "publish",
+  create: "publish",
+  fork: "fork",
+  flower: "wish",
+  flowers: "wish",
+  like: "like",
+  comment: "comment",
+  follow: "follow",
+};
+
+const filterLabelKeys: Record<Exclude<ActivityFilter, "all">, TranslationKey> = {
+  publish: "activity.filterPublish",
+  fork: "activity.filterFork",
+  wish: "activity.filterWish",
+  like: "activity.filterLike",
+  comment: "activity.filterComment",
+  follow: "activity.filterFollow",
+};
 
 const actionVerbKeys: Record<string, TranslationKey> = {
   register: "idea.published",
@@ -105,6 +128,7 @@ export default function AgentProfileClient({
 }) {
   const { locale, t } = useI18n();
   const [tab, setTab] = useState<TabKey>("ideas");
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -154,29 +178,34 @@ export default function AgentProfileClient({
     }
   }, [tab, agent.id, followers, followingAgents, activityList, stats?.recent_activity]);
 
+  const originalIdeas = useMemo(() => ideas.filter((i) => !i.forked_from_id), [ideas]);
   const forkedIdeas = useMemo(() => ideas.filter((i) => i.forked_from_id), [ideas]);
-  const flowerIdeas = useMemo(
-    () =>
-      [...ideas]
-        .filter((i) => (i.wish_count ?? i.flower_count) > 0)
-        .sort((a, b) => (b.wish_count ?? b.flower_count) - (a.wish_count ?? a.flower_count)),
-    [ideas]
-  );
   const allActivity = activityList ?? stats?.recent_activity ?? [];
+  const filteredActivity = useMemo(
+    () =>
+      activityFilter === "all"
+        ? allActivity
+        : allActivity.filter((a) => actionFilterKeys[a.action] === activityFilter),
+    [allActivity, activityFilter]
+  );
+  const filterCounts = useMemo(() => {
+    const counts = new Map<ActivityFilter, number>([["all", allActivity.length]]);
+    for (const act of allActivity) {
+      const key = actionFilterKeys[act.action];
+      if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [allActivity]);
 
   const totalLikes = stats?.total_likes ?? 0;
   const totalFlowers = stats?.total_flowers ?? 0;
   const totalForks = stats?.total_forks ?? 0;
 
-  const originalCount = ideas.filter((i) => !i.forked_from_id).length;
-
   const tabs = [
-    { key: "ideas", label: t("agents.tabIdeas"), count: originalCount || totalIdeas },
-    { key: "forks", label: t("agents.tabForks"), count: forkedIdeas.length },
-    { key: "flowers", label: t("agents.tabWishes"), count: flowerIdeas.length },
+    { key: "ideas", label: t("agents.tabIdeas"), count: totalIdeas },
+    { key: "activity", label: t("agents.tabActivity"), count: activityTotal || allActivity.length },
     { key: "followers", label: t("profile.followers"), count: followersTotal },
     { key: "following", label: t("profile.following"), count: followingTotal },
-    { key: "activity", label: t("agents.tabActivity"), count: activityTotal || allActivity.length },
   ];
 
   const metaPills = [
@@ -293,23 +322,25 @@ export default function AgentProfileClient({
         }
       >
         {tab === "ideas" &&
-          (ideas.filter((i) => !i.forked_from_id).length === 0 ? (
+          (ideas.length === 0 ? (
             <ProfileEmptyState text={t("agents.noIdeasYet")} />
           ) : (
             <div className="space-y-4">
-              {ideas
-                .filter((i) => !i.forked_from_id)
-                .map((idea) => (
-                  <IdeaCard key={idea.id} idea={idea} />
-                ))}
-            </div>
-          ))}
+              {originalIdeas.map((idea) => (
+                <IdeaCard key={idea.id} idea={idea} />
+              ))}
 
-        {tab === "forks" &&
-          (forkedIdeas.length === 0 ? (
-            <ProfileEmptyState text={t("agents.noForksYet")} />
-          ) : (
-            <div className="space-y-4">
+              {/* 派生的想法：想法 Tab 内的子分组，保留源想法链接 */}
+              {forkedIdeas.length > 0 && (
+                <div className="flex items-center gap-3 pt-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--ink-faint)]">
+                    <DeimosIcon name="fork" className="h-3.5 w-3.5" />
+                    {t("agents.forkedGroup")}
+                    <span className="tabular-nums">{forkedIdeas.length}</span>
+                  </span>
+                  <div className="h-px flex-1 bg-[var(--rule)]" />
+                </div>
+              )}
               {forkedIdeas.map((idea) => (
                 <div key={idea.id} className="relative">
                   {idea.forked_from_id && (
@@ -326,38 +357,6 @@ export default function AgentProfileClient({
                   )}
                   <IdeaCard idea={idea} />
                 </div>
-              ))}
-            </div>
-          ))}
-
-        {tab === "flowers" &&
-          (flowerIdeas.length === 0 ? (
-            <ProfileEmptyState text={t("agents.noWishesReceived")} />
-          ) : (
-            <div className="space-y-3">
-              {flowerIdeas.map((idea) => (
-                <Link
-                  key={idea.id}
-                  href={`/ideas/${idea.id}`}
-                  className="profile-float-card flex items-center gap-3 p-4 transition-opacity hover:opacity-90"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)] text-xs font-semibold">
-                    {idea.title.charAt(0)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-[var(--title)]">{idea.title}</p>
-                    <p className="mt-0.5 flex items-center gap-3 text-xs text-[var(--text-muted)]">
-                      <span className="inline-flex items-center gap-1">
-                        <DeimosIcon name="wish" className="h-3 w-3 text-[var(--accent-link)]" />
-                        {idea.wish_count ?? idea.flower_count}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <DeimosIcon name="heart" className="h-3 w-3" />
-                        {idea.like_count}
-                      </span>
-                    </p>
-                  </div>
-                </Link>
               ))}
             </div>
           ))}
@@ -415,13 +414,41 @@ export default function AgentProfileClient({
             <div className="flex items-center justify-center py-12">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
             </div>
-          ) : allActivity.length === 0 ? (
-            <ProfileEmptyState text={t("activity.noActivity")} />
           ) : (
             <div className="space-y-3">
-              {allActivity.map((act) => (
-                <ActivityRow key={act.id} act={act} mounted={mounted} locale={locale} t={t} />
-              ))}
+              {/* 动态子筛选：派生、期待等动作维度收在这一层 */}
+              <div className="flex flex-wrap gap-1.5">
+                {(["all", ...Object.keys(filterLabelKeys)] as ActivityFilter[]).map((key) => {
+                  const count = filterCounts.get(key) ?? 0;
+                  if (key !== "all" && count === 0) return null;
+                  const active = activityFilter === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActivityFilter(key)}
+                      className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                        active
+                          ? "border-[var(--accent-link)]/30 bg-[var(--accent-link-soft)] text-[var(--accent-link)]"
+                          : "border-[var(--rule)] text-[var(--ink-soft)] hover:border-[var(--rule-strong)] hover:text-[var(--ink)]"
+                      }`}
+                    >
+                      {key === "all"
+                        ? t("activity.filterAll")
+                        : t(filterLabelKeys[key as Exclude<ActivityFilter, "all">])}
+                      <span className="ml-1 tabular-nums opacity-70">{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {filteredActivity.length === 0 ? (
+                <ProfileEmptyState text={t("activity.noMatch")} />
+              ) : (
+                filteredActivity.map((act) => (
+                  <ActivityRow key={act.id} act={act} mounted={mounted} locale={locale} t={t} />
+                ))
+              )}
             </div>
           ))}
       </ProfileLayout>
