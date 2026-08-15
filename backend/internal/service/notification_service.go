@@ -1,11 +1,9 @@
 package service
 
 import (
-	"errors"
 	"time"
 
 	"github.com/wanye/ideaevo/internal/model"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -39,15 +37,30 @@ func (s *NotificationService) Create(
 }
 
 type NotificationList struct {
-	Items  []model.Notification `json:"items"`
-	Total  int64                `json:"total"`
-	Unread int64                `json:"unread"`
+	Items  []NotificationView `json:"items"`
+	Total  int64              `json:"total"`
+	Unread int64              `json:"unread"`
 }
 
-func (s *NotificationService) List(userID string, limit, offset int, onlyUnread bool) (*NotificationList, error) {
+// NotificationView enriches notifications with actor avatar and target title for list UI.
+type NotificationView struct {
+	model.Notification
+	ActorAvatar string `json:"actor_avatar,omitempty"`
+	TargetTitle string `json:"target_title,omitempty"`
+}
+
+func (s *NotificationService) List(
+	userID string,
+	limit, offset int,
+	onlyUnread bool,
+	since *time.Time,
+) (*NotificationList, error) {
 	q := s.db.Model(&model.Notification{}).Where("user_id = ?", userID)
 	if onlyUnread {
-		q = q.Where("read = ?", false)
+		q = q.Where("is_read = ?", false)
+	}
+	if since != nil {
+		q = q.Where("created_at >= ?", *since)
 	}
 	var items []model.Notification
 	var total int64
@@ -56,72 +69,109 @@ func (s *NotificationService) List(userID string, limit, offset int, onlyUnread 
 		return nil, err
 	}
 	var unread int64
-	s.db.Model(&model.Notification{}).Where("user_id = ? AND read = ?", userID, false).Count(&unread)
-	return &NotificationList{Items: items, Total: total, Unread: unread}, nil
+	unreadQuery := s.db.Model(&model.Notification{}).
+		Where("user_id = ? AND is_read = ?", userID, false)
+	if since != nil {
+		unreadQuery = unreadQuery.Where("created_at >= ?", *since)
+	}
+	unreadQuery.Count(&unread)
+	return &NotificationList{Items: enrichNotifications(s.db, items), Total: total, Unread: unread}, nil
+}
+
+func enrichNotifications(db *gorm.DB, items []model.Notification) []NotificationView {
+	if len(items) == 0 {
+		return []NotificationView{}
+	}
+	userIDs := make(map[string]bool)
+	agentIDs := make(map[string]bool)
+	ideaIDs := make(map[string]bool)
+	for _, n := range items {
+		switch n.ActorType {
+		case "agent":
+			agentIDs[n.ActorID] = true
+		default:
+			userIDs[n.ActorID] = true
+		}
+		if n.TargetType == "idea" && n.TargetID != "" {
+			ideaIDs[n.TargetID] = true
+		}
+	}
+	avatarByID := map[string]string{}
+	nameByID := map[string]string{}
+	if len(userIDs) > 0 {
+		ids := keys(userIDs)
+		var rows []struct {
+			ID        string
+			Name      string
+			AvatarURL string
+		}
+		db.Table("users").Select("id, name, avatar_url").Where("id IN ?", ids).Scan(&rows)
+		for _, r := range rows {
+			avatarByID[r.ID] = ResolveUserAvatar(r.ID, r.AvatarURL)
+			nameByID[r.ID] = r.Name
+		}
+	}
+	if len(agentIDs) > 0 {
+		ids := keys(agentIDs)
+		var rows []struct {
+			ID        string
+			Name      string
+			AvatarURL string
+		}
+		db.Table("agents").Select("id, name, avatar_url").Where("id IN ?", ids).Scan(&rows)
+		for _, r := range rows {
+			avatarByID[r.ID] = ResolveAgentAvatar(r.ID, r.AvatarURL)
+			nameByID[r.ID] = r.Name
+		}
+	}
+	titleByIdeaID := map[string]string{}
+	if len(ideaIDs) > 0 {
+		ids := keys(ideaIDs)
+		var rows []struct {
+			ID    string
+			Title string
+		}
+		db.Table("ideas").Select("id, title").Where("id IN ?", ids).Scan(&rows)
+		for _, r := range rows {
+			titleByIdeaID[r.ID] = r.Title
+		}
+	}
+	out := make([]NotificationView, len(items))
+	for i, n := range items {
+		if n.ActorName == "" {
+			n.ActorName = nameByID[n.ActorID]
+		}
+		v := NotificationView{Notification: n, ActorAvatar: avatarByID[n.ActorID]}
+		if n.TargetType == "idea" {
+			v.TargetTitle = titleByIdeaID[n.TargetID]
+		}
+		out[i] = v
+	}
+	return out
+}
+
+func keys(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }
 
 func (s *NotificationService) UnreadCount(userID string) int64 {
 	var n int64
-	s.db.Model(&model.Notification{}).Where("user_id = ? AND read = ?", userID, false).Count(&n)
+	s.db.Model(&model.Notification{}).Where("user_id = ? AND is_read = ?", userID, false).Count(&n)
 	return n
 }
 
 func (s *NotificationService) MarkRead(userID, id string) error {
 	return s.db.Model(&model.Notification{}).
 		Where("id = ? AND user_id = ?", id, userID).
-		Update("read", true).Error
+		Update("is_read", true).Error
 }
 
 func (s *NotificationService) MarkAllRead(userID string) error {
 	return s.db.Model(&model.Notification{}).
-		Where("user_id = ? AND read = ?", userID, false).
-		Update("read", true).Error
-}
-
-type UpdateProfileInput struct {
-	Name         string   `json:"name" binding:"omitempty,min=1,max=64"`
-	AvatarURL    string   `json:"avatar_url" binding:"omitempty,url"`
-}
-
-type ChangePasswordInput struct {
-	OldPassword string `json:"old_password" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required,min=6"`
-}
-
-// ---- Delegated user mutations (kept here so a single NotificationService can
-// be wired into the settings handler) ----
-
-func (s *NotificationService) UpdateProfile(userID string, input UpdateProfileInput) error {
-	updates := map[string]interface{}{}
-	if input.Name != "" {
-		updates["name"] = input.Name
-	}
-	if input.AvatarURL != "" {
-		updates["avatar_url"] = input.AvatarURL
-	}
-	if len(updates) == 0 {
-		return nil
-	}
-	updates["updated_at"] = time.Now()
-	return s.db.Model(&model.User{}).Where("id = ?", userID).Updates(updates).Error
-}
-
-func (s *NotificationService) ChangePassword(userID string, input ChangePasswordInput) error {
-	var user model.User
-	if err := s.db.First(&user, "id = ?", userID).Error; err != nil {
-		return err
-	}
-	if user.AuthProvider == "google" {
-		return errors.New("google accounts have no password")
-	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.OldPassword)); err != nil {
-		return errors.New("incorrect current password")
-	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-	user.PasswordHash = string(hash)
-	user.UpdatedAt = time.Now()
-	return s.db.Save(&user).Error
+		Where("user_id = ? AND is_read = ?", userID, false).
+		Update("is_read", true).Error
 }

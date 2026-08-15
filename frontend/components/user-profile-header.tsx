@@ -1,0 +1,83 @@
+"use client";
+
+import { User } from "@/lib/types";
+import { ProfileHeader } from "@/components/profile-header";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { IconActionButton } from "@/components/ui/icon-action-button";
+import { useI18n } from "@/lib/i18n/provider";
+
+interface UserProfileHeaderProps {
+  user: User;
+  stats?: {
+    follower_count?: number;
+    following_count?: number;
+    idea_count?: number;
+    agent_count?: number;
+    session_count?: number;
+  };
+  isOwn?: boolean;
+  actions?: React.ReactNode;
+  /** 点击统计项的回调（用于跳转 tab）。 */
+  onStatClick?: (key: "ideas" | "agents" | "followers" | "following") => void;
+}
+
+/**
+ * UserProfileHeader —— 渲染统一 ProfileHeader，镜像 Agent 主页头部。
+ * 统计项可点击（GitHub 风格），他人主页隐藏邮箱以保护隐私。
+ */
+export default function UserProfileHeader({
+  user,
+  stats,
+  isOwn,
+  actions,
+  onStatClick,
+}: UserProfileHeaderProps) {
+  const { t } = useI18n();
+  const followers = stats?.follower_count ?? user.follower_count;
+  const following = stats?.following_count ?? user.following_count;
+  const ideas = stats?.idea_count;
+  const sessions = stats?.session_count;
+
+  // 他人主页不展示邮箱（隐私）；自己主页展示邮箱作为 handle。
+  const handle = isOwn ? user.email : undefined;
+
+  const statRows = [
+    { label: t("profile.followers"), value: followers, key: "followers" as const },
+    { label: t("profile.following"), value: following, key: "following" as const },
+    ...(ideas != null
+      ? [{ label: t("idea.ideas"), value: ideas, key: "ideas" as const }]
+      : []),
+    ...(stats?.agent_count != null
+      ? [{ label: t("header.agents"), value: stats.agent_count, key: "agents" as const }]
+      : []),
+    ...(sessions != null
+      ? [{ label: t("idea.chat"), value: sessions, key: undefined as undefined }]
+      : []),
+  ].map((s) => ({
+    label: s.label,
+    value: s.value,
+    // 仅想法/粉丝/关注可点击跳转 tab；对话不可点。
+    onClick: s.key && onStatClick ? () => onStatClick(s.key) : undefined,
+  }));
+
+  return (
+    <ProfileHeader
+      name={user.name}
+      handle={handle}
+      avatarUrl={user.avatar_url}
+      bannerUrl={user.background_url}
+      description={user.bio}
+      stats={statRows}
+      actions={
+        actions ??
+        (isOwn ? (
+          <IconActionButton
+            href="/user/settings"
+            label={t("common.edit")}
+            icon={<DeimosIcon name="gear" className="h-[18px] w-[18px]" />}
+          />
+        ) : undefined)
+      }
+    />
+  );
+}

@@ -25,6 +25,8 @@ type Principal struct {
 
 	// 可选：是否为平台内置助手（拥有更广权限，如代用户操作）
 	IsSystemAssistant bool
+	// AuthorAgentReady 为 true 表示 IsSystemAssistant 场景下已绑定用户默认 Agent（可写）。
+	AuthorAgentReady bool
 }
 
 // ToolInput 是工具收到的参数集合（来自 LLM tool_call.arguments 或 MCP 入参）。
@@ -110,6 +112,19 @@ func (r *ToolRegistry) Names() []string {
 	return out
 }
 
+// GetByNames 按名称列表批量获取工具。不存在的名称跳过。
+func (r *ToolRegistry) GetByNames(names []string) []Tool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]Tool, 0, len(names))
+	for _, name := range names {
+		if t, ok := r.tools[name]; ok {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
 // Execute 便捷方法：查找并执行工具。
 func (r *ToolRegistry) Execute(ctx context.Context, name string, p Principal, in ToolInput) (*ToolResult, error) {
 	t, ok := r.Get(name)
@@ -155,6 +170,17 @@ func ToolFloat(in ToolInput, key string) float64 {
 		return v
 	}
 	return 0
+}
+
+// ToolBool 取布尔参数。
+func ToolBool(in ToolInput, key string) bool {
+	switch v := in[key].(type) {
+	case bool:
+		return v
+	case string:
+		return v == "true" || v == "1"
+	}
+	return false
 }
 
 // ToolStrSlice 取字符串切片参数。

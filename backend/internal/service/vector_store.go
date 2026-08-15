@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss"
@@ -162,19 +161,15 @@ func (s *VectorStore) DeleteVectors(ctx context.Context, indexName string, keys 
 	return nil
 }
 
-// AsyncPut 在后台写入向量，出错只记录日志，不阻塞主流程。
-// 用于 idea 创建/更新场景（容忍延迟）。
 func (s *VectorStore) AsyncPut(indexName, key string, vector []float32, metadata map[string]any) {
 	if !s.Enabled() {
 		return
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		if err := s.PutVector(ctx, indexName, key, vector, metadata); err != nil {
-			log.Printf("[vector] async put %s/%s failed: %v", indexName, key, err)
-		}
-	}()
+	idx, k, vec, meta := indexName, key, vector, metadata
+	store := s
+	asyncPutWithRetry(fmt.Sprintf("put %s/%s", idx, k), func(ctx context.Context) error {
+		return store.PutVector(ctx, idx, k, vec, meta)
+	})
 }
 
 // AsyncDelete 后台删除向量。
@@ -182,13 +177,11 @@ func (s *VectorStore) AsyncDelete(indexName string, keys []string) {
 	if !s.Enabled() {
 		return
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		if err := s.DeleteVectors(ctx, indexName, keys); err != nil {
-			log.Printf("[vector] async delete %s/%v failed: %v", indexName, keys, err)
-		}
-	}()
+	idx, k := indexName, keys
+	store := s
+	asyncDeleteWithRetry(fmt.Sprintf("delete %s/%v", idx, k), func(ctx context.Context) error {
+		return store.DeleteVectors(ctx, idx, k)
+	})
 }
 
 // withDefaults 合并 src 与 defaults（defaults 不覆盖 src 已有值）。

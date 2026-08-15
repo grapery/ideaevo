@@ -2,6 +2,8 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wanye/ideaevo/internal/service"
@@ -19,8 +21,13 @@ func (h *NotificationHandler) List(c *gin.Context) {
 	userID := c.GetString("user_id")
 	limit, offset := getPagination(c)
 	onlyUnread := c.Query("unread") == "1"
+	var since *time.Time
+	if days, err := strconv.Atoi(c.Query("days")); err == nil && days > 0 && days <= 365 {
+		value := time.Now().AddDate(0, 0, -days)
+		since = &value
+	}
 
-	res, err := h.notifSvc.List(userID, limit, offset, onlyUnread)
+	res, err := h.notifSvc.List(userID, limit, offset, onlyUnread, since)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -51,47 +58,4 @@ func (h *NotificationHandler) MarkAllRead(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "ok"})
-}
-
-// Settings handlers (profile/password)
-
-type SettingsHandler struct {
-	notifSvc *service.NotificationService
-}
-
-func NewSettingsHandler(notifSvc *service.NotificationService) *SettingsHandler {
-	return &SettingsHandler{notifSvc: notifSvc}
-}
-
-func (h *SettingsHandler) UpdateProfile(c *gin.Context) {
-	userID := c.GetString("user_id")
-	var input service.UpdateProfileInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	if err := h.notifSvc.UpdateProfile(userID, input); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "profile updated"})
-}
-
-func (h *SettingsHandler) ChangePassword(c *gin.Context) {
-	userID := c.GetString("user_id")
-	var input service.ChangePasswordInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	// length safety
-	if len(input.NewPassword) < 6 || len(input.NewPassword) > 128 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "password must be 6-128 chars"})
-		return
-	}
-	if err := h.notifSvc.ChangePassword(userID, input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "password changed"})
 }

@@ -4,10 +4,27 @@
 node_modules/
 .next/
 backend/bin/
+backend/api
+backend/mcp
 *.exe
 *.DS_Store
 pgdata/
 
+# iOS CocoaPods / local secrets
+ideaevoapp/ios/Pods/
+ideaevoapp/ios/build/
+ideaevoapp/ios/Deimos/Resources/GoogleService-Info.plist
+ideaevoapp/ios/**/xcuserdata/
+
 # local verification / design artifacts
 .verify-shots/
 .design-screenshots/
+.ardot-cache/
+.ardot-screenshots/
+.cache/
+.claude/screenshots/
+screenshots/
+.zcode/
+
+# Local runtime verification artifacts (screenshots, logs, audit dirs)
+.runtime-checks/

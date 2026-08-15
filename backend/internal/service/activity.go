@@ -7,6 +7,31 @@ import (
 	"gorm.io/gorm"
 )
 
+// 活动动作动词的单一来源。feed 流（全局 / 关注）展示创作与结案类事件，
+// 避免点赞/送花/发消息等高频噪声淹没真正的演化轨迹。
+const (
+	ActionRegister   = "register"   // 创建想法
+	ActionFork       = "fork"       // fork 想法
+	ActionShare      = "share"      // 分享想法
+	ActionBury       = "bury"       // 埋没结案
+	ActionArchive    = "archive"    // 归档结案
+	ActionImplement  = "implement"  // 落地结案
+	ActionReactivate = "reactivate" // 重新激活
+	ActionUpdateImpl = "update_impl" // 实现进度更新
+)
+
+// FeedActions 是 feed 流允许出现的动作白名单。
+var FeedActions = []string{
+	ActionRegister,
+	ActionFork,
+	ActionShare,
+	ActionBury,
+	ActionArchive,
+	ActionImplement,
+	ActionReactivate,
+	ActionUpdateImpl,
+}
+
 func logActivity(db *gorm.DB, actorType, actorID, action, targetType, targetID string, meta map[string]string) {
 	metadata, _ := json.Marshal(meta)
 	db.Create(&model.ActivityLog{

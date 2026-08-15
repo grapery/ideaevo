@@ -1,318 +1,343 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useApiKey } from "@/lib/api-key-context";
+import { useRouter } from "next/navigation";
+import { agentApi, notificationApi, NotificationItem, userApi } from "@/lib/api-client";
+import { Agent, UserProfile } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
-import { Idea } from "@/lib/types";
-import { StatusBadge } from "@/components/status-badge";
-import { IconLeaf } from "@/components/icons";
-import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n/provider";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { WireframeAvatar } from "@/components/wireframe-avatar";
 
-interface AgentStats {
-  idea_count: number;
-  total_likes: number;
-  total_flowers: number;
-  total_forks: number;
-  recent_activity: {
-    id: string;
-    action: string;
-    target_type: string;
-    created_at: string;
-  }[];
+function formatRelativeTime(
+  dateStr: string,
+  locale: string,
+): string {
+  const ts = new Date(dateStr).getTime();
+  if (Number.isNaN(ts)) return "";
+  const diffSec = Math.round((ts - Date.now()) / 1000);
+  const abs = Math.abs(diffSec);
+  const rtf = new Intl.RelativeTimeFormat(locale === "en" ? "en" : "zh-CN", {
+    numeric: "auto",
+  });
+  if (abs < 60) return rtf.format(diffSec, "second");
+  if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
+  if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), "hour");
+  return rtf.format(Math.round(diffSec / 86400), "day");
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
-  const { apiKey, setApiKey, agentId, agentName, isReady } = useApiKey();
-  const [stats, setStats] = useState<AgentStats | null>(null);
-  const [ideas, setIdeas] = useState<Idea[]>([]);
-  const [inputKey, setInputKey] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"ideas" | "activity">("ideas");
-
-  const apiBase =
-    (typeof window !== "undefined" ? window.__ENV_API_URL__ : null) ||
-    "http://localhost:8080/api";
+  const { locale, t } = useI18n();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isReady && agentId) {
-      loadData();
+    if (authLoading) return;
+    if (!user) {
+      router.push("/login?returnUrl=/dashboard");
+      return;
     }
-  }, [isReady, agentId]);
+    let cancelled = false;
+    Promise.all([
+      userApi.getMyProfile(),
+      agentApi.listMyAgents(8, 0),
+      notificationApi.list({ limit: 8 }),
+    ])
+      .then(([profileResult, agentResult, notificationResult]) => {
+        if (cancelled) return;
+        setProfile(profileResult);
+        setAgents(agentResult.agents || []);
+        setNotifications(notificationResult.items || []);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, router, user]);
 
-  async function loadData() {
-    if (!apiKey || !agentId) return;
-    setLoading(true);
-    try {
-      const [statsRes, ideasRes] = await Promise.all([
-        fetch(`${apiBase}/agents/${agentId}/stats`),
-        fetch(`${apiBase}/agents/${agentId}/ideas?limit=20`),
-      ]);
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (ideasRes.ok) {
-        const data = await ideasRes.json();
-        setIdeas(data.ideas || []);
-      }
-    } catch {
-      toast.error("加载失败");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const pendingDecisions = useMemo(
+    () => notifications.filter((item) => !item.read).slice(0, 6),
+    [notifications],
+  );
 
-  function handleSetKey() {
-    if (inputKey.trim()) {
-      setApiKey(inputKey.trim());
-      setInputKey("");
-    }
-  }
-
-  const displayName = agentName || user?.name || "Agent";
-  const displayAvatar = user?.avatar_url;
-
-  // Not authenticated — show API key input
-  if (!isReady && !user) {
+  if (authLoading || loading || !user || !profile) {
     return (
-      <div className="min-h-screen bg-[var(--bg-canvas)]">
-        <div className="mx-auto max-w-lg px-4 py-16">
-          <h1 className="text-2xl font-semibold text-[var(--title)] mb-2">我的面板</h1>
-          <p className="text-[var(--text-muted)] mb-8">输入你的 API Key 查看 Agent 统计和想法</p>
-          <div className="surface-card p-6">
-            <label htmlFor="dash-apikey" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">API Key</label>
-            <div className="flex gap-2">
-              <input
-                id="dash-apikey"
-                name="api-key"
-                type="password"
-                autoComplete="off"
-                value={inputKey}
-                onChange={(e) => setInputKey(e.target.value)}
-                placeholder="wanye_xxxxxxxx"
-                className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
-              />
-              <button
-                onClick={handleSetKey}
-                className="rounded-lg gradient-btn px-5 py-2.5 text-sm font-medium"
-              >
-                确认
-              </button>
-            </div>
-            <p className="mt-3 text-xs text-[var(--text-muted)]">
-              还没有 API Key？
-              <Link href="/register" className="text-[var(--primary)] hover:underline ml-1">
-                注册 Agent
-              </Link>
-            </p>
-            <div className="mt-4 pt-4 border-t border-[var(--divider)]">
-              <Link
-                href="/login"
-                className="inline-block rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-              >
-                用户登录
-              </Link>
-            </div>
-          </div>
-        </div>
+      <div className="flex min-h-[70vh] items-center justify-center bg-[var(--bg-canvas)]">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
       </div>
     );
   }
 
-  // Authenticated — show dashboard
+  const metrics = [
+    {
+      label: t("dashboard.metricIdeas"),
+      value: profile.idea_count,
+      href: `/users/${profile.user.id}`,
+      icon: "document" as const,
+    },
+    {
+      label: t("dashboard.metricAgents"),
+      value: profile.agent_count ?? agents.length,
+      href: "/user/agents",
+      icon: "agent" as const,
+      tone: "link" as const,
+    },
+    {
+      label: t("dashboard.metricFollowing"),
+      value: profile.following_count,
+      href: `/users/${profile.user.id}`,
+      icon: "follow" as const,
+    },
+    {
+      label: t("dashboard.metricAttention"),
+      value: pendingDecisions.length,
+      href: "/notifications",
+      icon: "bell" as const,
+      tone: pendingDecisions.length > 0 ? ("attention" as const) : undefined,
+    },
+  ];
+
+  const shortcuts = [
+    { href: "/chat", icon: "chat" as const, label: t("dashboard.actionChat") },
+    { href: "/ideas/new", icon: "publish" as const, label: t("dashboard.actionPublish") },
+    { href: "/docs/mcp", icon: "tool" as const, label: t("dashboard.actionMcp") },
+    { href: "/search", icon: "semantic-search" as const, label: t("dashboard.searchEvidence") },
+  ];
+
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
-        {/* Profile Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="h-14 w-14 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-xl font-semibold">
-            {displayAvatar ? (
-              <img src={displayAvatar} alt="" className="h-14 w-14 rounded-full" />
-            ) : (
-              displayName.charAt(0).toUpperCase()
-            )}
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-[var(--title)]">{displayName}</h1>
-            <p className="text-sm text-[var(--text-muted)]">
-              {user ? user.email : `Agent · ${agentId?.slice(0, 8)}…`}
-            </p>
-          </div>
-          <div className="ml-auto">
-            <button
-              onClick={() => { setApiKey(""); }}
-              className="text-sm text-[var(--text-muted)] hover:text-[var(--primary)]"
-            >
-              退出
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label="想法数" value={stats.idea_count} icon="💡" />
-            <StatCard label="总点赞" value={stats.total_likes} icon="❤️" />
-            <StatCard label="总鲜花" value={stats.total_flowers} icon="🌸" />
-            <StatCard label="总 Fork" value={stats.total_forks} icon="🍴" />
-          </div>
-        )}
-
-        {/* Tab Buttons */}
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setActiveTab("ideas")}
-            className={`rounded-lg px-6 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === "ideas"
-                ? "gradient-btn"
-                : "border border-[var(--divider)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-            }`}
-          >
-            我的想法
-          </button>
-          <button
-            onClick={() => setActiveTab("activity")}
-            className={`rounded-lg px-6 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === "activity"
-                ? "gradient-btn"
-                : "border border-[var(--divider)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-            }`}
-          >
-            活动记录
-          </button>
-        </div>
-
-        {/* Content Area: left-right split */}
-        <div className="flex gap-6">
-          {/* Main Content */}
-          <div className="flex-1 min-w-0">
-            {activeTab === "ideas" && (
-              <>
-                {ideas.length === 0 ? (
-                  <div className="surface-card p-12 text-center">
-                    <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
-                    <p className="text-[var(--text-muted)] mb-4">还没有注册想法</p>
-                    <Link
-                      href="/register"
-                      className="inline-block rounded-lg gradient-btn px-4 py-2 text-sm font-medium"
-                    >
-                      注册新想法
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {ideas.map((idea) => (
-                      <Link
-                        key={idea.id}
-                        href={`/ideas/${idea.id}`}
-                        className="flex items-center justify-between surface-card p-4 hover:border-[var(--primary)]/30 transition-colors"
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <StatusBadge status={idea.status} />
-                            <h3 className="font-medium text-[var(--title)] truncate">{idea.title}</h3>
-                          </div>
-                          <p className="mt-1 text-sm text-[var(--text-muted)] line-clamp-1">
-                            {idea.description}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] shrink-0 ml-4">
-                          <span>❤️ {idea.like_count}</span>
-                          <span>🌸 {idea.flower_count}</span>
-                          <span>🍴 {idea.fork_count}</span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {activeTab === "activity" && stats?.recent_activity && (
-              <div className="surface-card divide-y divide-[var(--divider)]">
-                {stats.recent_activity.length === 0 ? (
-                  <div className="p-8 text-center text-[var(--text-muted)]">暂无活动记录</div>
-                ) : (
-                  stats.recent_activity.map((act) => (
-                    <div key={act.id} className="px-5 py-4 flex items-center justify-between">
-                      <span className="text-sm text-[var(--text-secondary)]">
-                        {act.action} · {act.target_type}
-                      </span>
-                      <span className="text-xs text-[var(--text-muted)]">
-                        {new Date(act.created_at).toLocaleDateString("zh-CN")}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Activity Sidebar */}
-          {stats?.recent_activity && stats.recent_activity.length > 0 && activeTab === "ideas" && (
-            <aside className="hidden lg:block w-[360px] flex-shrink-0">
-              <div className="surface-card p-5">
-                <h3 className="text-base font-semibold text-[var(--title)] mb-4">最近活动</h3>
-                <div className="space-y-3">
-                  {stats.recent_activity.slice(0, 8).map((act) => (
-                    <div key={act.id} className="flex items-start gap-3">
-                      <div className="mt-0.5 h-2 w-2 rounded-full bg-[var(--primary)] shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm text-[var(--text-secondary)] truncate">
-                          {act.action} · {act.target_type}
-                        </p>
-                        <p className="text-xs text-[var(--text-muted)]">
-                          {new Date(act.created_at).toLocaleDateString("zh-CN")}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </aside>
-          )}
-        </div>
-
-        {/* API Key input for users without agent */}
-        {user && !isReady && (
-          <div className="mt-8 surface-card p-6">
-            <h2 className="text-lg font-semibold text-[var(--title)] mb-2">Agent API 管理</h2>
-            <p className="text-sm text-[var(--text-muted)] mb-4">
-              输入 Agent API Key 查看 Agent 统计和想法
-            </p>
-            <div className="max-w-md flex gap-2">
-              <label htmlFor="dash-apikey-2" className="sr-only">Agent API Key</label>
-              <input
-                id="dash-apikey-2"
-                name="api-key"
-                type="password"
-                autoComplete="off"
-                value={inputKey}
-                onChange={(e) => setInputKey(e.target.value)}
-                placeholder="wanye_xxxxxxxx"
-                className="flex-1 rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
-              />
-              <button
-                onClick={handleSetKey}
-                className="rounded-lg gradient-btn px-5 py-2.5 text-sm font-medium"
-              >
-                确认
-              </button>
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
+        {/* Header: identity + primary actions */}
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--rule)] pb-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <WireframeAvatar
+              kind="user"
+              entityId={profile.user.id}
+              avatarUrl={profile.user.avatar_url}
+              name={profile.user.name}
+              size={40}
+            />
+            <div className="min-w-0">
+              <h1 className="truncate text-[18px] font-semibold tracking-[-0.02em] text-[var(--ink)] sm:text-[20px]">
+                {t("dashboard.workbench", { name: profile.user.name })}
+              </h1>
+              <p className="mt-0.5 text-[12px] text-[var(--ink-faint)]">
+                {t("dashboard.desc")}
+              </p>
             </div>
           </div>
-        )}
-      </div>
-    </div>
-  );
-}
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/ideas/new" className="btn-primary btn-sm">
+              <DeimosIcon name="publish" className="h-3.5 w-3.5" />
+              {t("dashboard.newIdea")}
+            </Link>
+            <Link href="/chat" className="btn-outline btn-sm">
+              <DeimosIcon name="chat" className="h-3.5 w-3.5" />
+              {t("dashboard.askAgent")}
+            </Link>
+            <Link href="/user/settings" className="btn-default btn-sm">
+              {t("dashboard.settings")}
+            </Link>
+          </div>
+        </header>
 
-function StatCard({ label, value, icon }: { label: string; value: number; icon: string }) {
-  return (
-    <div className="surface-card p-5">
-      <div className="flex items-center gap-3">
-        <span className="text-2xl">{icon}</span>
-        <div>
-          <div className="text-2xl font-semibold text-[var(--title)]">{value}</div>
-          <div className="text-sm text-[var(--text-muted)]">{label}</div>
+        {/* Metrics: wireframe icon + tabular value strip */}
+        <section className="dashboard-metrics mt-4" aria-label={t("dashboard.desc")}>
+          {metrics.map((metric) => (
+            <Link key={metric.label} href={metric.href} className="dashboard-metric">
+              <span
+                className="dashboard-metric__icon"
+                data-tone={metric.tone}
+                aria-hidden
+              >
+                <DeimosIcon name={metric.icon} className="h-3.5 w-3.5" />
+              </span>
+              <span className="dashboard-metric__body">
+                <span className="dashboard-metric__label">{metric.label}</span>
+                <span
+                  className="dashboard-metric__value"
+                  data-tone={metric.tone === "attention" ? "attention" : undefined}
+                >
+                  {metric.value}
+                </span>
+              </span>
+              <DeimosIcon name="chevron-right" className="dashboard-metric__chevron" />
+            </Link>
+          ))}
+        </section>
+
+        {/* Body: inbox + side panels */}
+        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <main className="min-w-0">
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-4">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[13px] font-semibold text-[var(--ink)]">
+                    {t("dashboard.todayActions")}
+                  </h2>
+                  {pendingDecisions.length > 0 && (
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--primary-soft)] px-1.5 text-[11px] font-medium tabular-nums text-[var(--primary)]">
+                      {pendingDecisions.length}
+                    </span>
+                  )}
+                </div>
+                <Link
+                  href="/notifications"
+                  className="text-[12px] text-[var(--accent-link)] hover:underline"
+                >
+                  {t("dashboard.openInbox")}
+                </Link>
+              </div>
+
+              {pendingDecisions.length === 0 ? (
+                <div className="flex items-start gap-3 px-4 py-5">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--accent-success)]">
+                    <DeimosIcon name="check" className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-[13px] font-medium text-[var(--ink)]">
+                      {t("dashboard.noDecisions")}
+                    </p>
+                    <p className="mt-1 text-[12px] leading-5 text-[var(--ink-faint)]">
+                      {t("dashboard.workspaceHint")}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link href="/ideas/new" className="btn-default btn-sm">
+                        {t("dashboard.newIdea")}
+                      </Link>
+                      <Link href="/chat" className="btn-default btn-sm">
+                        {t("dashboard.askAgent")}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <ul>
+                  {pendingDecisions.map((item) => (
+                    <li key={item.id} className="border-b border-[var(--rule)] last:border-0">
+                      <Link
+                        href={item.target_id ? `/ideas/${item.target_id}` : "/notifications"}
+                        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-subtle)]"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary)]">
+                          <DeimosIcon name="bell" className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-medium text-[var(--ink)]">
+                            {item.actor_name || t("dashboard.collaborator")}
+                            <span className="font-normal text-[var(--ink-soft)]">
+                              {" · "}
+                              {item.action}
+                            </span>
+                          </span>
+                          <span className="mt-0.5 block text-[11px] tabular-nums text-[var(--ink-faint)]">
+                            {formatRelativeTime(item.created_at, locale)}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-[12px] text-[var(--accent-link)]">
+                          {t("dashboard.review")}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </main>
+
+          <aside className="space-y-3">
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-3.5">
+                <h2 className="text-[13px] font-semibold text-[var(--ink)]">
+                  {t("dashboard.ownedAgents", { count: agents.length })}
+                </h2>
+                <Link
+                  href="/user/agents"
+                  className="text-[12px] text-[var(--accent-link)] hover:underline"
+                >
+                  {t("dashboard.manageFleet")}
+                </Link>
+              </div>
+
+              {agents.length === 0 ? (
+                <div className="px-3.5 py-4">
+                  <p className="text-[12px] leading-5 text-[var(--ink-faint)]">
+                    {t("dashboard.noAgents")}
+                  </p>
+                  <Link href="/register" className="btn-default btn-sm mt-3">
+                    {t("dashboard.createAgent")}
+                  </Link>
+                </div>
+              ) : (
+                <ul>
+                  {agents.slice(0, 5).map((agent) => (
+                    <li key={agent.id} className="border-b border-[var(--rule)] last:border-0">
+                      <Link
+                        href={`/agents/${agent.id}`}
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 transition-colors hover:bg-[var(--bg-subtle)]"
+                      >
+                        <WireframeAvatar
+                          kind="agent"
+                          entityId={agent.id}
+                          avatarUrl={agent.avatar_url}
+                          name={agent.name}
+                          size={28}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[12px] font-medium text-[var(--ink)]">
+                            {agent.name}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-success)]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                            {t("dashboard.operational")}
+                          </span>
+                        </span>
+                        <DeimosIcon
+                          name="chevron-right"
+                          className="h-3.5 w-3.5 shrink-0 text-[var(--ink-disabled)]"
+                        />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+                <h2 className="text-[13px] font-semibold text-[var(--ink)]">
+                  {t("dashboard.quickActions")}
+                </h2>
+              </div>
+              <ul>
+                {shortcuts.map((item) => (
+                  <li key={item.href} className="border-b border-[var(--rule)] last:border-0">
+                    <Link
+                      href={item.href}
+                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-[var(--ink-soft)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
+                    >
+                      <DeimosIcon
+                        name={item.icon}
+                        className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)]"
+                      />
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      <DeimosIcon
+                        name="chevron-right"
+                        className="h-3.5 w-3.5 shrink-0 text-[var(--ink-disabled)]"
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </aside>
         </div>
       </div>
     </div>

@@ -1,397 +1,297 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Idea, DuplicateWarning } from "@/lib/types";
-import { IdeaCard } from "@/components/idea-card";
-import { StatusBadge } from "@/components/status-badge";
-import { IconLeaf } from "@/components/icons";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { useAuthModal } from "@/lib/auth-modal-context";
+import { api, agentApi, ApiRequestError } from "@/lib/api-client";
+import { notify } from "@/components/ui/notify";
+import { getErrorMessage } from "@/lib/api-error";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { DeimosIcon } from "@/components/deimos-icon";
+import type { Agent, Idea } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/provider";
 
-const categories = ["生产力", "开发工具", "知识管理", "协作", "自动化", "其他"];
-const recommendedTags = ["MCP", "RAG", "Agent", "去重", "协作"];
+const CATEGORIES = [
+  { value: "tool", label: "market.catTool" as const },
+  { value: "service", label: "market.catService" as const },
+  { value: "integration", label: "market.catIntegration" as const },
+  { value: "automation", label: "market.catAutomation" as const },
+  { value: "creative", label: "market.catCreative" as const },
+  { value: "data", label: "market.catData" as const },
+  { value: "other", label: "market.catOther" as const },
+];
 
-const steps = ["内容", "分类", "去重", "发布"];
-
-// Stable timestamp for the live preview card so SSR and client render match.
-const PREVIEW_DATE = "2026-01-01T00:00:00Z";
+type SimilarMatch = { idea: Idea; similarity: number };
 
 export default function NewIdeaPage() {
+  const { t } = useI18n();
+  const { user } = useAuth();
+  const { openAuthModal } = useAuthModal();
+  const router = useRouter();
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("开发工具");
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
+  const [category, setCategory] = useState("other");
+  const [tagsRaw, setTagsRaw] = useState("");
   const [repoUrl, setRepoUrl] = useState("");
   const [demoUrl, setDemoUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [similar, setSimilar] = useState<{ idea: Idea; similarity: number }[]>([]);
+  const [agentId, setAgentId] = useState("");
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loadingAgents, setLoadingAgents] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [checking, setChecking] = useState(false);
-  const [error, setError] = useState("");
-  const [result, setResult] = useState<{ idea: Idea; warning: DuplicateWarning | null } | null>(null);
-
-  const apiBase =
-    (typeof window !== "undefined" ? window.__ENV_API_URL__ : null) ||
-    "http://localhost:8080/api";
-
-  const previewIdea: Idea = useMemo(
-    () => ({
-      id: "preview",
-      agent_id: "preview",
-      title: title || "想法标题预览",
-      description: description || "在这里预览你的想法描述…",
-      status: "active",
-      category,
-      tags,
-      like_count: 0,
-      flower_count: 0,
-      fork_count: 0,
-      comment_count: 0,
-      created_at: PREVIEW_DATE,
-      updated_at: PREVIEW_DATE,
-    }),
-    [title, description, category, tags]
-  );
+  const [similarIdeas, setSimilarIdeas] = useState<SimilarMatch[]>([]);
 
   useEffect(() => {
-    const q = `${title} ${description}`.trim();
-    if (q.length < 8) {
-      setSimilar([]);
-      return;
+    try {
+      const raw = sessionStorage.getItem("deimos_idea_draft_from_chat");
+      if (!raw) return;
+      const draft = JSON.parse(raw) as {
+        title?: string;
+        description?: string;
+        agent_id?: string;
+      };
+      if (draft.title) setTitle(draft.title);
+      if (draft.description) setDescription(draft.description);
+      if (draft.agent_id) setAgentId(draft.agent_id);
+      sessionStorage.removeItem("deimos_idea_draft_from_chat");
+    } catch {
+      // ignore malformed draft
     }
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setChecking(true);
-      try {
-        const res = await fetch(
-          `${apiBase}/ideas/search?q=${encodeURIComponent(q)}&threshold=0.5&limit=3`,
-          { signal: controller.signal }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setSimilar((data.results || []).filter((r: { similarity: number }) => r.similarity >= 0.5));
-        }
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") setSimilar([]);
-      } finally {
-        if (!controller.signal.aborted) setChecking(false);
-      }
-    }, 600);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [title, description, apiBase]);
+  }, []);
 
-  function addTag(tag: string) {
-    const t = tag.trim();
-    if (!t || tags.length >= 5 || tags.includes(t)) return;
-    setTags((prev) => [...prev, t]);
-    setTagInput("");
-  }
+  useEffect(() => {
+    if (!user) return;
+    agentApi
+      .listMyAgents()
+      .then((res) => {
+        setAgents(res.agents);
+        // 默认不选 Agent —— 后端会自动用本人个人 Agent 发布。
+        // 仅当用户主动选择时才覆盖。
+      })
+      .catch(() => notify.error(t("dashboard.loadAgentsFailed")))
+      .finally(() => setLoadingAgents(false));
+  }, [user]);
 
-  function removeTag(tag: string) {
-    setTags((prev) => prev.filter((t) => t !== tag));
-  }
+  const selectedAgent = agents.find((a) => a.id === agentId);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!apiKey || !title || !description || !category) {
-      setError("请填写所有必填项");
+    if (!user) {
+      openAuthModal({ returnUrl: "/ideas/new" });
+      return;
+    }
+    const titleValue = title.trim();
+    const d = description.trim();
+    if (!titleValue || !d) {
+      notify.error(t("idea.errTitleDesc"));
       return;
     }
     setLoading(true);
-    setError("");
+    setSimilarIdeas([]);
     try {
-      const res = await fetch(`${apiBase}/ideas`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": apiKey,
-        },
-        body: JSON.stringify({
-          title,
-          description,
-          category,
-          tags,
-          repo_url: repoUrl || undefined,
-          demo_url: demoUrl || undefined,
-        }),
+      const idea = await api.createIdea({
+        title: titleValue,
+        description: d,
+        category,
+        tags: tagsRaw
+          .split(/[,，]/)
+          .map((tg) => tg.trim())
+          .filter(Boolean),
+        repo_url: repoUrl.trim() || undefined,
+        demo_url: demoUrl.trim() || undefined,
+        agent_id: agentId || undefined,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || "注册失败");
-      }
-      const data = await res.json();
-      setResult(data);
+      notify.success(t("idea.publishedToast"));
+      router.push(`/ideas/${idea.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "注册失败");
+      if (err instanceof ApiRequestError && err.status === 409) {
+        const matches = err.body?.similar_ideas;
+        if (Array.isArray(matches) && matches.length > 0) {
+          setSimilarIdeas(matches as SimilarMatch[]);
+        }
+      }
+      notify.error(getErrorMessage(err, t("idea.publishFailed")));
     } finally {
       setLoading(false);
     }
   }
 
-  if (result) {
-    return (
-      <div className="min-h-screen bg-[var(--bg-canvas)] py-12">
-        <div className="mx-auto max-w-lg px-4">
-          <div className="surface-card p-8 text-center rounded-[14px]">
-            <IconLeaf className="h-10 w-10 mx-auto mb-4 text-[var(--primary)]" aria-hidden="true" />
-            <h1 className="text-2xl font-semibold text-[var(--title)] mb-2">想法发布成功</h1>
-            <p className="text-lg font-medium text-[var(--primary)] mb-4">{result.idea.title}</p>
-            <StatusBadge status={result.idea.status} />
-            {result.warning?.is_duplicate && (
-              <div className="mt-4 rounded-lg bg-[var(--coral-soft)] border border-[var(--coral)]/20 p-4 text-left">
-                <p className="text-sm font-medium text-[var(--coral)]">发现相似想法</p>
-                {result.warning.similar_ideas?.map((s) => (
-                  <p key={s.idea.id} className="text-xs text-[var(--text-secondary)] mt-1">
-                    {s.idea.title} ({(s.similarity * 100).toFixed(0)}%)
-                  </p>
-                ))}
-              </div>
-            )}
-            <Link
-              href={`/ideas/${result.idea.id}`}
-              className="mt-6 inline-block rounded-lg gradient-btn px-6 py-2.5 text-sm font-medium"
-            >
-              查看详情
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      {/* Header */}
-      <section className="border-b border-[var(--divider)] bg-[var(--bg-surface)]">
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-[28px] font-semibold text-[var(--title)]">发布新想法</h1>
-          <p className="mt-2 text-[15px] text-[var(--text-secondary)]">
-            把灵感放进万叶，让其他 Agent 找到、Fork、协作。
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-[var(--text-muted)]">
-            {steps.map((step, i) => (
-              <span key={step} className="flex items-center gap-2">
-                {i > 0 && <span>→</span>}
-                <span className={i === 0 ? "text-[var(--primary)] font-medium" : ""}>
-                  {i === 0 ? "●" : "○"} {i + 1} {step}
-                </span>
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
+        <p className="page-eyebrow">{t("idea.publishEyebrow")}</p>
+        <h1 className="page-heading">{t("idea.publishTitle")}</h1>
+        <p className="page-heading-desc">{t("idea.publishDesc")}</p>
 
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="flex-1 min-w-0 space-y-5">
-            {error && (
-              <div className="rounded-lg bg-[var(--coral-soft)] border border-[var(--coral)]/20 p-3 text-sm text-[var(--coral)]">
-                {error}
-              </div>
+        <div className="mt-6 app-grid-2 lg:grid-cols-[minmax(0,var(--content-main))_var(--content-aside)] lg:justify-center">
+          <form onSubmit={handleSubmit} className="surface-card p-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField id="new-agent" label={t("idea.publishPublisher")}>
+                {loadingAgents ? (
+                  <p className="text-[12px] text-[var(--ink-faint)]">{t("idea.loadingIdentities")}</p>
+                ) : (
+                  <select
+                    value={agentId}
+                    onChange={(event) => setAgentId(event.target.value)}
+                    className="input-field h-9"
+                  >
+                    <option value="">{t("idea.humanOwnerOption")}</option>
+                    {agents.map((agent) => (
+                      <option key={agent.id} value={agent.id}>{agent.name}</option>
+                    ))}
+                  </select>
+                )}
+              </FormField>
+              <FormField id="new-category" label={t("idea.publishCategory")}>
+                <select
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value)}
+                  className="input-field h-9"
+                >
+                  {CATEGORIES.map((item) => (
+                    <option key={item.value} value={item.value}>{t(item.label)}</option>
+                  ))}
+                </select>
+              </FormField>
+            </div>
+
+            <p className="mt-2 font-code text-[10px] text-[var(--ink-faint)]">
+              {selectedAgent
+                ? t("idea.executorLine", { name: selectedAgent.name })
+                : t("idea.ownerHumanLine")}
+            </p>
+
+            <div className="mt-5">
+              <FormField
+                id="new-title"
+                label={t("idea.publishTitleField")}
+                required
+                hint={`${title.length}/500`}
+              >
+                <Input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder={t("idea.titlePlaceholder")}
+                  maxLength={500}
+                  className="h-10"
+                />
+              </FormField>
+            </div>
+
+            <div className="mt-5">
+              <FormField id="new-desc" label={t("idea.publishBodyField")} required>
+                <Textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder={t("idea.publishDescPlaceholder")}
+                  rows={12}
+                  maxLength={10000}
+                  className="w-full font-code text-[12px] leading-6"
+                />
+              </FormField>
+            </div>
+
+            <div className="mt-5">
+              <FormField id="new-tags" label={t("idea.tagsComma")} hint={t("idea.tagsHint")}>
+                <Input
+                  value={tagsRaw}
+                  onChange={(event) => setTagsRaw(event.target.value)}
+                  placeholder={t("idea.tagsPlaceholder")}
+                  className="h-10"
+                />
+              </FormField>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <FormField id="new-repo" label={t("idea.repoUrl")}>
+                <Input
+                  value={repoUrl}
+                  onChange={(event) => setRepoUrl(event.target.value)}
+                  placeholder="https://github.com/..."
+                  className="h-10"
+                />
+              </FormField>
+              <FormField id="new-demo" label={t("idea.demoUrl")}>
+                <Input
+                  value={demoUrl}
+                  onChange={(event) => setDemoUrl(event.target.value)}
+                  placeholder="https://..."
+                  className="h-10"
+                />
+              </FormField>
+            </div>
+
+            {similarIdeas.length > 0 && (
+              <section className="callout-primary mt-5 p-4">
+                <p className="font-code text-[10px] font-medium text-[var(--primary)]">
+                  {t("idea.similarityGuard")}
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {similarIdeas.map(({ idea, similarity }) => (
+                    <li key={idea.id} className="flex items-center justify-between gap-4 text-[12px]">
+                      <Link href={`/ideas/${idea.id}`} className="truncate text-[var(--ink)] hover:text-[var(--accent-link)]">
+                        {idea.title}
+                      </Link>
+                      <span className="shrink-0 font-code text-[10px] text-[var(--primary)]">
+                        {t("idea.matchPct", { pct: Math.round(similarity * 100) })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
 
-            <div>
-              <label htmlFor="new-apikey" className="block text-sm font-medium text-[var(--title)] mb-1.5">API Key *</label>
-              <input
-                id="new-apikey"
-                name="api-key"
-                type="password"
-                autoComplete="off"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="wanye_xxxxx"
-                className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="new-title" className="block text-sm font-medium text-[var(--title)] mb-1.5">标题 *</label>
-              <input
-                id="new-title"
-                name="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="为想法起一个简短有力的名字…"
-                className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="new-desc" className="block text-sm font-medium text-[var(--title)] mb-1.5">
-                描述 * <span className="text-[var(--text-muted)] font-normal">(支持 Markdown)</span>
-              </label>
-              <textarea
-                id="new-desc"
-                name="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="问题、动机、方案、当前进展…"
-                rows={6}
-                className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--primary)] resize-y"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="new-repo" className="block text-sm font-medium text-[var(--title)] mb-1.5">仓库 URL (可选)</label>
-              <input
-                id="new-repo"
-                name="repo-url"
-                type="url"
-                autoComplete="off"
-                value={repoUrl}
-                onChange={(e) => setRepoUrl(e.target.value)}
-                placeholder="https://github.com/..."
-                className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="new-demo" className="block text-sm font-medium text-[var(--title)] mb-1.5">Demo URL (可选)</label>
-              <input
-                id="new-demo"
-                name="demo-url"
-                type="url"
-                autoComplete="off"
-                value={demoUrl}
-                onChange={(e) => setDemoUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[var(--title)] mb-2">分类 * (单选)</label>
-              <div className="flex flex-wrap gap-2">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    className={`tag-pill ${category === cat ? "bg-[var(--primary)] text-white" : ""}`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[var(--title)] mb-2">标签 (最多 5 个)</label>
-              <div className="flex flex-wrap gap-2 items-center rounded-lg border border-[var(--divider)] bg-white px-3 py-2">
-                {tags.map((tag) => (
-                  <span key={tag} className="tag-pill flex items-center gap-1">
-                    #{tag}
-                    <button type="button" onClick={() => removeTag(tag)} className="text-[var(--text-muted)] hover:text-[var(--coral)]">×</button>
-                  </span>
-                ))}
-                {tags.length < 5 && (
-                  <>
-                    <label htmlFor="new-tag" className="sr-only">添加标签</label>
-                    <input
-                      id="new-tag"
-                      name="tag-input"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addTag(tagInput);
-                        }
-                      }}
-                      placeholder="添加标签…"
-                      className="flex-1 min-w-[100px] text-sm outline-none py-1"
-                    />
-                  </>
-                )}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2 items-center">
-                <span className="text-xs text-[var(--text-muted)]">推荐:</span>
-                {recommendedTags.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => addTag(tag)}
-                    className="tag-pill text-xs hover:bg-[var(--primary)] hover:text-white"
-                  >
-                    #{tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[var(--title)] mb-2">可见性</label>
-              <div className="rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)] px-4 py-3 text-sm text-[var(--text-muted)]">
-                当前所有想法默认公开可见、可被搜索和 Fork。可见性控制即将支持。
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <Link href="/ideas" className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm hover:bg-[var(--bg-subtle)]">
-                取消
-              </Link>
-              <button
-                type="button"
-                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm hover:bg-[var(--bg-subtle)]"
-              >
-                保存草稿
-              </button>
-              <div className="flex-1" />
-              <button
+            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--rule)] pt-4">
+              <Button
                 type="submit"
+                variant="primary"
                 disabled={loading}
-                className="rounded-lg gradient-btn px-6 py-2.5 text-sm font-medium disabled:opacity-50"
+                icon={<DeimosIcon name="send" className="h-4 w-4" />}
               >
-                {loading ? "发布中…" : "发布想法"}
-              </button>
+                {loading ? t("idea.publishing") : t("idea.publishButton")}
+              </Button>
+              <Link href="/ideas" className="font-code text-[10px] text-[var(--ink-faint)] hover:text-[var(--ink)]">
+                {t("idea.cancelLink")}
+              </Link>
             </div>
           </form>
 
-          {/* Right panel */}
-          <aside className="w-full lg:w-[420px] shrink-0 space-y-4">
-            <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)] mb-3">去重检测</h3>
-              {checking ? (
-                <p className="text-sm text-[var(--text-muted)]">检测中…</p>
-              ) : similar.length > 0 ? (
-                <>
-                  <p className="text-sm text-[var(--coral)] mb-3">
-                    检测到 {similar.length} 个相似度 ≥ 50% 的想法。建议先看看是否可 Fork 或协作。
-                  </p>
-                  <div className="space-y-2">
-                    {similar.map((s) => (
-                      <Link
-                        key={s.idea.id}
-                        href={`/ideas/${s.idea.id}`}
-                        className="block rounded-lg border border-[var(--divider)] p-3 hover:border-[var(--primary)]"
-                      >
-                        <p className="text-sm font-medium text-[var(--title)]">{s.idea.title}</p>
-                        <p className="text-xs text-[var(--text-muted)] mt-1">
-                          {(s.similarity * 100).toFixed(0)}% 相似
-                        </p>
-                      </Link>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-[var(--text-muted)]">
-                  {title.length >= 4 ? "未发现高相似想法，可以发布" : "填写标题和描述后自动检测"}
-                </p>
-              )}
-            </div>
+          <aside className="space-y-4">
+            <section className="callout-primary p-4">
+              <p className="font-code text-[10px] font-medium text-[var(--primary)]">
+                {t("idea.similarityPreflight")}
+              </p>
+              <p className="mt-4 text-[13px] font-semibold text-[var(--ink)]">
+                {t("idea.autoCheck")}
+              </p>
+              <div className="mt-4 space-y-2 font-code text-[10px] leading-5 text-[var(--ink-soft)]">
+                <p>{t("idea.checkSemantic")}</p>
+                <p>{t("idea.checkOverlap")}</p>
+                <p>{t("idea.checkEvidence")}</p>
+              </div>
+            </section>
 
-            <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)] mb-3">实时预览</h3>
-              <IdeaCard idea={previewIdea} preview />
-            </div>
+            <section className="panel-inverse p-4 font-code text-[10px] leading-6">
+              <p className="panel-inverse-accent">{t("idea.aiNativePublish")}</p>
+              <p className="mt-3 panel-inverse-muted">{t("idea.aiNativePublishHint")}</p>
+              <Link href="/chat" className="mt-4 inline-flex panel-inverse-accent hover:underline">
+                {t("idea.openWorkbench")}
+              </Link>
+            </section>
+
+            <section className="callout-link p-4">
+              <p className="font-code text-[10px] text-[var(--accent-link)]">
+                {t("idea.whatGetsRecorded")}
+              </p>
+              <p className="mt-3 font-code text-[10px] leading-5 text-[var(--accent-link)]">
+                {t("idea.whatGetsRecordedHint")}
+              </p>
+            </section>
           </aside>
         </div>
       </div>

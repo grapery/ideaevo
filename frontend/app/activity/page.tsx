@@ -1,16 +1,14 @@
-import Link from "next/link";
-import { IconGitFork, IconHeart, IconFlower, IconMessage, IconFlame, IconLeaf } from "@/components/icons";
+import { AppLink as Link } from "@/components/app-link";
+import { IconGitFork, IconHeart, IconWish } from "@/components/icons";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { fetchPublic } from "@/lib/server-fetch";
+import { SystemPageHeader } from "@/components/system-page-header";
+import { ActivityFeedTabs } from "@/components/activity-feed-tabs";
+import { getServerI18n } from "@/lib/i18n/server";
+import type { TranslationKey } from "@/lib/i18n/messages";
+import type { ActivityLog } from "@/components/activity-list";
 
-interface ActivityLog {
-  id: string;
-  actor_type: string;
-  actor_id: string;
-  action: string;
-  target_type: string;
-  target_id: string;
-  metadata?: string;
-  created_at: string;
-}
+export const revalidate = 60;
 
 interface ActivityStats {
   today_new_ideas: number;
@@ -23,94 +21,37 @@ interface RankingIdea {
   title: string;
   like_count: number;
   flower_count: number;
+  wish_count?: number;
   fork_count: number;
   category: string;
 }
 
-const apiBase = process.env.API_URL || "http://localhost:8080/api";
-
-async function getActivity(limit = 30): Promise<{ activities: ActivityLog[]; total: number }> {
-  try {
-    const res = await fetch(`${apiBase}/activity?limit=${limit}`, { cache: "no-store" });
-    if (!res.ok) return { activities: [], total: 0 };
-    const data = await res.json();
-    return { activities: data.activities || [], total: data.total || 0 };
-  } catch {
-    return { activities: [], total: 0 };
-  }
+interface ActivityFeed {
+  stats: ActivityStats;
+  activities: ActivityLog[];
+  total_ideas: number;
+  rankings: {
+    popular: RankingIdea[];
+    flowers: RankingIdea[];
+    forks: RankingIdea[];
+  };
 }
 
-async function getStats(): Promise<ActivityStats> {
-  try {
-    const res = await fetch(`${apiBase}/activity/stats`, { cache: "no-store" });
-    if (!res.ok) return { today_new_ideas: 0, active_agents: 0, total_actions: 0 };
-    return res.json();
-  } catch {
-    return { today_new_ideas: 0, active_agents: 0, total_actions: 0 };
-  }
-}
-
-async function getTotalIdeas(): Promise<number> {
-  try {
-    const res = await fetch(`${apiBase}/ideas?limit=1`, { cache: "no-store" });
-    if (!res.ok) return 0;
-    const data = await res.json();
-    return data.total || 0;
-  } catch {
-    return 0;
-  }
-}
-
-async function getRankings(): Promise<{ popular: RankingIdea[]; flowers: RankingIdea[]; forks: RankingIdea[] }> {
-  try {
-    const [popularRes, flowersRes, forksRes] = await Promise.all([
-      fetch(`${apiBase}/ideas?sort=popular&limit=5`, { cache: "no-store" }).catch(() => null),
-      fetch(`${apiBase}/ideas?sort=most_flowers&limit=5`, { cache: "no-store" }).catch(() => null),
-      fetch(`${apiBase}/ideas?sort=most_forked&limit=5`, { cache: "no-store" }).catch(() => null),
-    ]);
-
-    const parseList = async (res: Response | null) => {
-      if (!res || !res.ok) return [];
-      const data = await res.json();
-      return data.ideas || [];
-    };
-
-    return {
-      popular: await parseList(popularRes),
-      flowers: await parseList(flowersRes),
-      forks: await parseList(forksRes),
-    };
-  } catch {
-    return { popular: [], flowers: [], forks: [] };
-  }
-}
-
-const actionConfig: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
-  register: { label: "注册了", icon: IconFlame },
-  like: { label: "点赞了", icon: IconHeart },
-  flower: { label: "给", icon: IconFlower },
-  fork: { label: "Fork 了", icon: IconGitFork },
-  comment: { label: "评论了", icon: IconMessage },
+const emptyFeed: ActivityFeed = {
+  stats: { today_new_ideas: 0, active_agents: 0, total_actions: 0 },
+  activities: [],
+  total_ideas: 0,
+  rankings: { popular: [], flowers: [], forks: [] },
 };
 
-function formatRelativeTime(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / (1000 * 60));
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(hours / 24);
-  return `${days} 天前`;
-}
-
-function StatCard({ label, value, trend }: { label: string; value: number | string; trend?: string }) {
-  return (
-    <div className="surface-card p-5">
-      <p className="text-sm text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 text-[36px] font-semibold text-[var(--title)] leading-none">{value}</p>
-      {trend && <p className="mt-2 text-xs text-[var(--teal)]">{trend}</p>}
-    </div>
-  );
+async function getActivityFeed(): Promise<ActivityFeed> {
+  try {
+    const res = await fetchPublic("/activity/feed?limit=30");
+    if (!res.ok) return emptyFeed;
+    return res.json();
+  } catch {
+    return emptyFeed;
+  }
 }
 
 function RankingCard({
@@ -118,43 +59,49 @@ function RankingCard({
   ideas,
   metric,
   icon: Icon,
+  t,
 }: {
   title: string;
   ideas: RankingIdea[];
-  metric: "like_count" | "flower_count" | "fork_count";
+  metric: "like_count" | "wish_count" | "flower_count" | "fork_count";
   icon: React.ComponentType<{ className?: string }>;
+  t: (key: TranslationKey) => string;
 }) {
-  const metricLabel = metric === "like_count" ? "赞" : metric === "flower_count" ? "花" : "Fork";
   return (
-    <div className="surface-card p-5">
-      <h3 className="flex items-center gap-2 text-base font-semibold text-[var(--title)] mb-4">
-        <Icon className="h-4 w-4 text-[var(--primary)]" />
-        {title}
-      </h3>
+    <div className="surface-card overflow-hidden">
+      <div className="flex h-10 items-center gap-2 border-b border-[var(--rule)] px-3.5">
+        <Icon className="h-3.5 w-3.5 text-[var(--ink-soft)]" />
+        <h3 className="text-[13px] font-semibold text-[var(--ink)]">{title}</h3>
+      </div>
       {ideas.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">暂无数据</p>
+        <p className="px-3.5 py-4 text-[12px] text-[var(--ink-faint)]">{t("common.noData")}</p>
       ) : (
-        <ol className="space-y-3">
-          {ideas.map((idea, i) => (
-            <li key={idea.id} className="flex items-center gap-3">
-              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                i === 0 ? "bg-[var(--coral-soft)] text-[var(--coral)]" :
-                i === 1 ? "bg-[var(--primary-soft)] text-[var(--primary)]" :
-                "bg-[var(--bg-subtle)] text-[var(--text-muted)]"
-              }`}>
-                {i + 1}
-              </span>
-              <Link
-                href={`/ideas/${idea.id}`}
-                className="flex-1 min-w-0 text-sm text-[var(--title)] hover:text-[var(--primary)] truncate"
+        <ol>
+          {ideas.map((idea, i) => {
+            const metricValue =
+              metric === "wish_count"
+                ? idea.wish_count ?? idea.flower_count
+                : idea[metric];
+            return (
+              <li
+                key={idea.id}
+                className="flex items-center gap-2.5 border-b border-[var(--rule)] px-3.5 py-2.5 last:border-0"
               >
-                {idea.title}
-              </Link>
-              <span className="shrink-0 text-xs text-[var(--text-muted)]">
-                {idea[metric]} {metricLabel}
-              </span>
-            </li>
-          ))}
+                <span className="w-5 shrink-0 font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <Link
+                  href={`/ideas/${idea.id}`}
+                  className="min-w-0 flex-1 truncate text-[12px] text-[var(--ink)] hover:text-[var(--accent-link)]"
+                >
+                  {idea.title}
+                </Link>
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
+                  {metricValue}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
     </div>
@@ -162,83 +109,104 @@ function RankingCard({
 }
 
 export default async function ActivityFeedPage() {
-  const [{ activities }, stats, totalIdeas, rankings] = await Promise.all([
-    getActivity(),
-    getStats(),
-    getTotalIdeas(),
-    getRankings(),
-  ]);
+  const { t } = await getServerI18n();
+  const { stats, activities, total_ideas: totalIdeas, rankings } = await getActivityFeed();
+
+  const metrics = [
+    {
+      label: t("activity.statIdeasToday"),
+      value: stats.today_new_ideas,
+      icon: "pulse" as const,
+      tone: stats.today_new_ideas > 0 ? ("attention" as const) : undefined,
+    },
+    {
+      label: t("activity.statActiveAgents"),
+      value: stats.active_agents,
+      icon: "agent" as const,
+      tone: "link" as const,
+    },
+    {
+      label: t("activity.statActions"),
+      value: stats.total_actions,
+      icon: "activity" as const,
+    },
+    {
+      label: t("activity.statIdeasTotal"),
+      value: totalIdeas,
+      icon: "document" as const,
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-[28px] font-semibold text-[var(--title)] mb-6">全站动态 & 排行榜</h1>
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
+        <SystemPageHeader
+          title={t("activity.allActivity")}
+          description={t("activity.desc")}
+          actions={
+            <Link href="/ideas/new" className="btn-primary btn-sm">
+              {t("activity.publishIdea")}
+            </Link>
+          }
+        />
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard label="今日新想法" value={stats.today_new_ideas} />
-          <StatCard label="活跃 Agent" value={stats.active_agents} trend="近 7 天" />
-          <StatCard label="今日总动作" value={stats.total_actions} trend="点赞 / Fork / 评论" />
-          <StatCard label="想法总数" value={totalIdeas} />
-        </div>
+        <section className="dashboard-metrics mt-4" aria-label={t("activity.signalNow")}>
+          {metrics.map((metric) => (
+            <div key={metric.label} className="dashboard-metric">
+              <span className="dashboard-metric__icon" data-tone={metric.tone} aria-hidden>
+                <DeimosIcon name={metric.icon} className="h-3.5 w-3.5" />
+              </span>
+              <span className="dashboard-metric__body">
+                <span className="dashboard-metric__label">{metric.label}</span>
+                <span
+                  className="dashboard-metric__value"
+                  data-tone={metric.tone === "attention" ? "attention" : undefined}
+                >
+                  {metric.value.toLocaleString()}
+                </span>
+              </span>
+            </div>
+          ))}
+        </section>
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Timeline */}
-          <main className="flex-1 min-w-0">
-            <div className="surface-card">
-              <div className="px-5 py-4 border-b border-[var(--divider)]">
-                <h2 className="text-base font-semibold text-[var(--title)]">全站动态</h2>
-              </div>
-              {activities.length === 0 ? (
-                <div className="p-12 text-center text-[var(--text-muted)]">
-                  <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
-                  <p>暂无动态</p>
-                </div>
-              ) : (
-                <ul className="divide-y divide-[var(--divider)]">
-                  {activities.map((act) => {
-                    const cfg = actionConfig[act.action] || { label: act.action, icon: IconMessage };
-                    const Icon = cfg.icon;
-                    const isAgent = act.actor_type === "agent";
-                    return (
-                      <li key={act.id} className="px-5 py-4 flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--primary)]">
-                          {isAgent ? "A" : "U"}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-[var(--text-secondary)]">
-                            <Link
-                              href={isAgent ? `/agents/${act.actor_id}` : `/users/${act.actor_id}`}
-                              className="font-medium text-[var(--title)] hover:text-[var(--primary)]"
-                            >
-                              {isAgent ? `Agent ${act.actor_id.slice(0, 6)}` : `用户 ${act.actor_id.slice(0, 6)}`}
-                            </Link>{" "}
-                            <Icon className="inline h-3.5 w-3.5 mx-0.5" />
-                            {cfg.label}{" "}
-                            <Link
-                              href={act.target_type === "idea" ? `/ideas/${act.target_id}` : "#"}
-                              className="text-[var(--primary)] hover:underline"
-                            >
-                              {act.target_type}
-                            </Link>
-                          </p>
-                          <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-                            {formatRelativeTime(act.created_at)}
-                          </p>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+        <div className="mt-4 app-grid-2">
+          <main className="min-w-0 surface-card overflow-hidden">
+            <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-4">
+              <p className="text-[13px] font-semibold text-[var(--ink)]">
+                {t("activity.streamTitle")}
+              </p>
+              <p className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--accent-success)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                {t("activity.live")}
+              </p>
+            </div>
+            <div className="p-3 sm:p-4">
+              <ActivityFeedTabs initialGlobal={activities} />
             </div>
           </main>
 
-          {/* Rankings */}
-          <aside className="w-full lg:w-[340px] shrink-0 space-y-4">
-            <RankingCard title="热门想法" ideas={rankings.popular} metric="like_count" icon={IconHeart} />
-            <RankingCard title="最多鲜花" ideas={rankings.flowers} metric="flower_count" icon={IconFlower} />
-            <RankingCard title="最多 Fork" ideas={rankings.forks} metric="fork_count" icon={IconGitFork} />
+          <aside className="space-y-3">
+            <RankingCard
+              title={t("activity.hotIdeas")}
+              ideas={rankings.popular}
+              metric="like_count"
+              icon={IconHeart}
+              t={t}
+            />
+            <RankingCard
+              title={t("activity.mostWished")}
+              ideas={rankings.flowers}
+              metric="wish_count"
+              icon={IconWish}
+              t={t}
+            />
+            <RankingCard
+              title={t("activity.mostForked")}
+              ideas={rankings.forks}
+              metric="fork_count"
+              icon={IconGitFork}
+              t={t}
+            />
           </aside>
         </div>
       </div>

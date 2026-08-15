@@ -6,15 +6,48 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mark3labs/mcp-go/mcp"
-	mcpgolang "github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/wanye/ideaevo/internal/model"
 	"github.com/wanye/ideaevo/internal/service"
 	"gorm.io/gorm"
 )
 
+// readOnlyTools 是只读工具白名单：仅查询、不修改任何数据。
+// 这些工具对所有人免费（含非 Pro 的带 key 调用），符合「免费用户可浏览市场」的产品意图。
+// 写操作（register/fork/comment/like/flowers 等）仍要求 Pro 会员。
+var readOnlyTools = map[string]bool{
+	"search_ideas":        true,
+	"query_ideas":         true,
+	"get_idea_detail":     true,
+	"get_comments":        true,
+	"get_agent":           true,
+	"list_agent_following": true,
+	"list_agent_followers": true,
+	"get_agent_activity":  true,
+	"get_me":              true,
+	"get_chat_history":    true,
+	"list_chat_sessions":  true,
+	"get_user_profile":    true,
+	"get_user_activity":   true,
+}
+
+// ctxKeyHTTPAgent 标记由 HTTP 层（requireAPIKey）验证过的 agent，避免工具层重复要求 api_key 参数。
+type ctxKeyHTTPAgent struct{}
+
+// HTTPAgentContextKey 返回用于在 context 中存取 HTTP 层验证过的 agent 的 key。
+// 供 cmd/mcp 的鉴权中间件注入身份。
+func HTTPAgentContextKey() any { return ctxKeyHTTPAgent{} }
+
+// ptrStr 安全解引用 *string，nil 返回空串。
+func ptrStr(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
 type Server struct {
-	mcpServer *mcpgolang.MCPServer
+	mcpServer *mcp.Server
 	agentSvc  *service.AgentService
 	socialSvc *service.SocialService
 	chatSvc   *service.ChatService
@@ -24,6 +57,9 @@ type Server struct {
 	// tools 注入后，所有 MCP 工具调用会委托给 ToolRegistry 执行
 	// （同一份实现服务于 MCP / REST / agent-bridge 三个入口）。
 	tools *service.ToolExecutor
+
+	// subSvc 注入后，通过 api_key 调用 MCP 写/专属工具要求付费会员。
+	subSvc *service.SubscriptionService
 }
 
 func NewServer(agentSvc *service.AgentService, socialSvc *service.SocialService, chatSvc *service.ChatService, userSvc *service.UserService, db *gorm.DB) *Server {
@@ -35,13 +71,13 @@ func NewServer(agentSvc *service.AgentService, socialSvc *service.SocialService,
 		db:        db,
 	}
 
-	mcpServer := mcpgolang.NewMCPServer(
-		"wanye-marketplace",
-		"1.0.0",
-		mcpgolang.WithToolCapabilities(true),
+	s.mcpServer = mcp.NewServer(
+		&mcp.Implementation{Name: "deimos-marketplace", Version: "1.0.0"},
+		&mcp.ServerOptions{
+			Capabilities: &mcp.ServerCapabilities{Tools: &mcp.ToolCapabilities{ListChanged: true}},
+		},
 	)
 
-	s.mcpServer = mcpServer
 	s.registerTools()
 	return s
 }
@@ -55,6 +91,13 @@ func (s *Server) WithToolExecutor(tools *service.ToolExecutor) *Server {
 	return s
 }
 
+// WithSubscription 注入会员服务以启用 MCP 付费门控。
+// 注入后，通过 api_key 调用 MCP 写/专属工具要求该 Agent 的 owner 为付费会员。
+func (s *Server) WithSubscription(subSvc *service.SubscriptionService) *Server {
+	s.subSvc = subSvc
+	return s
+}
+
 // registerBridgedTools 在 ToolRegistry 注入后，为其中每个工具创建 MCP 包装器，
 // 使 MCP 客户端透明地调用同一份工具实现（与 REST chat / agent-bridge 行为一致，
 // 含二次确认、capabilities 过滤）。
@@ -63,40 +106,61 @@ func (s *Server) registerBridgedTools() {
 		return
 	}
 	for _, t := range s.tools.ToolsDefinition(nil) {
-		name := t.Function.Name
-		desc := t.Function.Description
-		schema := t.Function.Parameters
-
 		// 复制闭包变量避免循环变量问题
-		toolName := name
-		toolSchema := schema
+		toolName := t.Function.Name
+		toolDesc := t.Function.Description
+		toolSchema := t.Function.Parameters // json.RawMessage，直接作为 raw schema
 
-		mcpTool := mcp.NewToolWithRawSchema(toolName, desc, toolSchema)
-		s.mcpServer.AddTool(mcpTool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			// MCP 工具仍要求 api_key 参数做认证（向后兼容现有客户端）
-			apiKey := req.GetString("api_key", "")
+		// 用低层 AddTool + raw InputSchema（schema 来自共享 ToolRegistry，
+		// 无法静态转 typed struct），handler 自行解析 req.Params.Arguments。
+		s.mcpServer.AddTool(&mcp.Tool{
+			Name:        toolName,
+			Description: toolDesc,
+			InputSchema: toolSchema,
+		}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// 鉴权：身份来源优先级 HTTP 层 context > 工具参数 api_key > 匿名。
+			// HTTP 层（requireAPIKey）验证过的 agent 注入在 ctx，远程 MCP 客户端
+			//（Cursor/Codex 经 Authorization 头鉴权）无需每个工具再传 api_key 参数。
+			var rawArgs map[string]any
+			if len(req.Params.Arguments) > 0 {
+				_ = json.Unmarshal(req.Params.Arguments, &rawArgs)
+			}
+			isReadOnly := readOnlyTools[toolName]
+
 			var principal service.Principal
-			if apiKey != "" {
+			if httpAgent, ok := ctx.Value(ctxKeyHTTPAgent{}).(*model.Agent); ok && httpAgent != nil {
+				// HTTP 层已鉴权：只读工具直接放行；写操作仍校验 Pro。
+				if !isReadOnly && s.subSvc != nil {
+					if err := s.subSvc.EnsureCanUseMCP(httpAgent.OwnerUserID); err != nil {
+						return nil, fmt.Errorf("MCP write tools require a paid subscription (agent owner is not Pro)")
+					}
+				}
+				principal = service.Principal{Source: "mcp", AgentID: httpAgent.ID}
+			} else if apiKey, _ := rawArgs["api_key"].(string); apiKey != "" {
+				// stdio 老用法：工具参数传 api_key。向后兼容。
 				agent, err := s.agentSvc.ValidateAPIKey(apiKey)
 				if err != nil {
 					return nil, fmt.Errorf("invalid api_key: %w", err)
 				}
-				principal = service.Principal{
-					Source:   "mcp",
-					AgentID:  agent.ID,
-					IsSystemAssistant: false,
+				if !isReadOnly && s.subSvc != nil {
+					if err := s.subSvc.EnsureCanUseMCP(agent.OwnerUserID); err != nil {
+						return nil, fmt.Errorf("MCP write tools require a paid subscription (agent owner is not Pro)")
+					}
 				}
+				principal = service.Principal{Source: "mcp", AgentID: agent.ID}
 			} else {
-				// 只读工具（search/query/get_*）允许匿名访问
+				// 匿名：只读工具放行（免费浏览市场），写操作拒绝。
+				if !isReadOnly {
+					return nil, fmt.Errorf("api_key required for write operations")
+				}
 				principal = service.Principal{Source: "mcp"}
 			}
 
-			// 转换 MCP 入参 → ToolExecutor 期望的 ToolCall
-			args, _ := json.Marshal(req.Params.Arguments)
+			// req.Params.Arguments 已是 json.RawMessage，可直接作为 ArgsJSON 传入
 			call := service.ToolCall{
 				ID:       fmt.Sprintf("mcp-%d", time.Now().UnixNano()),
 				Name:     toolName,
-				ArgsJSON: args,
+				ArgsJSON: req.Params.Arguments,
 			}
 
 			results, err := s.tools.ExecuteBatch(ctx, principal, []service.ToolCall{call})
@@ -104,27 +168,43 @@ func (s *Server) registerBridgedTools() {
 				return nil, err
 			}
 			if len(results) == 0 {
-				return mcp.NewToolResultText("{}"), nil
+				return textResult("{}"), nil
 			}
-			return mcp.NewToolResultText(results[0].Output), nil
+			return textResult(results[0].Output), nil
 		})
 	}
 }
 
-// GetServer 返回底层 mcp-go server，供 stdio/SSE 传输层使用。
-func (s *Server) GetServer() *mcpgolang.MCPServer {
+// GetServer 返回底层 mcp server，供 stdio/SSE 传输层使用。
+func (s *Server) GetServer() *mcp.Server {
 	return s.mcpServer
 }
 
-// authenticate validates the api_key parameter and returns the agent ID.
-func (s *Server) authenticate(req mcp.CallToolRequest) (string, error) {
-	apiKey := req.GetString("api_key", "")
+// authenticate 解析调用者身份，返回 agent ID。
+// 身份来源优先级：HTTP 层 context（远程 MCP）> api_key 参数（stdio 老用法）。
+// isReadOnly=true 时跳过 Pro 门控（只读工具对所有人免费）。
+func (s *Server) authenticate(ctx context.Context, apiKey string, isReadOnly bool) (string, error) {
+	// HTTP 层已鉴权：直接取注入的 agent。
+	if httpAgent, ok := ctx.Value(ctxKeyHTTPAgent{}).(*model.Agent); ok && httpAgent != nil {
+		if !isReadOnly && s.subSvc != nil {
+			if err := s.subSvc.EnsureCanUseMCP(httpAgent.OwnerUserID); err != nil {
+				return "", fmt.Errorf("MCP write tools require a paid subscription (agent owner is not Pro)")
+			}
+		}
+		return httpAgent.ID, nil
+	}
+	// stdio 老用法：工具参数 api_key。
 	if apiKey == "" {
 		return "", fmt.Errorf("api_key is required")
 	}
 	agent, err := s.agentSvc.ValidateAPIKey(apiKey)
 	if err != nil {
 		return "", fmt.Errorf("invalid api_key: %w", err)
+	}
+	if !isReadOnly && s.subSvc != nil {
+		if err := s.subSvc.EnsureCanUseMCP(agent.OwnerUserID); err != nil {
+			return "", fmt.Errorf("MCP write tools require a paid subscription (agent owner is not Pro)")
+		}
 	}
 	return agent.ID, nil
 }
@@ -134,208 +214,246 @@ func (s *Server) authenticate(req mcp.CallToolRequest) (string, error) {
 // 想法市场核心工具（register/search/query/fork/like/bury/flowers/comment 等）
 // 统一由 registerBridgedTools 从共享 ToolRegistry 桥接，保证三入口行为一致。
 // 这里只保留 ToolRegistry 不提供、围绕 user/chat 的工具，避免与桥接工具重名。
+//
+// 每个工具用 typed struct 声明入参（带 json/jsonschema tag），由 mcp.AddTool
+// 自动生成 schema 与校验；handler 直接拿到类型化输入，无需手动解析参数。
 func (s *Server) registerTools() {
 	// unlike（ToolRegistry 未提供取消点赞，保留独立实现）
-	s.mcpServer.AddTool(mcp.NewTool("unlike",
-		mcp.WithDescription("Remove your like from an idea."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
-		mcp.WithString("idea_id", mcp.Required(), mcp.Description("ID of the idea to unlike")),
-	), s.handleUnlike)
+	mcp.AddTool(s.mcpServer, &mcp.Tool{
+		Name:        "unlike",
+		Description: "Remove your like from an idea.",
+	}, s.handleUnlike)
 
 	// get_me
-	s.mcpServer.AddTool(mcp.NewTool("get_me",
-		mcp.WithDescription("Get information about the authenticated agent."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
-	), s.handleGetMe)
+	mcp.AddTool(s.mcpServer, &mcp.Tool{
+		Name:        "get_me",
+		Description: "Get information about the authenticated agent.",
+	}, s.handleGetMe)
 
 	// create_chat_session
-	s.mcpServer.AddTool(mcp.NewTool("create_chat_session",
-		mcp.WithDescription("Create a new chat session with an agent."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
-		mcp.WithString("agent_id", mcp.Required(), mcp.Description("ID of the agent to chat with")),
-		mcp.WithString("idea_id", mcp.Description("Optional idea ID to bind the session to")),
-		mcp.WithString("title", mcp.Description("Optional session title")),
-	), s.handleCreateChatSession)
+	mcp.AddTool(s.mcpServer, &mcp.Tool{
+		Name:        "create_chat_session",
+		Description: "Create a new chat session with an agent.",
+	}, s.handleCreateChatSession)
 
 	// send_chat_message
-	s.mcpServer.AddTool(mcp.NewTool("send_chat_message",
-		mcp.WithDescription("Send a message in a chat session and get the assistant's reply."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
-		mcp.WithString("session_id", mcp.Required(), mcp.Description("ID of the chat session")),
-		mcp.WithString("content", mcp.Required(), mcp.Description("Message content")),
-	), s.handleSendChatMessage)
+	mcp.AddTool(s.mcpServer, &mcp.Tool{
+		Name:        "send_chat_message",
+		Description: "Send a message in a chat session and get the assistant's reply.",
+	}, s.handleSendChatMessage)
 
 	// get_chat_history
-	s.mcpServer.AddTool(mcp.NewTool("get_chat_history",
-		mcp.WithDescription("Get chat message history for a session."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
-		mcp.WithString("session_id", mcp.Required(), mcp.Description("ID of the chat session")),
-		mcp.WithNumber("limit", mcp.Description("Max messages to return (default 50)")),
-		mcp.WithString("before_id", mcp.Description("Get messages before this message ID")),
-	), s.handleGetChatHistory)
+	mcp.AddTool(s.mcpServer, &mcp.Tool{
+		Name:        "get_chat_history",
+		Description: "Get chat message history for a session.",
+	}, s.handleGetChatHistory)
 
 	// list_chat_sessions
-	s.mcpServer.AddTool(mcp.NewTool("list_chat_sessions",
-		mcp.WithDescription("List chat sessions for the authenticated agent."),
-		mcp.WithString("api_key", mcp.Required(), mcp.Description("Your Wanye API key")),
-		mcp.WithNumber("limit", mcp.Description("Max sessions to return (default 20)")),
-		mcp.WithNumber("offset", mcp.Description("Pagination offset")),
-	), s.handleListChatSessions)
+	mcp.AddTool(s.mcpServer, &mcp.Tool{
+		Name:        "list_chat_sessions",
+		Description: "List chat sessions for the authenticated agent.",
+	}, s.handleListChatSessions)
 
 	// get_user_profile
-	s.mcpServer.AddTool(mcp.NewTool("get_user_profile",
-		mcp.WithDescription("Get a user's public profile including stats."),
-		mcp.WithString("user_id", mcp.Required(), mcp.Description("ID of the user")),
-	), s.handleGetUserProfile)
+	mcp.AddTool(s.mcpServer, &mcp.Tool{
+		Name:        "get_user_profile",
+		Description: "Get a user's public profile including stats.",
+	}, s.handleGetUserProfile)
 
 	// get_user_activity
-	s.mcpServer.AddTool(mcp.NewTool("get_user_activity",
-		mcp.WithDescription("Get recent activity records for a user."),
-		mcp.WithString("user_id", mcp.Required(), mcp.Description("ID of the user")),
-		mcp.WithNumber("limit", mcp.Description("Max records to return (default 20)")),
-		mcp.WithNumber("offset", mcp.Description("Pagination offset")),
-	), s.handleGetUserActivity)
+	mcp.AddTool(s.mcpServer, &mcp.Tool{
+		Name:        "get_user_activity",
+		Description: "Get recent activity records for a user.",
+	}, s.handleGetUserActivity)
 }
 
-func getArgs(req mcp.CallToolRequest) map[string]interface{} {
-	if args, ok := req.Params.Arguments.(map[string]interface{}); ok {
-		return args
+// textResult 构造一个只含文本内容的 CallToolResult。
+func textResult(s string) *mcp.CallToolResult {
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: s}},
 	}
-	return map[string]interface{}{}
 }
 
-func getFloatArg(args map[string]interface{}, key string) float64 {
-	if v, ok := args[key].(float64); ok {
-		return v
-	}
-	return 0
-}
-
-func (s *Server) handleUnlike(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	agentID, err := s.authenticate(req)
+// marshalResult 把任意值序列化为 JSON 文本结果。
+func marshalResult(v any) (*mcp.CallToolResult, error) {
+	data, err := json.Marshal(v)
 	if err != nil {
 		return nil, err
 	}
-	s.socialSvc.UnlikeIdea(req.GetString("idea_id", ""), "", agentID)
-	return mcp.NewToolResultText("Unliked successfully"), nil
+	return textResult(string(data)), nil
 }
 
-func (s *Server) handleGetMe(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	agentID, err := s.authenticate(req)
+// ---- 工具入参 struct ----
+// api_key 统一用指针 + omitempty：远程 MCP 客户端经 HTTP Authorization 头鉴权后，
+// 身份注入 context，无需每个工具再传 api_key（schema 里标为 optional）。
+// stdio 客户端仍可通过 api_key 参数传身份（向后兼容）。
+
+type unlikeInput struct {
+	APIKey *string `json:"api_key,omitempty" jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+	IdeaID string  `json:"idea_id"           jsonschema:"ID of the idea to unlike"`
+}
+
+type getMeInput struct {
+	APIKey *string `json:"api_key,omitempty" jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+}
+
+type createChatSessionInput struct {
+	APIKey  *string `json:"api_key,omitempty"   jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+	AgentID string  `json:"agent_id"            jsonschema:"ID of the agent to chat with"`
+	IdeaID  string  `json:"idea_id,omitempty"   jsonschema:"optional idea ID to bind the session to"`
+	Title   string  `json:"title,omitempty"     jsonschema:"optional session title"`
+}
+
+type sendChatMessageInput struct {
+	APIKey    *string `json:"api_key,omitempty"   jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+	SessionID string  `json:"session_id"          jsonschema:"ID of the chat session"`
+	Content   string  `json:"content"             jsonschema:"message content"`
+}
+
+type getChatHistoryInput struct {
+	APIKey    *string `json:"api_key,omitempty"    jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+	SessionID string  `json:"session_id"           jsonschema:"ID of the chat session"`
+	Limit     int     `json:"limit,omitempty"      jsonschema:"max messages to return (default 50)"`
+	BeforeID  string  `json:"before_id,omitempty"  jsonschema:"get messages before this message ID"`
+}
+
+type listChatSessionsInput struct {
+	APIKey *string `json:"api_key,omitempty"  jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+	Limit  int     `json:"limit,omitempty"    jsonschema:"max sessions to return (default 20)"`
+	Offset int     `json:"offset,omitempty"   jsonschema:"pagination offset"`
+}
+
+type getUserProfileInput struct {
+	UserID string `json:"user_id" jsonschema:"ID of the user"`
+}
+
+type getUserActivityInput struct {
+	UserID string `json:"user_id"          jsonschema:"ID of the user"`
+	Limit  int    `json:"limit,omitempty"  jsonschema:"max records to return (default 20)"`
+	Offset int    `json:"offset,omitempty" jsonschema:"pagination offset"`
+}
+
+// ---- 工具 handler ----
+
+func (s *Server) handleUnlike(ctx context.Context, req *mcp.CallToolRequest, in unlikeInput) (*mcp.CallToolResult, any, error) {
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	s.socialSvc.UnlikeIdea(in.IdeaID, "", agentID)
+	return textResult("Unliked successfully"), nil, nil
+}
+
+func (s *Server) handleGetMe(ctx context.Context, req *mcp.CallToolRequest, in getMeInput) (*mcp.CallToolResult, any, error) {
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), true)
+	if err != nil {
+		return nil, nil, err
 	}
 	agent, err := s.agentSvc.GetByID(agentID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	data, _ := json.Marshal(agent)
-	return mcp.NewToolResultText(string(data)), nil
+	res, err := marshalResult(agent)
+	return res, nil, err
 }
 
-func (s *Server) handleCreateChatSession(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	agentID, err := s.authenticate(req)
+func (s *Server) handleCreateChatSession(ctx context.Context, req *mcp.CallToolRequest, in createChatSessionInput) (*mcp.CallToolResult, any, error) {
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	userID := "agent:" + agentID
 
 	session, err := s.chatSvc.CreateSession(userID, service.CreateSessionInput{
-		AgentID: req.GetString("agent_id", ""),
-		IdeaID:  req.GetString("idea_id", ""),
-		Title:   req.GetString("title", ""),
+		AgentID: in.AgentID,
+		IdeaID:  in.IdeaID,
+		Title:   in.Title,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	data, _ := json.Marshal(session)
-	return mcp.NewToolResultText(string(data)), nil
+	res, err := marshalResult(session)
+	return res, nil, err
 }
 
-func (s *Server) handleSendChatMessage(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	agentID, err := s.authenticate(req)
+func (s *Server) handleSendChatMessage(ctx context.Context, req *mcp.CallToolRequest, in sendChatMessageInput) (*mcp.CallToolResult, any, error) {
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	userID := "agent:" + agentID
 
-	result, err := s.chatSvc.SendMessage(req.GetString("session_id", ""), userID, service.SendMessageInput{
-		Content: req.GetString("content", ""),
+	result, err := s.chatSvc.SendMessage(in.SessionID, userID, service.SendMessageInput{
+		Content: in.Content,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	data, _ := json.Marshal(result)
-	return mcp.NewToolResultText(string(data)), nil
+	res, err := marshalResult(result)
+	return res, nil, err
 }
 
-func (s *Server) handleGetChatHistory(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	agentID, err := s.authenticate(req)
+func (s *Server) handleGetChatHistory(ctx context.Context, req *mcp.CallToolRequest, in getChatHistoryInput) (*mcp.CallToolResult, any, error) {
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), true)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	userID := "agent:" + agentID
 
-	args := getArgs(req)
-	limit := int(getFloatArg(args, "limit"))
+	limit := in.Limit
 	if limit == 0 {
 		limit = 50
 	}
 
-	messages, err := s.chatSvc.GetMessages(req.GetString("session_id", ""), userID, req.GetString("before_id", ""), limit)
+	messages, err := s.chatSvc.GetMessages(in.SessionID, userID, in.BeforeID, limit)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	data, _ := json.Marshal(map[string]interface{}{"messages": messages})
-	return mcp.NewToolResultText(string(data)), nil
+	res, err := marshalResult(map[string]any{"messages": messages})
+	return res, nil, err
 }
 
-func (s *Server) handleListChatSessions(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	agentID, err := s.authenticate(req)
+func (s *Server) handleListChatSessions(ctx context.Context, req *mcp.CallToolRequest, in listChatSessionsInput) (*mcp.CallToolResult, any, error) {
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), true)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	userID := "agent:" + agentID
 
-	args := getArgs(req)
-	limit := int(getFloatArg(args, "limit"))
-	offset := int(getFloatArg(args, "offset"))
+	limit := in.Limit
 	if limit == 0 {
 		limit = 20
 	}
 
-	sessions, total, err := s.chatSvc.ListSessions(userID, limit, offset)
+	sessions, total, err := s.chatSvc.ListSessions(userID, limit, in.Offset)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	data, _ := json.Marshal(map[string]interface{}{"sessions": sessions, "total": total})
-	return mcp.NewToolResultText(string(data)), nil
+	res, err := marshalResult(map[string]any{"sessions": sessions, "total": total})
+	return res, nil, err
 }
 
-func (s *Server) handleGetUserProfile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	profile, err := s.userSvc.GetProfile(req.GetString("user_id", ""))
+func (s *Server) handleGetUserProfile(ctx context.Context, req *mcp.CallToolRequest, in getUserProfileInput) (*mcp.CallToolResult, any, error) {
+	profile, err := s.userSvc.GetProfile(in.UserID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	data, _ := json.Marshal(profile)
-	return mcp.NewToolResultText(string(data)), nil
+	res, err := marshalResult(profile)
+	return res, nil, err
 }
 
-func (s *Server) handleGetUserActivity(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	userID := req.GetString("user_id", "")
-	args := getArgs(req)
-	limit := int(getFloatArg(args, "limit"))
-	offset := int(getFloatArg(args, "offset"))
+func (s *Server) handleGetUserActivity(ctx context.Context, req *mcp.CallToolRequest, in getUserActivityInput) (*mcp.CallToolResult, any, error) {
+	limit := in.Limit
 	if limit == 0 {
 		limit = 20
 	}
 
 	var activities []model.ActivityLog
-	s.db.Where("actor_id = ? AND actor_type = ?", userID, "user").
+	s.db.Where("actor_id = ? AND actor_type = ?", in.UserID, "user").
 		Order("created_at DESC").
-		Limit(limit).Offset(offset).
+		Limit(limit).Offset(in.Offset).
 		Find(&activities)
 
-	data, _ := json.Marshal(map[string]interface{}{"activities": activities})
-	return mcp.NewToolResultText(string(data)), nil
+	res, err := marshalResult(map[string]any{"activities": activities})
+	return res, nil, err
 }

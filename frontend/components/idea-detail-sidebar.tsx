@@ -1,250 +1,269 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Idea } from "@/lib/types";
-import { IconGitFork } from "@/components/icons";
+import { useEffect, useState } from "react";
+import { Idea, FlowerSender, IdeaLineage, IdeaStats } from "@/lib/types";
 import { SendFlowerButton } from "./idea-action-bar";
+import { ForkFlowGraph } from "./fork-flow-graph";
+import { WireframeAvatar } from "./wireframe-avatar";
+import { Modal } from "./ui/modal";
+import { getApiBase } from "@/lib/api-base";
+import { IconGitFork, IconMessage } from "./icons";
+import { DeimosIcon } from "./deimos-icon";
+import { useI18n } from "@/lib/i18n/provider";
 
-interface ForkRecord {
-  id: string;
-  source_idea_id: string;
-  new_idea_id: string;
-  agent_id: string;
-  reason: string;
-  created_at: string;
-}
-
-function formatRelative(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days < 1) return "今天";
-  if (days < 30) return `${days} 天前`;
-  if (days < 365) return `${Math.floor(days / 30)} 个月前`;
-  return `${Math.floor(days / 365)} 年前`;
-}
-
-interface ForkNode {
-  fork: ForkRecord | null; // null = root
-  idea: Idea | null;
-  children: ForkNode[];
-}
-
-/**
- * Build a fork tree from a flat list of forks.
- * We fetch each forked idea on demand to display its title.
- */
-function buildTree(
-  rootIdea: Idea,
-  forks: ForkRecord[],
-  ideaMap: Map<string, Idea>
-): ForkNode {
-  const nodeByIdeaId = new Map<string, ForkNode>();
-  const root: ForkNode = { fork: null, idea: rootIdea, children: [] };
-  nodeByIdeaId.set(rootIdea.id, root);
-
-  for (const f of forks) {
-    const idea = ideaMap.get(f.new_idea_id) || null;
-    const node: ForkNode = { fork: f, idea, children: [] };
-    nodeByIdeaId.set(f.new_idea_id, node);
-
-    const parent = nodeByIdeaId.get(f.source_idea_id);
-    if (parent) parent.children.push(node);
-    else root.children.push(node); // orphan → attach to root
-  }
-  return root;
-}
+const sidebarCardClass = "surface-card p-5";
+const sidebarTitleClass = "heading-sans text-sm pb-2 mb-3 border-b border-[var(--divider)]";
 
 export function ForkTreePanel({
   idea,
-  forks,
+  lineage,
 }: {
   idea: Idea;
-  forks: ForkRecord[];
+  lineage?: IdeaLineage | null;
 }) {
-  const [ideaMap, setIdeaMap] = useState<Map<string, Idea>>(new Map());
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const apiBase =
-    (typeof window !== "undefined" ? window.__ENV_API_URL__ : null) ||
-    "http://localhost:8080/api";
-
-  // Fetch each forked idea to display its title.
-  useEffect(() => {
-    if (forks.length === 0) return;
-    const ids = forks.map((f) => f.new_idea_id);
-    Promise.all(
-      ids.map((id) =>
-        fetch(`${apiBase}/ideas/${id}`)
-          .then((r) => (r.ok ? r.json() : null))
-          .then((d) => (d ? [id, d] : null))
-          .catch(() => null)
-      )
-    ).then((results) => {
-      const m = new Map<string, Idea>();
-      for (const r of results) {
-        if (r) m.set(r[0] as string, r[1] as Idea);
-      }
-      setIdeaMap(m);
-    });
-  }, [forks, apiBase]);
-
-  const tree = buildTree(idea, forks, ideaMap);
-
-  function toggle(id: string) {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
+  const { t } = useI18n();
   return (
-    <div className="surface-card p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-[var(--title)] flex items-center gap-1.5">
-          <IconGitFork className="h-4 w-4" /> Fork 树
-        </h3>
-        <span className="text-xs text-[var(--text-muted)]">{forks.length} 个衍生</span>
-      </div>
+    <div className="surface-card p-5">
+      <h3 className={`${sidebarTitleClass} mb-3`}>{t("idea.forkLineageShort")}</h3>
 
-      <TreeNode node={tree} depth={0} collapsed={collapsed} onToggle={toggle} />
-
-      {forks.length === 0 && (
-        <p className="mt-2 text-xs text-[var(--text-muted)]">
-          暂无 Fork，成为第一个衍生者
-        </p>
+      {lineage && (
+        <div className="mb-3 space-y-2 text-xs">
+          {lineage.source_idea && (
+            <div className="rounded-md border border-[var(--rule)] bg-[var(--bg-subtle)] p-2.5">
+              <div className="mb-0.5 text-[var(--text-muted)]">{t("idea.forkedFrom")}</div>
+              <Link
+                href={`/ideas/${lineage.source_idea.id}`}
+                className="block truncate font-medium text-[var(--ink)] hover:text-[var(--primary)]"
+              >
+                {lineage.source_idea.title}
+              </Link>
+              {lineage.source_version && (
+                <div className="mt-0.5 text-[var(--text-muted)]">
+                  {t("idea.versionBadge", { version: lineage.source_version.version })}
+                  {lineage.origin?.reason && ` · ${lineage.origin.reason}`}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[var(--text-muted)]">
+            <span>{t("idea.totalForks", { count: lineage.stats.total_forks })}</span>
+            <span>{t("idea.activeBranches", { count: lineage.stats.active_branches })}</span>
+            <span>{t("idea.contributors", { count: lineage.stats.contributors })}</span>
+          </div>
+        </div>
       )}
+
+      <ForkFlowGraph idea={idea} lineage={lineage ?? null} children={[]} />
     </div>
   );
 }
 
-function TreeNode({
-  node,
-  depth,
-  collapsed,
-  onToggle,
+function senderProfileHref(sender: FlowerSender): string | undefined {
+  if (sender.user_id) return `/users/${sender.user_id}`;
+  if (sender.agent_id) return `/agents/${sender.agent_id}`;
+  return undefined;
+}
+
+/** 送花面板：计数 + 送花者头像名单 + 送花按钮。 */
+export function FlowersPanel({
+  ideaId,
+  flowerCount,
+  initialSenders = [],
 }: {
-  node: ForkNode;
-  depth: number;
-  collapsed: Set<string>;
-  onToggle: (id: string) => void;
+  ideaId: string;
+  flowerCount: number;
+  initialSenders?: FlowerSender[];
 }) {
-  const ideaId = node.idea?.id || node.fork?.new_idea_id || "root";
-  const isRoot = node.fork === null;
-  const isCollapsed = collapsed.has(ideaId);
-  const hasChildren = node.children.length > 0;
+  const { locale, t } = useI18n();
+  const [senders, setSenders] = useState<FlowerSender[]>(initialSenders);
+  const [loaded, setLoaded] = useState(initialSenders.length > 0 || flowerCount === 0);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
+  const [listOpen, setListOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${getApiBase()}/ideas/${ideaId}/flowers`, { cache: "no-store" })
+      .then((r) => {
+        if (!r.ok) throw new Error("flowers fetch failed");
+        return r.json();
+      })
+      .then((data) => {
+        // 后端字段仍为 donors，前端按送花者展示
+        if (!cancelled) setSenders(data.donors || []);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadFailed(true);
+          if (initialSenders.length === 0) setSenders([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ideaId, flowerCount, initialSenders.length, retryToken]);
+
+  const displaySenders = senders.slice(0, 12);
+  const hiddenCount = Math.max(0, senders.length - displaySenders.length);
+  const canExpand = senders.length > 0;
 
   return (
-    <div className={depth > 0 ? "ml-3 border-l-2 border-[var(--divider)] pl-3 my-1" : ""}>
-      <div
-        className={`flex items-start gap-2 rounded-lg px-2.5 py-1.5 ${
-          isRoot ? "bg-[var(--primary-soft)]" : "hover:bg-[var(--bg-subtle)]"
-        }`}
-      >
-        {hasChildren ? (
-          <button
-            type="button"
-            onClick={() => onToggle(ideaId)}
-            className="mt-0.5 text-[var(--text-muted)] hover:text-[var(--primary)] text-xs w-4"
-            aria-label={isCollapsed ? "展开" : "折叠"}
-          >
-            {isCollapsed ? "▶" : "▼"}
-          </button>
-        ) : (
-          <span className="mt-0.5 text-[var(--text-muted)] text-xs w-4">•</span>
-        )}
-
-        <div className="flex-1 min-w-0">
-          {node.idea ? (
-            <Link
-              href={`/ideas/${node.idea.id}`}
-              className={`text-sm hover:text-[var(--primary)] block truncate ${
-                isRoot
-                  ? "font-medium text-[var(--primary)]"
-                  : "text-[var(--text-secondary)]"
-              }`}
-            >
-              {node.idea.title}
-            </Link>
-          ) : (
-            <span className="text-sm text-[var(--text-muted)] italic">
-              {node.fork ? `Fork ${node.fork.new_idea_id.slice(0, 6)}` : "未知"}
-            </span>
-          )}
-
-          {!isRoot && node.fork && (
-            <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-1">
-              {node.fork.reason}
-            </p>
-          )}
-
-          {node.fork && (
-            <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[var(--text-muted)]">
-              <span>by Agent {node.fork.agent_id.slice(0, 6)}</span>
-              <span>· {formatRelative(node.fork.created_at)}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {hasChildren && !isCollapsed && (
-        <div className="mt-1">
-          {node.children.map((child) => (
-            <TreeNode
-              key={child.fork?.id || child.idea?.id}
-              node={child}
-              depth={depth + 1}
-              collapsed={collapsed}
-              onToggle={onToggle}
+    <div className="rounded-lg border border-[#ffb45a] bg-[#fff4e6] p-5 text-[#914700]">
+      <h3 className="mb-3 border-b border-[#ffcf93] pb-2 font-code text-[10px] font-semibold uppercase">
+        <DeimosIcon name="flower" className="mr-1 inline-block h-3.5 w-3.5 text-[#ff8a00]" />
+        {t("idea.flowerSignals")} / {t("idea.flowerCountLabel", { count: flowerCount })}
+      </h3>
+      {!loaded ? (
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">{t("common.loading")}</p>
+      ) : displaySenders.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setListOpen(true)}
+          className="mb-2.5 -m-1 flex flex-wrap items-center gap-2 rounded-md p-1 text-left transition-colors hover:bg-[var(--bg-subtle)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ink-faint)] cursor-pointer"
+          aria-label={t("common.viewAll")}
+          title={t("common.viewAll")}
+        >
+          {displaySenders.map((sender) => (
+            <WireframeAvatar
+              key={sender.user_id || sender.agent_id || sender.name}
+              name={sender.name}
+              avatarUrl={sender.avatar_url}
+              entityId={sender.user_id || sender.agent_id}
+              kind={sender.user_id ? "user" : "agent"}
+              size={36}
+              title={sender.name}
             />
           ))}
+          {hiddenCount > 0 && (
+            <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 text-xs tabular-nums text-[var(--text-muted)]">
+              +{hiddenCount}
+            </span>
+          )}
+        </button>
+      ) : loadFailed ? (
+        <div className="mb-2.5">
+          <p className="text-sm text-[var(--text-muted)]">{t("idea.flowerLoadFailed")}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setLoaded(false);
+              setLoadFailed(false);
+              setRetryToken((n) => n + 1);
+            }}
+            className="mt-1 text-xs text-[var(--primary)] hover:underline"
+          >
+            {t("idea.reload")}
+          </button>
         </div>
-      )}
-    </div>
-  );
-}
-
-export function FlowersPanel({ ideaId, flowerCount }: { ideaId: string; flowerCount: number }) {
-  const avatarCount = Math.min(flowerCount, 8);
-
-  return (
-    <div className="surface-card p-4">
-      <h3 className="text-sm font-semibold text-[var(--title)] mb-3">🌸 收到的花</h3>
-      {avatarCount > 0 ? (
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {Array.from({ length: avatarCount }).map((_, i) => (
-            <div
-              key={i}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--teal-soft)] text-xs font-semibold text-[var(--teal)]"
-            >
-              {String.fromCharCode(65 + (i % 26))}
-            </div>
-          ))}
-        </div>
+      ) : flowerCount > 0 ? (
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">{t("idea.flowerUnavailable")}</p>
       ) : (
-        <p className="text-sm text-[var(--text-muted)] mb-3">还没有人送花</p>
+        <p className="mb-2.5 text-sm text-[var(--text-muted)]">{t("idea.noFlowers")}</p>
       )}
-      <p className="text-xs text-[var(--text-muted)] mb-3">
-        累计 {flowerCount} 朵鲜花
+      <p className="mb-3 font-code text-[10px] tabular-nums text-[#914700]/70">
+        {t("idea.flowerCountLabel", { count: flowerCount })}
+        {canExpand && (
+          <button
+            type="button"
+            onClick={() => setListOpen(true)}
+            className="ml-2 text-[var(--accent-link)] hover:underline"
+          >
+            {t("common.viewAll")} →
+          </button>
+        )}
       </p>
       <SendFlowerButton ideaId={ideaId} />
+
+      {canExpand && (
+        <Modal
+          open={listOpen}
+          onClose={() => setListOpen(false)}
+          title={t("idea.flowerSenders", { count: senders.length })}
+          description={t("idea.flowerSignals")}
+        >
+          <ul className="-mx-1 max-h-[60vh] space-y-1 overflow-y-auto">
+            {senders.map((sender) => {
+              const href = senderProfileHref(sender);
+              const inner = (
+                <>
+                  <WireframeAvatar
+                    name={sender.name}
+                    avatarUrl={sender.avatar_url}
+                    entityId={sender.user_id || sender.agent_id}
+                    kind={sender.user_id ? "user" : "agent"}
+                    size={32}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-[var(--title)]">
+                      {sender.name}
+                    </div>
+                    <div className="text-xs text-[var(--text-muted)]">
+                      {sender.user_id ? t("activity.user") : t("activity.agent")}
+                      {sender.created_at && (
+                        <>
+                          {" · "}
+                          {new Date(sender.created_at).toLocaleDateString(
+                            locale === "en" ? "en-US" : "zh-CN",
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </>
+              );
+              return (
+                <li key={sender.user_id || sender.agent_id || sender.name}>
+                  {href ? (
+                    <Link
+                      href={href}
+                      onClick={() => setListOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-[var(--bg-subtle)]"
+                    >
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-3 rounded-lg px-3 py-2">{inner}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Modal>
+      )}
     </div>
   );
 }
 
 export function RelatedIdeasPanel({ ideas, currentId }: { ideas: Idea[]; currentId: string }) {
+  const { t } = useI18n();
   const related = ideas.filter((i) => i.id !== currentId).slice(0, 3);
   if (related.length === 0) return null;
 
   return (
-    <div className="surface-card p-4">
-      <h3 className="text-sm font-semibold text-[var(--title)] mb-3">相关想法</h3>
-      <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
+    <div className={sidebarCardClass}>
+      <h3 className={`${sidebarTitleClass} mb-3`}>{t("idea.relatedIdeas")}</h3>
+      <ul className="space-y-3 text-sm">
         {related.map((item) => (
           <li key={item.id}>
-            <Link href={`/ideas/${item.id}`} className="hover:text-[var(--primary)]">
-              • {item.title}
+            <Link
+              href={`/ideas/${item.id}`}
+              className="block text-[var(--text-secondary)] hover:text-[var(--primary)]"
+            >
+              <span className="font-medium text-[var(--title)]">{item.title}</span>
+              <span className="mt-1 flex items-center gap-3 text-[11px] tabular-nums text-[var(--text-muted)]">
+                <span className="inline-flex items-center gap-0.5">
+                  <IconMessage className="h-3 w-3" />
+                  {item.comment_count}
+                </span>
+                <span className="inline-flex items-center gap-0.5">
+                  <IconGitFork className="h-3 w-3" />
+                  {item.fork_count}
+                </span>
+              </span>
             </Link>
           </li>
         ))}
@@ -253,23 +272,76 @@ export function RelatedIdeasPanel({ ideas, currentId }: { ideas: Idea[]; current
   );
 }
 
-export function IdeaStatsPanel({ idea }: { idea: Idea }) {
+export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats | null }) {
+  const { t } = useI18n();
+  const wishCount = stats?.wish_count ?? idea.wish_count ?? 0;
+  const flowerCount = stats?.flower_count ?? idea.flower_count ?? 0;
+
+  // 主指标(社区互动核心信号):稍大字号、强调色值,顶部突出展示。
+  const primary: [string, number][] = [
+    [t("idea.statLikes"), stats?.like_count ?? idea.like_count],
+    [t("idea.statWishes"), wishCount],
+    [t("idea.statFlowers"), flowerCount],
+    [t("idea.statForks"), stats?.fork_count ?? idea.fork_count],
+    [t("idea.statComments"), stats?.comment_count ?? idea.comment_count],
+  ];
+  // 次要指标(参考性):小字号、淡色,折叠到底部。
+  const secondary: [string, number][] = stats
+    ? [
+        [t("idea.statViews"), stats.view_count],
+        [t("idea.statRefs"), stats.reference_count],
+        [t("idea.statReactions"), stats.reaction_count],
+        [t("idea.statVersions"), stats.version_count],
+      ]
+    : [];
+
   return (
-    <div className="surface-card p-4">
-      <h3 className="text-sm font-semibold text-[var(--title)] mb-3">想法统计</h3>
-      <div className="space-y-2 text-sm">
-        {[
-          ["点赞", idea.like_count],
-          ["鲜花", idea.flower_count],
-          ["Fork", idea.fork_count],
-          ["评论", idea.comment_count],
-        ].map(([label, count]) => (
-          <div key={label as string} className="flex justify-between">
-            <span className="text-[var(--text-muted)]">{label}</span>
-            <span className="font-medium text-[var(--title)]">{count}</span>
+    <div className="surface-card p-5">
+      <h3 className="mb-4 border-b border-[var(--divider)] pb-3 font-code text-[10px] font-semibold uppercase">
+        {t("idea.statsTitle")}
+      </h3>
+      <div className="space-y-2.5 text-[13px]">
+        {primary.map(([label, count]) => (
+          <div key={label} className="flex items-center justify-between gap-4">
+            <span className="text-[var(--ink-soft)]">{label}</span>
+            <span className="font-semibold tabular-nums text-[var(--ink)]">
+              {count.toLocaleString()}
+            </span>
           </div>
         ))}
       </div>
+      {secondary.length > 0 && (
+        <div className="mt-3 space-y-1.5 border-t border-[var(--divider)] pt-3 font-code text-[10px]">
+          {secondary.map(([label, count]) => (
+            <div key={label} className="flex items-center justify-between gap-4">
+              <span className="text-[var(--ink-faint)]">{label}</span>
+              <span className="tabular-nums text-[var(--ink-faint)]">{count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {stats && stats.version_stats.length > 1 && (
+        <div className="mt-4 border-t border-[var(--divider)] pt-3">
+          <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">
+            {t("idea.versionInteractions")}
+          </p>
+          <div className="space-y-1.5">
+            {stats.version_stats.map((row) => (
+              <div
+                key={row.version_id}
+                className="flex items-center justify-between gap-2 text-xs text-[var(--text-muted)]"
+              >
+                <span>v{row.version}</span>
+                <span className="tabular-nums">
+                  {t("idea.forkCountShort", { count: row.stats.fork_count })} · {t("idea.statComments")} {row.stats.comment_count} ·{" "}
+                  {t("idea.statFlowers")} {row.stats.flower_count} · {t("idea.statReactions")}{" "}
+                  {row.stats.reaction_count}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

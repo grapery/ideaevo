@@ -3,34 +3,41 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { authApi } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/api-error";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { useI18n } from "@/lib/i18n/provider";
 
 export default function VerifyEmailPage() {
+  const { t } = useI18n();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get("token");
-    if (!token) {
-      setStatus("error");
-      setMessage("缺少验证 token，请检查邮件中的链接是否完整");
-      return;
-    }
-    authApi
-      .verifyEmail(token)
-      .then(() => {
-        setStatus("success");
-        setMessage("邮箱验证成功！你现在可以登录了");
-      })
-      .catch((err) => {
+    async function verify() {
+      await Promise.resolve();
+      const token = new URLSearchParams(window.location.search).get("token");
+      if (!token) {
         setStatus("error");
-        setMessage(err instanceof Error ? err.message : "验证失败，链接可能已过期");
-      });
-  }, []);
+        setMessage(t("auth.verifyMissingMsg"));
+        return;
+      }
+      try {
+        await authApi.verifyEmail(token);
+        setStatus("success");
+        setMessage(t("auth.verifySuccessMsg"));
+      } catch (err) {
+        setStatus("error");
+        setMessage(getErrorMessage(err, t("auth.verifyFailedMsg")));
+      }
+    }
+    void verify();
+  }, [t]);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
+    <div className="page-shell">
       <div className="mx-auto max-w-lg px-4 py-16">
-        <div className="surface-card p-10 text-center">
+        <div className="surface-card p-10 text-center shadow-[0_18px_50px_rgba(20,24,32,.05)]">
+          <p className="meta-label mb-5">{t("auth.verifyEyebrow")}</p>
           {status === "loading" && (
             <>
               <div className="mx-auto h-16 w-16 rounded-full bg-[var(--primary-soft)] flex items-center justify-center mb-5">
@@ -39,44 +46,44 @@ export default function VerifyEmailPage() {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">验证中…</h2>
-              <p className="text-sm text-[var(--text-muted)]">正在验证你的邮箱地址</p>
+              <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">{t("auth.verifying")}</h2>
+              <p className="text-sm text-[var(--text-muted)]">{t("auth.verifyTitle")}</p>
             </>
           )}
           {status === "success" && (
             <>
-              <div className="mx-auto h-16 w-16 rounded-full bg-[var(--teal-soft)] flex items-center justify-center text-3xl mb-5">
-                ✅
+              <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] flex items-center justify-center text-[var(--accent-success)] mb-5">
+                <DeimosIcon name="check" className="h-7 w-7" />
               </div>
-              <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">验证成功</h2>
+              <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">{t("auth.verifySuccess")}</h2>
               <p className="text-sm text-[var(--text-muted)] mb-6">{message}</p>
               <Link
                 href="/login"
-                className="inline-block rounded-lg gradient-btn px-6 py-3 text-sm font-medium transition-colors"
+                className="inline-block btn-outline px-6 py-3 text-sm font-medium transition-colors"
               >
-                去登录
+                {t("auth.goLogin")}
               </Link>
             </>
           )}
           {status === "error" && (
             <>
-              <div className="mx-auto h-16 w-16 rounded-full bg-[var(--coral)]/15 flex items-center justify-center text-3xl mb-5">
-                ❌
+              <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)] flex items-center justify-center text-[var(--accent-warning)] mb-5">
+                <DeimosIcon name="decision" className="h-7 w-7" />
               </div>
-              <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">验证失败</h2>
+              <h2 className="text-2xl font-semibold text-[var(--title)] mb-3">{t("auth.verifyFailed")}</h2>
               <p className="text-sm text-[var(--text-muted)] mb-6">{message}</p>
               <div className="flex gap-3 justify-center">
                 <Link
                   href="/login"
-                  className="rounded-lg border border-[var(--divider)] px-5 py-2.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition-colors"
+                  className="btn-default px-5 py-2.5"
                 >
-                  返回登录
+                  {t("auth.backToLogin")}
                 </Link>
                 <Link
                   href="/signup"
-                  className="rounded-lg gradient-btn px-5 py-2.5 text-sm font-medium"
+                  className="btn-outline px-5 py-2.5 text-sm font-medium"
                 >
-                  重新注册
+                  {t("auth.reregister")}
                 </Link>
               </div>
             </>

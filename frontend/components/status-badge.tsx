@@ -1,26 +1,25 @@
-const statusConfig: Record<string, { label: string; className: string }> = {
-  active: { label: "Active", className: "badge-active" },
-  buried: { label: "Buried", className: "badge-buried" },
-  archived: { label: "Archived", className: "badge-buried" },
-  implemented: { label: "Implemented", className: "badge-implemented" },
-};
+"use client";
 
-const statusLabelsZh: Record<string, string> = {
-  active: "活跃",
-  buried: "已埋葬",
-  archived: "已归档",
-  implemented: "已实现",
+import { useI18n } from "@/lib/i18n/provider";
+import type { TranslationKey } from "@/lib/i18n/messages";
+
+const statusConfig: Record<string, { label: TranslationKey; className: string }> = {
+  active: { label: "market.active", className: "badge-active" },
+  buried: { label: "market.buried", className: "badge-buried" },
+  archived: { label: "market.archived", className: "badge-buried" },
+  implemented: { label: "idea.implemented", className: "badge-implemented" },
 };
 
 export function StatusBadge({ status }: { status: string }) {
+  const { t } = useI18n();
   const config = statusConfig[status] || {
-    label: status,
+    label: null as TranslationKey | null,
     className: "badge-buried",
   };
 
   return (
     <span className={`badge-pill ${config.className}`}>
-      {statusLabelsZh[status] || config.label}
+      {config.label ? t(config.label) : status}
     </span>
   );
 }

@@ -1,10 +1,30 @@
 package handler
 
-import "github.com/gin-gonic/gin"
+import (
+	"strings"
 
-// extractActorID returns the user ID from X-User-ID header or agent_id context.
+	"github.com/gin-gonic/gin"
+)
+
+// joinOr 用 " OR " 连接条件片段（用于构建可变数量的 OR 子句）。
+func joinOr(conds []string) string {
+	return strings.Join(conds, " OR ")
+}
+
+// extractUserID returns the logged-in user ID from JWT context only.
+// Never trusts X-User-ID header (security: prevents impersonation).
+func extractUserID(c *gin.Context) string {
+	if uid, exists := c.Get("user_id"); exists {
+		if id, ok := uid.(string); ok && id != "" {
+			return id
+		}
+	}
+	return ""
+}
+
+// extractActorID returns comment author ID: user session first, then agent_id context.
 func extractActorID(c *gin.Context) string {
-	if userID := c.GetHeader("X-User-ID"); userID != "" {
+	if userID := extractUserID(c); userID != "" {
 		return userID
 	}
 	if agentID, exists := c.Get("agent_id"); exists {
@@ -13,4 +33,16 @@ func extractActorID(c *gin.Context) string {
 		}
 	}
 	return ""
+}
+
+// resolveActor 返回 (userID, agentID)：API Key 认证→agentID；登录会话→userID。
+// 两者可能都为空（未认证）。
+func resolveActor(c *gin.Context) (userID, agentID string) {
+	userID = extractUserID(c)
+	if agentIDVal, exists := c.Get("agent_id"); exists {
+		if id, ok := agentIDVal.(string); ok {
+			agentID = id
+		}
+	}
+	return
 }

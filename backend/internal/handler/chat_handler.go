@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wanye/ideaevo/internal/service"
@@ -63,15 +64,32 @@ func (h *ChatHandler) RenameSession(c *gin.Context) {
 	sessionID := c.Param("id")
 
 	var body struct {
-		Title string `json:"title" binding:"required"`
+		Title  *string `json:"title"`
+		IdeaID *string `json:"idea_id"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if (body.Title == nil || strings.TrimSpace(*body.Title) == "") &&
+		(body.IdeaID == nil || strings.TrimSpace(*body.IdeaID) == "") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title or idea_id required"})
+		return
+	}
 
-	if err := h.chatSvc.RenameSession(sessionID, userID, body.Title); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	if body.Title != nil && strings.TrimSpace(*body.Title) != "" {
+		if err := h.chatSvc.RenameSession(sessionID, userID, strings.TrimSpace(*body.Title)); err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+	}
+	if body.IdeaID != nil && strings.TrimSpace(*body.IdeaID) != "" {
+		session, err := h.chatSvc.BindSessionIdea(sessionID, userID, strings.TrimSpace(*body.IdeaID))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "updated", "session": session})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "renamed"})
@@ -93,8 +111,8 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 	sessionID := c.Param("id")
 
 	var input service.SendMessageInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := c.ShouldBindJSON(&input); err != nil || !input.HasContent() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "content is required"})
 		return
 	}
 
@@ -109,13 +127,14 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 func (h *ChatHandler) SendMessageStream(c *gin.Context) {
 	userID := c.GetString("user_id")
 	sessionID := c.Param("id")
-	content := c.Query("content")
-	if content == "" {
+
+	var input service.SendMessageInput
+	if err := c.ShouldBindJSON(&input); err != nil || !input.HasContent() {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "content is required"})
 		return
 	}
 
-	streamCh, userMsg, err := h.chatSvc.SendMessageStream(sessionID, userID, content)
+	streamCh, userMsg, err := h.chatSvc.SendMessageStream(sessionID, userID, input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -164,6 +183,67 @@ func (h *ChatHandler) GetMessages(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"messages": messages})
+}
+
+func (h *ChatHandler) SetMessageFeedback(c *gin.Context) {
+	userID := c.GetString("user_id")
+	sessionID := c.Param("id")
+	messageID := c.Param("message_id")
+
+	var body struct {
+		Rating string `json:"rating" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	rating, err := h.chatSvc.SetMessageFeedback(sessionID, messageID, userID, body.Rating)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"user_feedback": rating})
+}
+
+func (h *ChatHandler) ClearMessageFeedback(c *gin.Context) {
+	userID := c.GetString("user_id")
+	sessionID := c.Param("id")
+	messageID := c.Param("message_id")
+
+	if err := h.chatSvc.ClearMessageFeedback(sessionID, messageID, userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "ok"})
+}
+
+func (h *ChatHandler) ForkSession(c *gin.Context) {
+	userID := c.GetString("user_id")
+	sessionID := c.Param("id")
+
+	var input service.ForkSessionInput
+	_ = c.ShouldBindJSON(&input)
+
+	session, err := h.chatSvc.ForkSession(sessionID, userID, input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"session": session})
+}
+
+// ArchiveSession packages the chat context and extracts a summary.
+func (h *ChatHandler) ArchiveSession(c *gin.Context) {
+	userID := c.GetString("user_id")
+	sessionID := c.Param("id")
+
+	result, err := h.chatSvc.ArchiveSession(sessionID, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"result": result})
 }
 
 func getPagination(c *gin.Context) (limit, offset int) {

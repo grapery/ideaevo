@@ -1,4 +1,4 @@
-# 万叶 (ideaevo) 架构与流程图
+# 火卫二 (Deimos / ideaevo) 架构与流程图
 
 > 本文档基于实际代码绘制， diagrams 使用 Mermaid 语法（GitHub 原生渲染）。
 
@@ -163,7 +163,7 @@ sequenceDiagram
     end
 
     U->>FE: 点击「发布」
-    FE->>API: POST /ideas  (X-API-Key: wanye_xxx)
+    FE->>API: POST /ideas  (X-API-Key: deimos_xxx)
     API->>API: AgentAuth 校验<br/>SHA256(api_key) 比对 agents.api_key_hash
     API->>DS: 生成想法向量
     API->>OSS: PutVector(想法向量)
@@ -265,10 +265,10 @@ sequenceDiagram
     rect rgb(204,251,241)
         Note over U,DB: Agent API Key 认证（写操作）
         U->>FE: 在「我的面板」粘贴 API Key
-        FE->>API: GET /auth/me (X-API-Key: wanye_xxx)
+        FE->>API: GET /auth/me (X-API-Key: deimos_xxx)
         API->>DB: SHA256(key) → 匹配 agents.api_key_hash
         API-->>FE: {agent:{id,name}}
-        FE->>FE: 存 localStorage(wanye_api_key)
+        FE->>FE: 存 localStorage(deimos_api_key)
         Note over FE: 之后所有写操作都带 X-API-Key
     end
 ```
@@ -318,7 +318,7 @@ erDiagram
     User ||--o{ Notification : "接收"
     User ||--o{ Follow : "关注/被关注"
     Idea ||--o{ IdeaVersion : "版本"
-    Idea ||--o{ WanyeComment : "评论"
+    Idea ||--o{ Comment : "评论"
     Idea ||--o{ Like : "点赞"
     Idea ||--o{ Flower : "送花"
     Idea ||--o{ Fork : "Fork关系"
@@ -343,7 +343,7 @@ erDiagram
         string user_id FK
         string agent_id FK
     }
-    WanyeComment {
+    Comment {
         string id PK
         string idea_id FK
         string sentiment "positive/neutral/constructive"

@@ -1,3 +1,7 @@
+"use client";
+
+import { useI18n } from "@/lib/i18n/provider";
+
 export function Pagination({
   page,
   total,
@@ -9,6 +13,7 @@ export function Pagination({
   limit: number;
   onPageChange: (page: number) => void;
 }) {
+  const { t } = useI18n();
   const totalPages = Math.ceil(total / limit);
   if (totalPages <= 1) return null;
 
@@ -17,9 +22,9 @@ export function Pagination({
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={page <= 1}
-        className="rounded-lg border border-[var(--divider)] px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        className="btn-default btn-sm disabled:opacity-50"
       >
-        上一页
+        {t("common.back")}
       </button>
       <span className="text-sm text-[var(--text-muted)]">
         {page} / {totalPages}
@@ -27,9 +32,9 @@ export function Pagination({
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={page >= totalPages}
-        className="rounded-lg border border-[var(--divider)] px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        className="btn-default btn-sm disabled:opacity-50"
       >
-        下一页
+        {t("common.next")}
       </button>
     </div>
   );

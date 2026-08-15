@@ -31,15 +31,35 @@ func Connect(cfg *config.Config) *gorm.DB {
 		&model.User{},
 		&model.Idea{},
 		&model.IdeaVersion{},
+		&model.IdeaMetricEvent{},
+		&model.IdeaBookmark{},
 		&model.Fork{},
 		&model.Like{},
+		&model.Wish{},
 		&model.Flower{},
-		&model.WanyeComment{},
+		&model.FlowerDailyBalance{},
+		&model.Reaction{},
+		&model.Comment{},
+		&model.CommentLike{},
 		&model.ActivityLog{},
 		&model.ChatSession{},
 		&model.ChatMessage{},
+		&model.ChatAttachment{},
+		&model.MessageFeedback{},
 		&model.Follow{},
+		&model.AgentFollow{},
+		&model.AgentPeerFollow{},
 		&model.Notification{},
+		&model.NotificationPreferences{},
+		&model.UserDevice{},
+		&model.PhoneVerification{},
+		&model.A2ATask{},
+		&model.UserBlock{},
+		&model.ContentReport{},
+		// 计费模块
+		&model.Order{},
+		&model.DailyQuota{},
+		&model.Refund{},
 	); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}
@@ -53,6 +73,66 @@ func Connect(cfg *config.Config) *gorm.DB {
 	if idxExists == 0 {
 		db.Exec("CREATE INDEX idx_chat_messages_session_created ON chat_messages(session_id, created_at DESC)")
 	}
+
+	// MySQL reserved word: rename notifications.read -> is_read
+	var readColExists int64
+	db.Raw(`SELECT COUNT(1) FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = 'notifications' AND column_name = 'read'`).Scan(&readColExists)
+	var isReadColExists int64
+	db.Raw(`SELECT COUNT(1) FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = 'notifications' AND column_name = 'is_read'`).Scan(&isReadColExists)
+	if readColExists > 0 && isReadColExists == 0 {
+		db.Exec("ALTER TABLE notifications CHANGE COLUMN `read` is_read TINYINT(1) NOT NULL DEFAULT 0")
+	}
+
+	// Unset phone must be NULL so unique index allows multiple users without a phone.
+	db.Exec("UPDATE users SET phone = NULL WHERE phone = ''")
+
+	// 历史 seed 用 "publish_idea" 记录创建想法的动态，但 feed 白名单是
+	// register/fork/share，导致动态页为空。统一为 "register"。
+	db.Exec("UPDATE activity_logs SET action = 'register' WHERE action = 'publish_idea'")
+
+	// Fork uniqueness is version-scoped: an Agent may branch from different
+	// versions of the same Idea, while duplicate branches from one version remain blocked.
+	var legacyForkIndex int64
+	db.Raw(`SELECT COUNT(1) FROM information_schema.statistics
+		WHERE table_schema = DATABASE() AND table_name = 'forks'
+		AND index_name = 'idx_fork_source_agent'`).Scan(&legacyForkIndex)
+	if legacyForkIndex > 0 {
+		db.Exec("ALTER TABLE forks DROP INDEX idx_fork_source_agent")
+	}
+
+	// Reaction 改为多选语义：唯一索引需含 emoji 列。
+	// GORM AutoMigrate 不会重建已存在的同名索引，因此检测旧索引（不含 emoji）后手动 drop+recreate。
+	// 旧数据（单选时代每 actor 一行）与新索引无冲突，直接保留。
+	var reactionIdxHasEmoji int64
+	db.Raw(`SELECT COUNT(1) FROM information_schema.statistics
+		WHERE table_schema = DATABASE() AND table_name = 'reactions'
+		AND index_name = 'idx_reaction_unique' AND column_name = 'emoji'`).Scan(&reactionIdxHasEmoji)
+	var reactionIdxExists int64
+	db.Raw(`SELECT COUNT(1) FROM information_schema.statistics
+		WHERE table_schema = DATABASE() AND table_name = 'reactions'
+		AND index_name = 'idx_reaction_unique'`).Scan(&reactionIdxExists)
+	if reactionIdxExists > 0 && reactionIdxHasEmoji == 0 {
+		db.Exec("ALTER TABLE reactions DROP INDEX idx_reaction_unique")
+	}
+	if reactionIdxHasEmoji == 0 {
+		db.Exec("CREATE UNIQUE INDEX idx_reaction_unique ON reactions(idea_id, user_id, agent_id, emoji)")
+	}
+
+	// Legacy versions only stored title/description. The current Idea projection
+	// can safely hydrate the latest snapshot; older snapshots remain untouched
+	// because their historical metadata cannot be reconstructed reliably.
+	db.Exec(`UPDATE idea_versions iv
+		JOIN (SELECT idea_id, MAX(version) AS max_version FROM idea_versions GROUP BY idea_id) latest
+			ON latest.idea_id = iv.idea_id AND latest.max_version = iv.version
+		JOIN ideas i ON i.id = iv.idea_id
+		SET iv.category = i.category,
+			iv.tags = i.tags,
+			iv.repo_url = i.repo_url,
+			iv.demo_url = i.demo_url,
+			iv.impl_status = i.impl_status
+		WHERE iv.category IS NULL OR iv.category = ''`)
 
 	return db
 }

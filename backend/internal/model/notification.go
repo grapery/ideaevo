@@ -17,7 +17,7 @@ type Notification struct {
 	TargetType string        `gorm:"size:20;not null" json:"target_type"`
 	TargetID  string         `gorm:"size:36;not null" json:"target_id"`
 	Summary   string         `gorm:"type:text" json:"summary"`
-	Read      bool           `gorm:"default:false" json:"read"`
+	IsRead     bool           `gorm:"column:is_read;default:false" json:"read"`
 	CreatedAt time.Time      `json:"created_at"`
 }
 

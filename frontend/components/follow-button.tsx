@@ -2,20 +2,29 @@
 
 import { useState } from "react";
 import { userApi } from "@/lib/api-client";
+import { notify } from "@/components/ui/notify";
+import { getErrorMessage } from "@/lib/api-error";
+import { Button } from "@/components/ui/button";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { IconActionButton } from "@/components/ui/icon-action-button";
+import { useI18n } from "@/lib/i18n/provider";
 
 export default function FollowButton({
   userId,
   initialFollowing,
   isSelf,
   onChange,
+  iconOnly = false,
 }: {
   userId: string;
   initialFollowing: boolean;
   isSelf?: boolean;
   onChange?: (following: boolean) => void;
+  iconOnly?: boolean;
 }) {
   const [following, setFollowing] = useState(initialFollowing);
   const [loading, setLoading] = useState(false);
+  const { t } = useI18n();
 
   if (isSelf) return null;
 
@@ -29,24 +38,44 @@ export default function FollowButton({
       }
       setFollowing(!following);
       onChange?.(!following);
-    } catch {
-      // ignore
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(false);
     }
   };
 
+  if (iconOnly) {
+    return (
+      <IconActionButton
+        onClick={toggle}
+        disabled={loading}
+        label={following ? t("idea.unfollow") : t("idea.follow")}
+        tone={following ? "active" : "default"}
+        icon={
+          <DeimosIcon
+            name={following ? "check" : "users"}
+            className="h-[18px] w-[18px]"
+          />
+        }
+      />
+    );
+  }
+
   return (
-    <button
+    <Button
+      variant={following ? "danger" : "primary"}
       onClick={toggle}
       disabled={loading}
-      className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
-        following
-          ? "border border-[var(--divider)] text-[var(--text-secondary)] hover:border-[var(--coral)]/40 hover:text-[var(--coral)]"
-          : "gradient-btn hover:opacity-90"
-      }`}
+      icon={
+        following ? (
+          <DeimosIcon name="check" className="h-3.5 w-3.5" />
+        ) : (
+          <DeimosIcon name="users" className="h-3.5 w-3.5" />
+        )
+      }
     >
-      {following ? "已关注" : "关注"}
-    </button>
+      {following ? t("idea.following") : t("idea.follow")}
+    </Button>
   );
 }

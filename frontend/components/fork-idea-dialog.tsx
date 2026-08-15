@@ -1,0 +1,243 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { getErrorMessage } from "@/lib/api-error";
+import { ideaRequestJson } from "@/lib/idea-request";
+import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
+import { Modal } from "@/components/ui/modal";
+import { FormField, ButtonSpinner } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { notify } from "@/components/ui/notify";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { IconGitFork } from "./icons";
+import { useI18n } from "@/lib/i18n/provider";
+
+type ForkIdeaDialogProps = {
+  open: boolean;
+  onClose: () => void;
+  ideaId: string;
+  /** 被 fork 的原想法标题，用于上下文展示与预填。 */
+  sourceTitle: string;
+};
+
+const TITLE_MAX = 120;
+
+export function ForkIdeaDialog(props: ForkIdeaDialogProps) {
+  if (!props.open) return null;
+  return <ForkIdeaDialogContent key={props.ideaId} {...props} />;
+}
+
+function ForkIdeaDialogContent({
+  open,
+  onClose,
+  ideaId,
+  sourceTitle,
+}: ForkIdeaDialogProps) {
+  const { t } = useI18n();
+  const { apiKey, canAct, useSession } = useIdeaActionAuth();
+  const router = useRouter();
+
+  const defaultTitle = sourceTitle;
+  const [title, setTitle] = useState(defaultTitle);
+  const [description, setDescription] = useState("");
+  const [reason, setReason] = useState("");
+  const [errors, setErrors] = useState<{
+    title?: string;
+    description?: string;
+    reason?: string;
+    form?: string;
+  }>({});
+  const [loading, setLoading] = useState(false);
+
+  function validateTitle(v: string): string {
+    const trimmed = v.trim();
+    if (!trimmed) return t("fork.errTitleRequired");
+    if (trimmed.length > TITLE_MAX)
+      return t("fork.errTitleTooLong", { max: TITLE_MAX, len: trimmed.length });
+    return "";
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canAct) {
+      setErrors({ form: t("idea.authRequired") });
+      return;
+    }
+
+    const titleErr = validateTitle(title);
+    const descErr = description.trim() ? "" : t("fork.errDescRequired");
+    const reasonErr = reason.trim() ? "" : t("fork.errReasonRequired");
+    const nextErrors = {
+      title: titleErr || undefined,
+      description: descErr || undefined,
+      reason: reasonErr || undefined,
+    };
+    setErrors(nextErrors);
+    if (titleErr || descErr || reasonErr) return;
+
+    setLoading(true);
+    try {
+      const data = await ideaRequestJson<{ id: string }>(
+        `/ideas/${ideaId}/fork`,
+        {
+          method: "POST",
+          apiKey: useSession ? undefined : apiKey,
+          useSession,
+          body: JSON.stringify({
+            title: title.trim(),
+            description: description.trim(),
+            reason: reason.trim(),
+          }),
+        },
+      );
+      notify.success(t("fork.created"), {
+        action: {
+          label: t("fork.viewIt"),
+          onClick: () => router.push(`/ideas/${data.id}`),
+        },
+      });
+      onClose();
+      router.refresh();
+    } catch (err) {
+      const msg = getErrorMessage(err, t("fork.failed"));
+      setErrors({ form: msg });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const footer = (
+    <>
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={loading}
+        className="btn-default px-4 py-2 text-sm disabled:opacity-50"
+      >
+        {t("fork.cancel")}
+      </button>
+      <button
+        type="submit"
+        form="fork-idea-form"
+        disabled={loading}
+        className="inline-flex items-center gap-2 btn-outline px-5 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {loading ? (
+          <>
+            <ButtonSpinner className="h-4 w-4" />
+            {t("fork.forking")}
+          </>
+        ) : (
+          <>
+            <IconGitFork className="h-4 w-4" />
+            {t("fork.confirmFork")}
+          </>
+        )}
+      </button>
+    </>
+  );
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      disableClose={loading}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <IconGitFork className="h-5 w-5 text-[var(--primary)]" />
+          {t("fork.title")}
+        </span>
+      }
+      description={t("fork.desc")}
+      footer={footer}
+    >
+      <div className="mb-5 flex items-start gap-3 rounded-xl border border-[var(--divider)] bg-[var(--bg-subtle)] px-4 py-3">
+        <IconGitFork className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+        <div className="min-w-0">
+          <div className="text-xs text-[var(--text-muted)]">
+            {t("fork.basedOn")}
+          </div>
+          <div className="mt-0.5 line-clamp-2 text-sm font-medium text-[var(--title)]">
+            {sourceTitle}
+          </div>
+        </div>
+      </div>
+
+      <form id="fork-idea-form" onSubmit={handleSubmit} className="space-y-4">
+        <FormField
+          id="fork-title"
+          label={t("fork.titleLabel")}
+          required
+          error={errors.title}
+          hint={`${title.length}/${TITLE_MAX}`}
+        >
+          <Input
+            id="fork-title"
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              if (errors.title) setErrors((p) => ({ ...p, title: undefined }));
+            }}
+            hasError={!!errors.title}
+            placeholder={t("fork.titlePlaceholder")}
+            maxLength={TITLE_MAX}
+          />
+        </FormField>
+
+        <FormField
+          id="fork-description"
+          label={t("fork.descLabel")}
+          required
+          error={errors.description}
+        >
+          <Textarea
+            id="fork-description"
+            value={description}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              if (errors.description)
+                setErrors((p) => ({ ...p, description: undefined }));
+            }}
+            hasError={!!errors.description}
+            placeholder={t("fork.descPlaceholder")}
+            rows={4}
+          />
+        </FormField>
+
+        <FormField
+          id="fork-reason"
+          label={t("fork.reasonLabel")}
+          required
+          error={errors.reason}
+          hint={t("fork.reasonHint")}
+        >
+          <Textarea
+            id="fork-reason"
+            variant="subtle"
+            value={reason}
+            onChange={(e) => {
+              setReason(e.target.value);
+              if (errors.reason)
+                setErrors((p) => ({ ...p, reason: undefined }));
+            }}
+            hasError={!!errors.reason}
+            placeholder={t("fork.reasonPlaceholder")}
+            rows={3}
+          />
+        </FormField>
+
+        {errors.form && (
+          <div
+            role="alert"
+            className="field-shake flex items-start gap-2.5 rounded-xl border border-[var(--coral)] bg-[var(--coral-soft)] px-4 py-2.5 text-sm text-[var(--coral)]"
+          >
+            <DeimosIcon name="decision" className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{errors.form}</span>
+          </div>
+        )}
+      </form>
+    </Modal>
+  );
+}

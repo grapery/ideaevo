@@ -3,9 +3,13 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
+	"github.com/wanye/ideaevo/internal/llm"
 	"github.com/wanye/ideaevo/internal/model"
 	"gorm.io/gorm"
 )
@@ -19,25 +23,45 @@ type CreateSessionInput struct {
 }
 
 type SendMessageInput struct {
-	Content string `json:"content" binding:"required"`
+	Content      string  `json:"content"`                   // 可空（当携带附件时）
+	AttachmentID *string `json:"attachment_id,omitempty"` // 可选：聊天附件 ID（图片或文档）
+}
+
+// HasContent 判断是否有可发送内容（文字或附件）。
+func (in SendMessageInput) HasContent() bool {
+	return strings.TrimSpace(in.Content) != "" || (in.AttachmentID != nil && *in.AttachmentID != "")
 }
 
 type SendMessageResult struct {
-	UserMessage      model.ChatMessage  `json:"user_message"`
-	AssistantMessage model.ChatMessage  `json:"assistant_message"`
-	ToolResults      []ToolCallResult   `json:"tool_results,omitempty"` // 工具调用结果（前端可渲染卡片）
-	TokensUsed       int                `json:"tokens_used,omitempty"`
+	UserMessage      model.ChatMessage `json:"user_message"`
+	AssistantMessage model.ChatMessage `json:"assistant_message"`
+	ToolResults      []ToolCallResult  `json:"tool_results,omitempty"` // 工具调用结果（前端可渲染卡片）
+	TokensUsed       int               `json:"tokens_used,omitempty"`
+}
+
+type ChatMessageView struct {
+	model.ChatMessage
+	UserFeedback string `json:"user_feedback,omitempty"` // like | dislike
+}
+
+type ForkSessionInput struct {
+	BeforeMessageID string `json:"before_message_id"`
+	Title           string `json:"title"`
 }
 
 type ChatService struct {
-	db        *gorm.DB
-	ideaSvc   *IdeaService
-	agentSvc  *AgentService
-	llm       *LLMService
-	embed     *EmbeddingService
-	searcher  SimilaritySearcher // 可选，用于 RAG 检索
-	tools     *ToolExecutor      // 可选，启用后支持 tool use
-	toolNames []string           // 给 LLM 暴露的工具白名单（空=全部）
+	db            *gorm.DB
+	ideaSvc       *IdeaService
+	agentSvc      *AgentService
+	llm           *LLMService
+	embed         *EmbeddingService
+	searcher      SimilaritySearcher // 可选，用于 RAG 检索
+	ideaRetriever *IdeaContextRetriever
+	tools         *ToolExecutor        // 可选，启用后支持 tool use
+	toolNames     []string             // 给 LLM 暴露的工具白名单（空=全部）
+	subSvc        *SubscriptionService // 可选，启用后对 LLM token 做每日额度计量
+	modSvc        *ModerationService
+	attachmentSvc *ChatAttachmentService // 可选，启用后支持聊天附件（图片/文档）
 }
 
 func NewChatService(db *gorm.DB, ideaSvc *IdeaService, agentSvc *AgentService, llm *LLMService) *ChatService {
@@ -49,6 +73,7 @@ func NewChatService(db *gorm.DB, ideaSvc *IdeaService, agentSvc *AgentService, l
 func (s *ChatService) SetRAG(embed *EmbeddingService, searcher SimilaritySearcher) {
 	s.embed = embed
 	s.searcher = searcher
+	s.ideaRetriever = NewIdeaContextRetriever(searcher, embed, s.ideaSvc)
 }
 
 // SetTools 注入工具执行器以启用 tool use（让 LLM 能调用 search/register/like 等操作）。
@@ -58,10 +83,52 @@ func (s *ChatService) SetTools(executor *ToolExecutor, toolNames []string) {
 	s.toolNames = toolNames
 }
 
+// SetSubscription 注入会员服务以启用每日 token 额度计量。
+// 启用后：发消息前校验额度（超限拒绝），LLM 返回后按真实 token 数扣减。
+// 未注入时（subSvc==nil）不计量，行为与改造前一致。
+func (s *ChatService) SetSubscription(subSvc *SubscriptionService) {
+	s.subSvc = subSvc
+}
+
+// SetAttachmentService 注入附件服务以支持聊天附件（图片 vision / 文档注入）。
+func (s *ChatService) SetAttachmentService(attachmentSvc *ChatAttachmentService) {
+	s.attachmentSvc = attachmentSvc
+}
+
+func (s *ChatService) SetModerationService(modSvc *ModerationService) {
+	s.modSvc = modSvc
+}
+
 func (s *ChatService) CreateSession(userID string, input CreateSessionInput) (*model.ChatSession, error) {
 	agent, err := s.agentSvc.GetByID(input.AgentID)
 	if err != nil {
 		return nil, fmt.Errorf("agent not found: %w", err)
+	}
+
+	// 权限校验：agent 关闭了对话（owner 自己不受限）
+	if agent.AllowChat != nil && !*agent.AllowChat && agent.OwnerUserID != userID {
+		return nil, fmt.Errorf("this agent does not accept chats")
+	}
+	if s.modSvc != nil {
+		if err := s.modSvc.EnsureUsersCanInteract(userID, agent.OwnerUserID); err != nil {
+			return nil, err
+		}
+	}
+
+	// Reuse an existing idea-bound session to avoid duplicate conversations.
+	if input.IdeaID != "" {
+		var existing model.ChatSession
+		if err := s.db.Where("user_id = ? AND agent_id = ? AND idea_id = ?", userID, input.AgentID, input.IdeaID).
+			First(&existing).Error; err == nil {
+			return &existing, nil
+		}
+	} else {
+		var existing model.ChatSession
+		if err := s.db.Where("user_id = ? AND agent_id = ? AND idea_id IS NULL", userID, input.AgentID).
+			Order("updated_at DESC").
+			First(&existing).Error; err == nil {
+			return &existing, nil
+		}
 	}
 
 	title := input.Title
@@ -70,9 +137,10 @@ func (s *ChatService) CreateSession(userID string, input CreateSessionInput) (*m
 	}
 
 	session := &model.ChatSession{
-		UserID:  userID,
-		AgentID: input.AgentID,
-		Title:   title,
+		SessionType: model.SessionTypeUserAgent,
+		UserID:      userID,
+		AgentID:     input.AgentID,
+		Title:       title,
 	}
 	if input.IdeaID != "" {
 		session.IdeaID = &input.IdeaID
@@ -84,6 +152,283 @@ func (s *ChatService) CreateSession(userID string, input CreateSessionInput) (*m
 
 	logActivity(s.db, "user", userID, "create_session", "session", session.ID, nil)
 	return session, nil
+}
+
+// CreateAgentSession starts an agent-to-agent conversation session.
+func (s *ChatService) CreateAgentSession(initiatorAgentID, peerAgentID string, title string) (*model.ChatSession, error) {
+	if initiatorAgentID == "" || peerAgentID == "" {
+		return nil, fmt.Errorf("agent ids are required")
+	}
+	if initiatorAgentID == peerAgentID {
+		return nil, fmt.Errorf("cannot chat with self")
+	}
+	if _, err := s.agentSvc.GetByID(initiatorAgentID); err != nil {
+		return nil, fmt.Errorf("initiator agent not found: %w", err)
+	}
+	peer, err := s.agentSvc.GetByID(peerAgentID)
+	if err != nil {
+		return nil, fmt.Errorf("peer agent not found: %w", err)
+	}
+
+	var existing model.ChatSession
+	if err := s.db.Where(
+		"session_type = ? AND agent_id = ? AND peer_agent_id = ?",
+		model.SessionTypeAgentAgent, initiatorAgentID, peerAgentID,
+	).First(&existing).Error; err == nil {
+		return &existing, nil
+	}
+
+	if title == "" {
+		initiator, _ := s.agentSvc.GetByID(initiatorAgentID)
+		initName := initiatorAgentID[:8]
+		if initiator != nil {
+			initName = initiator.Name
+		}
+		title = initName + " ↔ " + peer.Name
+	}
+
+	session := &model.ChatSession{
+		SessionType: model.SessionTypeAgentAgent,
+		AgentID:     initiatorAgentID,
+		PeerAgentID: &peerAgentID,
+		Title:       title,
+	}
+	if err := s.db.Create(session).Error; err != nil {
+		return nil, fmt.Errorf("failed to create agent session: %w", err)
+	}
+	logActivity(s.db, "agent", initiatorAgentID, "create_session", "session", session.ID, nil)
+	return session, nil
+}
+
+func (s *ChatService) newUserMessage(session *model.ChatSession, actorID, content string) model.ChatMessage {
+	actorType := model.MessageActorUser
+	if session.SessionType == model.SessionTypeAgentAgent {
+		actorType = model.MessageActorAgent
+	}
+	return model.ChatMessage{
+		SessionID:   session.ID,
+		Role:        "user",
+		ActorType:   actorType,
+		ActorID:     actorID,
+		ContentType: model.MessageContentText,
+		Content:     content,
+	}
+}
+
+func (s *ChatService) newAssistantMessage(session *model.ChatSession, contentType, content string) model.ChatMessage {
+	if contentType == "" {
+		contentType = model.MessageContentMarkdown
+	}
+	return model.ChatMessage{
+		SessionID:   session.ID,
+		Role:        "assistant",
+		ActorType:   model.MessageActorAgent,
+		ActorID:     session.AgentID,
+		ContentType: contentType,
+		Content:     content,
+	}
+}
+
+// applyAttachment 把附件绑定到用户消息，仅写入元信息（不污染 Content）：
+//   - 图片：附件元信息写入 Metadata；发送给 LLM 时由 chatMessageToLLMMessage
+//     还原为多模态 content parts（vision，用预签名 URL 保证私有 bucket 可读）。
+//   - 文档：附件元信息写入 Metadata；全文仅在「本次发送」「历史重建」时按需从 OSS
+//     读取并注入到 LLMMessage，不落库到 Content（避免污染用户消息气泡 / 消息列表）。
+//
+// 调用方负责在成功后把 userMsg 落库（本方法只改内存对象，不写 DB）。
+func (s *ChatService) applyAttachment(userMsg *model.ChatMessage, userID, sessionID, attachmentID string) (*model.ChatAttachment, error) {
+	if s.attachmentSvc == nil {
+		return nil, nil
+	}
+	att, err := s.attachmentSvc.BindToMessage(attachmentID, userID, sessionID, userMsg.ID)
+	if err != nil {
+		return nil, err
+	}
+	meta := parseMessageMeta(userMsg.Metadata)
+	meta.Attachment = AttachmentMetaForMessage(att)
+	userMsg.Metadata = marshalMessageMeta(meta)
+	return att, nil
+}
+
+// injectDocumentIntoLLMMessage 把文档全文拼进 LLM 消息的文本部分（仅用于发给 LLM，不落库）。
+func injectDocumentIntoLLMMessage(msg LLMMessage, fileName, fullContent string) LLMMessage {
+	header := fmt.Sprintf("【上传文档：%s】\n", fileName)
+	body := header + strings.TrimSpace(fullContent)
+	prompt := strings.TrimSpace(msg.Content)
+	if prompt != "" {
+		body += "\n\n" + prompt
+	}
+	msg.Content = body
+	return msg
+}
+
+func (s *ChatService) assistantFromLLM(session *model.ChatSession, raw string) model.ChatMessage {
+	contentType, content := ParseAssistantResponse(raw)
+	return s.newAssistantMessage(session, contentType, content)
+}
+
+// ---- tool-use message persistence ----
+//
+// OpenAI 协议要求多轮 tool use 的历史完整保留：
+//   assistant(tool_calls=[...]) -> tool(tool_call_id=..., content=result) -> ...
+// 为了让两步确认（register_idea 等）能跨请求生效，这些中间消息必须落库，
+// 在下一轮请求的 buildMessageHistory 中按 OpenAI 格式重建。
+// tool 相关字段（tool_calls / tool_call_id / tool_name）序列化进 Metadata JSON，
+// 不需要改表结构。GetMessages 会过滤掉 role=tool 行，不返回给前端展示。
+
+// messageMeta 定义见 chat_message_display.go。
+//
+// OpenAI 协议要求多轮 tool use 的历史完整保留：
+//   assistant(tool_calls=[...]) -> tool(tool_call_id=..., content=result) -> ...
+// llm_only 行仅用于 buildMessageHistory；activity 行仅用于用户 UI。
+
+// newToolCallAssistantMessage 构造 LLM 决定调用工具时的 assistant 消息
+// （OpenAI role=assistant + tool_calls）。content 可能为空。
+func (s *ChatService) newToolCallAssistantMessage(session *model.ChatSession, content string, toolCalls []ToolCall) model.ChatMessage {
+	meta := messageMeta{
+		DisplayKind: displayKindLLMOnly,
+		ToolCalls:   toolCalls,
+	}
+	return model.ChatMessage{
+		SessionID:   session.ID,
+		Role:        model.MessageRoleAssistant,
+		ActorType:   model.MessageActorAgent,
+		ActorID:     session.AgentID,
+		ContentType: model.MessageContentText,
+		Content:     content,
+		Metadata:    marshalMessageMeta(meta),
+	}
+}
+
+// newToolResultMessage 构造工具执行结果消息（OpenAI role=tool）。
+func (s *ChatService) newToolResultMessage(session *model.ChatSession, toolCallID, toolName, output string) model.ChatMessage {
+	meta := messageMeta{
+		DisplayKind: displayKindLLMOnly,
+		ToolCallID:  toolCallID,
+		ToolName:    toolName,
+	}
+	return model.ChatMessage{
+		SessionID:   session.ID,
+		Role:        model.MessageRoleTool,
+		ActorType:   model.MessageActorAgent,
+		ActorID:     session.AgentID,
+		ContentType: model.MessageContentJSON,
+		Content:     output,
+		Metadata:    marshalMessageMeta(meta),
+	}
+}
+
+// newActivityMessage 构造用户可见的工具进度消息（role=system, display_kind=activity）。
+func (s *ChatService) newActivityMessage(session *model.ChatSession, toolCallID, toolName, content string, activity map[string]any) model.ChatMessage {
+	meta := messageMeta{
+		DisplayKind: displayKindActivity,
+		ToolCallID:  toolCallID,
+		ToolName:    toolName,
+		Activity:    activity,
+	}
+	return model.ChatMessage{
+		SessionID:   session.ID,
+		Role:        model.MessageRoleSystem,
+		ActorType:   model.MessageActorAgent,
+		ActorID:     session.AgentID,
+		ContentType: model.MessageContentText,
+		Content:     content,
+		Metadata:    marshalMessageMeta(meta),
+	}
+}
+
+func (s *ChatService) updateActivityMessage(msgID, content string, activity map[string]any) error {
+	var existing model.ChatMessage
+	if err := s.db.First(&existing, "id = ?", msgID).Error; err != nil {
+		return err
+	}
+	meta := parseMessageMeta(existing.Metadata)
+	meta.DisplayKind = displayKindActivity
+	meta.Activity = mergeActivityMaps(meta.Activity, activity)
+	return s.db.Model(&existing).Updates(map[string]any{
+		"content":  content,
+		"metadata": marshalMessageMeta(meta),
+	}).Error
+}
+
+// chatMessageToLLMMessage 把持久化的 ChatMessage 还原为 LLM 可用的 LLMMessage，
+// 从 Metadata 恢复 tool_calls / tool_call_id / tool_name（OpenAI 协议格式）。
+// 附件（图片/文档）的注入由 ChatService.enrichLLMMessageWithAttachment 处理
+// （需要 ObjectStore 做预签名 / 读全文），此函数保持纯函数便于单测。
+func chatMessageToLLMMessage(m model.ChatMessage) LLMMessage {
+	msg := LLMMessage{Role: m.Role, Content: m.Content}
+	if m.Metadata == "" || m.Metadata == "{}" {
+		return msg
+	}
+	var meta messageMeta
+	if err := json.Unmarshal([]byte(m.Metadata), &meta); err != nil {
+		return msg
+	}
+	msg.ToolCalls = meta.ToolCalls
+	msg.ToolCallID = meta.ToolCallID
+	msg.ToolName = meta.ToolName
+	return msg
+}
+
+// enrichLLMMessageWithAttachment 在已还原的 LLMMessage 上注入附件上下文：
+//   - 图片：组装多模态 content parts（text + image_url），URL 用预签名 GET（私有 bucket 可读）。
+//   - 文档：读全文注入文本部分（仅用于发给 LLM，不落库）。
+//
+// fullContent 为文档全文（调用方批量读取后传入，避免每条消息各读一次）。
+func (s *ChatService) enrichLLMMessageWithAttachment(msg LLMMessage, meta messageAttachment, fullContent string) LLMMessage {
+	switch meta.Kind {
+	case model.AttachmentKindImage:
+		imageURL := meta.URL
+		if s.attachmentSvc != nil && s.attachmentSvc.assets != nil {
+			if u := s.attachmentSvc.assets.PresignGetURLOrFallback(meta.ObjectKeyOrURL()); u != "" {
+				imageURL = u
+			}
+		}
+		text := strings.TrimSpace(msg.Content)
+		if text == "" {
+			text = "（用户上传了一张图片）"
+		}
+		msg.Parts = []LLMContentPart{
+			{Type: "text", Text: text},
+			{Type: "image_url", ImageURL: &LLMImageURL{URL: imageURL}},
+		}
+	case model.AttachmentKindDocument:
+		if fullContent != "" {
+			msg = injectDocumentIntoLLMMessage(msg, meta.FileName, fullContent)
+		}
+	}
+	return msg
+}
+
+func (s *ChatService) bumpSessionMessageCount(session *model.ChatSession, delta int) {
+	s.db.Model(session).Updates(map[string]interface{}{
+		"message_count": gorm.Expr("message_count + ?", delta),
+		"updated_at":    time.Now(),
+	})
+}
+
+// persistConversationFailure keeps the user message and stores an assistant-side error reply.
+func (s *ChatService) persistConversationFailure(session *model.ChatSession, cause error) {
+	meta := map[string]any{"error": "conversation_failed", "cause": cause.Error()}
+	var llmErr *llm.Error
+	if errors.As(cause, &llmErr) {
+		meta["provider"] = llmErr.Provider
+		meta["model"] = llmErr.Model
+		meta["code"] = llmErr.Code
+		meta["request_id"] = llmErr.RequestID
+		if llmErr.Hint != "" {
+			meta["hint"] = llmErr.Hint
+		}
+	}
+	raw, _ := json.Marshal(meta)
+	display := fmt.Sprintf("⚠️ 对话失败：%s", cause.Error())
+	if errors.As(cause, &llmErr) {
+		display = llmErr.UserMessage()
+	}
+	msg := s.newAssistantMessage(session, model.MessageContentText, display)
+	msg.Metadata = string(raw)
+	_ = s.db.Create(&msg).Error
+	s.bumpSessionMessageCount(session, 2)
 }
 
 func (s *ChatService) GetSession(sessionID, userID string) (*model.ChatSession, error) {
@@ -101,6 +446,8 @@ func (s *ChatService) ListSessions(userID string, limit, offset int) ([]model.Ch
 	s.db.Model(&model.ChatSession{}).Where("user_id = ?", userID).Count(&total)
 
 	if err := s.db.Where("user_id = ?", userID).
+		Preload("Agent").
+		Preload("Idea").
 		Order("updated_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&sessions).Error; err != nil {
@@ -117,6 +464,34 @@ func (s *ChatService) RenameSession(sessionID, userID, title string) error {
 		return fmt.Errorf("session not found")
 	}
 	return result.Error
+}
+
+// BindSessionIdea attaches an idea to an existing chat session (owner only).
+func (s *ChatService) BindSessionIdea(sessionID, userID, ideaID string) (*model.ChatSession, error) {
+	ideaID = strings.TrimSpace(ideaID)
+	if ideaID == "" {
+		return nil, fmt.Errorf("idea_id is required")
+	}
+	var idea model.Idea
+	if err := s.db.Select("id").First(&idea, "id = ?", ideaID).Error; err != nil {
+		return nil, fmt.Errorf("idea not found")
+	}
+
+	result := s.db.Model(&model.ChatSession{}).
+		Where("id = ? AND user_id = ?", sessionID, userID).
+		Update("idea_id", ideaID)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, fmt.Errorf("session not found")
+	}
+
+	var session model.ChatSession
+	if err := s.db.Preload("Agent").Preload("Idea").First(&session, "id = ?", sessionID).Error; err != nil {
+		return nil, err
+	}
+	return &session, nil
 }
 
 func (s *ChatService) DeleteSession(sessionID, userID string) error {
@@ -138,7 +513,18 @@ func (s *ChatService) DeleteSession(sessionID, userID string) error {
 		return fmt.Errorf("session not found")
 	}
 
-	return tx.Commit().Error
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	// 会话删除成功后，级联清理该会话的附件对象与 DB 行，回收存储配额（#6）。
+	// 放在事务外：OSS 删除不应阻塞会话删除，失败由孤儿清理兜底。
+	if s.attachmentSvc != nil {
+		if err := s.attachmentSvc.DeleteBySession(sessionID); err != nil {
+			log.Printf("[chat] cleanup attachments for session %s failed: %v", sessionID, err)
+		}
+	}
+	return nil
 }
 
 func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInput) (*SendMessageResult, error) {
@@ -146,36 +532,66 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 	if err != nil {
 		return nil, err
 	}
-
-	userMsg := model.ChatMessage{
-		SessionID: sessionID,
-		Role:      "user",
-		Content:   input.Content,
+	if s.modSvc != nil {
+		if err := s.modSvc.EnsureAgentInteraction(userID, session.AgentID); err != nil {
+			return nil, err
+		}
 	}
+
+	// 每日 token 额度预检：发消息前校验当日剩余额度。
+	// 解析计费归属用户（MCP 路径下 userID 形如 "agent:<id>"，需反查 agent owner）。
+	if s.subSvc != nil {
+		if err := s.checkQuota(userID); err != nil {
+			return nil, err
+		}
+	}
+
+	userMsg := s.newUserMessage(session, userID, input.Content)
+
+	// 先处理附件（仅写元信息到内存对象，不污染 Content）。
+	// 这样 applyAttachment 失败时用户消息尚未落库，不会产生孤儿消息（#7）。
+	var currentAttachment *model.ChatAttachment
+	if input.AttachmentID != nil && *input.AttachmentID != "" {
+		att, aerr := s.applyAttachment(&userMsg, userID, sessionID, *input.AttachmentID)
+		if aerr != nil {
+			return nil, aerr
+		}
+		currentAttachment = att
+	}
+
 	if err := s.db.Create(&userMsg).Error; err != nil {
 		return nil, fmt.Errorf("failed to save user message: %w", err)
 	}
 
-	// P0 #3: 失败回滚 —— 若 runConversation 失败，把刚写入的 user message 软删除
-	// （标记为 error，保留审计痕迹但不会进入 LLM history）
-	principal := Principal{
-		Source:    "rest",
-		UserID:    userID,
-		AgentID:   session.AgentID,
-		SessionID: sessionID,
-	}
-	if session.IdeaID != nil {
-		principal.IdeaID = *session.IdeaID
+	// 本轮发给 LLM 的内容：文档附件需注入全文（仅用于本次对话，不落库到 Content）。
+	conversationContent := input.Content
+	if currentAttachment != nil && currentAttachment.Kind == model.AttachmentKindDocument {
+		full, rerr := s.attachmentSvc.ReadFullContent(currentAttachment.ObjectKey)
+		if rerr != nil {
+			return nil, fmt.Errorf("读取文档失败: %w", rerr)
+		}
+		tmp := LLMMessage{Role: "user", Content: conversationContent}
+		tmp = injectDocumentIntoLLMMessage(tmp, currentAttachment.FileName, full)
+		conversationContent = tmp.Content
 	}
 
-	assistantMsg, toolResults, tokensUsed, err := s.runConversation(session, input.Content, principal)
+	principal, err := s.buildPrincipal(session, userID, sessionID)
 	if err != nil {
-		s.markMessageFailed(&userMsg, err)
 		return nil, err
 	}
 
-	s.db.Model(session).Update("message_count", gorm.Expr("message_count + 1"))
-	s.db.Model(session).Update("updated_at", time.Now())
+	assistantMsg, toolResults, tokensUsed, err := s.runConversation(session, conversationContent, principal)
+	if err != nil {
+		s.persistConversationFailure(session, err)
+		return nil, err
+	}
+
+	// LLM 已消耗真实 token，按实际用量扣减当日额度（原子累加，不阻塞返回）。
+	if s.subSvc != nil {
+		s.chargeTokens(userID, tokensUsed)
+	}
+
+	s.bumpSessionMessageCount(session, 2)
 
 	logActivity(s.db, "user", userID, "send_message", "session", sessionID, nil)
 
@@ -187,22 +603,8 @@ func (s *ChatService) SendMessage(sessionID, userID string, input SendMessageInp
 	}, nil
 }
 
-// markMessageFailed 把一条消息软删除（role 改为 system_error），避免下次 LLM 读到孤立消息。
-// 不物理删除是为了保留审计痕迹。
-func (s *ChatService) markMessageFailed(msg *model.ChatMessage, cause error) {
-	if msg == nil || msg.ID == "" {
-		return
-	}
-	meta := map[string]string{"error": "conversation failed", "cause": cause.Error()}
-	raw, _ := json.Marshal(meta)
-	s.db.Model(msg).Updates(map[string]any{
-		"role":     "system_error",
-		"metadata": string(raw),
-	})
-}
-
 const (
-	maxToolRounds    = 5     // 单次对话最多 5 轮工具调用，防止失控
+	maxToolRounds    = 5      // 单次对话最多 5 轮工具调用，防止失控
 	maxToolHistoryMs = 60_000 // 整个 tool use 循环不超过 60 秒
 )
 
@@ -212,8 +614,10 @@ const (
 //  3. 若 LLM 请求工具 → 执行 → 把结果加入 history → 再次调 LLM
 //  4. 直到 LLM finish_reason=stop 或达到 maxToolRounds
 //
-// 所有中间 tool 消息只在内存中流转，不持久化（避免历史表膨胀）；
-// 只有最终的 assistant 回复被保存为 ChatMessage。
+// 中间的 assistant(tool_calls) 与 tool 结果消息会持久化进 chat_messages
+// （Metadata 承载 tool_calls / tool_call_id），以便两步确认等跨请求流程
+// 能在 buildMessageHistory 中按 OpenAI 格式重建。GetMessages 会过滤掉
+// role=tool 行，前端历史列表不展示这些中间消息。
 func (s *ChatService) runConversation(session *model.ChatSession, userContent string, p Principal) (*model.ChatMessage, []ToolCallResult, int, error) {
 	return s.runConversationWithProgress(session, userContent, p, nil)
 }
@@ -225,7 +629,7 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 	ctx, cancel := context.WithTimeout(context.Background(), maxToolHistoryMs*time.Millisecond)
 	defer cancel()
 
-	systemPrompt := s.buildSystemPromptWithRAG(session, userContent)
+	systemPrompt := s.buildSystemPromptWithRAG(session, userContent, s.buildMessageHistory(session.ID))
 
 	history := s.buildMessageHistory(session.ID)
 	history = append(history, LLMMessage{Role: "user", Content: userContent})
@@ -247,19 +651,16 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 
 		// 不需要工具调用，直接返回
 		if resp.FinishReason != "tool_calls" || len(resp.ToolCalls) == 0 {
-			msg := &model.ChatMessage{
-				SessionID: session.ID,
-				Role:      "assistant",
-				Content:   resp.Content,
-			}
-			if err := s.db.Create(msg).Error; err != nil {
+			msg := s.assistantFromLLM(session, resp.Content)
+			if err := s.db.Create(&msg).Error; err != nil {
 				return nil, nil, 0, fmt.Errorf("failed to save assistant message: %w", err)
 			}
 			s.pushEvent(progressCh, "assistant_message", map[string]any{
-				"id":      msg.ID,
-				"content": msg.Content,
+				"id":           msg.ID,
+				"content":      msg.Content,
+				"content_type": msg.ContentType,
 			})
-			return msg, allToolResults, totalTokens, nil
+			return &msg, allToolResults, totalTokens, nil
 		}
 
 		// 把 LLM 的 tool_calls 决策加入 history（OpenAI 协议要求保留）
@@ -269,13 +670,54 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 			ToolCalls: resp.ToolCalls,
 		})
 
-		// P1: 推送工具调用进度事件（"正在搜索 idea..."）
+		// 持久化 assistant(tool_calls) 消息，使两步确认等跨请求流程可见（失败仅记录，不中断对话）
+		tcMsg := s.newToolCallAssistantMessage(session, resp.Content, resp.ToolCalls)
+		if err := s.db.Create(&tcMsg).Error; err != nil {
+			log.Printf("[chat] persist tool_calls message failed: %v", err)
+		}
+
+		// P1: 推送工具调用进度事件（"正在搜索 idea..."）并落库 activity 消息
+		activityByToolCall := make(map[string]string, len(resp.ToolCalls))
 		for _, tc := range resp.ToolCalls {
-			s.pushEvent(progressCh, "tool_call", map[string]any{
+			eventData := map[string]any{
 				"tool":      tc.Name,
 				"tool_call": tc.ID,
 				"args":      json.RawMessage(tc.ArgsJSON),
-			})
+			}
+			activity := map[string]any{
+				"type":      "tool_call",
+				"tool":      tc.Name,
+				"tool_call": tc.ID,
+			}
+			// delegate_to_agent 特殊处理：解析目标 Agent 名
+			if tc.Name == "delegate_to_agent" {
+				activity["is_a2a"] = true
+				var argsMap map[string]any
+				if json.Unmarshal(tc.ArgsJSON, &argsMap) == nil {
+					if targetID, ok := argsMap["target_agent_id"].(string); ok {
+						if targetAgent, err := s.agentSvc.GetByID(targetID); err == nil {
+							eventData["target_agent_name"] = targetAgent.Name
+							eventData["target_agent_id"] = targetID
+							activity["target_agent_name"] = targetAgent.Name
+							activity["target_agent_id"] = targetID
+							if task, ok := argsMap["task"].(string); ok {
+								eventData["task"] = task
+								activity["task"] = task
+							}
+						}
+					}
+				}
+			}
+			targetName, _ := eventData["target_agent_name"].(string)
+			actMsg := s.newActivityMessage(session, tc.ID, tc.Name,
+				buildToolCallActivityContent(tc.Name, targetName), activity)
+			if err := s.db.Create(&actMsg).Error; err != nil {
+				log.Printf("[chat] persist activity message failed: %v", err)
+			} else {
+				activityByToolCall[tc.ID] = actMsg.ID
+				eventData["id"] = actMsg.ID
+			}
+			s.pushEvent(progressCh, "tool_call", eventData)
 		}
 
 		// 执行所有 tool_calls
@@ -285,15 +727,54 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 		}
 		allToolResults = append(allToolResults, results...)
 
-		// 推送工具结果进度事件
+		// 推送工具结果进度事件并更新 activity 消息
 		for _, r := range results {
-			s.pushEvent(progressCh, "tool_result", map[string]any{
-				"tool":       r.Name,
-				"tool_call":  r.ToolCallID,
-				"ok":         r.OK,
-				"output":     json.RawMessage(r.Output),
-				"display":    r.Display,
-			})
+			eventData := map[string]any{
+				"tool":      r.Name,
+				"tool_call": r.ToolCallID,
+				"ok":        r.OK,
+				"output":    json.RawMessage(r.Output),
+				"display":   r.Display,
+			}
+			activity := map[string]any{
+				"type":      "tool_result",
+				"tool":      r.Name,
+				"tool_call": r.ToolCallID,
+				"ok":        r.OK,
+			}
+			// delegate_to_agent 结果：解析目标 Agent 名和回复摘要
+			var responseSummary string
+			if r.Name == "delegate_to_agent" && r.OK {
+				activity["is_a2a"] = true
+				var outMap map[string]any
+				if json.Unmarshal([]byte(r.Output), &outMap) == nil {
+					if name, ok := outMap["target_agent"].(string); ok {
+						eventData["target_agent_name"] = name
+						activity["target_agent_name"] = name
+					}
+					if response, ok := outMap["response"].(string); ok {
+						summary := response
+						if len(summary) > 200 {
+							summary = summary[:200] + "…"
+						}
+						eventData["response_summary"] = summary
+						responseSummary = summary
+						activity["response_summary"] = summary
+					}
+				}
+			}
+			if r.OK {
+				activity["a2a_completed"] = r.Name == "delegate_to_agent"
+			}
+			targetName, _ := eventData["target_agent_name"].(string)
+			resultContent := buildToolResultActivityContent(r.Name, targetName, r.OK, responseSummary)
+			if actID, ok := activityByToolCall[r.ToolCallID]; ok {
+				eventData["id"] = actID
+				if err := s.updateActivityMessage(actID, resultContent, activity); err != nil {
+					log.Printf("[chat] update activity message failed: %v", err)
+				}
+			}
+			s.pushEvent(progressCh, "tool_result", eventData)
 		}
 
 		s.persistToolActivity(p, results)
@@ -305,6 +786,11 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 				ToolName:   r.Name,
 				Content:    r.Output,
 			})
+			// 持久化 tool 结果消息，使两步确认等跨请求流程可见（失败仅记录，不中断对话）
+			trMsg := s.newToolResultMessage(session, r.ToolCallID, r.Name, r.Output)
+			if err := s.db.Create(&trMsg).Error; err != nil {
+				log.Printf("[chat] persist tool result message failed: %v", err)
+			}
 		}
 	}
 
@@ -319,31 +805,34 @@ func (s *ChatService) runConversationWithProgress(session *model.ChatSession, us
 	}
 	totalTokens += finalResp.Usage.PromptTokens + finalResp.Usage.CompletionTokens
 
-	msg := &model.ChatMessage{
-		SessionID: session.ID,
-		Role:      "assistant",
-		Content:   finalResp.Content,
-	}
-	if err := s.db.Create(msg).Error; err != nil {
+	msg := s.assistantFromLLM(session, finalResp.Content)
+	if err := s.db.Create(&msg).Error; err != nil {
 		return nil, nil, 0, fmt.Errorf("failed to save assistant message: %w", err)
 	}
 	s.pushEvent(progressCh, "assistant_message", map[string]any{
-		"id":      msg.ID,
-		"content": msg.Content,
+		"id":           msg.ID,
+		"content":      msg.Content,
+		"content_type": msg.ContentType,
 	})
-	return msg, allToolResults, totalTokens, nil
+	return &msg, allToolResults, totalTokens, nil
 }
 
 // pushEvent 向 progress channel 安全推送事件（nil channel / 已关闭均会忽略）。
-// 非阻塞，避免消费者过慢阻塞整个对话循环。
+// 带持久化 id 的关键事件阻塞发送，避免 UI 丢失 upsert 目标。
 func (s *ChatService) pushEvent(ch chan<- StreamEvent, typ string, data any) {
 	if ch == nil {
 		return
 	}
 	defer func() { _ = recover() }() // 防止 send on closed channel panic
+	ev := StreamEvent{Type: typ, Data: data}
+	switch typ {
+	case "user_message", "assistant_message", "tool_call", "tool_result":
+		ch <- ev
+		return
+	}
 	select {
-	case ch <- StreamEvent{Type: typ, Data: data}:
-	default: // 消费者跟不上就丢弃进度事件（不影响业务）
+	case ch <- ev:
+	default: // 非关键进度事件可丢弃
 	}
 }
 
@@ -382,34 +871,61 @@ func (s *ChatService) persistToolActivity(p Principal, results []ToolCallResult)
 // tool_call / tool_result / assistant_message 事件给前端（最后整体 done）。
 //
 // 这样保持流式端点对 tool use 的完整支持（P0 #1 + P1 #5）。
-func (s *ChatService) SendMessageStream(sessionID, userID, content string) (<-chan StreamChunk, *model.ChatMessage, error) {
+func (s *ChatService) SendMessageStream(sessionID, userID string, input SendMessageInput) (<-chan StreamChunk, *model.ChatMessage, error) {
 	session, err := s.GetSession(sessionID, userID)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	userMsg := model.ChatMessage{
-		SessionID: sessionID,
-		Role:      "user",
-		Content:   content,
+	if s.modSvc != nil {
+		if err := s.modSvc.EnsureAgentInteraction(userID, session.AgentID); err != nil {
+			return nil, nil, err
+		}
 	}
+
+	// 每日 token 额度预检（同 SendMessage）
+	if s.subSvc != nil {
+		if err := s.checkQuota(userID); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	userMsg := s.newUserMessage(session, userID, input.Content)
+
+	// 先处理附件（仅写元信息到内存对象，不污染 Content）。
+	// applyAttachment 失败时用户消息尚未落库，不会产生孤儿消息（#7）。
+	var currentAttachment *model.ChatAttachment
+	if input.AttachmentID != nil && *input.AttachmentID != "" {
+		att, aerr := s.applyAttachment(&userMsg, userID, sessionID, *input.AttachmentID)
+		if aerr != nil {
+			return nil, nil, aerr
+		}
+		currentAttachment = att
+	}
+
 	if err := s.db.Create(&userMsg).Error; err != nil {
 		return nil, nil, fmt.Errorf("failed to save user message: %w", err)
 	}
 
-	principal := Principal{
-		Source:    "rest",
-		UserID:    userID,
-		AgentID:   session.AgentID,
-		SessionID: sessionID,
+	// 本轮发给 LLM 的内容：文档附件需注入全文（仅用于本次对话，不落库到 Content）。
+	content := input.Content
+	if currentAttachment != nil && currentAttachment.Kind == model.AttachmentKindDocument {
+		full, rerr := s.attachmentSvc.ReadFullContent(currentAttachment.ObjectKey)
+		if rerr != nil {
+			return nil, nil, fmt.Errorf("读取文档失败: %w", rerr)
+		}
+		tmp := LLMMessage{Role: "user", Content: content}
+		tmp = injectDocumentIntoLLMMessage(tmp, currentAttachment.FileName, full)
+		content = tmp.Content
 	}
-	if session.IdeaID != nil {
-		principal.IdeaID = *session.IdeaID
+
+	principal, err := s.buildPrincipal(session, userID, sessionID)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// tools 启用时：流式即工具循环 + 进度事件
 	if s.tools != nil {
-		return s.streamWithTools(session, &userMsg, content, principal)
+		return s.streamWithTools(session, &userMsg, content, principal, userID)
 	}
 
 	// 否则：保持原有 ChatStream（无工具）
@@ -417,12 +933,12 @@ func (s *ChatService) SendMessageStream(sessionID, userID, content string) (<-ch
 }
 
 func (s *ChatService) streamNoTools(session *model.ChatSession, userMsg *model.ChatMessage, userID, content string) (<-chan StreamChunk, *model.ChatMessage, error) {
-	systemPrompt := s.buildSystemPromptWithRAG(session, content)
+	systemPrompt := s.buildSystemPromptWithRAG(session, content, s.buildMessageHistory(session.ID))
 	history := s.buildMessageHistory(session.ID)
 
 	streamCh, err := s.llm.ChatStream(systemPrompt, history)
 	if err != nil {
-		s.markMessageFailed(userMsg, err)
+		s.persistConversationFailure(session, err)
 		return nil, nil, err
 	}
 
@@ -433,21 +949,14 @@ func (s *ChatService) streamNoTools(session *model.ChatSession, userMsg *model.C
 
 		for chunk := range streamCh {
 			if chunk.Error != nil {
-				s.markMessageFailed(userMsg, chunk.Error)
+				s.persistConversationFailure(session, chunk.Error)
 				wrapperCh <- chunk
 				return
 			}
 			if chunk.Done {
-				assistantMsg := model.ChatMessage{
-					SessionID: session.ID,
-					Role:      "assistant",
-					Content:   fullContent,
-				}
+				assistantMsg := s.assistantFromLLM(session, fullContent)
 				s.db.Create(&assistantMsg)
-				s.db.Model(session).Updates(map[string]interface{}{
-					"message_count": gorm.Expr("message_count + 1"),
-					"updated_at":    time.Now(),
-				})
+				s.bumpSessionMessageCount(session, 2)
 				logActivity(s.db, "user", userID, "send_message", "session", session.ID, nil)
 				wrapperCh <- StreamChunk{Done: true}
 				return
@@ -462,7 +971,7 @@ func (s *ChatService) streamNoTools(session *model.ChatSession, userMsg *model.C
 
 // streamWithTools 在 goroutine 中跑工具循环，把进度事件转成 StreamChunk 推出。
 // 错误时回滚 user message（P0 #3）。
-func (s *ChatService) streamWithTools(session *model.ChatSession, userMsg *model.ChatMessage, content string, principal Principal) (<-chan StreamChunk, *model.ChatMessage, error) {
+func (s *ChatService) streamWithTools(session *model.ChatSession, userMsg *model.ChatMessage, content string, principal Principal, billUserID string) (<-chan StreamChunk, *model.ChatMessage, error) {
 	out := make(chan StreamChunk, 64)
 
 	go func() {
@@ -478,21 +987,23 @@ func (s *ChatService) streamWithTools(session *model.ChatSession, userMsg *model
 			}
 		}()
 
-		_, _, _, err := s.runConversationWithProgress(session, content, principal, progressCh)
+		_, _, totalTokens, err := s.runConversationWithProgress(session, content, principal, progressCh)
 		// 无论成功失败，先关掉 progressCh 让转发器退出（避免死锁）
 		close(progressCh)
 		<-done
 
+		// LLM 已消耗真实 token，按实际用量扣减当日额度
+		if err == nil && s.subSvc != nil {
+			s.chargeTokens(billUserID, totalTokens)
+		}
+
 		if err != nil {
-			s.markMessageFailed(userMsg, err)
+			s.persistConversationFailure(session, err)
 			out <- StreamChunk{Error: err}
 			return
 		}
 
-		s.db.Model(session).Updates(map[string]interface{}{
-			"message_count": gorm.Expr("message_count + 1"),
-			"updated_at":    time.Now(),
-		})
+		s.bumpSessionMessageCount(session, 2)
 		logActivity(s.db, "user", principal.UserID, "send_message", "session", session.ID, nil)
 
 		out <- StreamChunk{Done: true}
@@ -501,7 +1012,7 @@ func (s *ChatService) streamWithTools(session *model.ChatSession, userMsg *model
 	return out, userMsg, nil
 }
 
-func (s *ChatService) GetMessages(sessionID, userID string, beforeID string, limit int) ([]model.ChatMessage, error) {
+func (s *ChatService) GetMessages(sessionID, userID string, beforeID string, limit int) ([]ChatMessageView, error) {
 	if _, err := s.GetSession(sessionID, userID); err != nil {
 		return nil, err
 	}
@@ -510,7 +1021,16 @@ func (s *ChatService) GetMessages(sessionID, userID string, beforeID string, lim
 		limit = 50
 	}
 
-	q := s.db.Where("session_id = ?", sessionID).Order("created_at DESC").Limit(limit)
+	// 多取若干倍再按 UI 可见性过滤，避免 llm_only / 空 assistant 行挤掉可见消息。
+	fetchLimit := limit * 4
+	if fetchLimit > 200 {
+		fetchLimit = 200
+	}
+
+	// 前端历史列表不展示 role=tool 的中间消息（流式期间已通过 SSE tool_call/tool_result 事件展示）；
+	// 这些行仅用于 buildMessageHistory 重建 LLM 上下文。
+	q := s.db.Where("session_id = ? AND role != ?", sessionID, model.MessageRoleTool).
+		Order("created_at DESC").Limit(fetchLimit)
 
 	if beforeID != "" {
 		var before model.ChatMessage
@@ -524,10 +1044,233 @@ func (s *ChatService) GetMessages(sessionID, userID string, beforeID string, lim
 		return nil, err
 	}
 
+	messages = filterVisibleMessages(messages, limit)
+
 	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
 		messages[i], messages[j] = messages[j], messages[i]
 	}
-	return messages, nil
+
+	feedbackMap := s.feedbackMapForMessages(userID, messages)
+	out := make([]ChatMessageView, len(messages))
+	for i, m := range messages {
+		out[i] = ChatMessageView{
+			ChatMessage:  m,
+			UserFeedback: feedbackMap[m.ID],
+		}
+	}
+	return out, nil
+}
+
+func (s *ChatService) feedbackMapForMessages(userID string, messages []model.ChatMessage) map[string]string {
+	out := map[string]string{}
+	if userID == "" || len(messages) == 0 {
+		return out
+	}
+	ids := make([]string, len(messages))
+	for i, m := range messages {
+		ids[i] = m.ID
+	}
+	var rows []model.MessageFeedback
+	s.db.Where("user_id = ? AND message_id IN ?", userID, ids).Find(&rows)
+	for _, r := range rows {
+		out[r.MessageID] = r.Rating
+	}
+	return out
+}
+
+func (s *ChatService) verifyMessageInSession(sessionID, messageID, userID string) (*model.ChatMessage, error) {
+	if _, err := s.GetSession(sessionID, userID); err != nil {
+		return nil, err
+	}
+	var msg model.ChatMessage
+	if err := s.db.Where("id = ? AND session_id = ?", messageID, sessionID).First(&msg).Error; err != nil {
+		return nil, fmt.Errorf("message not found")
+	}
+	return &msg, nil
+}
+
+func (s *ChatService) SetMessageFeedback(sessionID, messageID, userID, rating string) (string, error) {
+	if rating != model.MessageFeedbackLike && rating != model.MessageFeedbackDislike {
+		return "", fmt.Errorf("invalid rating")
+	}
+	if _, err := s.verifyMessageInSession(sessionID, messageID, userID); err != nil {
+		return "", err
+	}
+
+	var existing model.MessageFeedback
+	err := s.db.Where("message_id = ? AND user_id = ?", messageID, userID).First(&existing).Error
+	if err == nil {
+		if existing.Rating == rating {
+			return rating, nil
+		}
+		existing.Rating = rating
+		if err := s.db.Save(&existing).Error; err != nil {
+			return "", err
+		}
+		return rating, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", err
+	}
+	if err := s.db.Create(&model.MessageFeedback{
+		MessageID: messageID,
+		UserID:    userID,
+		Rating:    rating,
+	}).Error; err != nil {
+		return "", err
+	}
+	return rating, nil
+}
+
+func (s *ChatService) ClearMessageFeedback(sessionID, messageID, userID string) error {
+	if _, err := s.verifyMessageInSession(sessionID, messageID, userID); err != nil {
+		return err
+	}
+	return s.db.Where("message_id = ? AND user_id = ?", messageID, userID).
+		Delete(&model.MessageFeedback{}).Error
+}
+
+func (s *ChatService) ForkSession(sessionID, userID string, input ForkSessionInput) (*model.ChatSession, error) {
+	source, err := s.GetSession(sessionID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 保留 role=tool 行：分叉会话也需要完整的 tool-use 上下文（两步确认等）。
+	q := s.db.Where("session_id = ? AND role IN ?", sessionID, []string{"user", "assistant", "tool"}).
+		Order("created_at ASC")
+
+	if input.BeforeMessageID != "" {
+		anchor, err := s.verifyMessageInSession(sessionID, input.BeforeMessageID, userID)
+		if err != nil {
+			return nil, err
+		}
+		q = q.Where("created_at <= ?", anchor.CreatedAt)
+	}
+
+	var sourceMessages []model.ChatMessage
+	if err := q.Find(&sourceMessages).Error; err != nil {
+		return nil, err
+	}
+	if len(sourceMessages) == 0 {
+		return nil, fmt.Errorf("no messages to fork")
+	}
+
+	title := input.Title
+	if title == "" {
+		title = "分支: " + source.Title
+	}
+
+	forkedFrom := source.ID
+	var forkedBefore *string
+	if input.BeforeMessageID != "" {
+		forkedBefore = &input.BeforeMessageID
+	}
+
+	newSession := &model.ChatSession{
+		SessionType:           source.SessionType,
+		UserID:                source.UserID,
+		AgentID:               source.AgentID,
+		PeerAgentID:           source.PeerAgentID,
+		IdeaID:                source.IdeaID,
+		Title:                 title,
+		MessageCount:          len(sourceMessages),
+		ForkedFromID:          &forkedFrom,
+		ForkedBeforeMessageID: forkedBefore,
+	}
+	if err := s.db.Create(newSession).Error; err != nil {
+		return nil, fmt.Errorf("failed to create forked session: %w", err)
+	}
+
+	copies := make([]model.ChatMessage, len(sourceMessages))
+	for i, m := range sourceMessages {
+		copies[i] = model.ChatMessage{
+			SessionID:   newSession.ID,
+			ActorType:   m.ActorType,
+			ActorID:     m.ActorID,
+			Role:        m.Role,
+			ContentType: m.ContentType,
+			Content:     m.Content,
+			Metadata:    m.Metadata,
+			CreatedAt:   m.CreatedAt,
+		}
+	}
+	if err := s.db.Create(&copies).Error; err != nil {
+		return nil, fmt.Errorf("failed to copy messages: %w", err)
+	}
+
+	logActivity(s.db, "user", userID, "fork_session", "session", newSession.ID, map[string]string{
+		"source_session_id": source.ID,
+	})
+	return newSession, nil
+}
+
+// ArchiveResult is the response for archiving a session.
+type ArchiveResult struct {
+	SessionID  string `json:"session_id"`
+	Summary    string `json:"summary"`
+	ArchivedAt string `json:"archived_at"`
+}
+
+// ArchiveSession packages the chat context and extracts a summary using LLM.
+func (s *ChatService) ArchiveSession(sessionID, userID string) (*ArchiveResult, error) {
+	session, err := s.GetSession(sessionID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch all messages
+	var messages []model.ChatMessage
+	if err := s.db.Where("session_id = ? AND role IN ?", sessionID, []string{"user", "assistant"}).
+		Order("created_at ASC").Find(&messages).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch messages: %w", err)
+	}
+
+	if len(messages) == 0 {
+		return nil, fmt.Errorf("no messages to archive")
+	}
+
+	// Build conversation text for summary
+	var convoText string
+	for _, m := range messages {
+		if m.Role == "user" {
+			convoText += fmt.Sprintf("用户: %s\n", m.Content)
+		} else {
+			convoText += fmt.Sprintf("助手: %s\n", m.Content)
+		}
+	}
+
+	// Generate summary using LLM
+	summaryPrompt := "请用 2-3 句话总结以下对话的主要内容和结论，作为归档摘要：\n\n" + convoText
+	llmMessages := []LLMMessage{{Role: "user", Content: summaryPrompt}}
+	resp, err := s.llm.Chat("你是一个对话摘要助手。请简洁准确地总结对话内容。", llmMessages)
+	if err != nil || resp == nil || resp.Content == "" {
+		// Fallback: use first message as summary
+		summary := "对话归档：" + session.Title
+		if len(messages) > 0 {
+			summary += "（" + truncate(messages[0].Content, 50) + "…）"
+		}
+		return &ArchiveResult{
+			SessionID:  sessionID,
+			Summary:    summary,
+			ArchivedAt: time.Now().Format(time.RFC3339),
+		}, nil
+	}
+
+	// Mark session as archived
+	now := time.Now()
+	s.db.Model(&model.ChatSession{}).Where("id = ? AND user_id = ?", sessionID, userID).
+		Update("archived_at", &now)
+
+	logActivity(s.db, "user", userID, "archive_session", "session", sessionID, map[string]string{
+		"summary": resp.Content,
+	})
+
+	return &ArchiveResult{
+		SessionID:  sessionID,
+		Summary:    resp.Content,
+		ArchivedAt: now.Format(time.RFC3339),
+	}, nil
 }
 
 func (s *ChatService) buildSystemPrompt(session *model.ChatSession) string {
@@ -552,36 +1295,133 @@ func (s *ChatService) buildSystemPrompt(session *model.ChatSession) string {
 	return prompt
 }
 
-// buildSystemPromptWithRAG 在原 system prompt 基础上，根据用户最新消息检索相关 idea，
-// 把它们的标题/描述作为"参考资料"注入到 prompt，让 LLM 引用平台已有的相似想法。
-// RAG 配置缺失或检索失败时静默降级为普通 prompt。
-func (s *ChatService) buildSystemPromptWithRAG(session *model.ChatSession, userMessage string) string {
+// billingOwnerID 把聊天发起者解析成计费归属的用户 ID。
+// REST 用户聊天：userID 即用户 ID，直接返回。
+// MCP/A2A 路径：userID 形如 "agent:<agentID>"，需反查 agent.OwnerUserID；
+//
+//	owner 为空（系统助手被 agent 调用）则不计费（返回空）。
+func (s *ChatService) billingOwnerID(userID string) string {
+	const agentPrefix = "agent:"
+	if len(userID) > len(agentPrefix) && userID[:len(agentPrefix)] == agentPrefix {
+		agentID := userID[len(agentPrefix):]
+		agent, err := s.agentSvc.GetByID(agentID)
+		if err != nil || agent.OwnerUserID == "" {
+			return "" // 系统 agent 或查不到，不计费
+		}
+		return agent.OwnerUserID
+	}
+	return userID
+}
+
+// checkQuota 发消息前的每日额度预检。
+// 解析计费归属用户后，若当日剩余额度为 0 则返回 ErrQuotaExceeded。
+func (s *ChatService) checkQuota(userID string) error {
+	owner := s.billingOwnerID(userID)
+	if owner == "" {
+		return nil // 无法归属（如系统助手被匿名调用），不拦截
+	}
+	tier := s.subSvc.EffectiveTier(owner)
+	q, err := s.subSvc.QuotaService().GetOrInitToday(owner, ResolveDailyLimit(tier))
+	if err != nil {
+		return nil // 计费基础设施异常时降级放行，不阻断核心聊天
+	}
+	if q.Remaining() <= 0 {
+		return ErrQuotaExceeded
+	}
+	return nil
+}
+
+// chargeTokens 扣减当日 token 用量。失败仅记录日志，不影响对话返回。
+func (s *ChatService) chargeTokens(userID string, tokens int) {
+	owner := s.billingOwnerID(userID)
+	if owner == "" || tokens <= 0 {
+		return
+	}
+	s.subSvc.QuotaService().Deduct(owner, tokens)
+}
+
+// buildPrincipal 构造工具执行身份。火卫二助手会话中写操作归属用户默认 Agent。
+func (s *ChatService) buildPrincipal(session *model.ChatSession, userID, sessionID string) (Principal, error) {
+	p := Principal{
+		Source:    "rest",
+		UserID:    userID,
+		AgentID:   session.AgentID,
+		SessionID: sessionID,
+	}
+	if session.IdeaID != nil {
+		p.IdeaID = *session.IdeaID
+	}
+	if userID != "" && IsSystemAgent(s.db, session.AgentID) {
+		p.IsSystemAssistant = true
+		agent, err := s.agentSvc.EnsureDefaultUserAgent(userID)
+		if err != nil {
+			return Principal{}, fmt.Errorf("failed to resolve user agent for write operations: %w", err)
+		}
+		p.AgentID = agent.ID
+		p.AuthorAgentReady = true
+	}
+	return p, nil
+}
+
+// buildSystemPromptWithRAG 在原 system prompt 基础上，按意图注入 idea 检索结果。
+func (s *ChatService) buildSystemPromptWithRAG(session *model.ChatSession, userMessage string, history []LLMMessage) string {
 	base := s.buildSystemPrompt(session)
+	intent := DetectIdeaIntent(session, userMessage, history)
 
-	if s.searcher == nil || s.embed == nil || !s.embed.Enabled() {
-		return base
-	}
-
-	matches, err := s.searcher.Search(userMessage, 0.55, 3)
-	if err != nil || len(matches) == 0 {
-		return base
-	}
-
-	ragSection := "\n\n## 平台中已有的相似想法（可供参考、对比、引用）："
-	for i, m := range matches {
-		ragSection += fmt.Sprintf("\n%d. 【%s】%s", i+1, m.Idea.Title, m.Idea.Description)
-		if m.Idea.Category != "" {
-			ragSection += fmt.Sprintf("（分类：%s）", m.Idea.Category)
+	switch intent {
+	case IdeaIntentCreateOrRefine:
+		if section := s.buildCreateIntentRAG(session, userMessage, history); section != "" {
+			return base + section + responseFormatInstructions
+		}
+	case IdeaIntentExplore:
+		if section := s.buildExploreIntentRAG(session, userMessage, history); section != "" {
+			return base + section + responseFormatInstructions
 		}
 	}
-	ragSection += "\n\n请在回答中适当参考上述想法，但不要简单复述；结合用户的问题给出有针对性的回应。"
+	return base + responseFormatInstructions
+}
 
-	return base + ragSection
+func (s *ChatService) buildCreateIntentRAG(session *model.ChatSession, userMessage string, history []LLMMessage) string {
+	if s.ideaRetriever != nil && s.ideaRetriever.Enabled() {
+		bundle, err := s.ideaRetriever.Retrieve(session, userMessage, history)
+		if err == nil && bundle != nil {
+			if section := FormatIdeaContextSection(bundle); section != "" {
+				return section
+			}
+		}
+	}
+	if s.ideaRetriever != nil {
+		bundle, err := s.ideaRetriever.RetrievePortfolioFallback(session)
+		if err == nil && bundle != nil {
+			return FormatPortfolioFallbackSection(bundle)
+		}
+	}
+	return ""
+}
+
+func (s *ChatService) buildExploreIntentRAG(session *model.ChatSession, userMessage string, history []LLMMessage) string {
+	if s.ideaRetriever != nil && s.ideaRetriever.Enabled() {
+		bundle, err := s.ideaRetriever.RetrieveExplore(session, userMessage, history)
+		if err == nil {
+			return FormatExploreContextSection(bundle)
+		}
+	}
+	return exploreSearchToolHint
+}
+
+func formatRAGIdeaLine(n int, m IdeaMatch) string {
+	line := fmt.Sprintf("\n%d. 【%s】%s", n, m.Idea.Title, m.Idea.Description)
+	if m.Idea.Category != "" {
+		line += fmt.Sprintf("（分类：%s）", m.Idea.Category)
+	}
+	return line
 }
 
 func (s *ChatService) buildMessageHistory(sessionID string) []LLMMessage {
 	var messages []model.ChatMessage
-	s.db.Where("session_id = ? AND role IN ?", sessionID, []string{"user", "assistant"}).
+	// 包含 role=tool 行：OpenAI 多轮 tool use 要求 assistant(tool_calls) → tool 结果
+	// 完整保留，两步确认（register_idea 等）跨请求时才能在历史里看到上轮的 token。
+	s.db.Where("session_id = ? AND role IN ?", sessionID, []string{"user", "assistant", "tool"}).
 		Order("created_at DESC").
 		Limit(maxMessageHistory).
 		Find(&messages)
@@ -590,9 +1430,28 @@ func (s *ChatService) buildMessageHistory(sessionID string) []LLMMessage {
 		messages[i], messages[j] = messages[j], messages[i]
 	}
 
-	var result []LLMMessage
+	result := make([]LLMMessage, 0, len(messages))
+	// 文档全文缓存：同一文档在历史里只读一次（按 object key 去重）。
+	docCache := map[string]string{}
 	for _, m := range messages {
-		result = append(result, LLMMessage{Role: m.Role, Content: m.Content})
+		// 从 Metadata 恢复 tool_calls / tool_call_id / tool_name（OpenAI 协议格式）
+		msg := chatMessageToLLMMessage(m)
+		// 附件注入（图片预签名 / 文档全文）。
+		if meta := parseMessageMeta(m.Metadata); meta.Attachment != nil {
+			full := ""
+			if meta.Attachment.Kind == model.AttachmentKindDocument && meta.Attachment.ObjectKey != "" {
+				if cached, ok := docCache[meta.Attachment.ObjectKey]; ok {
+					full = cached
+				} else if s.attachmentSvc != nil {
+					if raw, err := s.attachmentSvc.ReadFullContent(meta.Attachment.ObjectKey); err == nil {
+						docCache[meta.Attachment.ObjectKey] = raw
+						full = raw
+					}
+				}
+			}
+			msg = s.enrichLLMMessageWithAttachment(msg, *meta.Attachment, full)
+		}
+		result = append(result, msg)
 	}
 	return result
 }

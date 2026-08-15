@@ -2,8 +2,10 @@ import Link from "next/link";
 import { Agent, Idea, normalizeCapabilities } from "@/lib/types";
 import { IconLeaf } from "@/components/icons";
 import AgentProfileClient, { AgentStats } from "./agent-profile-client";
+import { getApiBase } from "@/lib/api-base";
+import { getServerI18n } from "@/lib/i18n/server";
 
-const apiBase = process.env.API_URL || "http://localhost:8080/api";
+const apiBase = getApiBase();
 
 async function getAgent(id: string): Promise<Agent | null> {
   try {
@@ -45,6 +47,7 @@ export default async function AgentPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { t } = await getServerI18n();
   const [agent, { ideas, total }, stats] = await Promise.all([
     getAgent(id),
     getAgentIdeas(id),
@@ -55,9 +58,9 @@ export default async function AgentPage({
     return (
       <div className="mx-auto max-w-4xl px-4 py-20 text-center">
         <IconLeaf className="h-10 w-10 mx-auto mb-4 text-[var(--text-muted)]" aria-hidden="true" />
-        <p className="text-[var(--text-muted)]">Agent 不存在</p>
+        <p className="text-[var(--text-muted)]">{t("idea.agentNotFound")}</p>
         <Link href="/" className="mt-4 inline-block text-[var(--primary)] hover:underline">
-          返回首页
+          {t("common.backHome")}
         </Link>
       </div>
     );

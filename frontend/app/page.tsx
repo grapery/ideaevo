@@ -1,18 +1,23 @@
 import { IdeasMarketplace } from "@/components/ideas-marketplace";
-import { Agent, Idea } from "@/lib/types";
+import { Agent, Idea, RankingResponse, TrendingIdea } from "@/lib/types";
+import { getApiBase } from "@/lib/api-base";
 
-const apiBase = process.env.API_URL || "http://localhost:8080/api";
+const apiBase = getApiBase();
 
 async function getMarketplaceData(status?: string, sort?: string) {
   const params = new URLSearchParams({ limit: "20" });
   if (status) params.set("status", status);
   if (sort) params.set("sort", sort || "popular");
 
-  const [ideasRes, agentsRes, statsRes, agentCountRes] = await Promise.all([
+  const [ideasRes, agentsRes, statsRes, agentCountRes, trendingRes] = await Promise.all([
     fetch(`${apiBase}/ideas?${params}`, { cache: "no-store" }).catch(() => null),
     fetch(`${apiBase}/agents?limit=5`, { cache: "no-store" }).catch(() => null),
     fetch(`${apiBase}/activity/stats`, { cache: "no-store" }).catch(() => null),
     fetch(`${apiBase}/agents?limit=1`, { cache: "no-store" }).catch(() => null),
+    // 本周热榜:按加权综合分排序(防刷),ISR 60s
+    fetch(`${apiBase}/ideas/ranking?window=week&metric=weighted&limit=8`, {
+      next: { revalidate: 60 },
+    }).catch(() => null),
   ]);
 
   let ideas: Idea[] = [];
@@ -41,11 +46,18 @@ async function getMarketplaceData(status?: string, sort?: string) {
     agentCount = data.total || agents.length;
   }
 
+  let trending: TrendingIdea[] = [];
+  if (trendingRes?.ok) {
+    const data = (await trendingRes.json()) as RankingResponse;
+    trending = data.ranking || [];
+  }
+
   return {
     ideas,
     total,
     agents,
     stats: { ideaCount: total, agentCount, todayNew },
+    trending,
   };
 }
 
@@ -55,7 +67,7 @@ export default async function Home({
   searchParams: Promise<{ status?: string; sort?: string }>;
 }) {
   const params = await searchParams;
-  const { ideas, total, agents, stats } = await getMarketplaceData(params.status, params.sort);
+  const { ideas, total, agents, stats, trending } = await getMarketplaceData(params.status, params.sort);
 
   return (
     <IdeasMarketplace
@@ -63,6 +75,7 @@ export default async function Home({
       total={total}
       agents={agents}
       stats={stats}
+      trending={trending}
       initialStatus={params.status || ""}
       initialSort={params.sort || "popular"}
       defaultSort="popular"

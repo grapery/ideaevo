@@ -29,14 +29,31 @@ type Config struct {
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
+	GoogleIOSClientID  string
+
+	// WeChat Open Platform
+	WeChatAppID       string
+	WeChatAppSecret   string
+	WeChatRedirectURL string
+
+	// Sign in with Apple (iOS bundle ID as JWT audience)
+	AppleBundleID string
+
+	// Aliyun OSS user assets
+	AliyunAssetsBucket    string
+	AliyunAssetsRegion    string
+	AliyunAssetsCDNDomain string
+
+	// Aliyun SMS（运行时由 sms_aliyun.go 读 os.Getenv，含 grapery 同款变量与默认值）
+	AliyunSMSSignName     string
+	AliyunSMSTemplateCode string
 
 	// Frontend
 	FrontendURL string
 
 	// LLM
-	LLMAPIKey     string
-	LLMBaseURL    string
-	LLMModel      string
+	LLM LLMConfig
+
 	SystemAgentID string
 
 	// Aliyun OSS Vector Bucket
@@ -52,8 +69,14 @@ type Config struct {
 	EmbeddingModel       string
 	EmbeddingDimensions  int
 
-	// OSS Vector index name (per datatype: ideas / agents)
+	// OSS Vector index / DashVector collection name
 	VectorIndexIdeas string
+
+	// Vector backend: dashvector | oss (auto-detect when empty)
+	VectorBackend         string
+	DashVectorEndpoint    string
+	DashVectorMetric      string
+	VectorReindexOnStart  bool
 }
 
 func Load() *Config {
@@ -78,25 +101,42 @@ func Load() *Config {
 		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", ""),
+		GoogleIOSClientID:  getEnv("GOOGLE_IOS_CLIENT_ID", ""),
+
+		WeChatAppID:       getEnv("WECHAT_APP_ID", ""),
+		WeChatAppSecret:   getEnv("WECHAT_APP_SECRET", ""),
+		WeChatRedirectURL: getEnv("WECHAT_REDIRECT_URL", ""),
+
+		AppleBundleID: getEnv("APPLE_BUNDLE_ID", "com.wanye.deimos"),
 
 		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 
-		LLMAPIKey:     getEnv("LLM_API_KEY", ""),
-		LLMBaseURL:    getEnv("LLM_BASE_URL", "https://api.openai.com/v1"),
-		LLMModel:      getEnv("LLM_MODEL", "gpt-4o"),
+		LLM:           ResolveLLMConfig(),
 		SystemAgentID: getEnv("SYSTEM_AGENT_ID", ""),
 
-		AliyunAccessKeyID:     getEnv("ALIYUN_OSS_ACCESS_KEY_ID", getEnv("ALIYUN_ACCESS_KEY_ID", "")),
-		AliyunAccessKeySecret: getEnv("ALIYUN_OSS_ACCESS_KEY_SECRET", getEnv("ALIYUN_ACCESS_KEY_SECRET", "")),
+		AliyunAccessKeyID:     resolveAliyunAccessKeyID(),
+		AliyunAccessKeySecret: resolveAliyunAccessKeySecret(),
 		AliyunVectorBucket:    getEnv("ALIYUN_VECTOR_BUCKET", ""),
 		AliyunVectorRegion:    getEnv("ALIYUN_VECTOR_REGION", "cn-shanghai"),
 		AliyunVectorAccountID: getEnv("ALIYUN_VECTOR_ACCOUNT_ID", ""),
 
+		AliyunAssetsBucket:    getEnv("ALIYUN_ASSETS_BUCKET", ""),
+		AliyunAssetsRegion:    getEnv("ALIYUN_ASSETS_REGION", "cn-shanghai"),
+		AliyunAssetsCDNDomain: getEnv("ALIYUN_ASSETS_CDN_DOMAIN", ""),
+
+		AliyunSMSSignName:     getEnv("ALIYUN_SMS_SIGN_NAME", ""),
+		AliyunSMSTemplateCode: getEnv("ALIYUN_SMS_TEMPLATE_CODE", ""),
+
 		DashScopeAPIKey:      getEnv("DASHSCOPE_API_KEY", ""),
-		EmbeddingModel:       getEnv("EMBEDDING_MODEL", "text-embedding-v3"),
-		EmbeddingDimensions:  getEnvInt("EMBEDDING_DIMENSIONS", 1024),
+		EmbeddingModel:       getEnv("EMBEDDING_MODEL", "text-embedding-v4"),
+		EmbeddingDimensions:  getEnvInt("EMBEDDING_DIMENSIONS", 1536),
 
 		VectorIndexIdeas: getEnv("VECTOR_INDEX_IDEAS", "ideas"),
+
+		VectorBackend:        getEnv("VECTOR_BACKEND", ""),
+		DashVectorEndpoint:   getEnv("DASHVECTOR_ENDPOINT", ""),
+		DashVectorMetric:     getEnv("DASHVECTOR_METRIC", "cosine"),
+		VectorReindexOnStart: getEnv("VECTOR_REINDEX_ON_START", "") == "true",
 	}
 }
 
@@ -133,4 +173,100 @@ func getEnvDuration(key string, fallback time.Duration) time.Duration {
 		}
 	}
 	return fallback
+}
+
+// LLMConfig holds resolved OpenAI-compatible LLM settings.
+type LLMConfig struct {
+	Provider string // openai | ark | dashscope | ""
+	APIKey   string
+	BaseURL  string
+	Model    string
+}
+
+// DefaultArkTextModel is the fallback when no endpoint/model env is set (grapery-aligned).
+const DefaultArkTextModel = "doubao-seed-2-0-lite-260215"
+
+func (c LLMConfig) Enabled() bool {
+	return c.APIKey != ""
+}
+
+// ResolveLLMConfig picks provider-specific defaults without mixing e.g. Ark endpoint + qwen-plus.
+func ResolveLLMConfig() LLMConfig {
+	if key := os.Getenv("LLM_API_KEY"); key != "" {
+		return LLMConfig{
+			Provider: "openai",
+			APIKey:   key,
+			BaseURL:  firstNonEmpty(os.Getenv("LLM_BASE_URL"), "https://api.openai.com/v1"),
+			Model:    firstNonEmpty(os.Getenv("LLM_MODEL"), "gpt-4o"),
+		}
+	}
+
+	if key := firstNonEmpty(
+		os.Getenv("ARK_API_KEY"),
+		os.Getenv("HUOSHAN_API_KEY"),
+		os.Getenv("HUOSHAN_LLM_API_KEY"),
+		os.Getenv("VOLCENGINE_ARK_API_KEY"),
+	); key != "" {
+		return LLMConfig{
+			Provider: "ark",
+			APIKey:   key,
+			BaseURL: firstNonEmpty(
+				os.Getenv("LLM_BASE_URL"),
+				os.Getenv("ARK_BASE_URL"),
+				os.Getenv("HUOSHAN_BASE_URL"),
+				os.Getenv("HUOSHAN_LLM_BASE_URL"),
+				"https://ark.cn-beijing.volces.com/api/v3",
+			),
+			Model: firstNonEmpty(
+				os.Getenv("LLM_MODEL"),
+				os.Getenv("ARK_MODEL"),
+				os.Getenv("HUOSHAN_MODEL"),
+				os.Getenv("HUOSHAN_LLM_MODEL"),
+				os.Getenv("HUOSHAN_TEXT_MODEL"),
+				DefaultArkTextModel,
+			),
+		}
+	}
+
+	if key := os.Getenv("DASHSCOPE_API_KEY"); key != "" {
+		return LLMConfig{
+			Provider: "dashscope",
+			APIKey:   key,
+			BaseURL: firstNonEmpty(
+				os.Getenv("LLM_BASE_URL"),
+				"https://dashscope.aliyuncs.com/compatible-mode/v1",
+			),
+			Model: firstNonEmpty(os.Getenv("LLM_MODEL"), "qwen-plus"),
+		}
+	}
+
+	return LLMConfig{}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// resolveAliyunAccessKeyID 与 grapery / SMS 共用凭证链，避免 OSS 与 SMS 重复配置。
+func resolveAliyunAccessKeyID() string {
+	return firstNonEmpty(
+		os.Getenv("ALIYUN_OSS_ACCESS_KEY_ID"),
+		os.Getenv("ALIYUN_ACCESS_KEY_ID"),
+		os.Getenv("ALIYUN_SMS_ACCESS_KEY_ID"),
+		os.Getenv("ALIYUN_SMS_ACCESS_ID"),
+	)
+}
+
+func resolveAliyunAccessKeySecret() string {
+	return firstNonEmpty(
+		os.Getenv("ALIYUN_OSS_ACCESS_KEY_SECRET"),
+		os.Getenv("ALIYUN_ACCESS_KEY_SECRET"),
+		os.Getenv("ALIYUN_SMS_ACCESS_KEY_SECRET"),
+		os.Getenv("ALIYUN_SMS_ACCESS_SECRET"),
+	)
 }

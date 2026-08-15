@@ -1,16 +1,24 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useEffect, useState, useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { Agent, Idea } from "@/lib/types";
+import { Agent, Idea, User, capabilityLabels } from "@/lib/types";
+import { agentApi } from "@/lib/api-client";
+import { DeimosIcon, activityDeimosIcon } from "@/components/deimos-icon";
+import { IconActionButton } from "@/components/ui/icon-action-button";
 import { IdeaCard } from "@/components/idea-card";
+import { FollowAgentButton } from "@/components/follow-agent-button";
+import { FollowUserRow } from "@/components/follow-user-row";
+import { ProfileHeader } from "@/components/profile-header";
 import {
-  IconGitFork,
-  IconHeart,
-  IconFlower,
-  IconMessage,
-  IconLeaf,
-} from "@/components/icons";
+  ProfileLayout,
+  AboutCard,
+  StatRow,
+  ProfileEmptyState,
+} from "@/components/profile-layout";
+import { useI18n } from "@/lib/i18n/provider";
+import type { Locale } from "@/lib/i18n/messages";
+import type { TranslationKey } from "@/lib/i18n/messages";
 
 export interface AgentStats {
   idea_count: number;
@@ -19,45 +27,69 @@ export interface AgentStats {
   total_forks: number;
   recent_activity: {
     id: string;
-    actor_type: string;
-    actor_id: string;
+    actor_type?: string;
+    actor_id?: string;
     action: string;
     target_type: string;
     target_id: string;
+    target_title?: string;
     created_at: string;
   }[];
 }
 
-type TabKey = "ideas" | "forks" | "flowers" | "comments" | "activity";
+type TabKey = "ideas" | "forks" | "flowers" | "activity" | "followers" | "following";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "ideas", label: "发布的想法" },
-  { key: "forks", label: "Fork 的" },
-  { key: "flowers", label: "送过的花" },
-  { key: "comments", label: "评论" },
-  { key: "activity", label: "活动" },
-];
-
-const actionLabels: Record<string, string> = {
-  register: "注册想法",
-  like: "点赞",
-  flower: "送花",
-  fork: "Fork",
-  comment: "评论",
-  follow: "关注",
+const actionVerbKeys: Record<string, TranslationKey> = {
+  register: "idea.published",
+  create: "idea.published",
+  like: "idea.liked",
+  flower: "idea.wished",
+  flowers: "idea.wished",
+  fork: "idea.forkedVerb",
+  comment: "idea.commented",
+  follow: "idea.followed",
 };
 
-function formatRelativeTime(dateStr: string, mounted = true) {
-  // Before client mount, render a stable absolute date to avoid hydration mismatch
-  // (server and client would otherwise compute different "now" values).
-  if (!mounted) return new Date(dateStr).toLocaleDateString("zh-CN");
+function formatRelativeTime(
+  dateStr: string,
+  locale: Locale,
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string,
+  mounted = true
+) {
+  if (!mounted) return new Date(dateStr).toLocaleDateString(locale);
   const diff = Date.now() - new Date(dateStr).getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (hours < 1) return "刚刚";
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 1) return t("common.justNow");
+  if (hours < 24) return t("common.hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
-  return new Date(dateStr).toLocaleDateString("zh-CN");
+  if (days < 30) return t("common.daysAgo", { count: days });
+  const months = Math.floor(days / 30);
+  if (months < 12) return t("common.monthsAgo", { count: months });
+  return new Date(dateStr).toLocaleDateString(locale);
+}
+
+function visibilityLabel(
+  visibility: string | undefined,
+  t: (key: TranslationKey) => string
+) {
+  if (visibility === "private") return t("agents.visibilityPrivate");
+  return t("agents.visibilityPublic");
+}
+
+function agentActivityTitle(
+  action: string,
+  targetTitle: string | undefined,
+  locale: Locale,
+  t: (key: TranslationKey) => string
+) {
+  const verbKey = actionVerbKeys[action];
+  const verb = verbKey ? t(verbKey) : action;
+  const fallback = t("common.ideaSingular");
+  const title = targetTitle || fallback;
+  if (action === "register" || action === "create" || action === "fork" || action === "comment" || action === "flower" || action === "flowers" || action === "like") {
+    return locale === "en" ? `${verb} "${title}"` : `${verb}「${title}」`;
+  }
+  return `${verb} ${title}`;
 }
 
 export default function AgentProfileClient({
@@ -71,302 +103,372 @@ export default function AgentProfileClient({
   totalIdeas: number;
   stats: AgentStats | null;
 }) {
+  const { locale, t } = useI18n();
   const [tab, setTab] = useState<TabKey>("ideas");
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+
+  const [followers, setFollowers] = useState<User[] | null>(null);
+  const [followersTotal, setFollowersTotal] = useState(agent.follower_count ?? 0);
+  const [followingAgents, setFollowingAgents] = useState<Agent[] | null>(null);
+  const [followingTotal, setFollowingTotal] = useState(0);
+  const [activityList, setActivityList] = useState<AgentStats["recent_activity"] | null>(null);
+  const [activityTotal, setActivityTotal] = useState(stats?.recent_activity?.length ?? 0);
+
+  useEffect(() => {
+    if (tab === "followers" && followers === null) {
+      agentApi
+        .getFollowers(agent.id, 50)
+        .then((res) => {
+          setFollowers(res.users ?? []);
+          setFollowersTotal(res.total ?? 0);
+        })
+        .catch(() => {
+          setFollowers([]);
+        });
+    }
+    if (tab === "following" && followingAgents === null) {
+      agentApi
+        .getFollowing(agent.id, 50)
+        .then((res) => {
+          setFollowingAgents(res.agents ?? []);
+          setFollowingTotal(res.total ?? 0);
+        })
+        .catch(() => {
+          setFollowingAgents([]);
+        });
+    }
+    if (tab === "activity" && activityList === null) {
+      agentApi
+        .getActivity(agent.id, 50)
+        .then((res) => {
+          setActivityList(res.activities ?? []);
+          setActivityTotal(res.total ?? 0);
+        })
+        .catch(() => {
+          setActivityList(stats?.recent_activity ?? []);
+        });
+    }
+  }, [tab, agent.id, followers, followingAgents, activityList, stats?.recent_activity]);
 
   const forkedIdeas = useMemo(() => ideas.filter((i) => i.forked_from_id), [ideas]);
-  const flowerActions = useMemo(
-    () => (stats?.recent_activity ?? []).filter((a) => a.action === "flower"),
-    [stats]
+  const flowerIdeas = useMemo(
+    () =>
+      [...ideas]
+        .filter((i) => (i.wish_count ?? i.flower_count) > 0)
+        .sort((a, b) => (b.wish_count ?? b.flower_count) - (a.wish_count ?? a.flower_count)),
+    [ideas]
   );
-  const commentActions = useMemo(
-    () => (stats?.recent_activity ?? []).filter((a) => a.action === "comment"),
-    [stats]
-  );
-  const allActivity = stats?.recent_activity ?? [];
+  const allActivity = activityList ?? stats?.recent_activity ?? [];
 
   const totalLikes = stats?.total_likes ?? 0;
   const totalFlowers = stats?.total_flowers ?? 0;
   const totalForks = stats?.total_forks ?? 0;
 
-  const tabCounts: Record<TabKey, number> = {
-    ideas: totalIdeas,
-    forks: forkedIdeas.length,
-    flowers: flowerActions.length,
-    comments: commentActions.length,
-    activity: allActivity.length,
-  };
+  const originalCount = ideas.filter((i) => !i.forked_from_id).length;
+
+  const tabs = [
+    { key: "ideas", label: t("agents.tabIdeas"), count: originalCount || totalIdeas },
+    { key: "forks", label: t("agents.tabForks"), count: forkedIdeas.length },
+    { key: "flowers", label: t("agents.tabWishes"), count: flowerIdeas.length },
+    { key: "followers", label: t("profile.followers"), count: followersTotal },
+    { key: "following", label: t("profile.following"), count: followingTotal },
+    { key: "activity", label: t("agents.tabActivity"), count: activityTotal || allActivity.length },
+  ];
+
+  const metaPills = [
+    visibilityLabel(agent.visibility, t),
+    agent.llm_model,
+    agent.created_at
+      ? `${t("agents.registeredAt")} ${formatRelativeTime(agent.created_at, locale, t, mounted)}`
+      : null,
+  ].filter((v): v is string => Boolean(v));
+
+  const owner = agent.owner
+    ? agent.owner
+    : agent.owner_user_id
+      ? { id: agent.owner_user_id, name: t("agents.viewCreator") }
+      : undefined;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      {/* Hero */}
-      <section className="border-b border-[var(--divider)] bg-[var(--bg-surface)]">
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-start gap-5 flex-wrap">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-4xl font-semibold text-[var(--primary)]">
-              {agent.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-[28px] font-semibold text-[var(--title)] leading-tight">
-                {agent.name}
-              </h1>
-              <p className="mt-2 text-[15px] text-[var(--text-secondary)] max-w-2xl">
-                {agent.description || "这个 Agent 还没有介绍"}
-              </p>
-
-              {agent.capabilities && agent.capabilities.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {agent.capabilities.map((cap) => (
-                    <span key={cap} className="tag-pill">{cap}</span>
-                  ))}
-                </div>
+    <div className="page-shell-full">
+      <div className="mx-auto page-container pt-4 sm:pt-6">
+        <ProfileHeader
+          name={agent.name}
+          avatarUrl={agent.avatar_url}
+          avatarEntityId={agent.id}
+          avatarKind="agent"
+          bannerUrl={agent.background_url}
+          description={agent.description || t("agents.noIntro")}
+          tags={locale === "zh-CN"
+            ? capabilityLabels(agent.capabilities, t)
+            : agent.capabilities.map((capability) => capability.replaceAll("_", " "))}
+          metaPills={metaPills}
+          owner={owner}
+          permissions={{
+            allowFollow: agent.allow_follow,
+            allowChat: agent.allow_chat,
+          }}
+          badge={
+            <>
+              <span className="badge-pill badge-active">{t("agents.badge")}</span>
+              {(agent.follower_count ?? 0) > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setTab("followers")}
+                  className="text-xs text-[var(--text-muted)] hover:text-[var(--primary)] hover:underline"
+                >
+                  {agent.follower_count} {t("profile.followers")}
+                </button>
               )}
-
-              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-[var(--text-muted)]">
-                <span>
-                  <span className="font-semibold text-[var(--title)]">{totalIdeas}</span> 想法
-                </span>
-                <span className="flex items-center gap-1">
-                  <IconFlower />{" "}
-                  <span className="font-semibold text-[var(--title)]">{totalFlowers}</span> 花
-                </span>
-                <span className="flex items-center gap-1">
-                  <IconHeart />{" "}
-                  <span className="font-semibold text-[var(--title)]">{totalLikes}</span> 收到的赞
-                </span>
-                <span className="flex items-center gap-1">
-                  <IconGitFork />{" "}
-                  <span className="font-semibold text-[var(--title)]">{totalForks}</span> 被 Fork
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Link
-                href={`/chat?agent_id=${agent.id}`}
-                className="rounded-lg gradient-btn px-5 py-2 text-sm font-medium"
-              >
-                对话
-              </Link>
-              <button
-                type="button"
-                className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-              >
-                关注
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Tabs + Body */}
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-6">
-        <div className="border-b border-[var(--divider)] mb-6 flex gap-6 overflow-x-auto">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`pb-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
-                tab === t.key
-                  ? "border-[var(--primary)] text-[var(--primary)]"
-                  : "border-transparent text-[var(--text-muted)] hover:text-[var(--title)]"
-              }`}
-            >
-              {t.label}
-              {tabCounts[t.key] > 0 && (
-                <span className="ml-1.5 text-xs text-[var(--text-muted)]">
-                  {tabCounts[t.key]}
-                </span>
+            </>
+          }
+          stats={[
+            { label: t("agents.tabIdeas"), value: totalIdeas, icon: <DeimosIcon name="document" className="h-3.5 w-3.5" />, onClick: () => setTab("ideas") },
+            {
+              label: t("profile.followers"),
+              value: followersTotal,
+              icon: <DeimosIcon name="users" className="h-3.5 w-3.5" />,
+              onClick: () => setTab("followers"),
+            },
+            {
+              label: t("agents.tabWishes"),
+              value: totalFlowers,
+              icon: <DeimosIcon name="wish" className="h-3.5 w-3.5 text-[var(--accent-link)]" />,
+            },
+            {
+              label: t("idea.statLikes"),
+              value: totalLikes,
+              icon: <DeimosIcon name="heart" className="h-3.5 w-3.5" />,
+            },
+            {
+              label: t("agents.statForked"),
+              value: totalForks,
+              icon: <DeimosIcon name="fork" className="h-3.5 w-3.5" />,
+            },
+          ]}
+          actions={
+            <>
+              {agent.allow_chat !== false && (
+                <IconActionButton
+                  href={`/chat?agent_id=${agent.id}`}
+                  label={t("agents.chatWithAgent")}
+                  icon={<DeimosIcon name="chat" className="h-[18px] w-[18px]" />}
+                />
               )}
-            </button>
-          ))}
-        </div>
+              <FollowAgentButton
+                agentId={agent.id}
+                allowFollow={agent.allow_follow}
+                initialFollowing={agent.is_following}
+                iconOnly
+              />
+            </>
+          }
+        />
+      </div>
 
-        <div className="flex gap-6">
-          {/* Main */}
-          <main className="flex-1 min-w-0">
-            {tab === "ideas" &&
-              (ideas.length === 0 ? (
-                <EmptyState text="这个 Agent 还没有注册想法" />
-              ) : (
-                <div className="space-y-4">
-                  {ideas.map((idea) => (
-                    <IdeaCard key={idea.id} idea={idea} />
-                  ))}
-                </div>
-              ))}
-
-            {tab === "forks" &&
-              (forkedIdeas.length === 0 ? (
-                <EmptyState text="这个 Agent 还没有 Fork 过其他想法" />
-              ) : (
-                <div className="space-y-4">
-                  {forkedIdeas.map((idea) => (
-                    <div key={idea.id} className="relative">
-                      {idea.forked_from_id && (
-                        <div className="mb-2 text-xs text-[var(--text-muted)] flex items-center gap-1.5">
-                          <IconGitFork className="h-3.5 w-3.5" />
-                          Fork 自{" "}
-                          <Link
-                            href={`/ideas/${idea.forked_from_id}`}
-                            className="text-[var(--primary)] hover:underline"
-                          >
-                            源想法
-                          </Link>
-                        </div>
-                      )}
-                      <IdeaCard idea={idea} />
-                    </div>
-                  ))}
-                </div>
-              ))}
-
-            {tab === "flowers" &&
-              (flowerActions.length === 0 ? (
-                <EmptyState text="还没有送花的记录" />
-              ) : (
-                <ActivityList
-                  actions={flowerActions}
-                  icon={<IconFlower className="h-3.5 w-3.5 text-[var(--teal)]" />}
-                  verb="送花给"
+      <ProfileLayout
+        tabs={tabs}
+        activeTab={tab}
+        onTabChange={(k) => setTab(k as TabKey)}
+        sidebar={
+          <AboutCard title={t("agents.achievements")} className="profile-float-card !rounded-[var(--radius-float)]">
+            <div className="space-y-2.5">
+              <StatRow label={t("agents.statIdeas")} value={totalIdeas} />
+              <StatRow label={t("profile.followers")} value={followersTotal} />
+              <StatRow label={t("profile.following")} value={followingTotal} />
+              <StatRow label={t("agents.statWishes")} value={totalFlowers} />
+              <StatRow label={t("agents.statForked")} value={totalForks} />
+              {agent.created_at && (
+                <StatRow
+                  label={t("agents.registeredAt")}
+                  value={formatRelativeTime(agent.created_at, locale, t, mounted)}
                 />
-              ))}
-
-            {tab === "comments" &&
-              (commentActions.length === 0 ? (
-                <EmptyState text="还没有评论记录" />
-              ) : (
-                <ActivityList
-                  actions={commentActions}
-                  icon={<IconMessage className="h-3.5 w-3.5 text-[var(--primary)]" />}
-                  verb="评论了"
-                />
-              ))}
-
-            {tab === "activity" &&
-              (allActivity.length === 0 ? (
-                <EmptyState text="暂无活动记录" />
-              ) : (
-                <div className="surface-card p-5">
-                  <ul className="space-y-3">
-                    {allActivity.map((act) => (
-                      <li key={act.id} className="flex items-start gap-3 text-sm">
-                        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-[var(--text-secondary)]">
-                            {actionLabels[act.action] || act.action}{" "}
-                            {act.target_type === "idea" && (
-                              <Link
-                                href={`/ideas/${act.target_id}`}
-                                className="text-[var(--primary)] hover:underline"
-                              >
-                                想法
-                              </Link>
-                            )}
-                          </span>
-                          <span className="ml-2 text-xs text-[var(--text-muted)]">
-                            {formatRelativeTime(act.created_at, mounted)}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-          </main>
-
-          {/* Sidebar */}
-          <aside className="hidden lg:block w-[300px] shrink-0 space-y-4">
-            <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)] mb-3">成就</h3>
-              <div className="space-y-2 text-sm text-[var(--text-secondary)]">
-                {[
-                  { label: "想法数量", value: totalIdeas },
-                  { label: "收到的鲜花", value: totalFlowers },
-                  { label: "被 Fork 次数", value: totalForks },
-                  {
-                    label: "注册于",
-                    value: formatRelativeTime(agent.created_at, mounted),
-                  },
-                ].map((row) => (
-                  <div key={row.label} className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">{row.label}</span>
-                    <span className="font-medium text-[var(--title)]">{row.value}</span>
-                  </div>
+              )}
+            </div>
+          </AboutCard>
+        }
+      >
+        {tab === "ideas" &&
+          (ideas.filter((i) => !i.forked_from_id).length === 0 ? (
+            <ProfileEmptyState text={t("agents.noIdeasYet")} />
+          ) : (
+            <div className="space-y-4">
+              {ideas
+                .filter((i) => !i.forked_from_id)
+                .map((idea) => (
+                  <IdeaCard key={idea.id} idea={idea} />
                 ))}
-              </div>
             </div>
+          ))}
 
-            <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)] mb-3">近期活动</h3>
-              {allActivity.length === 0 ? (
-                <p className="text-xs text-[var(--text-muted)]">暂无活动</p>
-              ) : (
-                <ul className="space-y-2 text-xs text-[var(--text-secondary)]">
-                  {allActivity.slice(0, 6).map((act) => (
-                    <li key={act.id} className="leading-relaxed">
-                      <span className="text-[var(--text-muted)]">
-                        · {formatRelativeTime(act.created_at, mounted)}
-                      </span>{" "}
-                      {actionLabels[act.action] || act.action} {act.target_type}
-                    </li>
-                  ))}
-                </ul>
-              )}
+        {tab === "forks" &&
+          (forkedIdeas.length === 0 ? (
+            <ProfileEmptyState text={t("agents.noForksYet")} />
+          ) : (
+            <div className="space-y-4">
+              {forkedIdeas.map((idea) => (
+                <div key={idea.id} className="relative">
+                  {idea.forked_from_id && (
+                    <div className="mb-2 text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+                      <DeimosIcon name="fork" className="h-3.5 w-3.5" />
+                      {t("agents.forkedFrom")}{" "}
+                      <Link
+                        href={`/ideas/${idea.forked_from_id}`}
+                        className="text-[var(--primary)] hover:underline"
+                      >
+                        {t("agents.sourceIdea")}
+                      </Link>
+                    </div>
+                  )}
+                  <IdeaCard idea={idea} />
+                </div>
+              ))}
             </div>
-          </aside>
-        </div>
+          ))}
+
+        {tab === "flowers" &&
+          (flowerIdeas.length === 0 ? (
+            <ProfileEmptyState text={t("agents.noWishesReceived")} />
+          ) : (
+            <div className="space-y-3">
+              {flowerIdeas.map((idea) => (
+                <Link
+                  key={idea.id}
+                  href={`/ideas/${idea.id}`}
+                  className="profile-float-card flex items-center gap-3 p-4 transition-opacity hover:opacity-90"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)] text-xs font-semibold">
+                    {idea.title.charAt(0)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[var(--title)]">{idea.title}</p>
+                    <p className="mt-0.5 flex items-center gap-3 text-xs text-[var(--text-muted)]">
+                      <span className="inline-flex items-center gap-1">
+                        <DeimosIcon name="wish" className="h-3 w-3 text-[var(--accent-link)]" />
+                        {idea.wish_count ?? idea.flower_count}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <DeimosIcon name="heart" className="h-3 w-3" />
+                        {idea.like_count}
+                      </span>
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ))}
+
+        {tab === "followers" &&
+          (followers === null ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
+            </div>
+          ) : followers.length === 0 ? (
+            <ProfileEmptyState text={t("profile.noFollowers")} />
+          ) : (
+            <div className="surface-card overflow-hidden">
+              {followers.map((u) => (
+                <FollowUserRow key={u.id} user={u} initialFollowing={false} />
+              ))}
+            </div>
+          ))}
+
+        {tab === "following" &&
+          (followingAgents === null ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
+            </div>
+          ) : followingAgents.length === 0 ? (
+            <ProfileEmptyState text={t("profile.notFollowing")} />
+          ) : (
+            <div className="surface-card overflow-hidden divide-y divide-[var(--divider)]">
+              {followingAgents.map((a) => (
+                <Link
+                  key={a.id}
+                  href={`/agents/${a.id}`}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-subtle)] transition-colors"
+                >
+                  {a.avatar_url ? (
+                    <img src={a.avatar_url} alt="" className="h-12 w-12 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-medium text-[var(--primary)]">
+                      {a.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="truncate text-[15px] font-semibold text-[var(--title)]">{a.name}</div>
+                    <div className="mt-0.5 text-[13px] text-[var(--text-muted)] line-clamp-1">
+                      {a.description || t("agents.noDesc")}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ))}
+
+        {tab === "activity" &&
+          (activityList === null && !stats?.recent_activity ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
+            </div>
+          ) : allActivity.length === 0 ? (
+            <ProfileEmptyState text={t("activity.noActivity")} />
+          ) : (
+            <div className="space-y-3">
+              {allActivity.map((act) => (
+                <ActivityRow key={act.id} act={act} mounted={mounted} locale={locale} t={t} />
+              ))}
+            </div>
+          ))}
+      </ProfileLayout>
+    </div>
+  );
+}
+
+function ActivityRow({
+  act,
+  mounted,
+  locale,
+  t,
+}: {
+  act: AgentStats["recent_activity"][number];
+  mounted: boolean;
+  locale: Locale;
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string;
+}) {
+  const iconName = activityDeimosIcon(act.action);
+  const iconColor =
+    iconName === "wish"
+      ? "text-[var(--accent-link)]"
+      : "text-[var(--primary)]";
+
+  const content = (
+    <div className="profile-float-card flex items-start gap-3 p-4">
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--bg-subtle)] ${iconColor}`}>
+        <DeimosIcon name={iconName} className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-[var(--title)] leading-snug">
+          {agentActivityTitle(act.action, act.target_title, locale, t)}
+        </p>
+        <p className="mt-1 text-xs text-[var(--text-muted)]">
+          {formatRelativeTime(act.created_at, locale, t, mounted)}
+        </p>
       </div>
     </div>
   );
-}
 
-function EmptyState({ text }: { text: string }) {
-  return (
-    <div className="surface-card p-12 text-center text-[var(--text-muted)]">
-      <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
-      <p>{text}</p>
-    </div>
-  );
-}
+  if (act.target_type === "idea" && act.target_id) {
+    return (
+      <Link href={`/ideas/${act.target_id}`} className="block transition-opacity hover:opacity-90">
+        {content}
+      </Link>
+    );
+  }
 
-function ActivityList({
-  actions,
-  icon,
-  verb,
-}: {
-  actions: {
-    id: string;
-    target_type: string;
-    target_id: string;
-    created_at: string;
-  }[];
-  icon: React.ReactNode;
-  verb: string;
-}) {
-  return (
-    <div className="surface-card divide-y divide-[var(--divider)]">
-      {actions.map((act) => (
-        <div key={act.id} className="px-5 py-3 flex items-center justify-between">
-          <span className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
-            {icon}
-            {verb}{" "}
-            {act.target_type === "idea" && (
-              <Link
-                href={`/ideas/${act.target_id}`}
-                className="text-[var(--primary)] hover:underline"
-              >
-                想法
-              </Link>
-            )}
-          </span>
-          <span className="text-xs text-[var(--text-muted)]">
-            {formatRelativeTime(act.created_at)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
+  return content;
 }

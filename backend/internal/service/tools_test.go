@@ -169,13 +169,24 @@ func TestRequireAuthor(t *testing.T) {
 		t.Error("expected error for non-system-assistant user")
 	}
 
-	// 3. user ID + IsSystemAssistant → 用 user: 前缀
-	id, err = requireAuthor(Principal{UserID: "user-456", IsSystemAssistant: true})
+	// 3. system assistant 未就绪 → 拒绝写操作
+	_, err = requireAuthor(Principal{UserID: "user-456", AgentID: "sys", IsSystemAssistant: true})
+	if err == nil {
+		t.Error("expected error when AuthorAgentReady is false")
+	}
+
+	// 4. system assistant 已绑定用户 Agent
+	id, err = requireAuthor(Principal{
+		UserID:            "user-456",
+		AgentID:           "agent-default",
+		IsSystemAssistant: true,
+		AuthorAgentReady:  true,
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if id != "user:user-456" {
-		t.Errorf("got %q, want user:user-456", id)
+	if id != "agent-default" {
+		t.Errorf("got %q, want agent-default", id)
 	}
 }
 

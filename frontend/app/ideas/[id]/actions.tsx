@@ -1,45 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { useApiKey } from "@/lib/api-key-context";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
+import { getErrorMessage } from "@/lib/api-error";
+import { ideaRequestJson } from "@/lib/idea-request";
+import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { useI18n } from "@/lib/i18n/provider";
 
 export function IdeaActions({ ideaId }: { ideaId: string }) {
-  const { apiKey, isReady } = useApiKey();
+  const { t } = useI18n();
+  const { apiKey, canAct, useSession, isReady } = useIdeaActionAuth();
   const [loading, setLoading] = useState<string | null>(null);
 
-  const apiBase =
-    (typeof window !== "undefined"
-      ? window.__ENV_API_URL__
-      : null) || "http://localhost:8080/api";
-
   async function doAction(action: string, method: string) {
-    if (!apiKey) {
-      toast.error("请先在「我的面板」输入 API Key");
+    if (!canAct) {
+      notify.error(t("idea.authRequired"));
       return;
     }
     setLoading(action);
     try {
-      const res = await fetch(`${apiBase}/ideas/${ideaId}/${action}`, {
+      await ideaRequestJson(`/ideas/${ideaId}/${action}`, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": apiKey,
-        },
+        apiKey: useSession ? undefined : apiKey,
+        useSession,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "操作失败" }));
-        throw new Error(err.error);
-      }
-      toast.success(
+      notify.success(
         action === "like"
-          ? "已点赞！"
+          ? t("idea.statLikes")
           : action === "flowers"
-            ? "鲜花已送出！"
-            : "操作成功"
+            ? t("idea.statWishes")
+            : t("common.operationFailed")
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "操作失败");
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(null);
     }
@@ -50,61 +44,61 @@ export function IdeaActions({ ideaId }: { ideaId: string }) {
       <button
         onClick={() => doAction("like", "POST")}
         disabled={!!loading}
-        className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        className="btn-default btn-sm disabled:opacity-50"
       >
-        {loading === "like" ? "…" : "❤️ 点赞"}
+        {loading === "like" ? "…" : (
+          <><DeimosIcon name="heart" className="h-3.5 w-3.5" />{t("idea.statLikes")}</>
+        )}
       </button>
       <button
         onClick={() => doAction("flowers", "POST")}
         disabled={!!loading}
-        className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        className="btn-default btn-sm disabled:opacity-50"
       >
-        {loading === "flowers" ? "…" : "🌸 送花"}
+        {loading === "flowers" ? "…" : (
+          <><DeimosIcon name="wish" className="h-3.5 w-3.5" />{t("idea.statWishes")}</>
+        )}
       </button>
       <button
         onClick={() => {
-          const title = prompt("Fork 标题:");
+          const title = prompt(t("fork.promptTitle"));
           if (!title) return;
-          const desc = prompt("Fork 描述:") || "";
-          const reason = prompt("Fork 原因:") || "";
+          const desc = prompt(t("fork.promptDesc")) || "";
+          const reason = prompt(t("fork.promptReason")) || "";
           doFork(title, desc, reason);
         }}
         disabled={!!loading}
-        className="rounded-lg border border-[var(--divider)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        className="btn-default btn-sm disabled:opacity-50"
       >
-        🍴 Fork
+        <DeimosIcon name="fork" className="h-3.5 w-3.5" />{t("idea.statForks")}
       </button>
-      {!isReady && (
+      {!isReady && !canAct && (
         <span className="text-xs text-[var(--text-muted)]">
-          需要登录后操作
+          {t("notif.loginRequired")}
         </span>
       )}
     </div>
   );
 
   async function doFork(title: string, desc: string, reason: string) {
-    if (!apiKey) {
-      toast.error("请先在「我的面板」输入 API Key");
+    if (!canAct) {
+      notify.error(t("idea.authRequired"));
       return;
     }
     setLoading("fork");
     try {
-      const res = await fetch(`${apiBase}/ideas/${ideaId}/fork`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": apiKey,
-        },
-        body: JSON.stringify({ title, description: desc, reason }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Fork 失败" }));
-        throw new Error(err.error);
-      }
-      const data = await res.json();
-      toast.success(`Fork 成功！新想法 ID: ${data.id}`);
+      const data = await ideaRequestJson<{ id: string }>(
+        `/ideas/${ideaId}/fork`,
+        {
+          method: "POST",
+          apiKey: useSession ? undefined : apiKey,
+          useSession,
+          body: JSON.stringify({ title, description: desc, reason }),
+        }
+      );
+      notify.success(t("fork.successWithId", { id: data.id }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fork 失败");
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
     } finally {
       setLoading(null);
     }

@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/wanye/ideaevo/internal/model"
 )
@@ -59,22 +61,23 @@ func NewSearchIdeasTool(ideaSvc *IdeaService) *SearchIdeasTool {
 
 func (t *SearchIdeasTool) Name() string { return "search_ideas" }
 func (t *SearchIdeasTool) Description() string {
-	return "Search the marketplace for ideas matching a natural-language query. " +
-		"Use this when the user asks to find/discover/explore ideas, or wants similar ideas. " +
-		"Returns ranked matches with title, description, category, and stats."
+	return "Search ideas matching a natural-language query (vector search with LIKE fallback). " +
+		"Use scope=mine before register_idea to check the user's portfolio; scope=global for marketplace discovery. " +
+		"Returns ranked matches with id, title, excerpt, category, and similarity."
 }
 func (t *SearchIdeasTool) Parameters() json.RawMessage {
 	return rawJSON(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"query":     stringProp("Natural-language search query, e.g. 'AI productivity tools' or '有意思的想法'"),
+			"scope":     stringEnumProp("Search scope: mine=user's ideas only, global=marketplace (default), all=all active ideas", "mine", "global", "all"),
 			"threshold": numberProp("Similarity threshold 0-1. Lower = more results. Default 0.3"),
 			"limit":     numberProp("Max results (default 10, max 30)"),
 		},
 		"required": []string{"query"},
 	})
 }
-func (t *SearchIdeasTool) Execute(ctx context.Context, _ Principal, in ToolInput) (*ToolResult, error) {
+func (t *SearchIdeasTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
 	query, err := ToolStrReq(in, "query")
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
@@ -84,7 +87,33 @@ func (t *SearchIdeasTool) Execute(ctx context.Context, _ Principal, in ToolInput
 	if limit == 0 {
 		limit = 10
 	}
-	matches, err := t.ideaSvc.Search(query, threshold, limit)
+	if limit > 30 {
+		limit = 30
+	}
+
+	scope := ToolStr(in, "scope")
+	if scope == "" {
+		scope = "global"
+	}
+
+	opts := SearchOptions{
+		Threshold: threshold,
+		Limit:     limit,
+		Status:    "active",
+	}
+	switch scope {
+	case "mine":
+		if p.UserID == "" {
+			return &ToolResult{OK: false, Error: "scope=mine requires a logged-in user"}, nil
+		}
+		opts.OwnerUserID = p.UserID
+	case "all":
+		opts.Status = "active"
+	default:
+		opts.Status = "active"
+	}
+
+	matches, err := t.ideaSvc.Search(query, opts)
 	if err != nil {
 		return nil, fmt.Errorf("search_ideas failed: %w", err)
 	}
@@ -124,13 +153,14 @@ func NewQueryIdeasTool(ideaSvc *IdeaService) *QueryIdeasTool {
 
 func (t *QueryIdeasTool) Name() string { return "query_ideas" }
 func (t *QueryIdeasTool) Description() string {
-	return "List ideas by filter (status/category/sort). Use for browsing 'popular', 'newest', " +
-		"'most forked' ideas, or filtering by category. Does NOT do semantic search."
+	return "List ideas by filter (status/category/sort). Set mine=true to list only the current user's ideas. " +
+		"Does NOT do semantic search — use search_ideas for that."
 }
 func (t *QueryIdeasTool) Parameters() json.RawMessage {
 	return rawJSON(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"mine":     map[string]any{"type": "boolean", "description": "If true, only ideas owned by the current user"},
 			"status":   stringEnumProp("Filter by status", "active", "buried", "archived", "implemented"),
 			"category": stringProp("Filter by category: tool, service, integration, automation, creative, data, other"),
 			"sort":     stringEnumProp("Sort order", "newest", "popular", "most_forked", "most_liked", "most_flowers"),
@@ -139,18 +169,25 @@ func (t *QueryIdeasTool) Parameters() json.RawMessage {
 		},
 	})
 }
-func (t *QueryIdeasTool) Execute(ctx context.Context, _ Principal, in ToolInput) (*ToolResult, error) {
+func (t *QueryIdeasTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
 	limit := ToolInt(in, "limit")
 	if limit == 0 {
 		limit = 20
 	}
-	ideas, total, err := t.ideaSvc.Query(QueryFilter{
+	filter := QueryFilter{
 		Status:   ToolStr(in, "status"),
 		Category: ToolStr(in, "category"),
 		Sort:     ToolStr(in, "sort"),
 		Limit:    limit,
 		Offset:   ToolInt(in, "offset"),
-	})
+	}
+	if ToolBool(in, "mine") {
+		if p.UserID == "" {
+			return &ToolResult{OK: false, Error: "mine=true requires a logged-in user"}, nil
+		}
+		filter.OwnerUserID = p.UserID
+	}
+	ideas, total, err := t.ideaSvc.Query(filter)
 	if err != nil {
 		return nil, fmt.Errorf("query_ideas failed: %w", err)
 	}
@@ -245,9 +282,36 @@ func (t *RegisterIdeaTool) Execute(ctx context.Context, p Principal, in ToolInpu
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
-	idea, warning, err := t.ideaSvc.Register(authorID, RegisterIdeaInput{
-		Title:       ToolStr(in, "title"),
-		Description: ToolStr(in, "description"),
+	title := ToolStr(in, "title")
+	description := ToolStr(in, "description")
+	if p.UserID != "" {
+		similar, simErr := t.ideaSvc.FindSimilarForRegister(p.UserID, title, description)
+		if simErr != nil {
+			return nil, fmt.Errorf("duplicate check failed: %w", simErr)
+		}
+		if len(similar) > 0 && MaxIdeaMatchSimilarity(similar) >= registerDuplicateThreshold {
+			summaries := make([]map[string]any, 0, len(similar))
+			for _, m := range similar {
+				summaries = append(summaries, map[string]any{
+					"id":         m.Idea.ID,
+					"title":      m.Idea.Title,
+					"similarity": m.Similarity,
+					"excerpt":    truncate(m.Idea.Description, 120),
+				})
+			}
+			return &ToolResult{
+				OK:    false,
+				Error: "idea too similar to existing ideas; consider merging or differentiating",
+				Data: map[string]any{
+					"similar_ideas": summaries,
+					"message":       "与已有 idea 高度相似，建议扩展现有 idea 或调整标题/描述后再注册",
+				},
+			}, nil
+		}
+	}
+	idea, err := t.ideaSvc.Register(authorID, RegisterIdeaInput{
+		Title:       title,
+		Description: description,
 		Category:    ToolStr(in, "category"),
 		Tags:        ToolStrSlice(in, "tags"),
 		RepoURL:     ToolStr(in, "repo_url"),
@@ -257,9 +321,6 @@ func (t *RegisterIdeaTool) Execute(ctx context.Context, p Principal, in ToolInpu
 		return nil, fmt.Errorf("register_idea failed: %w", err)
 	}
 	data := map[string]any{"idea": idea}
-	if warning != nil {
-		data["warning"] = warning
-	}
 	return &ToolResult{
 		OK:   true,
 		Data: data,
@@ -356,7 +417,40 @@ func (t *LikeIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (
 	return &ToolResult{OK: true, Data: map[string]any{"idea_id": ideaID, "liked": true}}, nil
 }
 
-// BuryIdeaTool 埋葬（仅作者可调用）。
+// WishIdeaTool 表达「期待」这个 idea（轻量排序信号，不进 Feed、不推送）。
+type WishIdeaTool struct {
+	socialSvc *SocialService
+}
+
+func NewWishIdeaTool(socialSvc *SocialService) *WishIdeaTool {
+	return &WishIdeaTool{socialSvc: socialSvc}
+}
+
+func (t *WishIdeaTool) Name() string { return "wish_idea" }
+func (t *WishIdeaTool) Description() string {
+	return "Express interest / wish for an idea (signals 'I want to see this built'). Use when user says '期待', '关注这个想法', 'wish'. " +
+		"WRITE operation: requires confirmation (call once without `confirm`, then again with the token)."
+}
+func (t *WishIdeaTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id": stringProp("ID of the idea to wish"),
+		},
+		"required": []string{"idea_id"},
+	})
+}
+func (t *WishIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	authorID, err := requireAuthor(p)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	ideaID := ToolStr(in, "idea_id")
+	if err := t.socialSvc.WishIdea(ideaID, p.UserID, authorID); err != nil {
+		return nil, fmt.Errorf("wish_idea failed: %w", err)
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"idea_id": ideaID, "wished": true}}, nil
+}
 type BuryIdeaTool struct {
 	ideaSvc *IdeaService
 }
@@ -392,6 +486,176 @@ func (t *BuryIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (
 	return &ToolResult{OK: true, Data: map[string]any{"buried": true}}, nil
 }
 
+// ArchiveIdeaTool 归档（仅作者可调用）。归档表示暂时搁置，区别于彻底放弃的 bury。
+type ArchiveIdeaTool struct {
+	ideaSvc *IdeaService
+}
+
+func NewArchiveIdeaTool(ideaSvc *IdeaService) *ArchiveIdeaTool {
+	return &ArchiveIdeaTool{ideaSvc: ideaSvc}
+}
+
+func (t *ArchiveIdeaTool) Name() string { return "archive_idea" }
+func (t *ArchiveIdeaTool) Description() string {
+	return "Mark one of YOUR OWN ideas as archived (shelved for now, not abandoned). Only the author can archive. " +
+		"WRITE operation: requires confirmation (call once without `confirm`, then again with the token)."
+}
+func (t *ArchiveIdeaTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id": stringProp("ID of your idea to archive"),
+			"reason":  stringProp("Short note explaining why this idea is paused/archived"),
+		},
+		"required": []string{"idea_id", "reason"},
+	})
+}
+func (t *ArchiveIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	authorID, err := requireAuthor(p)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	reason := ToolStr(in, "reason")
+	if reason == "" {
+		return &ToolResult{OK: false, Error: "reason is required"}, nil
+	}
+	_, err = t.ideaSvc.Archive(ToolStr(in, "idea_id"), authorID, reason)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"archived": true}}, nil
+}
+
+// ImplementIdeaTool 标记已落地（仅作者可调用）。表示 idea 已实现，可复用。
+type ImplementIdeaTool struct {
+	ideaSvc *IdeaService
+}
+
+func NewImplementIdeaTool(ideaSvc *IdeaService) *ImplementIdeaTool {
+	return &ImplementIdeaTool{ideaSvc: ideaSvc}
+}
+
+func (t *ImplementIdeaTool) Name() string { return "implement_idea" }
+func (t *ImplementIdeaTool) Description() string {
+	return "Mark one of YOUR OWN ideas as implemented (already built, reusable). Only the author can mark implemented. " +
+		"WRITE operation: requires confirmation (call once without `confirm`, then again with the token)."
+}
+func (t *ImplementIdeaTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id": stringProp("ID of your idea to mark as implemented"),
+			"reason":  stringProp("Short note explaining what was delivered / why it counts as implemented"),
+		},
+		"required": []string{"idea_id", "reason"},
+	})
+}
+func (t *ImplementIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	authorID, err := requireAuthor(p)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	reason := ToolStr(in, "reason")
+	if reason == "" {
+		return &ToolResult{OK: false, Error: "reason is required"}, nil
+	}
+	_, err = t.ideaSvc.MarkImplemented(ToolStr(in, "idea_id"), authorID, reason)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"implemented": true}}, nil
+}
+
+// UpdateIdeaMetaTool 更新想法附加信息（实现状态、仓库、演示、图标）。
+type UpdateIdeaMetaTool struct {
+	ideaSvc *IdeaService
+	assets  *ObjectStore
+}
+
+func NewUpdateIdeaMetaTool(ideaSvc *IdeaService, assets *ObjectStore) *UpdateIdeaMetaTool {
+	return &UpdateIdeaMetaTool{ideaSvc: ideaSvc, assets: assets}
+}
+
+func (t *UpdateIdeaMetaTool) Name() string { return "update_idea_meta" }
+func (t *UpdateIdeaMetaTool) Description() string {
+	return "Update optional metadata for one of YOUR OWN ideas: implementation status, " +
+		"GitHub/repo URL, live demo URL, icon URL (from prior upload), or append a reference link. " +
+		"All fields are optional; omit a field to leave it unchanged, pass empty string to clear."
+}
+func (t *UpdateIdeaMetaTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id":         stringProp("ID of your idea"),
+			"impl_status":     stringEnumProp("Implementation progress", "concept", "in_progress", "implemented", "paused"),
+			"repo_url":        stringProp("Optional source repo URL (e.g. GitHub)"),
+			"demo_url":        stringProp("Optional live demo URL after implementation"),
+			"icon_url":        stringProp("Optional icon URL from allowed storage"),
+			"evidence_url":    stringProp("Optional reference URL to append as a link"),
+			"evidence_title":  stringProp("Optional title for the reference link"),
+		},
+		"required": []string{"idea_id"},
+	})
+}
+func (t *UpdateIdeaMetaTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	authorID, err := requireAuthor(p)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	ideaID := ToolStr(in, "idea_id")
+	idea, err := t.ideaSvc.GetByID(ideaID)
+	if err != nil {
+		return &ToolResult{OK: false, Error: "idea not found"}, nil
+	}
+	if idea.AgentID != authorID {
+		return &ToolResult{OK: false, Error: "only the idea author can update metadata"}, nil
+	}
+
+	input := UpdateIdeaMetaInput{}
+	if v, ok := in["impl_status"].(string); ok {
+		input.ImplStatus = &v
+	}
+	if v, ok := in["repo_url"].(string); ok {
+		input.RepoURL = &v
+	}
+	if v, ok := in["demo_url"].(string); ok {
+		input.DemoURL = &v
+	}
+	if v, ok := in["icon_url"].(string); ok {
+		input.IconURL = &v
+	}
+
+	evidenceURL := strings.TrimSpace(ToolStr(in, "evidence_url"))
+	if evidenceURL != "" {
+		if err := validateHTTPURL(evidenceURL); err != nil {
+			return &ToolResult{OK: false, Error: err.Error()}, nil
+		}
+		var existing []IdeaLink
+		if idea.Links != "" {
+			_ = json.Unmarshal([]byte(idea.Links), &existing)
+		}
+		title := strings.TrimSpace(ToolStr(in, "evidence_title"))
+		if title == "" {
+			title = "reference"
+		}
+		existing = append(existing, IdeaLink{Kind: "reference", Title: title, URL: evidenceURL})
+		input.Links = &existing
+	}
+
+	updated, err := t.ideaSvc.UpdateMeta(ideaID, input, t.assets)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	return &ToolResult{
+		OK:   true,
+		Data: map[string]any{"idea": updated},
+		Display: &ToolDisplay{
+			Kind: "idea_detail",
+			Ref:  updated.ID,
+		},
+	}, nil
+}
+
 // SendFlowersTool 送花（高规格赞赏）。
 type SendFlowersTool struct {
 	socialSvc *SocialService
@@ -404,6 +668,7 @@ func NewSendFlowersTool(socialSvc *SocialService) *SendFlowersTool {
 func (t *SendFlowersTool) Name() string { return "send_flowers" }
 func (t *SendFlowersTool) Description() string {
 	return "Send flowers to an idea as special appreciation (送花, higher praise than like). " +
+		"Costs 1 from the owning user's daily budget (99/day + flowers received today). " +
 		"WRITE operation: requires confirmation (call once without `confirm`, then again with the token)."
 }
 func (t *SendFlowersTool) Parameters() json.RawMessage {
@@ -422,24 +687,47 @@ func (t *SendFlowersTool) Execute(ctx context.Context, p Principal, in ToolInput
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
 	ideaID := ToolStr(in, "idea_id")
-	err = t.socialSvc.SendFlowers(SendFlowersInput{
+	result, err := t.socialSvc.SendFlowers(SendFlowersInput{
 		IdeaID:  ideaID,
 		AgentID: authorID,
 		Message: ToolStr(in, "message"),
 	})
 	if err != nil {
+		if errors.Is(err, ErrInsufficientFlowers) {
+			available := 0
+			if spenderID, resolveErr := t.socialSvc.ResolveFlowerSpenderUserID("", authorID); resolveErr == nil {
+				if bal, balErr := t.socialSvc.GetFlowerBalance(spenderID); balErr == nil {
+					available = bal.Available
+				}
+			}
+			return &ToolResult{
+				OK:    false,
+				Error: fmt.Sprintf("insufficient_flowers: daily flower budget exhausted (available=%d)", available),
+				Data:  map[string]any{"available": available},
+			}, nil
+		}
+		if errors.Is(err, ErrFlowerSenderRequired) {
+			return &ToolResult{OK: false, Error: "flower_sender_required: agent has no owning user"}, nil
+		}
 		return nil, fmt.Errorf("send_flowers failed: %w", err)
 	}
-	return &ToolResult{OK: true, Data: map[string]any{"idea_id": ideaID, "flowers_sent": true}}, nil
+	return &ToolResult{OK: true, Data: map[string]any{
+		"idea_id":        ideaID,
+		"flowers_sent":   true,
+		"available":      result.Available,
+		"spent_today":    result.SpentToday,
+		"received_today": result.ReceivedToday,
+		"grant_quota":    result.GrantQuota,
+	}}, nil
 }
 
 // CreateCommentTool 评论 idea。
 type CreateCommentTool struct {
-	wanyeSvc *WanyeService
+	commentSvc *CommentService
 }
 
-func NewCreateCommentTool(wanyeSvc *WanyeService) *CreateCommentTool {
-	return &CreateCommentTool{wanyeSvc: wanyeSvc}
+func NewCreateCommentTool(commentSvc *CommentService) *CreateCommentTool {
+	return &CreateCommentTool{commentSvc: commentSvc}
 }
 
 func (t *CreateCommentTool) Name() string { return "create_comment" }
@@ -462,7 +750,7 @@ func (t *CreateCommentTool) Execute(ctx context.Context, p Principal, in ToolInp
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
-	comment, err := t.wanyeSvc.CreateComment(CreateCommentInput{
+	comment, err := t.commentSvc.CreateComment(CreateCommentInput{
 		IdeaID:    ToolStr(in, "idea_id"),
 		UserID:    authorID,
 		Content:   ToolStr(in, "content"),
@@ -476,11 +764,11 @@ func (t *CreateCommentTool) Execute(ctx context.Context, p Principal, in ToolInp
 
 // GetCommentsTool 获取 idea 的评论列表。
 type GetCommentsTool struct {
-	wanyeSvc *WanyeService
+	commentSvc *CommentService
 }
 
-func NewGetCommentsTool(wanyeSvc *WanyeService) *GetCommentsTool {
-	return &GetCommentsTool{wanyeSvc: wanyeSvc}
+func NewGetCommentsTool(commentSvc *CommentService) *GetCommentsTool {
+	return &GetCommentsTool{commentSvc: commentSvc}
 }
 
 func (t *GetCommentsTool) Name() string { return "get_comments" }
@@ -501,7 +789,7 @@ func (t *GetCommentsTool) Execute(ctx context.Context, _ Principal, in ToolInput
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
-	comments, err := t.wanyeSvc.GetComments(ideaID)
+	comments, err := t.commentSvc.GetComments(ideaID)
 	if err != nil {
 		return nil, fmt.Errorf("get_comments failed: %w", err)
 	}
@@ -511,16 +799,12 @@ func (t *GetCommentsTool) Execute(ctx context.Context, _ Principal, in ToolInput
 // ---- helpers ----
 
 // requireAuthor 从 Principal 中确定执行写操作的作者 ID。
-// 页面用户：尚未有专属 agent → 用 UserID 兜底（仅 IsSystemAssistant 时允许）
-// Agent：直接用 AgentID
 func requireAuthor(p Principal) (string, error) {
 	if p.AgentID != "" {
+		if p.IsSystemAssistant && !p.AuthorAgentReady {
+			return "", fmt.Errorf("user agent not available; cannot perform write operations")
+		}
 		return p.AgentID, nil
-	}
-	if p.IsSystemAssistant && p.UserID != "" {
-		// 万叶助手代用户操作时，把 UserID 作为 agent_id 占位。
-		// 更严谨的实现应该为每个用户自动创建 shadow agent，这里先支持基础场景。
-		return "user:" + p.UserID, nil
 	}
 	return "", fmt.Errorf("this action requires authentication (no agent or user identity)")
 }

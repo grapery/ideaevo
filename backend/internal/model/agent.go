@@ -7,15 +7,52 @@ import (
 	"gorm.io/gorm"
 )
 
+// AgentOwner is a lightweight creator summary embedded in agent API responses.
+type AgentOwner struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url,omitempty"`
+}
+
 type Agent struct {
-	ID           string    `gorm:"primaryKey;size:36" json:"id"`
-	Name         string    `gorm:"size:255;not null" json:"name"`
-	Description  string    `gorm:"type:text" json:"description"`
-	APIKeyHash   string    `gorm:"size:255;not null;uniqueIndex" json:"-"`
-	Capabilities string    `gorm:"type:json" json:"capabilities"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Ideas        []Idea    `gorm:"foreignKey:AgentID" json:"ideas,omitempty"`
+	ID            string      `gorm:"primaryKey;size:36" json:"id"`
+	Name          string      `gorm:"size:255;not null" json:"name"`
+	Description   string      `gorm:"type:text" json:"description"`
+	APIKeyHash    string      `gorm:"size:255;not null;uniqueIndex" json:"-"`
+	// APIKey 是明文 key，仅供 owner 通过界面查看（GET /agents/:id/api-key）。
+	// 认证仍走 APIKeyHash（SHA-256）；此列不参与校验，json:"-" 防止在 agent 响应里泄露。
+	// 历史数据可能为空（only-shown-once 时代生成），需 rotate 后才有值。
+	APIKey        string      `gorm:"size:100" json:"-"`
+	// APIKeyStatus: active | revoked. Revoked keys cannot authenticate; rotate/create to restore.
+	APIKeyStatus  string      `gorm:"size:20;default:'active'" json:"api_key_status"`
+	Capabilities  string      `gorm:"type:json" json:"capabilities"`
+	Category      string      `gorm:"size:50;index" json:"category,omitempty"`    // 分类标签：validation/design/coding/research/automation/marketing/other
+	OwnerUserID   string      `gorm:"size:36;index" json:"owner_user_id"`         // 创建者 User ID；空表示系统创建
+	SystemPrompt  string      `gorm:"type:text" json:"system_prompt"`             // 自定义人设/指令
+	LLMModel      string      `gorm:"size:100" json:"llm_model"`                  // 模型名（qwen-plus / qwen-max / doubao-...）；空则用全局默认
+	Temperature   float64     `gorm:"default:0.7" json:"temperature"`             // 温度 (0-2)
+	MaxTokens     int         `gorm:"default:4096" json:"max_tokens"`             // 最大输出 token
+	Visibility    string      `gorm:"size:20;default:'public'" json:"visibility"` // public | private
+	AllowFollow   *bool       `gorm:"default:true" json:"allow_follow"`           // 是否允许他人关注（nil 视为 true）
+	AllowChat     *bool       `gorm:"default:true" json:"allow_chat"`             // 是否允许他人发起对话/下发任务
+	AvatarURL     string      `gorm:"size:500" json:"avatar_url,omitempty"`
+	BackgroundURL string      `gorm:"size:500" json:"background_url,omitempty"`
+	FollowerCount int         `gorm:"-" json:"follower_count,omitempty"`
+	IdeaCount     int         `gorm:"-" json:"idea_count,omitempty"`
+	ForkCount     int         `gorm:"-" json:"fork_count,omitempty"`
+	Owner         *AgentOwner `gorm:"-" json:"owner,omitempty"`
+	// IsSystemAssistant marks built-in system agents (e.g. 火卫二助手) that have no owning user.
+	// Populated by EnrichAgents so clients can hide the system name and attribute the idea to
+	// the real user instead. Not persisted.
+	IsSystemAssistant bool    `gorm:"-" json:"is_system_assistant,omitempty"`
+	// IsPersonal marks agents auto-created as a user's default workspace agent via
+	// EnsureDefaultUserAgent (vs. agents the user explicitly built). Lets clients distinguish a
+	// "user fork" (personal agent, no AI badge) from an "AI agent fork" (standalone agent).
+	IsPersonal        bool    `gorm:"-" json:"is_personal,omitempty"`
+	IsFollowing       *bool       `gorm:"-" json:"is_following,omitempty"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+	Ideas         []Idea      `gorm:"foreignKey:AgentID" json:"ideas,omitempty"`
 }
 
 func (a *Agent) BeforeCreate(tx *gorm.DB) error {
@@ -25,6 +62,26 @@ func (a *Agent) BeforeCreate(tx *gorm.DB) error {
 	// MySQL 不允许 JSON 列设默认值，这里兜底
 	if a.Capabilities == "" {
 		a.Capabilities = "[]"
+	}
+	if a.APIKeyStatus == "" {
+		a.APIKeyStatus = "active"
+	}
+	if a.Visibility == "" {
+		a.Visibility = "public"
+	}
+	if a.AllowFollow == nil {
+		t := true
+		a.AllowFollow = &t
+	}
+	if a.AllowChat == nil {
+		t := true
+		a.AllowChat = &t
+	}
+	if a.Temperature == 0 {
+		a.Temperature = 0.7
+	}
+	if a.MaxTokens == 0 {
+		a.MaxTokens = 4096
 	}
 	return nil
 }

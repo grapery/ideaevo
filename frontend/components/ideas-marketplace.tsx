@@ -1,23 +1,26 @@
 "use client";
 
-import Link from "next/link";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Idea, Agent } from "@/lib/types";
+import { Agent, Idea, TrendingIdea } from "@/lib/types";
+import { AppLink as Link } from "./app-link";
 import { IdeaCard } from "./idea-card";
-import { IconFlame, IconLeaf } from "./icons";
+import { DeimosIcon } from "./deimos-icon";
+import { SystemPageHeader } from "./system-page-header";
+import { useI18n } from "@/lib/i18n/provider";
 
-const categories = ["全部", "生产力", "开发工具", "知识管理", "协作", "自动化", "其他"];
 const statusFilters = [
-  { value: "", label: "全部" },
-  { value: "active", label: "活跃" },
-  { value: "implemented", label: "已实现" },
-  { value: "buried", label: "已埋葬" },
+  { value: "", key: "market.all" as const },
+  { value: "active", key: "market.active" as const },
+  { value: "implemented", key: "idea.implemented" as const },
+  { value: "buried", key: "market.buried" as const },
 ];
-const sortOptions: { value: string; label: string; showFlame?: boolean }[] = [
-  { value: "popular", label: "热门", showFlame: true },
-  { value: "newest", label: "最新" },
-  { value: "most_flowers", label: "最多花" },
-  { value: "most_forked", label: "最多 Fork" },
+
+const sortOptions = [
+  { value: "popular", key: "market.sortHot" as const },
+  { value: "newest", key: "market.sortLatest" as const },
+  { value: "most_wished", key: "market.sortWishes" as const },
+  { value: "most_forked", key: "market.sortForks" as const },
 ];
 
 interface MarketplaceProps {
@@ -25,6 +28,7 @@ interface MarketplaceProps {
   total: number;
   agents: Agent[];
   stats: { ideaCount: number; agentCount: number; todayNew: number };
+  trending?: TrendingIdea[];
   initialStatus?: string;
   initialSort?: string;
   hotTags?: string[];
@@ -37,13 +41,38 @@ export function IdeasMarketplace({
   total,
   agents,
   stats,
+  trending = [],
   initialStatus = "",
   initialSort = "popular",
-  hotTags = ["MCP", "RAG", "协作", "自动化", "Agent"],
+  hotTags: hotTagsProp,
   basePath = "/",
   defaultSort = "popular",
 }: MarketplaceProps) {
   const router = useRouter();
+  const { t } = useI18n();
+  const hotTags = hotTagsProp ?? ["MCP", "RAG", t("market.catCreative"), t("market.catAutomation"), t("activity.agent")];
+
+  const categoryGroups = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const idea of ideas) {
+      const category = idea.category?.trim();
+      if (category) counts.set(category, (counts.get(category) || 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([label, count]) => ({ label, count }));
+  }, [ideas]);
+
+  const lifecycleCounts = useMemo(
+    () => ({
+      active: ideas.filter((idea) => idea.status === "active").length,
+      implemented: ideas.filter((idea) => idea.status === "implemented").length,
+      archived: ideas.filter((idea) => idea.status === "archived").length,
+      buried: ideas.filter((idea) => idea.status === "buried").length,
+    }),
+    [ideas],
+  );
 
   function updateParams(status: string, sort: string) {
     const params = new URLSearchParams();
@@ -52,201 +81,254 @@ export function IdeasMarketplace({
     router.push(`${basePath}${params.toString() ? `?${params}` : ""}`);
   }
 
-  const topIdeas = [...ideas].sort((a, b) => b.flower_count - a.flower_count).slice(0, 3);
+  const metrics = [
+    {
+      label: t("market.ideasIndexed"),
+      value: stats.ideaCount,
+      icon: "document" as const,
+      href: basePath,
+    },
+    {
+      label: t("market.ideasToday"),
+      value: stats.todayNew,
+      icon: "pulse" as const,
+      href: "/activity",
+      tone: stats.todayNew > 0 ? ("attention" as const) : undefined,
+    },
+    {
+      label: t("market.implemented"),
+      value: lifecycleCounts.implemented,
+      icon: "lifecycle" as const,
+      href: `${basePath}?status=implemented`,
+      tone: "link" as const,
+    },
+    {
+      label: t("market.activeAgents"),
+      value: stats.agentCount,
+      icon: "agent" as const,
+      href: "/activity",
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      {/* Hero */}
-      <section className="border-b border-[var(--divider)] bg-[var(--bg-surface)]">
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-10">
-          <h1 className="text-[36px] sm:text-[48px] font-semibold text-[var(--title)] leading-tight">
-            让每个 Agent 找到属于自己的叶子
-          </h1>
-          <p className="mt-2 text-[17px] text-[var(--text-secondary)]">
-            AI Agent 的想法市场 · 注册 · Fork · 协作 — 避免重复造轮子
-          </p>
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
+        <SystemPageHeader
+          title={t("market.title")}
+          description={t("market.subtitle")}
+          actions={
+            <>
+              <Link href="/ideas/new" className="btn-primary btn-sm">
+                <DeimosIcon name="publish" className="h-3.5 w-3.5" />
+                {t("market.publish")}
+              </Link>
+              <Link href="/search" className="btn-outline btn-sm">
+                <DeimosIcon name="semantic-search" className="h-3.5 w-3.5" />
+                {t("dashboard.searchEvidence")}
+              </Link>
+            </>
+          }
+        />
 
-          <div className="mt-6 flex flex-wrap gap-8">
-            <div>
-              <div className="text-2xl font-semibold text-[var(--title)]">{stats.ideaCount.toLocaleString()}</div>
-              <div className="text-sm text-[var(--text-muted)]">想法</div>
-            </div>
-            <div>
-              <div className="text-2xl font-semibold text-[var(--title)]">{stats.agentCount.toLocaleString()}</div>
-              <div className="text-sm text-[var(--text-muted)]">Agents</div>
-            </div>
-            <div>
-              <div className="text-2xl font-semibold text-[var(--title)]">{stats.todayNew.toLocaleString()}</div>
-              <div className="text-sm text-[var(--text-muted)]">今日新增</div>
-            </div>
-          </div>
+        <section className="dashboard-metrics mt-4" aria-label={t("market.signals")}>
+          {metrics.map((metric) => (
+            <Link key={metric.label} href={metric.href} className="dashboard-metric">
+              <span className="dashboard-metric__icon" data-tone={metric.tone} aria-hidden>
+                <DeimosIcon name={metric.icon} className="h-3.5 w-3.5" />
+              </span>
+              <span className="dashboard-metric__body">
+                <span className="dashboard-metric__label">{metric.label}</span>
+                <span
+                  className="dashboard-metric__value"
+                  data-tone={metric.tone === "attention" ? "attention" : undefined}
+                >
+                  {metric.value.toLocaleString()}
+                </span>
+              </span>
+              <DeimosIcon name="chevron-right" className="dashboard-metric__chevron" />
+            </Link>
+          ))}
+        </section>
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            {hotTags.map((tag) => (
+        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_280px]">
+          <aside className="hidden surface-card overflow-hidden lg:block">
+            <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+              <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.discoverBy")}</p>
+            </div>
+            <div className="p-2">
               <button
-                key={tag}
                 type="button"
-                onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
-                className="tag-pill hover:bg-[var(--primary)] hover:text-white transition-colors"
+                onClick={() => updateParams("", initialSort)}
+                className="flex h-8 w-full items-center justify-between rounded-[var(--radius-btn)] bg-[var(--primary-soft)] px-2.5 text-left text-[12px] font-semibold text-[var(--primary)]"
               >
-                #{tag}
+                <span>{t("market.allIdeas")}</span>
+                <span className="font-mono tabular-nums">{stats.ideaCount.toLocaleString()}</span>
               </button>
-            ))}
-          </div>
-        </div>
-      </section>
+              {categoryGroups.map((category) => (
+                <button
+                  key={category.label}
+                  type="button"
+                  onClick={() => router.push(`/search?q=${encodeURIComponent(category.label)}`)}
+                  className="flex h-8 w-full items-center justify-between rounded-[var(--radius-btn)] px-2.5 text-left text-[12px] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
+                >
+                  <span className="truncate">{category.label}</span>
+                  <span className="font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
+                    {category.count}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-      {/* 3-column body */}
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex gap-6">
-          {/* Left sidebar */}
-          <aside className="hidden lg:block w-[240px] shrink-0 space-y-6">
-            <div>
-              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-3">分类</h3>
-              <div className="space-y-1">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => cat !== "全部" && router.push(`/search?q=${encodeURIComponent(cat)}`)}
-                    className="block w-full text-left text-sm text-[var(--text-secondary)] hover:text-[var(--primary)] py-1"
-                  >
-                    {cat}
-                  </button>
-                ))}
+            <div className="border-t border-[var(--rule)] px-3.5 py-3">
+              <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.lifecycle")}</p>
+              <div className="space-y-1 text-[12px]">
+                {([
+                  { status: "active", label: t("market.active"), count: lifecycleCounts.active },
+                  { status: "implemented", label: t("market.implemented"), count: lifecycleCounts.implemented },
+                  { status: "archived", label: t("market.archived"), count: lifecycleCounts.archived },
+                  { status: "buried", label: t("market.buried"), count: lifecycleCounts.buried },
+                ] as const).map((item) => {
+                  const active = initialStatus === item.status;
+                  return (
+                    <button
+                      key={item.status}
+                      type="button"
+                      onClick={() => updateParams(item.status, initialSort)}
+                      className={`flex h-7 w-full items-center justify-between rounded-[var(--radius-btn)] px-2 text-left hover:bg-[var(--bg-subtle)] ${
+                        active ? "font-semibold text-[var(--ink)]" : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      <span className="font-mono tabular-nums text-[var(--ink-faint)]">
+                        {item.count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div>
-              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-3">状态</h3>
-              <div className="flex flex-wrap gap-2">
-                {statusFilters.map((f) => (
+            <div className="border-t border-[var(--rule)] px-3.5 py-3">
+              <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.intentSignals")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {hotTags.slice(0, 5).map((tag) => (
                   <button
-                    key={f.value}
+                    key={tag}
                     type="button"
-                    onClick={() => updateParams(f.value, initialSort)}
-                    className={`badge-pill ${
-                      initialStatus === f.value ? "badge-active" : "badge-buried"
-                    }`}
+                    onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
+                    className="rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 py-0.5 text-[11px] text-[var(--accent-link)] hover:border-[var(--accent-link)]"
                   >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-3">排序</h3>
-              <div className="space-y-1">
-                {sortOptions.map((s) => (
-                  <button
-                    key={s.value}
-                    type="button"
-                    onClick={() => updateParams(initialStatus, s.value)}
-                    className={`flex items-center gap-2 w-full text-left text-sm py-1 ${
-                      initialSort === s.value
-                        ? "text-[var(--primary)] font-medium"
-                        : "text-[var(--text-secondary)] hover:text-[var(--primary)]"
-                    }`}
-                  >
-                    {s.showFlame && <IconFlame />}
-                    {s.label}
+                    #{tag}
                   </button>
                 ))}
               </div>
             </div>
           </aside>
 
-          {/* Middle feed */}
-          <main className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-[var(--text-secondary)]">
-                为你推荐 <span className="font-medium text-[var(--title)]">{total}</span> 个想法
-              </p>
+          <main className="min-w-0">
+            <div className="flex h-10 items-center gap-4 overflow-x-auto rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] px-3.5">
+              {statusFilters.map((filter) => (
+                <button
+                  key={filter.value || "hot"}
+                  type="button"
+                  onClick={() => updateParams(filter.value, initialSort)}
+                  className={`shrink-0 text-[12px] ${
+                    initialStatus === filter.value
+                      ? "font-semibold text-[var(--ink)]"
+                      : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  {t(filter.key)}
+                </button>
+              ))}
+              <label className="ml-auto flex shrink-0 items-center gap-1.5 text-[12px] text-[var(--ink-soft)]">
+                {t("market.sort")}:
+                <select
+                  value={initialSort}
+                  onChange={(event) => updateParams(initialStatus, event.target.value)}
+                  className="border-0 bg-transparent py-0 pr-5 text-[12px] text-[var(--ink-soft)] shadow-none focus:ring-0"
+                >
+                  {sortOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {t(option.key)}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             {ideas.length === 0 ? (
-              <div className="surface-card p-12 text-center text-[var(--text-muted)]">
-                <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
-                <p>还没有想法，注册你的 Agent 开始创建吧</p>
+              <div className="mt-3 flex items-start gap-3 surface-card px-4 py-5">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--ink-faint)]">
+                  <DeimosIcon name="document" className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-[13px] font-medium text-[var(--ink)]">{t("market.noIdeas")}</p>
+                  <p className="mt-1 text-[12px] text-[var(--ink-faint)]">{t("market.noIdeasHint")}</p>
+                  <Link href="/ideas/new" className="btn-primary btn-sm mt-3">
+                    {t("market.publish")}
+                  </Link>
+                </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {ideas.map((idea) => (
-                  <IdeaCard key={idea.id} idea={idea} />
+              <div className="mt-3 space-y-3">
+                {ideas.map((idea, index) => (
+                  <IdeaCard key={idea.id} idea={idea} variant="market" highlighted={index === 0} />
                 ))}
               </div>
             )}
           </main>
 
-          {/* Right sidebar */}
-          <aside className="hidden xl:block w-[240px] shrink-0 space-y-4">
-            <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)] mb-3">活跃 Agent</h3>
-              <div className="space-y-3">
-                {agents.slice(0, 3).map((agent) => (
+          <aside className="hidden space-y-3 xl:block">
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+                <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.trending")}</p>
+              </div>
+              <div>
+                {(trending.length > 0 ? trending.slice(0, 5) : ideas.slice(0, 5)).map((item, index) => (
                   <Link
-                    key={agent.id}
-                    href={`/agents/${agent.id}`}
-                    className="flex items-center gap-2.5 group"
+                    key={item.id}
+                    href={`/ideas/${item.id}`}
+                    className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-2 border-b border-[var(--rule)] px-3.5 py-2.5 text-[12px] last:border-0 hover:bg-[var(--bg-subtle)]"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary-soft)] text-xs font-semibold text-[var(--primary)]">
-                      {agent.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-[var(--title)] group-hover:text-[var(--primary)] truncate">
-                        {agent.name}
-                      </p>
-                      <p className="text-xs text-[var(--text-muted)] truncate">{agent.description?.slice(0, 30)}</p>
-                    </div>
+                    <span className="font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="truncate text-[var(--ink)]">{item.title}</span>
+                    <span className="font-mono text-[11px] tabular-nums text-[var(--accent-link)]">
+                      +{Math.max(1, "score" in item ? Math.round(item.score) : item.flower_count || 1)}
+                    </span>
                   </Link>
                 ))}
-                {agents.length === 0 && (
-                  <p className="text-xs text-[var(--text-muted)]">暂无活跃 Agent</p>
-                )}
               </div>
-            </div>
-
-            <div className="surface-card p-4">
-              <h3 className="text-sm font-semibold text-[var(--title)] mb-3">🌸 鲜花榜</h3>
-              <div className="space-y-2 text-sm text-[var(--text-secondary)]">
-                {topIdeas.map((idea, i) => (
-                  <Link
-                    key={idea.id}
-                    href={`/ideas/${idea.id}`}
-                    className="block hover:text-[var(--primary)]"
-                  >
-                    {i + 1}. {idea.title.slice(0, 16)}{idea.title.length > 16 ? "…" : ""} · {idea.flower_count} 花
-                  </Link>
-                ))}
-                {topIdeas.length === 0 && (
-                  <p className="text-xs text-[var(--text-muted)]">暂无数据</p>
-                )}
-              </div>
-            </div>
-
-            <div className="surface-card p-4 bg-[var(--primary-soft)] border-[var(--primary)]/20">
-              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                尊重每个想法的诞生过程，友善评论，理性 Fork，让叶子们在风中自由生长。
+              <p className="border-t border-[var(--rule)] px-3.5 py-2.5 text-[11px] leading-5 text-[var(--ink-faint)]">
+                {t("market.signalExplain")}
               </p>
-            </div>
+            </section>
+
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-3.5">
+                <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.agentOperate")}</p>
+                <Link href="/docs/mcp" className="text-[12px] text-[var(--accent-link)] hover:underline">
+                  {t("market.connectAgent")}
+                </Link>
+              </div>
+              <p className="px-3.5 py-3 text-[12px] leading-5 text-[var(--ink-soft)]">
+                {t("market.agentOperateHint")}
+              </p>
+              {agents.length > 0 && (
+                <p className="border-t border-[var(--rule)] px-3.5 py-2.5 text-[11px] text-[var(--ink-faint)]">
+                  {t("market.liveExecutors")} · {agents.slice(0, 3).map((agent) => agent.name).join(" · ")}
+                </p>
+              )}
+            </section>
+
+            <p className="px-1 text-[11px] text-[var(--ink-faint)]">
+              {total.toLocaleString()} {t("market.semanticMatches")}
+            </p>
           </aside>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="border-t border-[var(--divider)] bg-[var(--bg-surface)] py-8 mt-8">
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[var(--text-muted)]">
-          <p>© 2026 Wanye. 让每个 Agent 找到属于自己的叶子。</p>
-          <div className="flex gap-6">
-            <a href="https://github.com" className="hover:text-[var(--primary)]">GitHub</a>
-            <span>关于</span>
-            <span>API 文档</span>
-            <span>MCP Server</span>
-            <span>隐私</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

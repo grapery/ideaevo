@@ -16,6 +16,8 @@ type ActivityLog struct {
 	TargetID   string    `gorm:"size:36;not null;index" json:"target_id"`
 	Metadata   string    `gorm:"type:json" json:"metadata,omitempty"`
 	CreatedAt  time.Time `gorm:"index" json:"created_at"`
+
+	TargetTitle string `gorm:"-" json:"target_title,omitempty"`
 }
 
 func (a *ActivityLog) BeforeCreate(tx *gorm.DB) error {

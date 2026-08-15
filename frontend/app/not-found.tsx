@@ -1,20 +1,26 @@
 import Link from "next/link";
-import { IconLeaf } from "@/components/icons";
+import { EmptyState } from "@/components/empty-state";
+import { getServerI18n } from "@/lib/i18n/server";
 
-export default function NotFound() {
+export default async function NotFound() {
+  const { t } = await getServerI18n();
   return (
-    <div className="mx-auto max-w-lg px-4 py-20 text-center">
-      <IconLeaf className="h-10 w-10 mx-auto mb-4 text-[var(--text-muted)]" aria-hidden="true" />
-      <h1 className="text-2xl font-semibold text-[var(--title)] mb-2">页面不存在</h1>
-      <p className="text-[var(--text-muted)] mb-6">
-        这片叶子已经被风吹走了
-      </p>
-      <Link
-        href="/"
-        className="gradient-btn rounded-lg px-6 py-2.5 text-sm font-medium"
-      >
-        返回首页
-      </Link>
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
+        <div className="mx-auto max-w-lg">
+          <EmptyState
+            icon="leaf"
+            title={t("common.pageNotFound")}
+            hint={t("common.pageNotFoundHint")}
+            variant="card"
+            action={
+              <Link href="/" className="btn-outline btn-sm">
+                {t("common.backHome")}
+              </Link>
+            }
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,116 @@
+# 服务器部署用 compose（不含 MySQL，复用宿主机已有的 MySQL 实例）。
+# 与本地开发的 docker-compose.yml 区别：
+#   - 只起 api + web 两个服务
+#   - MySQL 走宿主机（DB_HOST 指向宿主机网关 host.docker.internal / 或宿主内网 IP）
+#   - 镜像 tag 由 CI 注入（${API_IMAGE} / ${WEB_IMAGE}）
+#   - 连接外部网络 ideaevo-network（首次部署会自动创建）
+#
+# 端口分配（避免与同机 grapery 冲突）：
+#   grapery 占用宿主 3000（creation）、8080（server）
+#   ideaevo 宿主映射：api → 8090，web → 3001
+#   容器内端口不变（api:8080, web:3000）；nginx 经 Docker 网络反代，不走宿主端口。
+#   可通过 IDEAEVO_API_PORT / IDEAEVO_WEB_PORT 覆盖宿主映射。
+#
+# 内存（2GB 小机与同机 grapery 共存时建议开启限制，见 .env.example IDEAEVO_*_MEM_LIMIT）：
+#   api 默认上限 128m；web（Next.js）默认 384m + NODE_OPTIONS 限制 V8 堆。
+
+services:
+  api:
+    image: ${API_IMAGE:-crpi-kz6w8hb0pa94yvgy.cn-hangzhou.personal.cr.aliyuncs.com/grapery-dev/ideaevo-api:dev}
+    container_name: ideaevo-api
+    restart: unless-stopped
+    mem_limit: ${IDEAEVO_API_MEM_LIMIT:-128m}
+    memswap_limit: ${IDEAEVO_API_MEM_LIMIT:-128m}
+    ports:
+      - "${IDEAEVO_API_PORT:-8090}:8080"
+    env_file:
+      - .env
+    environment:
+      # 宿主机 MySQL：容器内通过 host.docker.internal 访问（Linux 需 extra_hosts 映射）
+      - DB_HOST=${DB_HOST:-host.docker.internal}
+      - PORT=8080
+      # 用户认证扩展（亦可在 .env 中配置）：
+      # WECHAT_APP_ID / WECHAT_APP_SECRET / WECHAT_REDIRECT_URL
+      # 向量：DashVector（DASHVECTOR_ENDPOINT）或 OSS（VECTOR_BACKEND=oss）
+      # ALIYUN_SMS_SIGN_NAME / ALIYUN_SMS_TEMPLATE_CODE / ALIYUN_SMS_REGION
+      # ALIYUN_SMS_ACCESS_KEY_ID / ALIYUN_SMS_ACCESS_KEY_SECRET（CI: vars.ALIYUN_SMS_ACCESS_ID/SECRET）
+      # ALIYUN_SMS_USE_DEFAULT_CREDENTIAL=1（ECS RAM，与 grapery 一致）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - ideaevo-network
+      - grapery-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  web:
+    image: ${WEB_IMAGE:-crpi-kz6w8hb0pa94yvgy.cn-hangzhou.personal.cr.aliyuncs.com/grapery-dev/ideaevo-web:dev}
+    container_name: ideaevo-web
+    restart: unless-stopped
+    mem_limit: ${IDEAEVO_WEB_MEM_LIMIT:-384m}
+    memswap_limit: ${IDEAEVO_WEB_MEM_LIMIT:-384m}
+    ports:
+      - "${IDEAEVO_WEB_PORT:-3001}:3000"
+    environment:
+      # 前端容器启动时 entrypoint.sh 会把 API_URL 写入 runtime-env.js（浏览器读取）
+      # 用公共域名，浏览器和 SSR 都能访问（经 nginx 反代到 ideaevo-api）
+      # entrypoint.sh 会自动追加 /api，所以这里只填 origin
+      - API_URL=${IDEAEVO_PUBLIC_API_URL:-https://www.ideavalues.xyz}
+      # 限制 Next.js/V8 堆，避免在 2GB 小机上与 grapery 争抢内存
+      - NODE_OPTIONS=${IDEAEVO_NODE_OPTIONS:---max-old-space-size=320}
+      # Next.js standalone 默认绑定到容器 hostname，需显式监听所有接口
+      - HOSTNAME=0.0.0.0
+    depends_on:
+      - api
+    networks:
+      - ideaevo-network
+      - grapery-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # MCP Server（Streamable HTTP）。复用 api 镜像，command 切换启动 mcp 二进制。
+  # 不映射宿主端口；nginx 经 Docker 网络反代 ideaevo-mcp:9090。
+  # 鉴权由容器内 requireAPIKey 中间件处理（MCP_AUTH_TOKEN 或 Agent API Key）。
+  mcp:
+    image: ${API_IMAGE:-crpi-kz6w8hb0pa94yvgy.cn-hangzhou.personal.cr.aliyuncs.com/grapery-dev/ideaevo-api:dev}
+    container_name: ideaevo-mcp
+    command: ["/usr/local/bin/mcp"]
+    restart: unless-stopped
+    mem_limit: ${IDEAEVO_MCP_MEM_LIMIT:-128m}
+    memswap_limit: ${IDEAEVO_MCP_MEM_LIMIT:-128m}
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=${DB_HOST:-host.docker.internal}
+      - MCP_TRANSPORT=sse
+      - MCP_PORT=9090
+      # 可选：设固定准入 token，Cursor/Codex 配单一 token 即可连接（不依赖某个 Agent key）。
+      # 未设置时则要求每次请求带有效的 Agent API Key。
+      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - ideaevo-network
+      - grapery-network
+    healthcheck:
+      # 鉴权后 / 返回 401，改用「能连上端口即健康」的探活。
+      test: ["CMD-SHELL", "wget -qO- --timeout=3 http://localhost:9090/ || exit 0"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  ideaevo-network:
+    name: ideaevo-network
+  grapery-network:
+    # 复用 grapery ngx 所在的外部网络，让 nginx 反代可达 ideaevo 容器
+    external: true

@@ -1,7 +1,10 @@
-import Link from "next/link";
+"use client";
+
+import { AppLink as Link } from "./app-link";
 import { Idea, normalizeTags } from "@/lib/types";
-import { StatusBadge } from "./status-badge";
-import { EngagementBar } from "./engagement-bar";
+import { stripMarkdownPreview } from "@/lib/markdown-utils";
+import { WireframeAvatar } from "./wireframe-avatar";
+import { useI18n } from "@/lib/i18n/provider";
 
 export function SearchResultCard({
   idea,
@@ -10,46 +13,69 @@ export function SearchResultCard({
   idea: Idea;
   similarity: number;
 }) {
-  const agentName = idea.agent?.name || idea.agent_id?.slice(0, 8) || "Agent";
+  const { t } = useI18n();
+  const agentName =
+    idea.agent?.name || idea.agent_id?.slice(0, 8) || t("activity.agent");
   const tags = normalizeTags(idea.tags).slice(0, 3);
 
   return (
     <Link
       href={`/ideas/${idea.id}`}
-      className="block surface-card p-5 hover:border-[var(--primary)]/30 transition-colors"
+      className="group block surface-card p-4 hover:border-[var(--accent-link)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2"
+      aria-label={t("search.viewIdea", { title: idea.title })}
     >
-      <div className="flex items-start justify-between gap-4 mb-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-xs font-semibold text-[var(--primary)]">
-            {agentName.charAt(0).toUpperCase()}
+      <div className="flex items-start justify-between gap-5">
+        <div className="flex min-w-0 items-start gap-3">
+          <WireframeAvatar
+            kind="idea"
+            entityId={idea.id}
+            avatarUrl={idea.icon_url}
+            name={idea.title}
+            size={40}
+          />
+          <div className="min-w-0">
+            <p className="font-code text-[9px] text-[var(--accent-link)]">
+              {idea.agent?.is_personal
+                ? t("idea.humanPublished")
+                : t("idea.agentBadge")}{" "}
+              · {agentName}
+            </p>
+            <h3 className="font-display mt-2 line-clamp-2 text-[17px] font-bold leading-[23px] text-[var(--ink)] group-hover:text-[var(--accent-link)]">
+              {idea.title}
+            </h3>
           </div>
-          <span className="text-sm font-medium text-[var(--title)] truncate">{agentName}</span>
-          <StatusBadge status={idea.status} />
         </div>
-        <span className="shrink-0 rounded-full bg-[var(--teal-soft)] px-2.5 py-0.5 text-xs font-medium text-[var(--teal)] tabular-nums">
-          {(similarity * 100).toFixed(0)}% 匹配
-        </span>
+        <div className="shrink-0 rounded-[var(--radius-btn)] border border-[var(--callout-link-border)] bg-[var(--callout-link-bg)] px-3 py-2 text-right">
+          <p className="font-display text-[17px] font-bold text-[var(--accent-link)]">
+            {(similarity * 100).toFixed(0)}%
+          </p>
+          <p className="font-code text-[8px] text-[var(--accent-link)]">
+            {t("search.semanticMatch")}
+          </p>
+        </div>
       </div>
 
-      <h3 className="text-[18px] font-semibold text-[var(--title)] leading-snug">{idea.title}</h3>
-      <p className="mt-2 text-sm text-[var(--text-secondary)] line-clamp-2">{idea.description}</p>
+      <p className="mt-2 line-clamp-2 min-h-[38px] text-[12px] leading-[19px] text-[var(--ink-soft)]">
+        {stripMarkdownPreview(idea.description)}
+      </p>
 
-      {tags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <span key={tag} className="tag-pill">#{tag}</span>
-          ))}
-        </div>
-      )}
+      <div className="mt-3 flex min-h-[16px] flex-wrap gap-5 font-code text-[9px] text-[var(--ink-faint)]">
+        {tags.map((tag) => (
+          <span key={tag}>#{tag}</span>
+        ))}
+      </div>
 
-      <div className="mt-4 pt-4 border-t border-[var(--divider)]">
-        <EngagementBar
-          likes={idea.like_count}
-          flowers={idea.flower_count}
-          forks={idea.fork_count}
-          comments={idea.comment_count}
-          showShare={false}
-        />
+      <div className="mt-3 flex items-center gap-5 border-t border-[var(--rule)] pt-3 font-code text-[9px] text-[var(--ink-soft)]">
+        <span>{idea.status.toUpperCase()}</span>
+        <span>
+          {t("idea.statLikes")} {idea.like_count}
+        </span>
+        <span>
+          {t("idea.statWishes")} {idea.wish_count ?? idea.flower_count}
+        </span>
+        <span>
+          {t("idea.statForks")} {idea.fork_count}
+        </span>
       </div>
     </Link>
   );

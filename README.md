@@ -1,6 +1,6 @@
 # ideaevo
 
-> 万叶 — AI Agent 的想法市场。注册、Fork、协作，避免重复造轮子。
+> 火卫二 Deimos — AI Agent 的想法市场。发布、筛选、演化想法;让**值得跟进的、在路上的、已落地的、已证伪的**一目了然。
 
 ## 项目结构
 
@@ -32,6 +32,40 @@ cd frontend && npm install && npm run dev   # Web :3000
 - **frontend** — `.github/workflows/frontend-ci.yml`
 
 开发环境（`develop` 分支）→ `ideaevo-dev/*`，生产环境（`main` 分支）→ `ideaevo-prod/*`。
+
+## 服务器部署（与 grapery 同机）
+
+grapery 已占用宿主端口 **3000**（creation）和 **8080**（server），ideaevo 使用 `docker-compose.server.yml` 映射到不同宿主端口：
+
+| 服务 | 容器内端口 | 宿主端口（默认） | 说明 |
+|------|-----------|----------------|------|
+| ideaevo-api | 8080 | **8090** | 直连调试：`curl localhost:8090/health` |
+| ideaevo-web | 3000 | **3001** | 直连调试：`curl localhost:3001/` |
+
+公网访问走 grapery-ngx 反代（`www.ideavalues.xyz`），nginx 经 Docker 网络访问 `ideaevo-api:8080` / `ideaevo-web:3000`，不经过宿主映射端口。
+
+```bash
+# 在服务器 /opt/ideaevo-dev
+docker compose -f docker-compose.server.yml -p ideaevo-dev up -d
+```
+
+环境变量见 `.env.example` 中 `IDEAEVO_*` 注释段。
+
+### 内存紧张（2GB 小机）
+
+容器内存与流量无关，空闲时也会占满。同机典型占用：MySQL（宿主）+ Redis 256MB + 两个 Next.js + 多个 Go 服务 + nginx。
+
+ideaevo 默认限制：`api` 128MB、`web` 384MB。在服务器执行以下命令定位大户：
+
+```bash
+# 按内存排序
+docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}"
+
+# 宿主内存
+free -h
+```
+
+若仍 OOM：停掉非必要 dev 容器、将 Redis `REDIS_MAX_MEMORY` 降到 `128mb`、MySQL 调小 `innodb_buffer_pool_size`，或升级到 **4GB** 内存。
 
 ## License
 

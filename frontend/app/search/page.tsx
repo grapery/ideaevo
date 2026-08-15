@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
-import { Idea, normalizeTags } from "@/lib/types";
-import { SearchResultCard } from "@/components/search-result-card";
-import { IconSearch, IconLeaf } from "@/components/icons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { SearchInput } from "@/components/search-input";
+import { SearchResultCard } from "@/components/search-result-card";
+import { SystemPageHeader } from "@/components/system-page-header";
+import { getApiBase } from "@/lib/api-base";
+import { Idea, normalizeTags } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface SearchResult {
   idea: Idea;
@@ -13,15 +17,40 @@ interface SearchResult {
 }
 
 const statusFilters = [
-  { value: "", label: "全部" },
-  { value: "active", label: "活跃" },
-  { value: "implemented", label: "已实现" },
-  { value: "buried", label: "已埋葬" },
+  { value: "", label: "market.statusAll" as const },
+  { value: "active", label: "market.active" as const },
+  { value: "implemented", label: "idea.implemented" as const },
+  { value: "buried", label: "market.buried" as const },
 ];
 
-const categories = ["全部", "生产力", "开发工具", "知识管理", "协作", "自动化"];
+const categories = [
+  { value: "", label: "market.catAll" as const },
+  { value: "tool", label: "market.catTool" as const },
+  { value: "service", label: "market.catService" as const },
+  { value: "integration", label: "market.catIntegration" as const },
+  { value: "automation", label: "market.catAutomation" as const },
+  { value: "creative", label: "market.catCreative" as const },
+  { value: "data", label: "market.catData" as const },
+  { value: "other", label: "market.catOther" as const },
+];
+
+const suggestedKeywords: { label?: string; labelKey?: string; query: string }[] = [
+  { label: "MCP", query: "MCP" },
+  { label: "Agent", query: "Agent" },
+  { labelKey: "search.suggestedAutomation", query: "automation" },
+  { labelKey: "search.suggestedTool", query: "tool" },
+  { label: "AI", query: "AI" },
+];
+
+function buildSearchParams(query: string, page: number, status: string, category: string) {
+  const params = new URLSearchParams({ q: query, page: String(page), limit: "10" });
+  if (status) params.set("status", status);
+  if (category) params.set("category", category);
+  return params.toString();
+}
 
 export default function SearchPage() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
@@ -30,242 +59,282 @@ export default function SearchPage() {
   const [searched, setSearched] = useState(false);
   const [elapsed, setElapsed] = useState<number | null>(null);
   const [activeStatus, setActiveStatus] = useState("");
-  const [activeCategory, setActiveCategory] = useState("全部");
+  const [activeCategory, setActiveCategory] = useState("");
   const [page, setPage] = useState(1);
   const abortRef = useRef<AbortController | null>(null);
+  const apiBase = getApiBase();
 
-  const apiBase =
-    (typeof window !== "undefined" ? window.__ENV_API_URL__ : null) ||
-    "http://localhost:8080/api";
-
-  const handleSearch = useCallback(async (q?: string, pageNum = 1) => {
-    const searchQuery = (q ?? query).trim();
-    if (!searchQuery) return;
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setSearched(true);
-    const start = performance.now();
-
-    try {
-      const res = await fetch(
-        `${apiBase}/ideas/search?q=${encodeURIComponent(searchQuery)}&page=${pageNum}&limit=10`,
-        { signal: controller.signal }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const items: SearchResult[] = data.results || [];
-        setResults(pageNum === 1 ? items : (prev) => [...prev, ...items]);
-        setPage(pageNum);
-      } else {
-        setResults([]);
-      }
-    } catch (err) {
-      if ((err as Error).name !== "AbortError") setResults([]);
-    } finally {
-      if (!controller.signal.aborted) {
-        setElapsed((performance.now() - start) / 1000);
-        setLoading(false);
-      }
-    }
-  }, [apiBase, query]);
-
-  useEffect(() => {
-    if (!initialQuery) return;
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const run = async () => {
+  const handleSearch = useCallback(
+    async (rawQuery: string, pageNumber: number, status: string, category: string) => {
+      const searchQuery = rawQuery.trim();
+      if (!searchQuery) return;
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
       setLoading(true);
       setSearched(true);
       const start = performance.now();
       try {
-        const res = await fetch(
-          `${apiBase}/ideas/search?q=${encodeURIComponent(initialQuery)}&page=1&limit=10`,
+        const response = await fetch(
+          `${apiBase}/ideas/search?${buildSearchParams(searchQuery, pageNumber, status, category)}`,
           { signal: controller.signal }
         );
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data.results || []);
-          setPage(1);
+        if (!response.ok) {
+          setResults([]);
+          return;
         }
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") setResults([]);
+        const data = await response.json();
+        const items: SearchResult[] = data.results || [];
+        setResults((previous) => (pageNumber === 1 ? items : [...previous, ...items]));
+        setPage(pageNumber);
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") setResults([]);
       } finally {
         if (!controller.signal.aborted) {
           setElapsed((performance.now() - start) / 1000);
           setLoading(false);
         }
       }
-    };
-    run();
-    return () => controller.abort();
-  }, [initialQuery, apiBase]);
+    },
+    [apiBase]
+  );
 
-  const filtered = results.filter((r) => {
-    if (activeStatus && r.idea.status !== activeStatus) return false;
-    if (activeCategory !== "全部" && r.idea.category !== activeCategory) return false;
-    return true;
-  });
+  useEffect(() => {
+    if (!initialQuery) return;
+    const timer = window.setTimeout(
+      () => void handleSearch(initialQuery, 1, "", ""),
+      0
+    );
+    return () => window.clearTimeout(timer);
+  }, [handleSearch, initialQuery]);
 
-  const suggestions = results.slice(1, 4);
-  const relatedTags = Array.from(
-    new Set(results.flatMap((r) => normalizeTags(r.idea.tags)).slice(0, 8))
-  ).slice(0, 6);
+  useEffect(() => {
+    if (!searched || !query.trim()) return;
+    const timer = window.setTimeout(
+      () => void handleSearch(query, 1, activeStatus, activeCategory),
+      0
+    );
+    return () => window.clearTimeout(timer);
+  }, [activeCategory, activeStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    handleSearch(query, 1);
-  }
+  const relatedTags = useMemo(
+    () =>
+      Array.from(new Set(results.flatMap((result) => normalizeTags(result.idea.tags))))
+        .slice(0, 7),
+    [results]
+  );
+
+  const evidenceCoverage = results.length
+    ? Math.round(
+        (results.filter((result) => result.idea.repo_url || result.idea.demo_url).length /
+          results.length) *
+          100
+      )
+    : 0;
+
+  const submitSearch = (value = query) =>
+    void handleSearch(value, 1, activeStatus, activeCategory);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      {/* Search Hero */}
-      <section className="border-b border-[var(--divider)] bg-[var(--bg-surface)]">
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-[28px] font-semibold text-[var(--title)] mb-4">搜索想法</h1>
-          <form onSubmit={handleSubmit}>
-            <div className="flex items-center gap-2 rounded-lg border border-[var(--divider)] bg-[var(--bg-subtle)] px-4 py-2 focus-within:border-[var(--primary)] focus-within:bg-white">
-              <IconSearch className="text-[var(--text-muted)] shrink-0" aria-hidden="true" />
-              <label htmlFor="search-q" className="sr-only">搜索想法</label>
-              <input
-                id="search-q"
-                name="q"
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="MCP 工具调用框架"
-                className="flex-1 bg-transparent text-[15px] text-[var(--title)] placeholder:text-[var(--text-muted)] outline-none py-1.5"
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                className="rounded-lg gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50 shrink-0"
-              >
-                {loading ? "搜索中…" : "搜索"}
-              </button>
-            </div>
-          </form>
-          {searched && (
-            <p className="mt-3 text-sm text-[var(--text-muted)]">
-              找到 <span className="font-medium text-[var(--title)]">{filtered.length}</span> 个相关想法
-              {elapsed !== null && <span> · 用时 {elapsed.toFixed(2)} 秒</span>}
-            </p>
-          )}
-        </div>
-      </section>
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
+        <SystemPageHeader
+          title={t("search.title")}
+          description={t("search.desc")}
+          actions={<p className="text-[11px] text-[var(--ink-faint)]">{t("search.vectorFallback")}</p>}
+        />
 
-      {/* Body */}
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex gap-6">
-          {/* Filter sidebar */}
-          <aside className="hidden lg:block w-[220px] shrink-0 space-y-5">
-            <h3 className="text-sm font-semibold text-[var(--title)]">筛选</h3>
-            <div>
-              <p className="text-xs text-[var(--text-muted)] mb-2">状态</p>
-              <div className="flex flex-wrap gap-2">
-                {statusFilters.map((f) => (
+        <section className="mt-4 surface-card p-3 sm:p-4">
+          <SearchInput
+            variant="inline"
+            id="search-q"
+            placeholder={t("search.placeholder")}
+            value={query}
+            onChange={setQuery}
+            onSubmit={submitSearch}
+            navigateOnSubmit={false}
+            submitLabel={t("search.submit")}
+            loading={loading}
+            autoFocus
+          />
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--ink-faint)]">
+            <span>{t("search.signalSemantic")}</span>
+            <span>{t("search.signalLifecycle")}</span>
+            <span>{t("search.signalEvidence")}</span>
+            {searched && (
+              <span className="ml-auto text-[var(--accent-link)]">
+                {t("search.matchesElapsed", {
+                  count: results.length,
+                  seconds: elapsed?.toFixed(2) || "0.00",
+                })}
+              </span>
+            )}
+          </div>
+        </section>
+
+        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_260px]">
+          <aside className="hidden surface-card overflow-hidden lg:block">
+            <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+              <p className="text-[13px] font-semibold text-[var(--ink)]">{t("search.filters")}</p>
+            </div>
+            <div className="border-b border-[var(--rule)] px-2 py-2">
+              <p className="mb-1.5 px-1.5 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.status")}</p>
+              <div className="space-y-0.5">
+                {statusFilters.map((filter) => (
                   <button
-                    key={f.value}
+                    key={filter.value}
                     type="button"
-                    onClick={() => setActiveStatus(f.value)}
-                    className={`badge-pill ${activeStatus === f.value ? "badge-active" : "badge-buried"}`}
+                    onClick={() => setActiveStatus(filter.value)}
+                    className={`flex h-8 w-full items-center rounded-[var(--radius-btn)] px-2.5 text-left text-[12px] ${
+                      activeStatus === filter.value
+                        ? "bg-[var(--accent-link-soft)] font-medium text-[var(--accent-link)]"
+                        : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
+                    }`}
                   >
-                    {f.label}
+                    {t(filter.label)}
                   </button>
                 ))}
               </div>
             </div>
-            <div>
-              <p className="text-xs text-[var(--text-muted)] mb-2">分类</p>
-              <div className="space-y-1">
-                {categories.map((cat) => (
+            <div className="px-2 py-2">
+              <p className="mb-1.5 px-1.5 text-[11px] font-medium text-[var(--ink-faint)]">{t("idea.category")}</p>
+              <div className="space-y-0.5">
+                {categories.map((category) => (
                   <button
-                    key={cat}
+                    key={category.value}
                     type="button"
-                    onClick={() => setActiveCategory(cat)}
-                    className={`block w-full text-left text-sm py-1 ${
-                      activeCategory === cat
-                        ? "text-[var(--primary)] font-medium"
-                        : "text-[var(--text-secondary)] hover:text-[var(--primary)]"
+                    onClick={() => setActiveCategory(category.value)}
+                    className={`flex h-8 w-full items-center rounded-[var(--radius-btn)] px-2.5 text-left text-[12px] ${
+                      activeCategory === category.value
+                        ? "bg-[var(--primary-soft)] font-medium text-[var(--primary)]"
+                        : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
                     }`}
                   >
-                    {cat}
+                    {t(category.label)}
                   </button>
                 ))}
               </div>
             </div>
           </aside>
 
-          {/* Results */}
-          <main className="flex-1 min-w-0">
+          <main className="min-w-0">
             {!searched ? (
-              <div className="surface-card p-12 text-center text-[var(--text-muted)]">
-                <IconSearch className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
-                <p>输入关键词开始搜索想法</p>
+              <div className="flex items-start gap-3 surface-card px-4 py-5">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--accent-link)]">
+                  <DeimosIcon name="semantic-search" className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-[13px] font-medium text-[var(--ink)]">{t("search.inputQuestion")}</p>
+                  <p className="mt-1 text-[12px] text-[var(--ink-faint)]">{t("search.desc")}</p>
+                </div>
               </div>
-            ) : filtered.length === 0 ? (
-              <div className="surface-card p-12 text-center text-[var(--text-muted)]">
-                <IconLeaf className="h-10 w-10 mx-auto mb-3 text-[var(--text-muted)]" aria-hidden="true" />
-                <p>没有找到匹配的想法</p>
+            ) : results.length === 0 ? (
+              <div className="flex items-start gap-3 surface-card px-4 py-5">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--primary)]">
+                  <DeimosIcon name="search" className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-[13px] font-medium text-[var(--ink)]">
+                    {t("search.noMatch", { query })}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {suggestedKeywords.map((kw) => {
+                      const label = kw.labelKey ? t(kw.labelKey as Parameters<typeof t>[0]) : kw.label ?? kw.query;
+                      return (
+                        <button
+                          key={kw.query}
+                          type="button"
+                          onClick={() => {
+                            setQuery(label);
+                            submitSearch(label);
+                          }}
+                          className="rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 py-0.5 text-[11px] text-[var(--primary)] hover:border-[var(--primary)]"
+                        >
+                          #{label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Link href="/ideas/new" className="btn-primary btn-sm mt-3">
+                    {t("search.registerIdea")}
+                  </Link>
+                </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {filtered.map((r) => (
-                  <SearchResultCard key={r.idea.id} idea={r.idea} similarity={r.similarity} />
+              <div className="space-y-3">
+                {results.map((result) => (
+                  <SearchResultCard key={result.idea.id} idea={result.idea} similarity={result.similarity} />
                 ))}
                 {results.length >= 10 && (
                   <button
                     type="button"
-                    onClick={() => handleSearch(query, page + 1)}
+                    onClick={() => void handleSearch(query, page + 1, activeStatus, activeCategory)}
                     disabled={loading}
-                    className="w-full rounded-lg border border-[var(--divider)] bg-[var(--bg-surface)] py-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                    className="h-10 w-full rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] px-4 text-left text-[12px] text-[var(--ink-soft)] hover:border-[var(--accent-link)]"
                   >
-                    {loading ? "加载中…" : `加载更多`}
+                    {loading ? t("common.loading") : t("search.loadMore")}
                   </button>
                 )}
               </div>
             )}
           </main>
 
-          {/* Suggestions */}
-          <aside className="hidden xl:block w-[240px] shrink-0 space-y-4">
-            {suggestions.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--title)]">相关建议</h3>
-                <p className="text-xs text-[var(--text-muted)] mt-1 mb-3">也许你也感兴趣</p>
-                <div className="space-y-3">
-                  {suggestions.map((r) => (
-                    <Link
-                      key={r.idea.id}
-                      href={`/ideas/${r.idea.id}`}
-                      className="block surface-card p-3 hover:border-[var(--primary)]/30"
-                    >
-                      <p className="text-sm font-medium text-[var(--title)] line-clamp-2">{r.idea.title}</p>
-                      <p className="text-xs text-[var(--text-muted)] mt-1">
-                        {r.idea.agent?.name || "Agent"} · {r.idea.like_count} 赞
-                      </p>
-                    </Link>
-                  ))}
-                </div>
+          <aside className="hidden space-y-3 xl:block">
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+                <p className="text-[13px] font-semibold text-[var(--ink)]">{t("search.resultSignals")}</p>
               </div>
-            )}
+              <dl className="divide-y divide-[var(--rule)] text-[12px]">
+                <div className="flex justify-between px-3.5 py-2.5 text-[var(--ink-soft)]">
+                  <dt>{t("search.matches")}</dt>
+                  <dd className="font-mono tabular-nums text-[var(--ink)]">{results.length}</dd>
+                </div>
+                <div className="flex justify-between px-3.5 py-2.5 text-[var(--ink-soft)]">
+                  <dt>{t("search.evidenceCoverage")}</dt>
+                  <dd className="font-mono tabular-nums text-[var(--ink)]">{evidenceCoverage}%</dd>
+                </div>
+                <div className="flex justify-between px-3.5 py-2.5 text-[var(--ink-soft)]">
+                  <dt>{t("search.implementedCount")}</dt>
+                  <dd className="font-mono tabular-nums text-[var(--ink)]">
+                    {results.filter((r) => r.idea.status === "implemented").length}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+                <p className="text-[13px] font-semibold text-[var(--ink)]">{t("search.howRanks")}</p>
+              </div>
+              <div className="space-y-1.5 px-3.5 py-3 text-[12px] leading-5 text-[var(--ink-soft)]">
+                <p>{t("search.rankSemantic")}</p>
+                <p>{t("search.rankEvidence")}</p>
+                <p>{t("search.rankCommunity")}</p>
+                <p>{t("search.rankRecency")}</p>
+              </div>
+            </section>
+
             {relatedTags.length > 0 && (
-              <div className="surface-card p-4">
-                <p className="text-xs text-[var(--text-muted)] mb-2">相关搜索</p>
-                <div className="flex flex-wrap gap-2">
+              <section className="surface-card overflow-hidden">
+                <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+                  <p className="text-[13px] font-semibold text-[var(--ink)]">{t("search.relatedIntents")}</p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 px-3.5 py-3">
                   {relatedTags.map((tag) => (
                     <button
                       key={tag}
                       type="button"
-                      onClick={() => { setQuery(tag); handleSearch(tag, 1); }}
-                      className="tag-pill hover:bg-[var(--primary)] hover:text-white"
+                      onClick={() => {
+                        setQuery(tag);
+                        submitSearch(tag);
+                      }}
+                      className="rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 py-0.5 text-[11px] text-[var(--accent-link)] hover:border-[var(--accent-link)]"
                     >
                       #{tag}
                     </button>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
           </aside>
         </div>

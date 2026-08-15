@@ -2,29 +2,35 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { userApi, notificationApi } from "@/lib/api-client";
-import { ChatSession } from "@/lib/types";
-import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n/provider";
 import {
-  IconUser,
-  IconBell,
-  IconKey,
-  IconLock,
-  IconMessage,
-} from "@/components/icons";
+  userApi,
+  notificationApi,
+  authApi,
+  prefsApi,
+  modApi,
+} from "@/lib/api-client";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { PasswordInput } from "@/components/ui/password-input";
+import { Switch } from "@/components/ui/switch";
+import { ChatSession, User, type NotificationPreferences } from "@/lib/types";
+import { notify } from "@/components/ui/notify";
+import { getErrorMessage } from "@/lib/api-error";
+import { useApiKey } from "@/lib/api-key-context";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { WireframeAvatar } from "@/components/wireframe-avatar";
+import {
+  AccountSidebar,
+  type AccountSettingsSection,
+} from "@/components/account-sidebar";
 
-type Section = "profile" | "security" | "sessions" | "notifications" | "apikey";
+type Section = AccountSettingsSection;
 
-const NAV: { key: Section; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: "profile", label: "个人资料", icon: IconUser },
-  { key: "security", label: "账号安全", icon: IconLock },
-  { key: "sessions", label: "我的会话", icon: IconMessage },
-  { key: "notifications", label: "通知偏好", icon: IconBell },
-  { key: "apikey", label: "Agent API Key", icon: IconKey },
-];
-
-const DEFAULT_NOTIF_PREFS = {
+const DEFAULT_NOTIF_PREFS: NotificationPreferences = {
   email_on_follow: true,
   email_on_comment: true,
   email_on_flower: true,
@@ -32,47 +38,147 @@ const DEFAULT_NOTIF_PREFS = {
   email_weekly_digest: true,
 };
 
-const STORAGE_KEY = "wanye:notif-prefs";
-
 export default function SettingsPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
+  const { t } = useI18n();
+  const searchParams = useSearchParams();
   const [section, setSection] = useState<Section>("profile");
+
+  useEffect(() => {
+    const s = searchParams.get("section");
+    if (
+      s === "apikey" ||
+      s === "profile" ||
+      s === "security" ||
+      s === "sessions" ||
+      s === "notifications" ||
+      s === "blocks"
+    ) {
+      setSection(s);
+    }
+  }, [searchParams]);
 
   // Profile
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [backgroundUrl, setBackgroundUrl] = useState("");
   const [bio, setBio] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>(
+    {},
+  );
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBackground, setUploadingBackground] = useState(false);
+
+  // Delete account
+  const [deletePwd, setDeletePwd] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deletePhone, setDeletePhone] = useState("");
+  const [deleteSmsCode, setDeleteSmsCode] = useState("");
+  const [deleteSmsCooldown, setDeleteSmsCooldown] = useState(0);
+  const [deleting, setDeleting] = useState(false);
 
   // Security
   const [oldPwd, setOldPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
   const [savingPwd, setSavingPwd] = useState(false);
+  const [pwdErrors, setPwdErrors] = useState<Record<string, string>>({});
+
+  // Change phone
+  const [changePhone, setChangePhone] = useState("");
+  const [changeCode, setChangeCode] = useState("");
+  const [changeCooldown, setChangeCooldown] = useState(0);
+  const [changingPhone, setChangingPhone] = useState(false);
 
   // Sessions
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionTotal, setSessionTotal] = useState(0);
   const [loadingSessions, setLoadingSessions] = useState(false);
 
-  // Notification prefs (localStorage)
-  const [prefs, setPrefs] = useState(DEFAULT_NOTIF_PREFS);
+  // Notification prefs（服务端持久化，GET/PATCH /user/notification-preferences）
+  const [prefs, setPrefs] =
+    useState<NotificationPreferences>(DEFAULT_NOTIF_PREFS);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [prefsSaving, setPrefsSaving] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
+
+  // 屏蔽列表（GET /user/blocks）
+  const [blockedUsers, setBlockedUsers] = useState<User[]>([]);
+  const [blocksLoaded, setBlocksLoaded] = useState(false);
+
+  const loadBlocks = useCallback(async () => {
+    setBlocksLoaded(false);
+    try {
+      const res = await modApi.listBlocks();
+      setBlockedUsers(res.users || []);
+    } catch {
+      setBlockedUsers([]);
+    } finally {
+      setBlocksLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (section === "blocks" && user) void loadBlocks();
+  }, [section, user, loadBlocks]);
+
+  const unblock = useCallback(async (userId: string) => {
+    try {
+      await modApi.unblockUser(userId);
+      setBlockedUsers((prev) => prev.filter((u) => u.id !== userId));
+      notify.success(t("settings.unblocked"));
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
+    }
+  }, [t]);
 
   useEffect(() => {
     if (user) {
       setName(user.name);
       setAvatarUrl(user.avatar_url || "");
+      setBackgroundUrl(user.background_url || "");
+      setBio(user.bio || "");
+      if (user.phone) setDeletePhone(user.phone);
     }
   }, [user]);
 
-  // Load prefs from localStorage
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setPrefs({ ...DEFAULT_NOTIF_PREFS, ...JSON.parse(raw) });
-    } catch {}
-  }, []);
+    if (deleteSmsCooldown <= 0) return;
+    const timer = setInterval(
+      () => setDeleteSmsCooldown((c) => Math.max(0, c - 1)),
+      1000,
+    );
+    return () => clearInterval(timer);
+  }, [deleteSmsCooldown]);
+
+  useEffect(() => {
+    if (changeCooldown <= 0) return;
+    const timer = setInterval(
+      () => setChangeCooldown((c) => Math.max(0, c - 1)),
+      1000,
+    );
+    return () => clearInterval(timer);
+  }, [changeCooldown]);
+
+  // 从服务端加载通知偏好
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    prefsApi
+      .get()
+      .then((res) => {
+        if (cancelled) return;
+        setPrefs({ ...DEFAULT_NOTIF_PREFS, ...res });
+        setPrefsLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) setPrefsLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   // Load sessions when section opened
   useEffect(() => {
@@ -91,73 +197,235 @@ export default function SettingsPage() {
 
   const saveProfile = useCallback(async () => {
     if (!name.trim()) {
-      toast.error("显示名不能为空");
+      setProfileErrors({ name: t("settings.errNameEmpty") });
       return;
     }
+    setProfileErrors({});
     setSavingProfile(true);
     try {
-      await userApi.updateMyProfile({
+      const res = await userApi.updateMyProfile({
         name: name.trim(),
+        bio,
         avatar_url: avatarUrl.trim() || undefined,
+        background_url: backgroundUrl.trim() || undefined,
       });
-      toast.success("资料已更新");
+      if (res.user) await refreshUser();
+      notify.success(t("settings.saved"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "更新失败");
+      notify.error(getErrorMessage(err, t("settings.saveFailed")));
     } finally {
       setSavingProfile(false);
     }
-  }, [name, avatarUrl]);
+  }, [name, avatarUrl, backgroundUrl, bio, refreshUser, t]);
+
+  const uploadImage = useCallback(
+    async (kind: "avatar" | "background", file: File) => {
+      const allowed = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowed.includes(file.type)) {
+        notify.error(t("idea.imageOnlyTypes"));
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        notify.error(t("settings.imageMaxSize"));
+        return;
+      }
+      const setUploading =
+        kind === "avatar" ? setUploadingAvatar : setUploadingBackground;
+      setUploading(true);
+      try {
+        const presign = await userApi.presignUpload(kind, file.type);
+        const putRes = await fetch(presign.upload_url, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type },
+        });
+        if (!putRes.ok) throw new Error(t("settings.uploadFailed"));
+        const patch: Parameters<typeof userApi.updateMyProfile>[0] = {
+          ...(kind === "avatar"
+            ? { avatar_url: presign.public_url, avatar_source: "upload" }
+            : { background_url: presign.public_url }),
+        };
+        const res = await userApi.updateMyProfile(patch);
+        if (kind === "avatar") setAvatarUrl(presign.public_url);
+        else setBackgroundUrl(presign.public_url);
+        if (res.user) await refreshUser();
+        notify.success(kind === "avatar" ? t("settings.avatarUpdated") : t("settings.bgUpdated"));
+      } catch (err) {
+        notify.error(getErrorMessage(err, t("settings.uploadFailed")));
+      } finally {
+        setUploading(false);
+      }
+    },
+    [refreshUser, t],
+  );
+
+  const resetAvatar = useCallback(async () => {
+    try {
+      const res = await userApi.resetAvatar();
+      if (res.user?.avatar_url) setAvatarUrl(res.user.avatar_url);
+      await refreshUser();
+      notify.success(t("settings.avatarReset"));
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
+    }
+  }, [refreshUser, t]);
+
+  const resetBackground = useCallback(async () => {
+    try {
+      const res = await userApi.resetBackground();
+      if (res.user?.background_url) setBackgroundUrl(res.user.background_url);
+      await refreshUser();
+      notify.success(t("settings.bgReset"));
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("common.operationFailed")));
+    }
+  }, [refreshUser, t]);
+
+  const sendDeleteSms = useCallback(async () => {
+    if (!deletePhone.trim()) {
+      notify.error(t("settings.errPhoneRequired"));
+      return;
+    }
+    try {
+      await authApi.sendPhoneCode(deletePhone.trim(), "account_delete");
+      notify.success(t("auth.codeSent"));
+      setDeleteSmsCooldown(60);
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("auth.sendFailed")));
+    }
+  }, [deletePhone, t]);
+
+  const deleteAccount = useCallback(async () => {
+    if (!user) return;
+    setDeleting(true);
+    try {
+      const payload: Parameters<typeof userApi.deleteAccount>[0] = {};
+      if (user.auth_provider === "email") {
+        if (!deletePwd) {
+          notify.error(t("settings.errPasswordConfirm"));
+          setDeleting(false);
+          return;
+        }
+        payload.password = deletePwd;
+      } else if (user.auth_provider === "google") {
+        if (deleteConfirm !== "DELETE") {
+          notify.error(t("settings.deleteTypeConfirm"));
+          setDeleting(false);
+          return;
+        }
+        payload.confirm_text = deleteConfirm;
+      } else if (user.auth_provider === "wechat") {
+        if (!deletePhone || !deleteSmsCode) {
+          notify.error(t("settings.errPhoneVerifyRequired"));
+          setDeleting(false);
+          return;
+        }
+        payload.phone = deletePhone;
+        payload.sms_code = deleteSmsCode;
+      }
+      await userApi.deleteAccount(payload);
+      notify.success(t("settings.accountDeleted"));
+      window.location.href = "/";
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("settings.deleteFailed")));
+    } finally {
+      setDeleting(false);
+    }
+  }, [user, deletePwd, deleteConfirm, deletePhone, deleteSmsCode, t]);
+
+  const sendChangePhoneCode = useCallback(async () => {
+    if (!changePhone.trim()) {
+      notify.error(t("settings.errPhoneRequired"));
+      return;
+    }
+    try {
+      await authApi.sendPhoneCode(changePhone.trim(), "change_phone");
+      notify.success(t("auth.codeSent"));
+      setChangeCooldown(60);
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("auth.sendFailed")));
+    }
+  }, [changePhone, t]);
+
+  const verifyChangePhone = useCallback(async () => {
+    if (!changePhone.trim() || !changeCode.trim()) {
+      notify.error(t("settings.errPhoneAndCode"));
+      return;
+    }
+    setChangingPhone(true);
+    try {
+      await authApi.verifyPhone(changePhone.trim(), changeCode.trim());
+      await refreshUser();
+      setChangePhone("");
+      setChangeCode("");
+      notify.success(t("settings.phoneUpdated"));
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("settings.phoneVerifyFailed")));
+    } finally {
+      setChangingPhone(false);
+    }
+  }, [changePhone, changeCode, refreshUser, t]);
 
   const changePwd = useCallback(async () => {
-    if (newPwd.length < 6) {
-      toast.error("新密码至少 6 个字符");
+    const errs: Record<string, string> = {};
+    if (newPwd.length < 6) errs.newPwd = t("settings.errNewPasswordShort");
+    if (newPwd !== confirmPwd) errs.confirmPwd = t("settings.errPasswordMismatch");
+    if (Object.keys(errs).length) {
+      setPwdErrors(errs);
       return;
     }
-    if (newPwd !== confirmPwd) {
-      toast.error("两次新密码不一致");
-      return;
-    }
+    setPwdErrors({});
     setSavingPwd(true);
     try {
       await userApi.changePassword(oldPwd, newPwd);
-      toast.success("密码已修改");
+      notify.success(t("settings.passwordChanged"));
       setOldPwd("");
       setNewPwd("");
       setConfirmPwd("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "修改失败");
+      setPwdErrors({ oldPwd: getErrorMessage(err, t("settings.changeFailed")) });
     } finally {
       setSavingPwd(false);
     }
-  }, [oldPwd, newPwd, confirmPwd]);
+  }, [oldPwd, newPwd, confirmPwd, t]);
 
-  const savePrefs = useCallback(() => {
+  const savePrefs = useCallback(async () => {
+    setPrefsSaving(true);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+      await prefsApi.update(prefs);
       setPrefsSaved(true);
-      toast.success("通知偏好已保存");
+      notify.success(t("settings.notifSaved"));
       setTimeout(() => setPrefsSaved(false), 2000);
-    } catch {
-      toast.error("保存失败");
+    } catch (err) {
+      notify.error(getErrorMessage(err, t("settings.saveFailed")));
+    } finally {
+      setPrefsSaving(false);
     }
-  }, [prefs]);
+  }, [prefs, t]);
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center text-[var(--text-muted)]">
-        加载中…
+      <div className="page-shell-full flex items-center justify-center text-[var(--text-muted)]">
+        {t("common.loading")}
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center px-4">
+      <div className="page-shell-full flex items-center justify-center px-4">
         <div className="surface-card max-w-md w-full p-10 text-center">
-          <h2 className="text-xl font-semibold text-[var(--title)] mb-2">请先登录</h2>
-          <p className="text-sm text-[var(--text-muted)] mb-4">登录后管理你的账号设置</p>
-          <Link href="/login" className="inline-block rounded-lg gradient-btn px-6 py-2.5 text-sm font-medium">
-            前往登录
+          <h2 className="text-xl font-semibold text-[var(--title)] mb-2">
+            {t("settings.loginRequired")}
+          </h2>
+          <p className="text-sm text-[var(--text-muted)] mb-4">
+            {t("settings.loginHint")}
+          </p>
+          <Link
+            href="/login"
+            className="inline-block btn-outline px-6 py-2.5 text-sm font-medium"
+          >
+            {t("settings.goLogin")}
           </Link>
         </div>
       </div>
@@ -165,143 +433,166 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)]">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Left nav */}
-          <aside className="w-full lg:w-[240px] shrink-0">
-            <div className="mb-4">
-              <h1 className="text-[20px] font-semibold text-[var(--title)]">设置</h1>
-              <p className="text-sm text-[var(--text-muted)] mt-0.5">管理你的账号和偏好</p>
-            </div>
-            <nav className="surface-card p-2">
-              {NAV.map((item) => {
-                const Icon = item.icon;
-                const active = section === item.key;
-                const badge =
-                  item.key === "sessions" && sessionTotal > 0
-                    ? sessionTotal
-                    : item.key === "apikey"
-                    ? "Agent"
-                    : item.key === "security" && !user.email_verified
-                    ? "未验证"
-                    : null;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setSection(item.key)}
-                    className={`w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                      active
-                        ? "bg-[var(--primary-soft)] text-[var(--primary)] font-medium"
-                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <Icon className="h-4 w-4" />
-                      {item.label}
-                    </span>
-                    {badge !== null && (
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${
-                          badge === "未验证"
-                            ? "bg-[var(--coral)]/15 text-[var(--coral)]"
-                            : badge === "Agent"
-                            ? "bg-[var(--primary-soft)] text-[var(--primary)]"
-                            : "bg-[var(--bg-subtle)] text-[var(--text-secondary)]"
-                        }`}
-                      >
-                        {badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </aside>
+    <div className="page-shell-full">
+      <div className="page-container page-pad">
+        <div className="flex flex-col gap-6 lg:flex-row">
+          <AccountSidebar
+            activeSection={section}
+            onSectionChange={setSection}
+            sessionCount={sessionTotal}
+            emailVerified={user.email_verified}
+          />
 
           {/* Right content */}
           <main className="flex-1 min-w-0 max-w-[760px]">
             {/* Profile header card */}
-            <div className="surface-card p-5 mb-5 flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-2xl font-semibold text-[var(--primary)] overflow-hidden">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            <div className="surface-card overflow-hidden mb-6">
+              <div className="h-28 bg-[var(--primary-soft)] relative">
+                {backgroundUrl ? (
+                  <img
+                    src={backgroundUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
-                  user.name.charAt(0).toUpperCase()
+                  <div className="h-full w-full bg-gradient-to-br from-[var(--primary-soft)] to-[var(--teal)]/15" />
                 )}
               </div>
-              <div>
-                <div className="text-lg font-semibold text-[var(--title)]">{user.name}</div>
-                <div className="text-sm text-[var(--text-muted)]">{user.email}</div>
-                <div className="mt-1 text-xs text-[var(--text-muted)]">
-                  关注 {user.following_count} · 粉丝 {user.follower_count}
+              <div className="relative min-h-[96px] px-5 pb-5 pt-4">
+                <div className="absolute -top-10 left-5 z-10 rounded-full bg-white p-1 shadow-sm">
+                  <WireframeAvatar
+                    name={user.name}
+                    avatarUrl={avatarUrl}
+                    entityId={user.id}
+                    kind="user"
+                    size={80}
+                  />
+                </div>
+                <div className="min-w-0 pl-24">
+                  <div className="truncate text-lg font-semibold text-[var(--title)]">
+                    {user.name}
+                  </div>
+                  {user.email && (
+                    <div className="truncate text-sm text-[var(--text-muted)]">
+                      {user.email}
+                    </div>
+                  )}
+                  <div className="mt-1 text-xs text-[var(--text-muted)]">
+                    <Link href="/user/profile?tab=following" className="hover:text-[var(--primary)] hover:underline">
+                      {t("profile.following")} {user.following_count}
+                    </Link>
+                    {" · "}
+                    <Link href="/user/profile?tab=followers" className="hover:text-[var(--primary)] hover:underline">
+                      {t("profile.followers")} {user.follower_count}
+                    </Link>
+                    {user.phone_verified && user.phone && ` · ${user.phone}`}
+                  </div>
                 </div>
               </div>
             </div>
 
             {section === "profile" && (
               <div className="surface-card p-6">
-                <h2 className="text-base font-semibold text-[var(--title)] mb-4">基本信息</h2>
-                <div className="space-y-4">
+                <h2 className="text-base font-semibold text-[var(--title)] mb-4">
+                  {t("settings.basicInfo")}
+                </h2>
+                <div className="space-y-5">
                   <div>
-                    <label htmlFor="set-name" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">显示名</label>
-                    <input
-                      id="set-name"
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                      {t("settings.avatar")}
+                    </label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="btn-outline px-4 py-2 text-sm font-medium cursor-pointer">
+                        {uploadingAvatar ? t("settings.uploading") : t("settings.uploadImage")}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="sr-only"
+                          disabled={uploadingAvatar}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) uploadImage("avatar", f);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={resetAvatar}
+                        className="btn-default btn-sm"
+                      >
+                        {t("settings.resetDefault")}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                      {t("settings.background")}
+                    </label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="btn-outline px-4 py-2 text-sm font-medium cursor-pointer">
+                        {uploadingBackground ? t("settings.uploading") : t("settings.uploadImage")}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="sr-only"
+                          disabled={uploadingBackground}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) uploadImage("background", f);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={resetBackground}
+                        className="btn-default btn-sm"
+                      >
+                        {t("settings.resetDefault")}
+                      </button>
+                    </div>
+                  </div>
+                  <FormField
+                    id="set-name"
+                    label={t("settings.displayName")}
+                    error={profileErrors.name}
+                  >
+                    <Input
                       name="name"
                       autoComplete="name"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        setProfileErrors({});
+                      }}
+                      hasError={!!profileErrors.name}
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="set-avatar" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                      头像 URL
-                    </label>
-                    <input
-                      id="set-avatar"
-                      name="avatar-url"
-                      type="url"
-                      autoComplete="off"
-                      value={avatarUrl}
-                      onChange={(e) => setAvatarUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
-                    />
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">留空将使用首字母作为头像</p>
-                  </div>
-                  <div>
-                    <label htmlFor="set-bio" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">简介</label>
-                    <textarea
-                      id="set-bio"
+                  </FormField>
+                  <FormField
+                    id="set-bio"
+                    label={t("settings.bio")}
+                    hint={t("common.characters", { count: bio.length, max: 500 })}
+                  >
+                    <Textarea
                       name="bio"
                       value={bio}
                       onChange={(e) => setBio(e.target.value)}
                       rows={3}
-                      maxLength={200}
-                      placeholder="一句话介绍自己 (例如：AI 研究者 / Agent 工具开发)"
-                      className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)] resize-none"
+                      maxLength={500}
+                      placeholder={t("settings.bioPlaceholder")}
+                      className="resize-none"
                     />
-                    <p className="mt-1 text-xs text-[var(--text-muted)] text-right">
-                      {bio.length} / 200 字符
-                    </p>
-                  </div>
+                  </FormField>
                 </div>
-                <div className="mt-5 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    className="rounded-lg border border-[var(--divider)] px-5 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                  >
-                    取消
-                  </button>
+                <div className="mt-5 flex justify-end">
                   <button
                     type="button"
                     onClick={saveProfile}
                     disabled={savingProfile}
-                    className="rounded-lg gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
+                    className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
                   >
-                    {savingProfile ? "保存中…" : "保存"}
+                    {savingProfile ? t("common.saving") : t("settings.save")}
                   </button>
                 </div>
               </div>
@@ -309,110 +600,267 @@ export default function SettingsPage() {
 
             {section === "security" && (
               <div className="surface-card p-6">
-                <h2 className="text-base font-semibold text-[var(--title)] mb-4">账号安全</h2>
+                <h2 className="text-base font-semibold text-[var(--title)] mb-4">
+                  {t("settings.security")}
+                </h2>
 
-                <div className="mb-6 rounded-lg border border-[var(--divider)] p-4 flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-[var(--title)]">邮箱验证</div>
-                    <div className="text-xs text-[var(--text-muted)] mt-0.5">{user.email}</div>
+                {user.email && user.auth_provider !== "wechat" && (
+                  <div className="mb-6 rounded-[var(--radius-card)] border border-[var(--divider)] p-4 flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-[var(--title)]">
+                        {t("settings.emailVerify")}
+                      </div>
+                      <div className="text-xs text-[var(--text-muted)] mt-0.5">
+                        {user.email}
+                      </div>
+                    </div>
+                    {user.email_verified ? (
+                      <span className="rounded-full bg-[var(--teal)]/15 px-3 py-1 text-xs font-medium text-[var(--teal)]">
+                        <DeimosIcon
+                          name="check"
+                          className="mr-1 inline-block h-3 w-3"
+                        />
+                        {t("settings.verified")}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-[var(--coral)]/15 px-3 py-1 text-xs font-medium text-[var(--coral)]">
+                        {t("settings.unverified")}
+                      </span>
+                    )}
                   </div>
-                  {user.email_verified ? (
-                    <span className="rounded-full bg-[var(--teal)]/15 px-3 py-1 text-xs font-medium text-[var(--teal)]">
-                      ✓ 已验证
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-[var(--coral)]/15 px-3 py-1 text-xs font-medium text-[var(--coral)]">
-                      未验证
-                    </span>
-                  )}
-                </div>
+                )}
 
                 {user.auth_provider === "google" ? (
-                  <div className="rounded-lg bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
-                    你使用 Google 账号登录，无需设置密码。如需修改密码请前往 Google 账号管理。
+                  <div className="rounded-[var(--radius-card)] bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
+                    {t("settings.googleLoginHint")}
+                  </div>
+                ) : user.auth_provider === "wechat" ? (
+                  <div className="space-y-4">
+                    <div className="rounded-[var(--radius-card)] bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-muted)]">
+                      {t("settings.wechatLoginHint")}
+                      {user.phone_verified && user.phone
+                        ? ` ${t("settings.phoneBound", { phone: user.phone })}`
+                        : ` ${t("settings.phoneVerifyHint")}`}
+                    </div>
+                    {user.phone_verified && (
+                      <div className="rounded-[var(--radius-card)] border border-[var(--divider)] p-4 space-y-3 max-w-md">
+                        <div className="text-sm font-medium text-[var(--title)]">
+                          {t("settings.changePhone")}
+                        </div>
+                        <FormField id="change-phone" label={t("settings.newPhone")}>
+                          <Input
+                            type="tel"
+                            value={changePhone}
+                            onChange={(e) => setChangePhone(e.target.value)}
+                            placeholder={t("settings.newPhone")}
+                          />
+                        </FormField>
+                        <div className="flex gap-2 items-end">
+                          <FormField
+                            id="change-code"
+                            label={t("settings.smsCode")}
+                            className="flex-1"
+                          >
+                            <Input
+                              value={changeCode}
+                              onChange={(e) => setChangeCode(e.target.value)}
+                              placeholder={t("settings.smsCode")}
+                            />
+                          </FormField>
+                          <button
+                            type="button"
+                            onClick={sendChangePhoneCode}
+                            disabled={changeCooldown > 0}
+                            className="shrink-0 btn-default btn-sm disabled:opacity-50"
+                          >
+                            {changeCooldown > 0
+                              ? `${changeCooldown}s`
+                              : t("settings.getCode")}
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={verifyChangePhone}
+                          disabled={changingPhone}
+                          className="btn-outline px-4 py-2 text-sm font-medium disabled:opacity-50"
+                        >
+                          {changingPhone ? t("settings.updating") : t("settings.confirmChange")}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div>
-                      <label htmlFor="set-old-pwd" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                        当前密码
-                      </label>
-                      <input
-                        id="set-old-pwd"
+                    <FormField
+                      id="set-old-pwd"
+                      label={t("settings.currentPassword")}
+                      error={pwdErrors.oldPwd}
+                    >
+                      <PasswordInput
                         name="old-password"
-                        type="password"
                         autoComplete="current-password"
                         value={oldPwd}
-                        onChange={(e) => setOldPwd(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                        onChange={(e) => {
+                          setOldPwd(e.target.value);
+                          setPwdErrors({});
+                        }}
+                        hasError={!!pwdErrors.oldPwd}
                       />
-                    </div>
-                    <div>
-                      <label htmlFor="set-new-pwd" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                        新密码
-                      </label>
-                      <input
-                        id="set-new-pwd"
+                    </FormField>
+                    <FormField
+                      id="set-new-pwd"
+                      label={t("settings.newPassword")}
+                      error={pwdErrors.newPwd}
+                    >
+                      <PasswordInput
                         name="new-password"
-                        type="password"
                         autoComplete="new-password"
                         value={newPwd}
-                        onChange={(e) => setNewPwd(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                        onChange={(e) => {
+                          setNewPwd(e.target.value);
+                          setPwdErrors({});
+                        }}
+                        hasError={!!pwdErrors.newPwd}
                       />
-                    </div>
-                    <div>
-                      <label htmlFor="set-confirm-pwd" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                        确认新密码
-                      </label>
-                      <input
-                        id="set-confirm-pwd"
+                    </FormField>
+                    <FormField
+                      id="set-confirm-pwd"
+                      label={t("settings.confirmNewPassword")}
+                      error={pwdErrors.confirmPwd}
+                    >
+                      <PasswordInput
                         name="confirm-password"
-                        type="password"
                         autoComplete="new-password"
                         value={confirmPwd}
-                        onChange={(e) => setConfirmPwd(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--divider)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--primary)]"
+                        onChange={(e) => {
+                          setConfirmPwd(e.target.value);
+                          setPwdErrors({});
+                        }}
+                        hasError={!!pwdErrors.confirmPwd}
                       />
-                    </div>
+                    </FormField>
                     <div className="flex justify-end">
                       <button
                         type="button"
                         onClick={changePwd}
                         disabled={savingPwd || !oldPwd || !newPwd}
-                        className="rounded-lg gradient-btn px-5 py-2 text-sm font-medium disabled:opacity-50"
+                        className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
                       >
-                        {savingPwd ? "修改中…" : "修改密码"}
+                        {savingPwd ? t("settings.changing") : t("settings.changePassword")}
                       </button>
                     </div>
                   </div>
                 )}
+
+                <div className="mt-6 pt-6 border-t border-[var(--divider)]">
+                  <h3 className="text-sm font-semibold text-[var(--coral)] mb-2">
+                    {t("settings.dangerZone")}
+                  </h3>
+                  <p className="text-sm text-[var(--text-muted)] mb-4">
+                    {t("settings.deleteHint")}
+                  </p>
+                  {user.auth_provider === "email" && (
+                    <div className="space-y-3 max-w-md">
+                      <FormField id="delete-pwd" label={t("settings.deleteConfirmPlaceholder")}>
+                        <PasswordInput
+                          value={deletePwd}
+                          onChange={(e) => setDeletePwd(e.target.value)}
+                          placeholder={t("settings.deleteConfirmPlaceholder")}
+                          autoComplete="current-password"
+                        />
+                      </FormField>
+                    </div>
+                  )}
+                  {user.auth_provider === "google" && (
+                    <div className="space-y-3 max-w-md">
+                      <FormField id="delete-confirm" label={t("settings.deleteTypeConfirm")}>
+                        <Input
+                          value={deleteConfirm}
+                          onChange={(e) => setDeleteConfirm(e.target.value)}
+                          placeholder="DELETE"
+                        />
+                      </FormField>
+                    </div>
+                  )}
+                  {user.auth_provider === "wechat" && (
+                    <div className="space-y-3 max-w-md">
+                      <FormField id="delete-phone" label={t("settings.boundPhone")}>
+                        <Input
+                          type="tel"
+                          value={deletePhone}
+                          onChange={(e) => setDeletePhone(e.target.value)}
+                          placeholder={t("settings.boundPhone")}
+                        />
+                      </FormField>
+                      <div className="flex gap-2 items-end">
+                        <FormField
+                          id="delete-sms"
+                          label={t("settings.smsCode")}
+                          className="flex-1"
+                        >
+                          <Input
+                            value={deleteSmsCode}
+                            onChange={(e) => setDeleteSmsCode(e.target.value)}
+                            placeholder={t("settings.smsCode")}
+                          />
+                        </FormField>
+                        <button
+                          type="button"
+                          onClick={sendDeleteSms}
+                          disabled={deleteSmsCooldown > 0}
+                          className="shrink-0 btn-default btn-sm disabled:opacity-50"
+                        >
+                          {deleteSmsCooldown > 0
+                            ? `${deleteSmsCooldown}s`
+                            : t("settings.getCode")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={deleteAccount}
+                    disabled={deleting}
+                    className="mt-4 btn-danger px-5 py-2 disabled:opacity-50"
+                  >
+                    {deleting ? t("settings.deleting") : t("settings.deleteAccount")}
+                  </button>
+                </div>
               </div>
             )}
 
             {section === "sessions" && (
               <div className="surface-card p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-[var(--title)]">我的会话</h2>
-                  <span className="text-xs text-[var(--text-muted)]">共 {sessionTotal} 个</span>
+                  <h2 className="text-base font-semibold text-[var(--title)]">
+                    {t("settings.mySessions")}
+                  </h2>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    {t("settings.sessionCount", { count: sessionTotal })}
+                  </span>
                 </div>
                 {loadingSessions ? (
-                  <div className="py-8 text-center text-[var(--text-muted)]">加载中…</div>
+                  <div className="py-8 text-center text-[var(--text-muted)]">
+                    {t("common.loading")}
+                  </div>
                 ) : sessions.length === 0 ? (
                   <div className="py-8 text-center text-[var(--text-muted)]">
-                    <p className="text-3xl mb-2">💬</p>
-                    暂无会话
+                    <DeimosIcon name="chat" className="mx-auto mb-3 h-8 w-8" />
+                    {t("settings.noSessions")}
                   </div>
                 ) : (
                   <ul className="divide-y divide-[var(--divider)]">
                     {sessions.map((s) => (
-                      <li key={s.id} className="py-3 flex items-center justify-between">
+                      <li
+                        key={s.id}
+                        className="py-3 flex items-center justify-between"
+                      >
                         <Link href={`/chat/${s.id}`} className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-[var(--title)] truncate hover:text-[var(--primary)]">
-                            {s.title || "未命名会话"}
+                            {s.title || t("settings.unnamedSession")}
                           </div>
                           <div className="text-xs text-[var(--text-muted)] mt-0.5">
-                            {s.message_count} 条消息 ·{" "}
+                            {t("chat.messageCount", { count: s.message_count })} ·{" "}
                             {new Date(s.updated_at).toLocaleString("zh-CN")}
                           </div>
                         </Link>
@@ -425,25 +873,56 @@ export default function SettingsPage() {
 
             {section === "notifications" && (
               <div className="surface-card p-6">
-                <h2 className="text-base font-semibold text-[var(--title)] mb-1">通知偏好</h2>
+                <h2 className="text-base font-semibold text-[var(--title)] mb-1">
+                  {t("settings.notifPrefs")}
+                </h2>
                 <p className="text-sm text-[var(--text-muted)] mb-4">
-                  选择你希望在哪些事件发生时收到通知
+                  {t("settings.notifPrefsHint")}
                 </p>
                 <ul className="divide-y divide-[var(--divider)]">
                   {[
-                    { key: "email_on_follow", label: "有人关注我", desc: "新粉丝通知" },
-                    { key: "email_on_comment", label: "我的想法被评论", desc: "评论通知" },
-                    { key: "email_on_flower", label: "我的想法收到鲜花", desc: "送花通知" },
-                    { key: "email_on_mention", label: "@ 提及我", desc: "评论中 @ 我" },
-                    { key: "email_weekly_digest", label: "每周精选摘要", desc: "每周一封邮件汇总" },
+                    {
+                      key: "email_on_follow",
+                      label: t("settings.notifNewFollower"),
+                      desc: t("settings.notifNewFollowerDesc"),
+                    },
+                    {
+                      key: "email_on_comment",
+                      label: t("settings.notifComment"),
+                      desc: t("settings.notifCommentDesc"),
+                    },
+                    {
+                      key: "email_on_flower",
+                      label: t("settings.notifWish"),
+                      desc: t("settings.notifWishDesc"),
+                    },
+                    {
+                      key: "email_on_mention",
+                      label: t("settings.notifMention"),
+                      desc: t("settings.notifMentionDesc"),
+                    },
+                    {
+                      key: "email_weekly_digest",
+                      label: t("settings.notifWeekly"),
+                      desc: t("settings.notifWeeklyDesc"),
+                    },
                   ].map((row) => (
-                    <li key={row.key} className="py-3 flex items-center justify-between">
+                    <li
+                      key={row.key}
+                      className="py-3 flex items-center justify-between"
+                    >
                       <div>
-                        <div className="text-sm font-medium text-[var(--title)]">{row.label}</div>
-                        <div className="text-xs text-[var(--text-muted)] mt-0.5">{row.desc}</div>
+                        <div className="text-sm font-medium text-[var(--title)]">
+                          {row.label}
+                        </div>
+                        <div className="text-xs text-[var(--text-muted)] mt-0.5">
+                          {row.desc}
+                        </div>
                       </div>
                       <Toggle
-                        on={prefs[row.key as keyof typeof prefs]}
+                        id={`pref-${row.key}`}
+                        label={row.label}
+                        on={!!prefs[row.key as keyof typeof prefs]}
                         onChange={(v) =>
                           setPrefs((p) => ({ ...p, [row.key]: v }))
                         }
@@ -453,39 +932,123 @@ export default function SettingsPage() {
                 </ul>
                 <div className="mt-5 flex items-center justify-end gap-3">
                   {prefsSaved && (
-                    <span className="text-xs text-[var(--teal)]">已保存</span>
+                    <span className="text-xs text-[var(--teal)]">{t("settings.saved")}</span>
                   )}
                   <button
                     type="button"
                     onClick={savePrefs}
-                    className="rounded-lg gradient-btn px-5 py-2 text-sm font-medium"
+                    disabled={!prefsLoaded || prefsSaving}
+                    className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
                   >
-                    保存偏好
+                    {prefsSaving
+                      ? t("common.saving")
+                      : !prefsLoaded
+                        ? t("common.loading")
+                        : t("settings.save")}
                   </button>
                 </div>
               </div>
             )}
 
-            {section === "apikey" && (
+            {section === "blocks" && (
               <div className="surface-card p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-base font-semibold text-[var(--title)]">Agent API Key</h2>
-                  <span className="rounded-full bg-[var(--primary-soft)] px-2.5 py-0.5 text-xs font-medium text-[var(--primary)]">
-                    Agent
-                  </span>
-                </div>
+                <h2 className="text-base font-semibold text-[var(--title)] mb-1">
+                  {t("settings.blockManage")}
+                </h2>
                 <p className="text-sm text-[var(--text-muted)] mb-4">
-                  调用 REST API 或 MCP 工具时使用此 Key 认证 (前缀 <code>wanye_</code>)
+                  {t("settings.blockHint")}
                 </p>
+                {!blocksLoaded ? (
+                  <div className="py-8 text-center text-[var(--text-muted)]">
+                    {t("common.loading")}
+                  </div>
+                ) : blockedUsers.length === 0 ? (
+                  <div className="py-8 text-center text-[var(--text-muted)]">
+                    <DeimosIcon
+                      name="shield"
+                      className="mx-auto mb-2 h-7 w-7"
+                    />
+                    {t("settings.noBlocked")}
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-[var(--divider)]">
+                    {blockedUsers.map((u) => (
+                      <li
+                        key={u.id}
+                        className="py-3 flex items-center justify-between gap-3"
+                      >
+                        <Link
+                          href={`/users/${u.id}`}
+                          className="flex items-center gap-3 min-w-0 flex-1"
+                        >
+                          <div className="h-9 w-9 rounded-full bg-[var(--primary-soft)] flex items-center justify-center text-sm font-medium text-[var(--primary)] overflow-hidden shrink-0">
+                            {u.avatar_url ? (
+                              <img
+                                src={u.avatar_url}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              u.name?.charAt(0).toUpperCase() || "?"
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-[var(--title)] truncate hover:text-[var(--primary)]">
+                              {u.name}
+                            </div>
+                            {u.bio && (
+                              <div className="text-xs text-[var(--text-muted)] truncate">
+                                {u.bio}
+                              </div>
+                            )}
+                          </div>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => void unblock(u.id)}
+                          className="shrink-0 btn-outline btn-sm"
+                        >
+                          {t("settings.unblock")}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
-                <ApiKeyDisplay />
-
-                <div className="mt-5 rounded-lg bg-[var(--bg-subtle)] p-4 text-xs text-[var(--text-muted)]">
-                  💡 API Key 用于 Agent 身份认证，与你的用户账号是分离的。前往{" "}
-                  <Link href="/register" className="text-[var(--primary)] hover:underline">
-                    Agent 注册控制台
-                  </Link>{" "}
-                  创建新的 Agent。
+            {section === "apikey" && (
+              <div className="space-y-6">
+                <div className="surface-card p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-base font-semibold text-[var(--title)]">
+                      {t("settings.apiKeyTitle")}
+                    </h2>
+                  </div>
+                  <p className="text-sm text-[var(--text-muted)] mb-4">
+                    {t("settings.apiKeyHint")}
+                  </p>
+                  <ApiKeyBrowserBinding />
+                </div>
+                <div className="surface-card p-6">
+                  <h2 className="text-base font-semibold text-[var(--title)] mb-2">
+                    {t("settings.manageAgentKeys")}
+                  </h2>
+                  <p className="text-sm text-[var(--text-muted)] mb-4">
+                    {t("settings.apiKeyRegenHint")}
+                  </p>
+                  <Link href="/user/agents" className="btn-outline btn-sm">
+                    {t("settings.goMyAgents")}
+                  </Link>
+                  <p className="mt-3 text-xs text-[var(--text-muted)]">
+                    {t("settings.mcpDocsLabel")}{" "}
+                    <Link
+                      href="/docs/mcp"
+                      className="text-[var(--primary)] hover:underline"
+                    >
+                      {t("settings.docsLink")}
+                    </Link>
+                  </p>
                 </div>
               </div>
             )}
@@ -496,57 +1059,114 @@ export default function SettingsPage() {
   );
 }
 
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!on)}
-      className={`relative h-6 w-11 rounded-full transition-colors ${
-        on ? "bg-[var(--primary)]" : "bg-[var(--divider)]"
-      }`}
-    >
-      <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-          on ? "translate-x-5" : "translate-x-0.5"
-        }`}
-      />
-    </button>
-  );
+function Toggle({
+  id,
+  label,
+  on,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  on: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return <Switch id={id} label={label} checked={on} onChange={onChange} />;
 }
 
-function ApiKeyDisplay() {
+function ApiKeyBrowserBinding() {
+  const { apiKey, setApiKey, agentId, agentName, isReady } = useApiKey();
+  const { t } = useI18n();
+  const [inputKey, setInputKey] = useState("");
   const [revealed, setRevealed] = useState(false);
-  const [copied, setCopied] = useState(false);
 
-  // Demo key — real per-user key storage not yet in backend
-  const apiKey = "wanye_3a8f••••••••••••••••3a8f";
-  const display = revealed ? apiKey : "wanye_••••••••••••••••••3a8f";
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 rounded-lg border border-[var(--divider)] bg-white px-4 py-3">
-        <code className="flex-1 font-mono text-sm text-[var(--title)]">{display}</code>
-        <button
-          type="button"
-          onClick={() => setRevealed((v) => !v)}
-          className="rounded-md px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-        >
-          {revealed ? "隐藏" : "显示"}
-        </button>
+  return isReady ? (
+    <div className="space-y-4">
+      <div className="rounded-[var(--radius-card)] border border-[var(--divider)] bg-[var(--bg-subtle)]/50 p-4">
+        <p className="text-sm text-[var(--text-muted)]">{t("settings.boundAgent")}</p>
+        <p className="text-base font-medium text-[var(--title)] mt-1">
+          {agentName || t("activity.agent")}
+        </p>
+        {agentId && (
+          <p className="text-xs text-[var(--text-muted)] mt-1 font-mono">
+            {agentId}
+          </p>
+        )}
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-[var(--title)] mb-1.5">
+          {t("agentKey.title")}
+        </label>
+        <div className="flex gap-2">
+          <input
+            type={revealed ? "text" : "password"}
+            readOnly
+            value={apiKey || ""}
+            className="input-field flex-1 font-mono text-sm text-[var(--text-secondary)]"
+          />
+          <button
+            type="button"
+            onClick={() => setRevealed(!revealed)}
+            className="btn-default btn-sm"
+          >
+            {revealed ? t("settings.hide") : t("settings.show")}
+          </button>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setApiKey("")}
+        className="btn-danger btn-sm"
+      >
+        {t("settings.unbind")}
+      </button>
+    </div>
+  ) : (
+    <div className="space-y-3">
+      <label className="block text-sm font-medium text-[var(--title)]">
+        {t("settings.inputApiKey")}
+      </label>
+      <div className="max-w-md flex gap-2">
+        <input
+          type="password"
+          value={inputKey}
+          onChange={(e) => setInputKey(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && inputKey.trim()) {
+              setApiKey(inputKey.trim());
+              setInputKey("");
+            }
+          }}
+          placeholder="deimos_xxxxxxxx"
+          className="input-field flex-1 text-sm"
+        />
         <button
           type="button"
           onClick={() => {
-            navigator.clipboard?.writeText(apiKey);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
+            if (inputKey.trim()) {
+              setApiKey(inputKey.trim());
+              setInputKey("");
+            }
           }}
-          className="rounded-md px-2.5 py-1 text-xs text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+          className="btn-outline px-5 py-2 text-sm font-medium"
         >
-          {copied ? "已复制" : "复制"}
+          {t("common.confirm")}
         </button>
       </div>
-      <p className="mt-2 text-xs text-[var(--text-muted)]">
-        创建于 2026-03-15 · 最近使用 2 分钟前 · 共调用 1,247 次
+      <p className="text-xs text-[var(--text-muted)]">
+        {t("settings.noKeyYet")}{" "}
+        <Link
+          href="/user/agents"
+          className="text-[var(--primary)] hover:underline"
+        >
+          {t("settings.myAgents")}
+        </Link>{" "}
+        {t("settings.regenKey")} {t("settings.or")}{" "}
+        <Link
+          href="/register"
+          className="text-[var(--primary)] hover:underline"
+        >
+          {t("settings.registerNew")}
+        </Link>
       </p>
     </div>
   );

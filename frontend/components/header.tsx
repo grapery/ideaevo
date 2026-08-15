@@ -1,19 +1,31 @@
 "use client";
 
-import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { notificationApi } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useAuthModal } from "@/lib/auth-modal-context";
+import { AppLink as Link } from "./app-link";
+import { DeimosIcon } from "./deimos-icon";
 import { Logo } from "./logo";
 import { SearchInput } from "./search-input";
-import { IconBell, IconUser } from "./icons";
-import { notificationApi } from "@/lib/api-client";
+import { LanguageSwitcher } from "./language-switcher";
+import { useI18n } from "@/lib/i18n/provider";
+
+const navLinkClass =
+  "inline-flex h-12 items-center text-[13px] text-[var(--ink-soft)] hover:text-[var(--ink)]";
+
+const menuLinkClass =
+  "flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--ink-soft)] hover:bg-[var(--bg-hover)] hover:text-[var(--ink)]";
 
 export function Header() {
+  const { t } = useI18n();
   const { user, logout } = useAuth();
+  const { openAuthModal } = useAuthModal();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [unread, setUnread] = useState(0);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
 
   const fetchUnread = useCallback(async () => {
     if (!user) {
@@ -21,183 +33,237 @@ export function Header() {
       return;
     }
     try {
-      const res = await notificationApi.unreadCount();
-      setUnread(res.unread || 0);
+      const result = await notificationApi.unreadCount();
+      setUnread(result.unread || 0);
     } catch {
-      // ignore - likely not logged in or endpoint unavailable
+      // Navigation should remain usable when notifications are unavailable.
     }
   }, [user]);
 
   useEffect(() => {
-    fetchUnread();
-    if (!user) return;
-    const t = setInterval(fetchUnread, 60 * 1000);
-    const onFocus = () => fetchUnread();
-    window.addEventListener("focus", onFocus);
+    const initialTimer = window.setTimeout(() => void fetchUnread(), 0);
+    if (!user) return () => window.clearTimeout(initialTimer);
+    const refreshTimer = window.setInterval(() => void fetchUnread(), 60_000);
     return () => {
-      clearInterval(t);
-      window.removeEventListener("focus", onFocus);
+      window.clearTimeout(initialTimer);
+      window.clearInterval(refreshTimer);
     };
   }, [fetchUnread, user]);
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
+    function closeMenus(event: MouseEvent) {
+      const target = event.target as Node;
+      if (menuRef.current && !menuRef.current.contains(target))
+        setMenuOpen(false);
+      if (accountRef.current && !accountRef.current.contains(target))
+        setAccountOpen(false);
     }
-    if (dropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [dropdownOpen]);
+    if (menuOpen || accountOpen)
+      document.addEventListener("mousedown", closeMenus);
+    return () => document.removeEventListener("mousedown", closeMenus);
+  }, [accountOpen, menuOpen]);
+
+  const accountLinks = (
+    <>
+      <Link
+        href="/notifications"
+        className={menuLinkClass}
+        onClick={() => setAccountOpen(false)}
+      >
+        <DeimosIcon name="decision" className="h-3.5 w-3.5" />
+        {t("header.inbox")}
+        {unread > 0 && (
+          <span className="ml-auto rounded bg-[var(--accent-warning)] px-1.5 font-code text-[9px] text-white">
+            {unread > 99 ? "99+" : unread}
+          </span>
+        )}
+      </Link>
+      <Link
+        href="/dashboard"
+        className={menuLinkClass}
+        onClick={() => setAccountOpen(false)}
+      >
+        <DeimosIcon name="home" className="h-3.5 w-3.5" />
+        {t("header.workspace")}
+      </Link>
+      <Link
+        href="/user/agents"
+        className={menuLinkClass}
+        onClick={() => setAccountOpen(false)}
+      >
+        <DeimosIcon name="agent" className="h-3.5 w-3.5" />
+        {t("header.fleet")}
+      </Link>
+      <Link
+        href="/billing"
+        className={menuLinkClass}
+        onClick={() => setAccountOpen(false)}
+      >
+        <DeimosIcon name="billing" className="h-3.5 w-3.5" />
+        {t("header.billing")}
+      </Link>
+      <Link
+        href="/user/settings"
+        className={menuLinkClass}
+        onClick={() => setAccountOpen(false)}
+      >
+        <DeimosIcon name="gear" className="h-3.5 w-3.5" />
+        {t("header.settings")}
+      </Link>
+      {user?.role === "admin" && (
+        <Link
+          href="/admin"
+          className={menuLinkClass}
+          onClick={() => setAccountOpen(false)}
+        >
+          <DeimosIcon name="evidence" className="h-3.5 w-3.5" />
+          {t("header.admin")}
+        </Link>
+      )}
+      <div className="my-1 border-t border-[var(--rule)]" />
+      <button
+        type="button"
+        className={menuLinkClass}
+        onClick={() => {
+          setAccountOpen(false);
+          logout();
+        }}
+      >
+        {t("header.logout")}
+      </button>
+    </>
+  );
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--divider)] bg-[var(--bg-surface)]/95 backdrop-blur-md">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center gap-5">
-          <Logo />
-          <SearchInput className="hidden md:block flex-1 max-w-[320px] mx-4" />
+    <header className="sticky top-0 z-50 h-12 border-b border-[var(--rule)] bg-[var(--bg-surface)]">
+      <div className="page-container flex h-full items-center gap-5 lg:gap-7">
+        <Logo compact />
 
-          <div className="flex-1" />
-
-          <nav className="hidden md:flex items-center gap-6">
-            <Link href="/ideas" className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]">想法</Link>
-            <Link href="/activity" className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]">动态</Link>
-            <Link href="/docs/mcp" className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)]">文档</Link>
-          </nav>
-
-          <Link
-            href="/notifications"
-            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--divider)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--primary)] ml-4 relative"
-            aria-label="通知"
-          >
-            <IconBell />
-            {unread > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-[var(--coral)] text-white text-[10px] font-semibold tabular-nums">
-                {unread > 99 ? "99+" : unread}
-              </span>
-            )}
+        <nav className="hidden items-center gap-5 lg:gap-7 md:flex">
+          <Link href="/ideas" className={navLinkClass}>
+            {t("header.discover")}
           </Link>
-
-          {user ? (
-            <div className="relative" ref={dropdownRef}>
-              <button
-                type="button"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40"
-                aria-label="账户菜单"
-              >
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt="" width={48} height={48} className="h-12 w-12 rounded-full" />
-                ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--primary)]">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </button>
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-40 rounded-xl border border-[var(--divider)] bg-[var(--bg-surface)] shadow-lg py-1">
-                  <Link
-                    href="/notifications"
-                    className="block px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    通知中心
-                  </Link>
-                  <Link
-                    href={user ? `/users/${user.id}` : "/login"}
-                    className="block px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    关注 / 粉丝
-                  </Link>
-                  <Link
-                    href="/dashboard"
-                    className="block px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    我的面板
-                  </Link>
-                  <Link
-                    href="/user/profile"
-                    className="block px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    我的主页
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      logout();
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                  >
-                    退出
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <Link
-              href="/login"
-              className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40"
-              aria-label="登录"
-            >
-              <IconUser className="h-5 w-5" />
-            </Link>
-          )}
-
-          <Link
-            href="/ideas/new"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-lg gradient-btn px-4 py-2 text-sm font-medium"
-          >
-            + 发布想法
+          <Link href="/activity" className={navLinkClass}>
+            {t("header.activity")}
           </Link>
+          <Link href="/user/agents" className={navLinkClass}>
+            {t("header.agents")}
+          </Link>
+        </nav>
 
-          <button
-            type="button"
-            className="sm:hidden p-2"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="菜单"
-          >
-            <svg className="h-6 w-6 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+        <SearchInput
+          className="hidden w-full max-w-[460px] md:block"
+          variant="editorial"
+          placeholder={t("header.search")}
+        />
+
+        <div className="flex-1" />
+
+        <Link
+          href="/chat"
+          className="hidden h-8 items-center gap-2 rounded-[var(--radius-btn)] bg-[var(--panel-inverse)] px-4 text-[12px] font-semibold text-white hover:opacity-90 lg:inline-flex"
+        >
+          {t("header.ask")}
+          <span className="font-code text-[10px] text-white/60">⌘K</span>
+        </Link>
+
+        <Link href="/ideas/new" className="btn-primary h-8 px-4 text-[12px]">
+          <span aria-hidden="true">+</span>
+          {t("header.publish")}
+        </Link>
+
+        <div className="hidden md:block">
+          <LanguageSwitcher />
         </div>
 
-        {menuOpen && (
-          <nav className="sm:hidden pb-4 border-t border-[var(--divider)] pt-4 space-y-3">
-            <SearchInput />
-            <Link href="/ideas" className="block text-sm text-[var(--body)]" onClick={() => setMenuOpen(false)}>
-              浏览想法
-            </Link>
-            <Link href="/activity" className="block text-sm text-[var(--body)]" onClick={() => setMenuOpen(false)}>
-              动态
-            </Link>
-            <Link href="/docs/mcp" className="block text-sm text-[var(--body)]" onClick={() => setMenuOpen(false)}>
-              MCP 文档
-            </Link>
-            <Link href="/chat" className="block text-sm text-[var(--body)]" onClick={() => setMenuOpen(false)}>
-              对话
-            </Link>
-            {user && (
-              <Link href="/notifications" className="block text-sm text-[var(--body)]" onClick={() => setMenuOpen(false)}>
-                通知
-              </Link>
+        {user && (
+          <div ref={accountRef} className="relative hidden md:block">
+            <button
+              type="button"
+              onClick={() => setAccountOpen((open) => !open)}
+              className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-[6px] border border-[var(--rule)] bg-[var(--bg-subtle)] font-code text-[10px] text-[var(--ink)] hover:border-[var(--rule-strong)]"
+              aria-label={t("header.accountMenu")}
+            >
+              {user.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.avatar_url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                user.name.charAt(0).toUpperCase()
+              )}
+            </button>
+            {accountOpen && (
+              <div className="absolute right-0 mt-1 w-52 overflow-hidden rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] py-1 shadow-[var(--shadow-float)]">
+                {accountLinks}
+              </div>
             )}
-            <Link href="/ideas/new" className="block text-sm text-[var(--primary)] font-medium" onClick={() => setMenuOpen(false)}>
-              + 发布想法
-            </Link>
-            {!user && (
-              <Link href="/login" className="block text-sm text-[var(--primary)]" onClick={() => setMenuOpen(false)}>
-                登录
-              </Link>
-            )}
-          </nav>
+          </div>
         )}
+
+        {!user && (
+          <button
+            type="button"
+            onClick={() => openAuthModal()}
+            className="hidden font-code text-[10px] text-[var(--ink-soft)] hover:text-[var(--ink)] md:block"
+          >
+            {t("header.signIn")}
+          </button>
+        )}
+
+        <div ref={menuRef} className="relative md:hidden">
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label={t("header.menu")}
+            aria-expanded={menuOpen}
+          >
+            <DeimosIcon name="menu" className="h-4 w-4" />
+          </button>
+          {menuOpen && (
+            <div className="fixed inset-x-3 top-14 overflow-hidden rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] py-1 shadow-[var(--shadow-float)]">
+              <LanguageSwitcher mobile />
+              <Link
+                href="/ideas"
+                className={menuLinkClass}
+                onClick={() => setMenuOpen(false)}
+              >
+                {t("header.discover")}
+              </Link>
+              <Link
+                href="/chat"
+                className={menuLinkClass}
+                onClick={() => setMenuOpen(false)}
+              >
+                {t("header.ask")}
+              </Link>
+              <Link
+                href="/activity"
+                className={menuLinkClass}
+                onClick={() => setMenuOpen(false)}
+              >
+                {t("header.activity")}
+              </Link>
+              {user ? (
+                accountLinks
+              ) : (
+                <button
+                  type="button"
+                  className={menuLinkClass}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    openAuthModal();
+                  }}
+                >
+                  {t("header.loginOrRegister")}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
