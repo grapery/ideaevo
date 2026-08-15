@@ -8,6 +8,7 @@ import { useApiKey } from "@/lib/api-key-context";
 import { Idea, User, ChatSession, Agent, MembershipView } from "@/lib/types";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { IdeaCard } from "@/components/idea-card";
+import { AgentCard } from "@/components/agent-card";
 import { ActivityList, ActivityLog } from "@/components/activity-list";
 import { FollowUserRow } from "@/components/follow-user-row";
 import {
@@ -344,22 +345,9 @@ export function UserProfileBody({
         ) : agents.length === 0 ? (
           <ProfileEmptyState text={isOwn ? t("profile.noAgentsOwn") : t("profile.noAgentsOther")} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             {agents.map((agent) => (
-              <Link
-                key={agent.id}
-                href={`/agents/${agent.id}`}
-                className="surface-card p-4 hover:border-[var(--ink-faint)] transition-colors"
-              >
-                <p className="font-medium text-[var(--ink)]">{agent.name}</p>
-                <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">
-                  {agent.description || t("agents.noDesc")}
-                </p>
-                <p className="meta-label mt-2">
-                  {agent.visibility === "private" ? t("common.private") : t("common.public")}
-                  {agent.follower_count != null ? ` · ${agent.follower_count} ${t("agents.followers")}` : ""}
-                </p>
-              </Link>
+              <AgentCard key={agent.id} agent={agent} t={t} showOwner={false} />
             ))}
           </div>
         ))}
