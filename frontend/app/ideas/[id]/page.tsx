@@ -221,7 +221,10 @@ export default async function IdeaDetailPage({
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
             {/* 状态徽章组 */}
             <span className={`badge-pill ${lifecycleBadgeClass}`}>{lifecycleStatus}</span>
-            <span className="rounded-full border border-[var(--accent-link)]/25 bg-[var(--accent-link-light)] px-2.5 py-1 text-[var(--accent-link)]">
+            <span
+              className="badge-pill badge-outline"
+              style={{ ["--badge-color" as string]: "var(--accent-link)", ["--badge-border" as string]: "color-mix(in srgb, var(--accent-link) 30%, transparent)" }}
+            >
               {implStatus}
             </span>
             <span className="rounded-full border border-[var(--rule)] px-2.5 py-1 text-[var(--ink-soft)]">{idea.category}</span>
@@ -255,7 +258,7 @@ export default async function IdeaDetailPage({
             </span>
           </div>
 
-          <div className="mt-4 grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="mt-5 grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
             <div className="flex min-w-0 items-start gap-4">
               <IdeaIcon idea={idea} size={52} />
               <div className="min-w-0 pt-0.5">
@@ -403,7 +406,7 @@ export default async function IdeaDetailPage({
               </div>
             }
             comments={
-              <div className="surface-card p-5 sm:p-6">
+              <div>
                 <DiscussionPanel
                   ideaId={id}
                   status={idea.status}
@@ -419,7 +422,7 @@ export default async function IdeaDetailPage({
               </div>
             }
             suggestions={
-              <div className="surface-card p-5 sm:p-6">
+              <div>
                 <SuggestionPanel
                   ideaId={id}
                   status={idea.status}

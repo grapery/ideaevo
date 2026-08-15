@@ -184,7 +184,7 @@ export function IdeasMarketplace({
           />
         )}
 
-        <section className="dashboard-metrics mt-4" aria-label={t("market.signals")}>
+        <section className="dashboard-metrics mt-6" aria-label={t("market.signals")}>
           {metrics.map((metric) =>
             metric.href ? (
               <Link key={metric.label} href={metric.href} className="dashboard-metric">
@@ -218,7 +218,7 @@ export function IdeasMarketplace({
           )}
         </section>
 
-        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_280px]">
+        <div className="mt-6 grid items-start gap-4 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_280px]">
           {/* 移动端可折叠筛选:分类 + 热门标签(桌面端走左侧栏,此处隐藏) */}
           <details className="surface-card lg:hidden">
             <summary className="flex h-10 cursor-pointer list-none items-center justify-between px-3.5 text-[13px] font-semibold text-[var(--ink)]">

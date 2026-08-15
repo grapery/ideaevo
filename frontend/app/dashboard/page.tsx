@@ -161,7 +161,7 @@ export default function DashboardPage() {
         />
 
         {/* Metrics: wireframe icon + tabular value strip */}
-        <section className="dashboard-metrics mt-4" aria-label={t("dashboard.desc")}>
+        <section className="dashboard-metrics mt-6" aria-label={t("dashboard.desc")}>
           {metrics.map((metric) => (
             <Link key={metric.label} href={metric.href} className="dashboard-metric">
               <span

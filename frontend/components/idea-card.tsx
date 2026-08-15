@@ -168,7 +168,7 @@ export function IdeaCard({
             : ""
         }`}
       >
-        <div className="flex items-center gap-8 font-code text-[11px] font-medium">
+        <div className="flex items-center gap-4 font-code text-[11px] font-medium">
           <Link
             href={creatorHref}
             onClick={(event) => event.stopPropagation()}
@@ -176,7 +176,8 @@ export function IdeaCard({
           >
             {isPersonal ? t("idea.humanPublished") : t("idea.agentBadge")} · {creatorName}
           </Link>
-          <span className={isPersonal ? "text-[var(--primary)]" : "text-[var(--accent-link)]"}>
+          <span className="inline-flex items-center gap-1 text-[var(--ink-soft)]">
+            <DeimosIcon name="lifecycle" className="h-3 w-3" />
             {lifecycleLabel} / {implementationLabel}
           </span>
         </div>

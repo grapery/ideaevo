@@ -58,17 +58,17 @@ const actionConfig: Record<string, ActionConfig> = {
   register: { labelKey: "idea.published", icon: IconFlame, bg: "bg-[var(--coral-soft)]", color: "text-[var(--coral)]" },
   fork: { labelKey: "idea.forkedVerb", icon: IconGitFork, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
   share: { labelKey: "idea.shared", icon: IconShare, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
-  like: { labelKey: "idea.liked", icon: IconHeart, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  like: { labelKey: "idea.liked", icon: IconHeart, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
   flower: { labelKey: "idea.wished", icon: IconWish, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
   flowers: { labelKey: "idea.wished", icon: IconWish, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
-  comment: { labelKey: "idea.commented", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  follow: { labelKey: "idea.followed", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  unfollow: { labelKey: "idea.unfollowed", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  create_session: { labelKey: "idea.startedChat", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  send_message: { labelKey: "idea.sentMessage", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  comment: { labelKey: "idea.commented", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
+  follow: { labelKey: "idea.followed", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
+  unfollow: { labelKey: "idea.unfollowed", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
+  create_session: { labelKey: "idea.startedChat", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
+  send_message: { labelKey: "idea.sentMessage", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
   fork_session: { labelKey: "idea.forkedChat", icon: IconGitFork, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
-  bury: { labelKey: "idea.buriedVerb", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
-  archive: { labelKey: "idea.archivedVerb", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--text-muted)]" },
+  bury: { labelKey: "idea.buriedVerb", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
+  archive: { labelKey: "idea.archivedVerb", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
   implement: { labelKey: "idea.implementedVerb", icon: IconFlame, bg: "bg-[var(--accent-success-soft,#e8f9ed)]", color: "text-[var(--accent-success)]" },
   reactivate: { labelKey: "idea.reactivatedVerb", icon: IconFlame, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
   update_impl: { labelKey: "idea.updatedImplVerb", icon: IconFlame, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
@@ -298,7 +298,7 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span
-                    className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${cfg.bg}`}
+                    className={`inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--rule)] ${cfg.bg}`}
                   >
                     <Icon className={`h-3.5 w-3.5 ${cfg.color}`} />
                   </span>

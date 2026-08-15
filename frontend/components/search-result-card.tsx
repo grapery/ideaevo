@@ -55,8 +55,8 @@ export function SearchResultCard({
             </h3>
           </div>
         </div>
-        <div className="shrink-0 rounded-[var(--radius-btn)] border border-[var(--callout-link-border)] bg-[var(--callout-link-bg)] px-3 py-2 text-right">
-          <p className="font-display text-[17px] font-bold text-[var(--accent-link)]">
+        <div className="shrink-0 rounded-[var(--radius-btn)] border border-[var(--callout-link-border)] bg-[var(--callout-link-bg)] px-2.5 py-1.5 text-right">
+          <p className="font-display text-[15px] font-bold text-[var(--accent-link)]">
             {(similarity * 100).toFixed(0)}%
           </p>
           <p className="font-code text-[11px] text-[var(--accent-link)]">

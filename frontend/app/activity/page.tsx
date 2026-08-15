@@ -86,7 +86,7 @@ function RankingCard({
                 key={idea.id}
                 className="flex items-center gap-2.5 border-b border-[var(--rule)] px-3.5 py-2.5 last:border-0"
               >
-                <span className="w-5 shrink-0 font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
+                <span className="w-4 shrink-0 font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <Link
@@ -153,7 +153,7 @@ export default async function ActivityFeedPage() {
           }
         />
 
-        <section className="dashboard-metrics mt-4" aria-label={t("activity.signalNow")}>
+        <section className="dashboard-metrics mt-6" aria-label={t("activity.signalNow")}>
           {metrics.map((metric) => (
             <Link key={metric.label} href={metric.href} className="dashboard-metric">
               <span className="dashboard-metric__icon" data-tone={metric.tone} aria-hidden>
@@ -173,7 +173,7 @@ export default async function ActivityFeedPage() {
           ))}
         </section>
 
-        <div className="mt-4 app-grid-2">
+        <div className="mt-6 app-grid-2">
           <section className="min-w-0 surface-card overflow-hidden" aria-label={t("activity.streamTitle")}>
             <div className="flex h-10 items-center gap-1.5 border-b border-[var(--rule)] px-4">
               <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
@@ -186,7 +186,7 @@ export default async function ActivityFeedPage() {
             </div>
           </section>
 
-          <aside className="space-y-3">
+          <aside className="space-y-4">
             <RankingCard
               title={t("activity.hotIdeas")}
               ideas={rankings.popular}
