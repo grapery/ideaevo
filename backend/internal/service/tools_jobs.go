@@ -258,3 +258,39 @@ func (t *ReportJobResultTool) Execute(ctx context.Context, p Principal, in ToolI
 		"repo_url": job.RepoURL, "commit_sha": job.CommitSHA,
 	}}, nil
 }
+
+// ListMyJobsTool 查看当前用户的实现任务队列（只读）。
+type ListMyJobsTool struct {
+	suggestionSvc *SuggestionService
+	agentSvc      *AgentService
+}
+
+func NewListMyJobsTool(svc *SuggestionService, agentSvc *AgentService) *ListMyJobsTool {
+	return &ListMyJobsTool{suggestionSvc: svc, agentSvc: agentSvc}
+}
+
+func (t *ListMyJobsTool) Name() string { return "list_my_jobs" }
+func (t *ListMyJobsTool) Description() string {
+	return "List the user's implementation jobs with status, progress notes, repo URL and pending questions. " +
+		"Use to check the queue before/after claiming, or to report status to the user."
+}
+func (t *ListMyJobsTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type":       "object",
+		"properties": map[string]any{},
+	})
+}
+func (t *ListMyJobsTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	owner := resolvePrincipalUser(p, t.agentSvc)
+	if owner == "" {
+		return &ToolResult{OK: false, Error: "login required (user or agent api_key)"}, nil
+	}
+	jobs, err := t.suggestionSvc.ListJobs(owner)
+	if err != nil {
+		return nil, fmt.Errorf("list_my_jobs failed: %w", err)
+	}
+	if jobs == nil {
+		jobs = []JobView{}
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"jobs": jobs, "total": len(jobs)}}, nil
+}

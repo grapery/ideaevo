@@ -70,6 +70,7 @@ export default async function McpDocsPage() {
   ];
 
   const jobTools = [
+    { name: "list_my_jobs", desc: t("docs.toolListJobs") },
     { name: "claim_next_job", desc: t("docs.toolClaimJob") },
     { name: "send_progress", desc: t("docs.toolSendProgress") },
     { name: "ask_user", desc: t("docs.toolAskUser") },

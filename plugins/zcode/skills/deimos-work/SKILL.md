@@ -3,7 +3,7 @@ name: deimos-work
 description: 领取并实现一个 Deimos 实现任务
 ---
 
-调用 claim_next_job 领取任务。若返回为空，直接告诉用户"当前没有待实现的任务"。
+调用 claim_next_job 领取任务。若返回为空，调用 list_my_jobs 展示队列状态，并告诉用户"当前没有待实现的任务"。
 
 领取成功后：
 1. 按 job 规格在 ./deimos-jobs/<job_id>/ 目录下实现（idea 描述 + suggestion_content 是需求）

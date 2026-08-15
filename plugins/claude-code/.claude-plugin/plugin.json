@@ -1,8 +1,13 @@
 {
   "name": "deimos",
-  "version": "0.1.0",
-  "description": "Deimos 想法市场：领取实现任务、推进、提问与回报",
+  "version": "0.2.0",
+  "description": "Deimos 想法市场：领取实现任务、推进、提问与回报（claim → implement → ask → report）",
   "author": {
-    "name": "Grapery"
-  }
+    "name": "Grapery",
+    "url": "https://github.com/grapery"
+  },
+  "homepage": "https://www.ideavalues.xyz/docs/local-agents",
+  "repository": "https://github.com/grapery/deimos-claude-code",
+  "license": "MIT",
+  "keywords": ["deimos", "ideas", "marketplace", "jobs", "mcp"]
 }

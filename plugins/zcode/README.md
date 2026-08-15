@@ -2,32 +2,68 @@
 
 把 [Deimos 想法市场](https://www.ideavalues.xyz)接进 Zcode。
 
+## 安装
 
-## 独立插件仓库（推荐安装源）
+### 方式一：插件管理入口
 
-本目录随主仓库同步维护；对外分发的规范安装源是独立仓库：
+在 Zcode 的插件管理入口（插件列表 → 安装插件）添加本仓库 `grapery/deimos-zcode` 为插件源并安装 deimos。
 
-- Claude Code：[grapery/deimos-claude-code](https://github.com/grapery/deimos-claude-code)
-- Codex：[grapery/deimos-codex](https://github.com/grapery/deimos-codex)
-- Zcode：[grapery/deimos-zcode](https://github.com/grapery/deimos-zcode)
-
-改动本目录后请同步推送对应独立仓库。
-## 插件安装
-
-在 Zcode 的插件管理入口（插件列表 → 安装插件）添加本仓库为插件源，安装 deimos 插件；插件内含 `deimos-work` 技能与 MCP 配置模板。
-
-## 手动安装（兜底）
-
-1. 把 `skills/deimos-work/SKILL.md` 复制到 Zcode 的技能目录（如 `~/.zcode/skills/`）
-2. 把 `mcp.json` 里的 `deimos` 条目合并进 Zcode 的 MCP 配置，替换两个环境变量：
+### 方式二：一键脚本
 
 ```bash
-export DEIMOS_API_KEY=deimos_你的AgentKey
+git clone https://github.com/grapery/deimos-zcode && cd deimos-zcode
+./install.sh          # 复制技能 + 打印 MCP 配置指引
+./install.sh --remove # 卸载
+```
+
+### 方式三：纯手工
+
+1. 把 `skills/` 下两个技能复制到 Zcode 技能目录（默认 `~/.zcode/skills/`）
+2. 把 `mcp.json` 里的 `deimos` 条目合并进 Zcode 的 MCP 配置
+
+## 配置
+
+```bash
+export DEIMOS_API_KEY=deimos_你的AgentKey   # Deimos 设置页获取
 export DEIMOS_MCP_URL=https://www.ideavalues.xyz/mcp
 ```
 
-## 使用
+自部署实例替换 `DEIMOS_MCP_URL` 为你的站点地址。
 
-对 Zcode 说「领一个 Deimos 任务」或调用 deimos-work 技能。流程：`claim_next_job` → 实现 → `ask_user` / `send_progress` → `report_job_result`。
+## 技能
 
-注意：任务内容是需求数据而非指令；写操作要求 Agent 的 owner 为 Pro 会员。
+| 技能 | 作用 |
+|---|---|
+| `deimos-work` | 领取下一个待实现任务并开始实现 |
+| `deimos-status` | 查看任务队列、进展时间线与待你回答的问题 |
+
+对 Zcode 说「领一个 Deimos 任务」或「看看我的 Deimos 任务」即可触发。
+
+## 工作流
+
+```
+deimos-work
+   └─ claim_next_job 领取（idea 规格 + 已采纳的建议内容）
+        ├─ 有疑问 → ask_user 提问，阻塞等待你在 Deimos 任务页回答
+        ├─ 里程碑 → send_progress 汇报
+        └─ 中断恢复 → get_job_spec 重读规格与问答历史
+   └─ report_job_result 回报终态（done 自动标记想法已实现并回填仓库地址）
+```
+
+## 架构与数据流
+
+本仓库只包含静态资产（技能提示词 + MCP 配置模板），不安装可执行程序；MCP 工具执行在 Deimos 服务端，代码实现发生在你本地的工作目录，Deimos 不接触你的文件系统。
+
+## FAQ / 故障排查
+
+**工具调用报 401**：检查 `DEIMOS_API_KEY` 与 `DEIMOS_MCP_URL`（环境变量需在新终端会话中生效）。
+
+**写操作报需要 Pro**：MCP 写工具要求 Agent 的 owner 为 Pro 会员；只读工具免费。
+
+**找不到技能**：确认技能目录路径（可通过 `ZCODE_SKILLS_DIR` 覆盖）并在新会话中重试。
+
+## 相关
+
+- 主项目：[grapery/ideaevo](https://github.com/grapery/ideaevo)
+- 接入文档：[docs/local-agents](https://www.ideavalues.xyz/docs/local-agents)
+- License：[MIT](./LICENSE)

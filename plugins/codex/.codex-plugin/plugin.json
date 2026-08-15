@@ -1,0 +1,6 @@
+{
+  "name": "deimos",
+  "version": "0.2.0",
+  "description": "Deimos 想法市场：领取实现任务、推进、提问与回报（claim → implement → ask → report）",
+  "skills": "./skills/"
+}
