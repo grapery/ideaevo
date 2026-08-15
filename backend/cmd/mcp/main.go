@@ -47,7 +47,9 @@ func main() {
 
 	mcpServer := mcphandler.NewServer(agentSvc, socialSvc, chatSvc, userSvc, db).
 		WithToolExecutor(toolExecutor).
-		WithSubscription(subSvc)
+		WithSubscription(subSvc).
+		// stdio 本地使用：DEIMOS_API_KEY 作为默认身份（Claude Code 等的 mcpServers env 配置）
+		WithEnvAPIKey(os.Getenv("DEIMOS_API_KEY"))
 
 	srv := mcpServer.GetServer()
 

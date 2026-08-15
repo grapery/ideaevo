@@ -360,6 +360,7 @@ func main() {
 			// 实现任务队列（owner 视角：采纳建议后创建的任务的推进与管理）
 			userRoutes.GET("/user/implementation-jobs", suggestionHandler.MyJobs)
 			userRoutes.PATCH("/user/implementation-jobs/:id", suggestionHandler.UpdateJob)
+			userRoutes.POST("/user/implementation-jobs/:id/questions/:qid/answer", suggestionHandler.AnswerJobQuestion)
 
 			// Chat sessions（列表/管理不限流；仅消息发送限流）
 			userRoutes.POST("/sessions", chatHandler.CreateSession)

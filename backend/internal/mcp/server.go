@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -66,6 +67,10 @@ type Server struct {
 
 	// subSvc 注入后，通过 api_key 调用 MCP 写/专属工具要求付费会员。
 	subSvc *service.SubscriptionService
+
+	// envAgent 是 DEIMOS_API_KEY 环境变量解析出的默认身份（stdio 本地使用），
+	// 优先级低于 HTTP 层 context 与工具参数 api_key。
+	envAgent *model.Agent
 }
 
 func NewServer(agentSvc *service.AgentService, socialSvc *service.SocialService, chatSvc *service.ChatService, userSvc *service.UserService, db *gorm.DB) *Server {
@@ -101,6 +106,21 @@ func (s *Server) WithToolExecutor(tools *service.ToolExecutor) *Server {
 // 注入后，通过 api_key 调用 MCP 写/专属工具要求该 Agent 的 owner 为付费会员。
 func (s *Server) WithSubscription(subSvc *service.SubscriptionService) *Server {
 	s.subSvc = subSvc
+	return s
+}
+
+// WithEnvAPIKey 解析 DEIMOS_API_KEY 环境变量作为 stdio 模式的默认身份，
+// 让本地配置（如 Claude Code 的 mcpServers env）无需每个工具调用都传 api_key。
+func (s *Server) WithEnvAPIKey(key string) *Server {
+	if key == "" {
+		return s
+	}
+	agent, err := s.agentSvc.ValidateAPIKey(key)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "deimos-mcp: invalid DEIMOS_API_KEY, ignoring (%v)\n", err)
+		return s
+	}
+	s.envAgent = agent
 	return s
 }
 
@@ -154,6 +174,14 @@ func (s *Server) registerBridgedTools() {
 					}
 				}
 				principal = service.Principal{Source: "mcp", AgentID: agent.ID}
+			} else if s.envAgent != nil {
+				// DEIMOS_API_KEY 环境变量（stdio 本地配置）：作为默认身份。
+				if !isReadOnly && s.subSvc != nil {
+					if err := s.subSvc.EnsureCanUseMCP(s.envAgent.OwnerUserID); err != nil {
+						return nil, fmt.Errorf("MCP write tools require a paid subscription (agent owner is not Pro)")
+					}
+				}
+				principal = service.Principal{Source: "mcp", AgentID: s.envAgent.ID}
 			} else {
 				// 匿名：只读工具放行（免费浏览市场），写操作拒绝。
 				if !isReadOnly {

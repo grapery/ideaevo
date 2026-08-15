@@ -189,6 +189,71 @@ export default function ImplementationJobsPage() {
                         {job.note}
                       </p>
                     )}
+
+                    {/* Agent 回报的实现结果 */}
+                    {(job.result_summary || job.repo_url) && (
+                      <div className="mt-2 rounded-[var(--radius-btn)] border border-[var(--accent-success)]/25 bg-[var(--accent-success-soft)]/40 px-3 py-2.5">
+                        {job.result_summary && (
+                          <p className="text-[12px] leading-5 text-[var(--ink-soft)]">{job.result_summary}</p>
+                        )}
+                        {(job.repo_url || job.commit_sha) && (
+                          <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                            {job.repo_url && (
+                              <a
+                                href={job.repo_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 font-medium text-[var(--accent-link)] hover:underline"
+                              >
+                                <DeimosIcon name="share" className="h-3 w-3" />
+                                {t("jobs.repoLink")}
+                              </a>
+                            )}
+                            {job.commit_sha && (
+                              <span className="font-mono text-[var(--ink-faint)]">{job.commit_sha.slice(0, 10)}</span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 阶段性进展（send_progress 时间线，倒序显示最新的在前） */}
+                    {job.progress_log && job.progress_log.length > 0 && (
+                      <details className="mt-2 group">
+                        <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-[12px] font-medium text-[var(--ink-faint)] hover:text-[var(--ink-soft)]">
+                          <DeimosIcon name="pulse" className="h-3.5 w-3.5" />
+                          {t("jobs.progressCount", { count: job.progress_log.length })}
+                        </summary>
+                        <ul className="mt-2 space-y-1.5 border-l border-[var(--rule)] pl-3">
+                          {[...job.progress_log].reverse().map((item, idx) => (
+                            <li key={idx} className="text-[12px] leading-5">
+                              <span className="text-[var(--ink-soft)]">{item.note}</span>
+                              <span className="ml-2 text-[var(--ink-faint)]">
+                                {new Date(item.at).toLocaleString()}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+
+                    {/* Agent 的提问 + 回答表单 */}
+                    {job.pending_question && (
+                      <div className="mt-3 rounded-[var(--radius-btn)] border border-[var(--primary)]/30 bg-[var(--primary-soft)]/40 px-3 py-2.5">
+                        <p className="flex items-start gap-1.5 text-[13px] font-medium text-[var(--ink)]">
+                          <DeimosIcon name="chat" className="mt-0.5 h-3.5 w-3.5 text-[var(--primary)]" />
+                          {job.pending_question.question}
+                        </p>
+                        <QuestionAnswerForm
+                          onSubmit={async (answer) => {
+                            await userApi.answerJobQuestion(job.id, job.pending_question!.id, answer);
+                            setJobs((prev) =>
+                              prev.map((j) => (j.id === job.id ? { ...j, pending_question: undefined } : j)),
+                            );
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {job.status === "pending" && (
@@ -240,5 +305,51 @@ export default function ImplementationJobsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function QuestionAnswerForm({
+  onSubmit,
+}: {
+  onSubmit: (answer: string) => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const [answer, setAnswer] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <form
+      className="mt-2 flex flex-col gap-2 sm:flex-row"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!answer.trim() || busy) return;
+        setBusy(true);
+        try {
+          await onSubmit(answer.trim());
+          notify.success(t("jobs.answerSent"));
+          setAnswer("");
+        } catch (err) {
+          notify.error(getErrorMessage(err, t("jobs.updateFailed")));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <input
+        value={answer}
+        onChange={(e) => setAnswer(e.target.value)}
+        placeholder={t("jobs.answerPlaceholder")}
+        className="flex-1 rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-surface)] px-3 py-1.5 text-[13px] text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--accent-link)] focus:outline-none"
+        aria-label={t("jobs.answerPlaceholder")}
+      />
+      <button
+        type="submit"
+        disabled={busy || !answer.trim()}
+        className="btn-primary btn-sm shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <DeimosIcon name="send" className="h-3.5 w-3.5" />
+        {t("jobs.answerSend")}
+      </button>
+    </form>
   );
 }

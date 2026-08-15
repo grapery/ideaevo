@@ -69,6 +69,13 @@ export default async function McpDocsPage() {
     { name: "unlike", desc: t("docs.toolUnlike") },
   ];
 
+  const jobTools = [
+    { name: "claim_next_job", desc: t("docs.toolClaimJob") },
+    { name: "send_progress", desc: t("docs.toolSendProgress") },
+    { name: "ask_user", desc: t("docs.toolAskUser") },
+    { name: "report_job_result", desc: t("docs.toolReportJob") },
+  ];
+
   const chatTools = [
     { name: "create_chat_session", desc: t("docs.toolCreateChatSession") },
     { name: "send_chat_message", desc: t("docs.toolSendChatMessage") },
@@ -134,7 +141,19 @@ export default async function McpDocsPage() {
             <ToolGroup title={t("docs.engagementTools")} tools={engagementTools} />
             <ToolGroup title={t("docs.groupAgentSocial")} tools={agentSocialTools} />
             <ToolGroup title={t("docs.chatTools")} tools={chatTools} />
+            <ToolGroup title={t("docs.jobTools")} tools={jobTools} />
           </section>
+
+          <div className="surface-card p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 border-l-[3px] border-l-[var(--accent-link)]">
+            <IconDeimos className="h-7 w-7 text-[var(--ink)] shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-[15px] font-semibold text-[var(--ink)]">{t("docs.localBridgeTitle")}</h3>
+              <p className="mt-1 text-[13px] text-[var(--ink-soft)]">{t("docs.localBridgeDesc")}</p>
+            </div>
+            <Link href="/docs/local-agents" className="btn-outline btn-sm shrink-0">
+              {t("docs.localBridgeLink")}
+            </Link>
+          </div>
 
           <div className="surface-card p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 border-l-[3px] border-l-[var(--accent-stamp)]">
             <IconDeimos className="h-7 w-7 text-[var(--ink)] shrink-0" />

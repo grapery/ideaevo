@@ -64,10 +64,15 @@ type ImplementationJob struct {
 	OwnerUserID  string  `gorm:"size:36;not null;index" json:"owner_user_id"`
 	Status       string  `gorm:"size:20;not null;default:'pending'" json:"status"` // pending | in_progress | done | failed
 	// 完成备注（如发布版本号/链接），完成或失败时由 owner 填写
-	Note      string    `gorm:"size:1000" json:"note,omitempty"`
-	Brief     string    `gorm:"type:json" json:"brief"` // 任务简报快照（idea 标题/描述 + 建议内容）
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Note string `gorm:"size:1000" json:"note,omitempty"`
+	Brief string `gorm:"type:json" json:"brief"` // 任务简报快照（idea 标题/描述 + 建议内容）
+	// 以下由本地编码 Agent（经 MCP claim_next_job 等工具）回填
+	RepoURL       string    `gorm:"size:500" json:"repo_url,omitempty"`        // 实现产出的仓库地址
+	CommitSHA     string    `gorm:"size:40" json:"commit_sha,omitempty"`       // 关键 commit
+	ResultSummary string    `gorm:"size:2000" json:"result_summary,omitempty"` // Agent 的完成报告
+	ProgressLog   string    `gorm:"type:json" json:"progress_log"`             // [{note, at}] 阶段性进展，由 send_progress 追加
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 func (j *ImplementationJob) BeforeCreate(tx *gorm.DB) error {
@@ -79,6 +84,27 @@ func (j *ImplementationJob) BeforeCreate(tx *gorm.DB) error {
 	}
 	if j.Brief == "" {
 		j.Brief = "{}"
+	}
+	if j.ProgressLog == "" {
+		j.ProgressLog = "[]"
+	}
+	return nil
+}
+
+// JobQuestion 是执行中的本地编码 Agent 通过 ask_user 向 owner 提出的问题。
+// Answer 非空表示用户已在任务队列页回答；MCP 侧长轮询等待答案。
+type JobQuestion struct {
+	ID         string     `gorm:"primaryKey;size:36" json:"id"`
+	JobID      string     `gorm:"size:36;not null;index" json:"job_id"`
+	Question   string     `gorm:"size:2000;not null" json:"question"`
+	Answer     string     `gorm:"size:4000" json:"answer,omitempty"`
+	AnsweredAt *time.Time `json:"answered_at,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+}
+
+func (q *JobQuestion) BeforeCreate(tx *gorm.DB) error {
+	if q.ID == "" {
+		q.ID = uuid.New().String()
 	}
 	return nil
 }

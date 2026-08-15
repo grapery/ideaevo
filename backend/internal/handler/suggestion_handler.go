@@ -242,3 +242,31 @@ func (h *SuggestionHandler) UpdateJob(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"job": job})
 }
+
+// AnswerJobQuestion 用户在任务队列页回答本地编码 Agent 的提问（ask_user 长轮询侧收到的就是这里的内容）。
+func (h *SuggestionHandler) AnswerJobQuestion(c *gin.Context) {
+	userID := extractUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录"})
+		return
+	}
+	var input struct {
+		Answer string `json:"answer" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	if err := h.suggestionSvc.AnswerQuestion(c.Param("qid"), userID, input.Answer); err != nil {
+		switch {
+		case errors.Is(err, service.ErrSuggestionJobNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("job not found")})
+		case errors.Is(err, service.ErrSuggestionJobNotOwner):
+			c.JSON(http.StatusForbidden, gin.H{"error": "只有任务的拥有者才能回答"})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"answered": true})
+}

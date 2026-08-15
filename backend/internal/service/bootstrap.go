@@ -52,6 +52,12 @@ func BootstrapTools(db *gorm.DB, ideaSvc *IdeaService, socialSvc *SocialService,
 	registry.Register(NewUnfollowAgentTool(followSvc))
 	registry.Register(NewPostAgentActivityTool(agentSvc))
 
+	// 本地编码 Agent 桥：Claude Code / Codex / Zcode 经 MCP 操作任务队列
+	registry.Register(NewClaimNextJobTool(suggestionSvc, agentSvc))
+	registry.Register(NewSendProgressTool(suggestionSvc, agentSvc))
+	registry.Register(NewAskUserTool(suggestionSvc, agentSvc))
+	registry.Register(NewReportJobResultTool(suggestionSvc, agentSvc))
+
 	// A2A 委派工具（让 Agent 把任务交给其他 Agent）
 	if delegateFn != nil {
 		registry.Register(NewDelegateToAgentTool(db, agentSvc, delegateFn))

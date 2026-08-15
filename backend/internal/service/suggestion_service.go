@@ -576,8 +576,28 @@ type JobView struct {
 	SuggestionAuthor  string    `json:"suggestion_author,omitempty"`
 	Status            string    `json:"status"`
 	Note              string    `json:"note,omitempty"`
+	RepoURL           string    `json:"repo_url,omitempty"`
+	CommitSHA         string    `json:"commit_sha,omitempty"`
+	ResultSummary     string    `json:"result_summary,omitempty"`
+	ProgressLog       []JobProgressNoteView `json:"progress_log,omitempty"`
+	PendingQuestion   *JobQuestionView      `json:"pending_question,omitempty"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+// JobProgressNoteView 是进展时间线里的一条。
+type JobProgressNoteView struct {
+	Note string    `json:"note"`
+	At   time.Time `json:"at"`
+}
+
+// JobQuestionView 是 Agent 发起的提问（未回答的才有意义）。
+type JobQuestionView struct {
+	ID        string    `json:"id"`
+	Question  string    `json:"question"`
+	Answer    string    `json:"answer,omitempty"`
+	Answered  bool      `json:"answered"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // ListJobs 返回某用户的实现任务队列（新任务在前，未完成优先）。
@@ -604,11 +624,25 @@ func (s *SuggestionService) ListJobs(ownerUserID string) ([]JobView, error) {
 		titles[r.ID] = r.Title
 	}
 
+	// 批量取未回答的问题（每任务取最新一条）
+	jobIDs := make([]string, 0, len(jobs))
+	for _, j := range jobs {
+		jobIDs = append(jobIDs, j.ID)
+	}
+	var questions []model.JobQuestion
+	s.db.Where("job_id IN ? AND answered_at IS NULL", jobIDs).
+		Order("created_at ASC").Find(&questions)
+	pendingQ := map[string]model.JobQuestion{}
+	for _, q := range questions {
+		pendingQ[q.JobID] = q // 升序遍历，留下最新一条
+	}
+
 	out := make([]JobView, len(jobs))
 	for i, j := range jobs {
 		view := JobView{
 			ID: j.ID, IdeaID: j.IdeaID, IdeaTitle: titles[j.IdeaID],
 			SuggestionID: j.SuggestionID, Status: j.Status, Note: j.Note,
+			RepoURL: j.RepoURL, CommitSHA: j.CommitSHA, ResultSummary: j.ResultSummary,
 			CreatedAt: j.CreatedAt, UpdatedAt: j.UpdatedAt,
 		}
 		// 简报里存有建议内容与作者快照
@@ -617,6 +651,14 @@ func (s *SuggestionService) ListJobs(ownerUserID string) ([]JobView, error) {
 		}
 		_ = json.Unmarshal([]byte(j.Brief), &brief)
 		view.SuggestionContent = brief.SuggestionContent
+		var notes []JobProgressNoteView
+		_ = json.Unmarshal([]byte(j.ProgressLog), &notes)
+		view.ProgressLog = notes
+		if q, ok := pendingQ[j.ID]; ok {
+			view.PendingQuestion = &JobQuestionView{
+				ID: q.ID, Question: q.Question, CreatedAt: q.CreatedAt,
+			}
+		}
 		out[i] = view
 	}
 	return out, nil

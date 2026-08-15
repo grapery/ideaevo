@@ -656,6 +656,19 @@ export interface UserDevice {
 }
 
 /** 实现任务队列条目（owner 视角，后端 JobView） */
+export interface JobProgressNote {
+  note: string;
+  at: string;
+}
+
+export interface JobQuestionView {
+  id: string;
+  question: string;
+  answer?: string;
+  answered: boolean;
+  created_at: string;
+}
+
 export interface ImplementationJobView {
   id: string;
   idea_id: string;
@@ -665,6 +678,11 @@ export interface ImplementationJobView {
   suggestion_author?: string;
   status: "pending" | "in_progress" | "done" | "failed";
   note?: string;
+  repo_url?: string;
+  commit_sha?: string;
+  result_summary?: string;
+  progress_log?: JobProgressNote[];
+  pending_question?: JobQuestionView;
   created_at: string;
   updated_at: string;
 }

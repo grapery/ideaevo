@@ -964,6 +964,12 @@ export const userApi = {
       { method: "PATCH", body: JSON.stringify(data) },
     ),
 
+  answerJobQuestion: (jobId: string, questionId: string, answer: string) =>
+    requestWithAuth<{ answered: boolean }>(
+      `/user/implementation-jobs/${jobId}/questions/${questionId}/answer`,
+      { method: "POST", body: JSON.stringify({ answer }) },
+    ),
+
   getMyProfile: () => requestWithAuth<UserProfile>("/user/profile"),
 
   getMyFlowerBalance: () => requestWithAuth<FlowerBalance>("/user/flowers"),
