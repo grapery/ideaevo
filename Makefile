@@ -52,3 +52,9 @@ docker-logs: ## View Docker logs
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+seed: ## 灌入接近真实的 mock 数据（SEED_RESET=1 清空重灌）
+	@$(ENV_LOAD); cd backend && go run ./cmd/seed $(if $(SEED_RESET),-reset)
+
+smoke: ## 全功能 API 验证（需先 make api）
+	@; cd backend && go run ./cmd/smoke

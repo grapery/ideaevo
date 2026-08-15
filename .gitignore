@@ -28,3 +28,4 @@ screenshots/
 
 # Local runtime verification artifacts (screenshots, logs, audit dirs)
 .runtime-checks/
+mock-accounts.md

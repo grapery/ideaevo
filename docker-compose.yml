@@ -18,6 +18,25 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # —— mock 数据一次性注入 ——
+  # 幂等：数据库已有种子账号（chen.mingxuan@deimos.dev）时直接跳过退出，
+  # 因此随 `docker compose up` 启动也只会真正注入一次；账号信息见 `docker compose logs seed`。
+  seed:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["/usr/local/bin/seed", "-out", "-"]
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: wanye
+      DB_PASSWORD: wanye
+      DB_NAME: wanye
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: ./backend
@@ -86,6 +105,9 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      # 等 mock 数据注入完成后再启动，保证 API 起来时数据已就位
+      seed:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   web:

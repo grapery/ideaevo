@@ -12,11 +12,15 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
       -ldflags="-s -w -X main.Version=${VERSION} -X main.CommitSHA=${COMMIT_SHA} -X main.BuildTime=${BUILD_TIME}" \
       -o /mcp cmd/mcp/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+      -ldflags="-s -w" \
+      -o /seed cmd/seed/main.go cmd/seed/seed_data.go cmd/seed/seed_generate.go
 
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /api /usr/local/bin/api
 COPY --from=builder /mcp /usr/local/bin/mcp
+COPY --from=builder /seed /usr/local/bin/seed
 # 选择默认启动的服务二进制：api 或 mcp（通过 --build-arg SERVICE=mcp 覆盖）
 ARG SERVICE=api
 ENV BIN_NAME=${SERVICE}

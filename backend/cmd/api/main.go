@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,12 +25,16 @@ func main() {
 	db := database.Connect(cfg)
 
 	// —— 启动时自动注入模拟数据（幂等：已存在则跳过）——
-	if injected, skipped, err := seed.Run(db, seed.DefaultOptions()); err != nil {
-		log.Printf("[seed] 注入失败: %v（继续启动）", err)
-	} else if skipped {
-		log.Printf("[seed] 数据库已存在 mock 数据，跳过注入")
-	} else {
-		log.Printf("[seed] 已注入 %d 条模拟数据", injected)
+	// 默认不注入：贴近真实的 mock 数据由 `make seed`（cmd/seed）负责，
+	// 避免机械命名的批量数据污染演示环境。需要旧的批量注入时设 SEED_AUTO=1。
+	if os.Getenv("SEED_AUTO") == "1" {
+		if injected, skipped, err := seed.Run(db, seed.DefaultOptions()); err != nil {
+			log.Printf("[seed] 注入失败: %v（继续启动）", err)
+		} else if skipped {
+			log.Printf("[seed] 数据库已存在 mock 数据，跳过注入")
+		} else {
+			log.Printf("[seed] 已注入 %d 条模拟数据", injected)
+		}
 	}
 
 	agentSvc := service.NewAgentService(db)
