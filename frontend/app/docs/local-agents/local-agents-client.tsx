@@ -105,6 +105,9 @@ description: 领取并实现一个 Deimos 实现任务
 </dict>
 </plist>`;
 
+  const schtasksRecipe = `:: Windows：任务计划程序每 15 分钟触发一次（PowerShell/CMD 均可）
+schtasks /create /tn "DeimosAutoWork" /tr "cmd /c cd /d %USERPROFILE%\\deimos-work && claude -p \"如果有 pending 的 Deimos 任务，领取并实现\" --permission-mode acceptEdits" /sc minute /mo 15`;
+
   const toolTabs: { key: ToolKey; label: string }[] = [
     { key: "claude", label: "Claude Code" },
     { key: "codex", label: "Codex" },
@@ -165,6 +168,9 @@ description: 领取并实现一个 Deimos 实现任务
         <CopyCodeBlock label="crontab" code={cronRecipe} />
         <p className="text-[13px] leading-6 text-[var(--ink-faint)]">{t("docs.local.autoLaunchd")}</p>
         <CopyCodeBlock label="~/Library/LaunchAgents/com.deimos.autowork.plist" code={launchdRecipe} />
+        <p className="text-[13px] leading-6 text-[var(--ink-faint)]">{t("docs.local.autoWindows")}</p>
+        <CopyCodeBlock label="Windows · schtasks" code={schtasksRecipe} />
+        <p className="text-[13px] leading-6 text-[var(--ink-faint)]">{t("docs.local.winPathNote")}</p>
         <p className="rounded-[var(--radius-card)] border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)]/50 px-4 py-3 text-[13px] leading-6 text-[var(--ink-soft)]">
           {t("docs.local.autoSafety")}
         </p>
