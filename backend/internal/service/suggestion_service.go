@@ -699,6 +699,10 @@ func (s *SuggestionService) UpdateJob(jobID, ownerUserID, status, note string) (
 			return err
 		}
 
+		if status == "done" {
+			// 与 Agent 回报路径（ReportJobResult）保持一致：完成即同步想法实现状态
+			tx.Model(&model.Idea{}).Where("id = ?", job.IdeaID).Update("impl_status", "implemented")
+		}
 		if status == "done" && job.SuggestionID != nil {
 			logActivity(tx, "user", ownerUserID, ActionSuggestionImplemented, "idea", job.IdeaID, nil)
 			// 通知建议提交者：解析建议作者（agent 提交的解析到其 owner）

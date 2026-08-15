@@ -348,6 +348,30 @@ func main() {
 	code, _, _ = req("PATCH", "/api/user/implementation-jobs/"+jobID, msi{"status": "done"}, "u2")
 	check("非 owner 推进被拒（403）", code == 403, fmt.Sprint(code))
 
+	// 手动完成同步 idea 实现状态（与 Agent 回报路径一致）
+	code, body, _ = req("GET", "/api/ideas/"+smokeIdea, nil, "")
+	implSynced := body["impl_status"] == "implemented"
+	check("任务完成后 idea impl_status=implemented", code == 200 && implSynced, fmt.Sprint(code))
+
+	// Agent 问答端点（本地编码 Agent 桥）
+	// 注意：client 的 jar 里已有 chen 的登录 cookie（首段登录复用了它），
+	// 这里用无 cookie 的裸客户端验证未登录行为。
+	{
+		fresh, _ := http.NewRequest("POST", base+"/api/user/implementation-jobs/"+jobID+"/questions/no-such-q/answer", strings.NewReader(`{"answer":"x"}`))
+		fresh.Header.Set("Content-Type", "application/json")
+		resp, err := (&http.Client{}).Do(fresh)
+		if err == nil {
+			resp.Body.Close()
+			check("回答问题需要登录（401）", resp.StatusCode == 401, fmt.Sprint(resp.StatusCode))
+		} else {
+			check("回答问题需要登录（401）", false, err.Error())
+		}
+	}
+	code, _, _ = req("POST", "/api/user/implementation-jobs/"+jobID+"/questions/no-such-q/answer", msi{"answer": "x"}, "u")
+	check("回答不存在的问题返回 404", code == 404, fmt.Sprint(code))
+	code, _, _ = req("POST", "/api/user/implementation-jobs/"+jobID+"/questions/no-such-q/answer", msi{}, "u")
+	check("缺少 answer 字段返回 400", code == 400, fmt.Sprint(code))
+
 	// 建议列表附带任务推进状态
 	code, body, _ = req("GET", "/api/ideas/"+smokeIdea+"/suggestions", nil, "")
 	jobDone := false

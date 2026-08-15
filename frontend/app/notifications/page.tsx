@@ -90,6 +90,11 @@ const actionMeta: Record<
     icon: "lifecycle",
     color: "text-[var(--accent-success)]",
   },
+  job_question: {
+    labelKey: "notif.notifJobQuestion",
+    icon: "chat",
+    color: "text-[var(--primary)]",
+  },
   comment: {
     labelKey: "notif.notifCommented",
     icon: "comment",

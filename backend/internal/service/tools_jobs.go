@@ -15,6 +15,46 @@ import (
 	"time"
 )
 
+// GetJobSpecTool 重读任务规格（含进展与问答历史），只读。
+type GetJobSpecTool struct {
+	suggestionSvc *SuggestionService
+	agentSvc      *AgentService
+}
+
+func NewGetJobSpecTool(svc *SuggestionService, agentSvc *AgentService) *GetJobSpecTool {
+	return &GetJobSpecTool{suggestionSvc: svc, agentSvc: agentSvc}
+}
+
+func (t *GetJobSpecTool) Name() string { return "get_job_spec" }
+func (t *GetJobSpecTool) Description() string {
+	return "Re-read the full spec of an implementation job you own, including progress notes and Q&A history. " +
+		"Use to rebuild context after your session crashed, or to resume a partially implemented job."
+}
+func (t *GetJobSpecTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"job_id": stringProp("ID of the implementation job"),
+		},
+		"required": []string{"job_id"},
+	})
+}
+func (t *GetJobSpecTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	owner := resolvePrincipalUser(p, t.agentSvc)
+	if owner == "" {
+		return &ToolResult{OK: false, Error: "login required (user or agent api_key)"}, nil
+	}
+	jobID, err := ToolStrReq(in, "job_id")
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	spec, err := t.suggestionSvc.GetJobSpec(jobID, owner)
+	if err != nil {
+		return nil, fmt.Errorf("get_job_spec failed: %w", err)
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"job": spec}}, nil
+}
+
 // ClaimNextJobTool 领取下一个待实现任务。
 type ClaimNextJobTool struct {
 	suggestionSvc *SuggestionService
@@ -30,7 +70,7 @@ func (t *ClaimNextJobTool) Description() string {
 	return "Claim the next pending implementation job from the user's Deimos task queue and get its full spec " +
 		"(idea title/description, adopted suggestion content to implement). " +
 		"The job transitions to in_progress. Returns empty when no pending job exists. " +
-		"After implementing, call report_job_result; post updates via send_progress; ask ask_user when the requirement is unclear."
+		"After implementing, call report_job_result; post updates via send_progress; ask ask_user when the requirement is unclear; call get_job_spec to rebuild context after a crash or to resume."
 }
 func (t *ClaimNextJobTool) Parameters() json.RawMessage {
 	return rawJSON(map[string]any{
@@ -117,8 +157,8 @@ func (t *AskUserTool) Parameters() json.RawMessage {
 	return rawJSON(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"job_id":      stringProp("ID of the implementation job"),
-			"question":    stringProp("The question to ask the owner"),
+			"job_id":   stringProp("ID of the implementation job"),
+			"question": stringProp("The question to ask the owner"),
 			"wait_seconds": map[string]any{
 				"type": "integer", "description": "How long to wait for the answer (default 120, max 300)",
 			},
@@ -139,18 +179,15 @@ func (t *AskUserTool) Execute(ctx context.Context, p Principal, in ToolInput) (*
 	if err != nil {
 		return &ToolResult{OK: false, Error: err.Error()}, nil
 	}
-	waitSeconds := ToolStr(in, "wait_seconds")
-	var wait time.Duration = 120 * time.Second
-	if waitSeconds != "" {
-		var n int
-		if _, err := fmt.Sscanf(waitSeconds, "%d", &n); err == nil && n > 0 {
-			if n > 300 {
-				n = 300
-			}
-			wait = time.Duration(n) * time.Second
-		}
+	waitSeconds := ToolInt(in, "wait_seconds")
+	if waitSeconds <= 0 {
+		waitSeconds = 120
 	}
-	questionID, err := t.suggestionSvc.AskUser(jobID, owner, question)
+	if waitSeconds > 300 {
+		waitSeconds = 300
+	}
+	wait := time.Duration(waitSeconds) * time.Second
+	questionID, err := t.suggestionSvc.AskUser(jobID, owner, p.AgentID, question)
 	if err != nil {
 		return nil, fmt.Errorf("ask_user failed: %w", err)
 	}

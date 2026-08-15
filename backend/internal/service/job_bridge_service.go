@@ -28,8 +28,11 @@ type JobSpecView struct {
 	IdeaRepoURL string `json:"idea_repo_url,omitempty"`
 	IdeaTags    string `json:"idea_tags,omitempty"`
 	// 采纳的建议内容（本任务要实现的需求）
-	SuggestionContent string `json:"suggestion_content,omitempty"`
+	SuggestionContent string    `json:"suggestion_content,omitempty"`
 	CreatedAt         time.Time `json:"created_at"`
+	// 以下仅在 get_job_spec 重读时填充（claim 时为空）
+	Progress  []JobProgressNoteView `json:"progress,omitempty"`
+	Questions []JobQuestionSpecView `json:"questions,omitempty"`
 }
 
 // ClaimNextJob 原子领取该用户的下一个 pending 任务（pending → in_progress）。
@@ -78,6 +81,46 @@ func (s *SuggestionService) buildJobSpec(job *model.ImplementationJob) (*JobSpec
 	return view, nil
 }
 
+// JobQuestionSpecView 是规格里附带的历史问答（含已回答）。
+type JobQuestionSpecView struct {
+	Question  string    `json:"question"`
+	Answer    string    `json:"answer,omitempty"`
+	Answered  bool      `json:"answered"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GetJobSpec 重读某个任务的完整规格（含进展与问答历史），
+// 供本地 Agent 会话崩溃后重建上下文、或分阶段实现时续接。
+func (s *SuggestionService) GetJobSpec(jobID, ownerUserID string) (*JobSpecView, error) {
+	var job model.ImplementationJob
+	if err := s.db.Where("id = ?", jobID).First(&job).Error; err != nil {
+		return nil, ErrSuggestionJobNotFound
+	}
+	if job.OwnerUserID != ownerUserID {
+		return nil, ErrSuggestionJobNotOwner
+	}
+	view, err := s.buildJobSpec(&job)
+	if err != nil {
+		return nil, err
+	}
+	var notes []JobProgressNoteView
+	_ = json.Unmarshal([]byte(job.ProgressLog), &notes)
+	if len(notes) > 0 {
+		view.Progress = notes
+	}
+	var questions []model.JobQuestion
+	if err := s.db.Where("job_id = ?", jobID).Order("created_at ASC").Limit(20).Find(&questions).Error; err == nil && len(questions) > 0 {
+		view.Questions = make([]JobQuestionSpecView, 0, len(questions))
+		for _, q := range questions {
+			view.Questions = append(view.Questions, JobQuestionSpecView{
+				Question: q.Question, Answer: q.Answer,
+				Answered: q.AnsweredAt != nil, CreatedAt: q.CreatedAt,
+			})
+		}
+	}
+	return view, nil
+}
+
 // progressNote 是 ProgressLog JSON 数组的元素。
 type progressNote struct {
 	Note string    `json:"note"`
@@ -93,6 +136,9 @@ func (s *SuggestionService) AppendProgress(jobID, ownerUserID, note string) erro
 		}
 		if job.OwnerUserID != ownerUserID {
 			return ErrSuggestionJobNotOwner
+		}
+		if job.Status == "done" || job.Status == "failed" {
+			return fmt.Errorf("任务已结束（%s），不能再追加进展", job.Status)
 		}
 		var notes []progressNote
 		_ = json.Unmarshal([]byte(job.ProgressLog), &notes)
@@ -178,7 +224,8 @@ func (s *SuggestionService) ReportJobResult(jobID, ownerUserID, status, summary,
 }
 
 // AskUser 由 ask_user 调用：落一条问题 + 通知 owner，返回问题 ID 供长轮询。
-func (s *SuggestionService) AskUser(jobID, ownerUserID, question string) (string, error) {
+// actorType/actorID 用于通知展示（Agent 发起则 actor 为该 Agent，否则为用户）。
+func (s *SuggestionService) AskUser(jobID, ownerUserID, actorID, question string) (string, error) {
 	var ideaID string
 	q := &model.JobQuestion{JobID: jobID, Question: question}
 	err := s.db.Transaction(func(tx *gorm.DB) error {
@@ -189,6 +236,9 @@ func (s *SuggestionService) AskUser(jobID, ownerUserID, question string) (string
 		if job.OwnerUserID != ownerUserID {
 			return ErrSuggestionJobNotOwner
 		}
+		if job.Status == "done" || job.Status == "failed" {
+			return fmt.Errorf("任务已结束（%s），不能再提问", job.Status)
+		}
 		ideaID = job.IdeaID
 		return tx.Create(q).Error
 	})
@@ -196,7 +246,11 @@ func (s *SuggestionService) AskUser(jobID, ownerUserID, question string) (string
 		return "", err
 	}
 	if s.notif != nil {
-		_ = s.notif.Create(ownerUserID, "agent", "", "", "job_question", "idea", ideaID, truncateSummary(question))
+		actorType := "user"
+		if actorID != "" {
+			actorType = "agent"
+		}
+		_ = s.notif.Create(ownerUserID, actorType, actorID, "", "job_question", "idea", ideaID, truncateSummary(question))
 	}
 	return q.ID, nil
 }

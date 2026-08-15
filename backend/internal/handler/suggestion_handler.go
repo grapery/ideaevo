@@ -264,7 +264,7 @@ func (h *SuggestionHandler) AnswerJobQuestion(c *gin.Context) {
 		case errors.Is(err, service.ErrSuggestionJobNotOwner):
 			c.JSON(http.StatusForbidden, gin.H{"error": "只有任务的拥有者才能回答"})
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
 		return
 	}

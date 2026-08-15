@@ -1,7 +1,9 @@
 package service
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -240,4 +242,127 @@ func TestSuggestionService_JobLifecycleAndCounts(t *testing.T) {
 	assert.Equal(t, ideaID, jobs[0].IdeaID)
 	assert.NotEmpty(t, jobs[0].IdeaTitle)
 	assert.Equal(t, "s1", jobs[0].SuggestionContent)
+}
+
+// ---- 本地编码 Agent 桥（job bridge）----
+
+func newJobFixture(t *testing.T) (*SuggestionService, *model.ImplementationJob, string) {
+	t.Helper()
+	svc, ideaID, ownerID := newSuggestionFixture(t)
+	require.NoError(t, svc.db.AutoMigrate(&model.JobQuestion{}))
+	job := &model.ImplementationJob{
+		IdeaID: ideaID, OwnerUserID: ownerID, Status: "pending",
+		Brief: `{"suggestion_content":"支持暗色模式"}`,
+	}
+	require.NoError(t, svc.db.Create(job).Error)
+	return svc, job, ownerID
+}
+
+func TestJobBridge_ClaimNextJob(t *testing.T) {
+	svc, job, ownerID := newJobFixture(t)
+
+	// 非本人无任务可领
+	spec, err := svc.ClaimNextJob("someone-else")
+	require.NoError(t, err)
+	assert.Nil(t, spec)
+
+	// 领取成功：状态推进 + 规格内容完整
+	spec, err = svc.ClaimNextJob(ownerID)
+	require.NoError(t, err)
+	require.NotNil(t, spec)
+	assert.Equal(t, job.ID, spec.JobID)
+	assert.Equal(t, "in_progress", spec.Status)
+	assert.Equal(t, "支持暗色模式", spec.SuggestionContent)
+	assert.NotEmpty(t, spec.IdeaTitle)
+
+	// 领完即空
+	spec, err = svc.ClaimNextJob(ownerID)
+	require.NoError(t, err)
+	assert.Nil(t, spec)
+}
+
+func TestJobBridge_ProgressAndTerminalGuards(t *testing.T) {
+	svc, job, ownerID := newJobFixture(t)
+
+	require.NoError(t, svc.AppendProgress(job.ID, ownerID, "脚手架完成"))
+	require.NoError(t, svc.AppendProgress(job.ID, ownerID, "测试通过"))
+
+	// 他人不可追加
+	assert.ErrorIs(t, svc.AppendProgress(job.ID, "intruder", "x"), ErrSuggestionJobNotOwner)
+
+	// GetJobSpec 含进展时间线
+	spec, err := svc.GetJobSpec(job.ID, ownerID)
+	require.NoError(t, err)
+	require.Len(t, spec.Progress, 2)
+	assert.Equal(t, "测试通过", spec.Progress[1].Note)
+
+	// 终态后拒绝追加
+	_, err = svc.UpdateJob(job.ID, ownerID, "done", "")
+	require.NoError(t, err)
+	assert.Error(t, svc.AppendProgress(job.ID, ownerID, "再多一条"))
+
+	// 他人不可读规格
+	_, err = svc.GetJobSpec(job.ID, "intruder")
+	assert.ErrorIs(t, err, ErrSuggestionJobNotOwner)
+}
+
+func TestJobBridge_AskUserAnswer(t *testing.T) {
+	svc, job, ownerID := newJobFixture(t)
+
+	qid, err := svc.AskUser(job.ID, ownerID, "agent-x", "要不要暗色主题？")
+	require.NoError(t, err)
+
+	// 先回答再等待：应立即拿到答案
+	require.NoError(t, svc.AnswerQuestion(qid, ownerID, "第一版不用"))
+	answer, answered, err := svc.WaitForAnswer(context.Background(), qid, time.Second)
+	require.NoError(t, err)
+	assert.True(t, answered)
+	assert.Equal(t, "第一版不用", answer)
+
+	// 他人不能替 owner 回答
+	qid2, err := svc.AskUser(job.ID, ownerID, "agent-x", "另一个问题？")
+	require.NoError(t, err)
+	assert.ErrorIs(t, svc.AnswerQuestion(qid2, "intruder", "抢答"), ErrSuggestionJobNotOwner)
+
+	// ListJobs 暴露未答问题
+	jobs, err := svc.ListJobs(ownerID)
+	require.NoError(t, err)
+	require.Len(t, jobs, 1)
+	require.NotNil(t, jobs[0].PendingQuestion)
+	assert.Equal(t, "另一个问题？", jobs[0].PendingQuestion.Question)
+
+	// 终态任务拒绝提问
+	_, err = svc.UpdateJob(job.ID, ownerID, "done", "")
+	require.NoError(t, err)
+	_, err = svc.AskUser(job.ID, ownerID, "agent-x", "还有问题")
+	assert.Error(t, err)
+}
+
+func TestJobBridge_ReportResultSyncsIdea(t *testing.T) {
+	svc, job, ownerID := newJobFixture(t)
+	ideaID := job.IdeaID
+
+	// Agent 路径：done 同步 idea + 回填仓库
+	repo := "https://github.com/u/r"
+	_, err := svc.ReportJobResult(job.ID, ownerID, "done", "完成", repo, "abc123")
+	require.NoError(t, err)
+	var idea model.Idea
+	require.NoError(t, svc.db.Where("id = ?", ideaID).First(&idea).Error)
+	assert.Equal(t, model.ImplStatusImplemented, idea.ImplStatus)
+	assert.Equal(t, repo, idea.RepoURL)
+
+	// 终态不可重复回报
+	_, err = svc.ReportJobResult(job.ID, ownerID, "failed", "反悔", "", "")
+	assert.Error(t, err)
+}
+
+func TestJobBridge_ManualDoneSyncsIdea(t *testing.T) {
+	svc, job, ownerID := newJobFixture(t)
+
+	// 手动路径：完成同样同步 idea 实现状态（与 Agent 路径一致）
+	_, err := svc.UpdateJob(job.ID, ownerID, "done", "手工完成")
+	require.NoError(t, err)
+	var idea model.Idea
+	require.NoError(t, svc.db.Where("id = ?", job.IdeaID).First(&idea).Error)
+	assert.Equal(t, model.ImplStatusImplemented, idea.ImplStatus)
 }

@@ -143,6 +143,11 @@ description: 领取并实现一个 Deimos 实现任务
           </a>
         </p>
         <p className="text-[13px] leading-6 text-[var(--ink-faint)]">{t("docs.local.connectVerify")}</p>
+        {tool === "codex" && (
+          <p className="rounded-[var(--radius-btn)] border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)]/50 px-3 py-2 text-[12px] leading-5 text-[var(--ink-soft)]">
+            {t("docs.local.codexNote")}
+          </p>
+        )}
       </section>
 
       {/* L1 技能包 */}

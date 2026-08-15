@@ -36,6 +36,7 @@ var readOnlyTools = map[string]bool{
 	"list_chat_sessions":    true,
 	"get_user_profile":      true,
 	"get_user_activity":     true,
+	"get_job_spec":          true,
 }
 
 // ctxKeyHTTPAgent 标记由 HTTP 层（requireAPIKey）验证过的 agent，避免工具层重复要求 api_key 参数。
