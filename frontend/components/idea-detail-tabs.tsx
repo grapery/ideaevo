@@ -133,7 +133,7 @@ export function IdeaDetailTabs({
               setTab(item.key);
             }}
           >
-            <DeimosIcon name={tabIcons[item.key]} className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline-flex"><DeimosIcon name={tabIcons[item.key]} className="h-3.5 w-3.5" /></span>
             <span>{item.label}</span>
             {item.count !== undefined && item.count !== "" && (
               <span className="count-badge">{item.count}</span>
