@@ -1,0 +1,15 @@
+{
+  "name": "ideaevo",
+  "owner": {
+    "name": "Grapery",
+    "url": "https://github.com/grapery"
+  },
+  "plugins": [
+    {
+      "name": "deimos",
+      "source": "./plugins/claude-code",
+      "description": "Deimos 想法市场：领取实现任务、推进、提问与回报",
+      "version": "0.1.0"
+    }
+  ]
+}

@@ -9,6 +9,7 @@ export default async function LocalAgentsDocsPage() {
 
   const toc = [
     { href: "#how", label: t("docs.local.tocHow") },
+    { href: "#plugin", label: t("docs.local.pluginTitle") },
     { href: "#connect", label: t("docs.local.tocConnect") },
     { href: "#skill", label: t("docs.local.tocSkill") },
     { href: "#auto", label: t("docs.local.tocAuto") },

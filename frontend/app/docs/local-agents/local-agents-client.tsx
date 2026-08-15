@@ -105,6 +105,10 @@ description: 领取并实现一个 Deimos 实现任务
 </dict>
 </plist>`;
 
+  const claudePluginInstall = `# Claude Code 内执行（本仓库即 marketplace 源）：
+/plugin marketplace add grapery/ideaevo
+/plugin install deimos@ideaevo`;
+
   const schtasksRecipe = `:: Windows：任务计划程序每 15 分钟触发一次（PowerShell/CMD 均可）
 schtasks /create /tn "DeimosAutoWork" /tr "cmd /c cd /d %USERPROFILE%\\deimos-work && claude -p \"如果有 pending 的 Deimos 任务，领取并实现\" --permission-mode acceptEdits" /sc minute /mo 15`;
 
@@ -133,6 +137,33 @@ schtasks /create /tn "DeimosAutoWork" /tr "cmd /c cd /d %USERPROFILE%\\deimos-wo
           </button>
         ))}
       </div>
+
+      {/* 插件安装（首选路径） */}
+      <section id="plugin" className="scroll-mt-24 space-y-4">
+        <h2 className="section-title">{t("docs.local.pluginTitle")}</h2>
+        <p className="text-[14px] leading-7 text-[var(--ink-soft)]">{t("docs.local.pluginDesc")}</p>
+        {tool === "claude" ? (
+          <CopyCodeBlock label="Claude Code" code={claudePluginInstall} />
+        ) : tool === "codex" ? (
+          <p className="rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-4 py-3 text-[13px] leading-6 text-[var(--ink-soft)]">
+            {t("docs.local.pluginCodexNote")}
+          </p>
+        ) : (
+          <p className="rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-4 py-3 text-[13px] leading-6 text-[var(--ink-soft)]">
+            {t("docs.local.pluginZcodeNote")}
+          </p>
+        )}
+        <p className="text-[13px] leading-6 text-[var(--ink-faint)]">
+          {t("docs.local.pluginKeyHint")}{" "}
+          <a href="/user/settings?section=apikey" className="text-[var(--accent-link)] hover:underline">
+            {t("docs.local.connectKeyLink")}
+          </a>
+          <br />
+          <code className="code-text">export DEIMOS_API_KEY=deimos_你的Key</code>
+          <br />
+          <code className="code-text">export DEIMOS_MCP_URL={origin || "https://www.ideavalues.xyz"}/mcp</code>
+        </p>
+      </section>
 
       {/* L0 连接 */}
       <section id="connect" className="scroll-mt-24 space-y-4">

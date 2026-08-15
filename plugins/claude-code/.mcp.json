@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "deimos": {
+      "type": "http",
+      "url": "${DEIMOS_MCP_URL}",
+      "headers": {
+        "Authorization": "Bearer ${DEIMOS_API_KEY}"
+      }
+    }
+  }
+}
