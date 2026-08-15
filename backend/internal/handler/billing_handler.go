@@ -15,19 +15,20 @@ import (
 // BillingHandler 充值/会员/退款相关的 REST API。
 //
 // 路由设计（在 main.go 注册）：
-//   GET    /api/billing/plans                 套餐与价格（公开）
-//   GET    /api/billing/membership            当前用户会员状态 + 今日额度（需登录）
-//   POST   /api/billing/orders                创建充值订单（需登录）
-//   GET    /api/billing/orders                订单列表（需登录）
-//   GET    /api/billing/orders/:id            订单详情（需登录）
-//   POST   /api/billing/orders/:id/cancel     取消未支付订单（需登录）
-//   POST   /api/billing/orders/:id/mock-pay   模拟支付激活（仅 mock 网关，需登录）
-//   POST   /api/billing/orders/:id/refund     申请退款（需登录）
-//   GET    /api/billing/refunds               我的退款申请列表（需登录）
-//   GET    /api/admin/refunds                 待审批退款列表（管理员）
-//   POST   /api/admin/refunds/:id/approve     批准退款（管理员）
-//   POST   /api/admin/refunds/:id/reject      拒绝退款（管理员）
-//   POST   /api/billing/webhooks/:gateway     支付网关异步回调（公开，签名校验）
+//
+//	GET    /api/billing/plans                 套餐与价格（公开）
+//	GET    /api/billing/membership            当前用户会员状态 + 今日额度（需登录）
+//	POST   /api/billing/orders                创建充值订单（需登录）
+//	GET    /api/billing/orders                订单列表（需登录）
+//	GET    /api/billing/orders/:id            订单详情（需登录）
+//	POST   /api/billing/orders/:id/cancel     取消未支付订单（需登录）
+//	POST   /api/billing/orders/:id/mock-pay   模拟支付激活（仅 mock 网关，需登录）
+//	POST   /api/billing/orders/:id/refund     申请退款（需登录）
+//	GET    /api/billing/refunds               我的退款申请列表（需登录）
+//	GET    /api/admin/refunds                 待审批退款列表（管理员）
+//	POST   /api/admin/refunds/:id/approve     批准退款（管理员）
+//	POST   /api/admin/refunds/:id/reject      拒绝退款（管理员）
+//	POST   /api/billing/webhooks/:gateway     支付网关异步回调（公开，签名校验）
 type BillingHandler struct {
 	orderSvc  *service.OrderService
 	subSvc    *service.SubscriptionService
@@ -43,12 +44,12 @@ func (h *BillingHandler) Plans(c *gin.Context) {
 	plans := make([]gin.H, 0, len(billing.Plans))
 	for _, p := range billing.Plans {
 		plans = append(plans, gin.H{
-			"id":           p.ID,
-			"name":         p.Name,
+			"id":            p.ID,
+			"name":          p.Name,
 			"duration_days": int(p.Duration.Hours() / 24),
-			"prices":       p.Prices,
-			"daily_tokens": p.DailyTokens,
-			"max_agents":   p.MaxAgents,
+			"prices":        p.Prices,
+			"daily_tokens":  p.DailyTokens,
+			"max_agents":    p.MaxAgents,
 		})
 	}
 	// 附带免费额度信息，供前端对比展示

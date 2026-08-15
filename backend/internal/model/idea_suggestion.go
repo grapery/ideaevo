@@ -60,12 +60,14 @@ type ImplementationJob struct {
 	ID     string `gorm:"primaryKey;size:36" json:"id"`
 	IdeaID string `gorm:"size:36;not null;index" json:"idea_id"`
 	// 唯一索引兜底：同一建议只产生一个任务（NULL 不参与唯一约束，兼容无建议的整体性任务）
-	SuggestionID *string   `gorm:"size:36;uniqueIndex" json:"suggestion_id,omitempty"`
-	OwnerUserID  string    `gorm:"size:36;not null;index" json:"owner_user_id"`
-	Status       string    `gorm:"size:20;not null;default:'pending'" json:"status"` // pending | claimed | running | done | failed
-	Brief        string    `gorm:"type:json" json:"brief"`                           // 任务简报快照（idea 标题/描述 + 建议内容）
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	SuggestionID *string `gorm:"size:36;uniqueIndex" json:"suggestion_id,omitempty"`
+	OwnerUserID  string  `gorm:"size:36;not null;index" json:"owner_user_id"`
+	Status       string  `gorm:"size:20;not null;default:'pending'" json:"status"` // pending | in_progress | done | failed
+	// 完成备注（如发布版本号/链接），完成或失败时由 owner 填写
+	Note      string    `gorm:"size:1000" json:"note,omitempty"`
+	Brief     string    `gorm:"type:json" json:"brief"` // 任务简报快照（idea 标题/描述 + 建议内容）
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func (j *ImplementationJob) BeforeCreate(tx *gorm.DB) error {

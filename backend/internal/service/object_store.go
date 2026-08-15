@@ -100,10 +100,10 @@ func NewObjectStore(cfg *config.Config) (*ObjectStore, error) {
 }
 
 type PresignResult struct {
-	UploadURL  string `json:"upload_url"`
-	PublicURL  string `json:"public_url"`
-	Key        string `json:"key"`
-	ExpiresIn  int    `json:"expires_in"`
+	UploadURL string `json:"upload_url"`
+	PublicURL string `json:"public_url"`
+	Key       string `json:"key"`
+	ExpiresIn int    `json:"expires_in"`
 }
 
 func (s *ObjectStore) Enabled() bool {

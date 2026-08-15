@@ -23,7 +23,7 @@ func UserReputation(user *model.User) float64 {
 		return 0.3
 	}
 	ageDays := time.Since(user.CreatedAt).Hours() / 24
-	ageFactor := math.Min(ageDays/365.0, 1.0) // 1 年封顶
+	ageFactor := math.Min(ageDays/365.0, 1.0)                          // 1 年封顶
 	followerFactor := math.Min(float64(user.FollowerCount)/100.0, 1.0) // 100 关注封顶
 	return 0.3 + 0.4*ageFactor + 0.3*followerFactor
 }

@@ -18,9 +18,9 @@ type fakeTool struct {
 	err    error
 }
 
-func (t *fakeTool) Name() string                    { return t.name }
-func (t *fakeTool) Description() string             { return t.desc }
-func (t *fakeTool) Parameters() json.RawMessage     { return t.params }
+func (t *fakeTool) Name() string                { return t.name }
+func (t *fakeTool) Description() string         { return t.desc }
+func (t *fakeTool) Parameters() json.RawMessage { return t.params }
 func (t *fakeTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
 	return t.out, t.err
 }
@@ -283,9 +283,11 @@ func newWriteToolExecutor(t *testing.T, executed *bool) *ToolExecutor {
 
 type writeToolStub struct{ executed *bool }
 
-func (t *writeToolStub) Name() string                        { return "register_idea" }
-func (t *writeToolStub) Description() string                 { return "stub" }
-func (t *writeToolStub) Parameters() json.RawMessage         { return rawJSON(map[string]any{"type": "object"}) }
+func (t *writeToolStub) Name() string        { return "register_idea" }
+func (t *writeToolStub) Description() string { return "stub" }
+func (t *writeToolStub) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{"type": "object"})
+}
 func (t *writeToolStub) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
 	*t.executed = true
 	return &ToolResult{OK: true, Data: "created"}, nil
@@ -407,9 +409,9 @@ func TestReadToolSkipsConfirmation(t *testing.T) {
 
 type readToolStub struct{ executed *bool }
 
-func (t *readToolStub) Name() string                        { return "search_ideas" }
-func (t *readToolStub) Description() string                 { return "stub" }
-func (t *readToolStub) Parameters() json.RawMessage         { return rawJSON(map[string]any{"type": "object"}) }
+func (t *readToolStub) Name() string                { return "search_ideas" }
+func (t *readToolStub) Description() string         { return "stub" }
+func (t *readToolStub) Parameters() json.RawMessage { return rawJSON(map[string]any{"type": "object"}) }
 func (t *readToolStub) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
 	*t.executed = true
 	return &ToolResult{OK: true}, nil

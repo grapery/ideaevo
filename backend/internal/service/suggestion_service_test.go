@@ -188,3 +188,56 @@ func TestSuggestionService_DeleteAuthorOnly(t *testing.T) {
 	svc.db.Model(&model.SuggestionVote{}).Where("suggestion_id = ?", sug.ID).Count(&votes)
 	assert.Equal(t, int64(0), votes)
 }
+
+// 任务队列：owner 推进状态、终态锁定、完成不重复通知、建议计数维护。
+func TestSuggestionService_JobLifecycleAndCounts(t *testing.T) {
+	svc, ideaID, ownerID := newSuggestionFixture(t)
+
+	// 建议计数随创建/删除维护
+	sug, err := svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u1", Content: "s1"})
+	require.NoError(t, err)
+	sug2, err := svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u2", Content: "s2"})
+	require.NoError(t, err)
+	var idea model.Idea
+	require.NoError(t, svc.db.First(&idea, "id = ?", ideaID).Error)
+	assert.Equal(t, 2, idea.SuggestionCount)
+	require.NoError(t, svc.Delete(ideaID, sug2.ID, "u2", ""))
+	require.NoError(t, svc.db.First(&idea, "id = ?", ideaID).Error)
+	assert.Equal(t, 1, idea.SuggestionCount)
+
+	// 采纳创建任务
+	result, err := svc.Select(ideaID, sug.ID, ownerID, "")
+	require.NoError(t, err)
+	require.NotEmpty(t, result.JobID)
+
+	// 非 owner 推进被拒
+	_, err = svc.UpdateJob(result.JobID, "stranger", "done", "")
+	assert.ErrorIs(t, err, ErrSuggestionJobNotOwner)
+
+	// owner: pending -> in_progress -> done
+	job, err := svc.UpdateJob(result.JobID, ownerID, "in_progress", "")
+	require.NoError(t, err)
+	assert.Equal(t, "in_progress", job.Status)
+	job, err = svc.UpdateJob(result.JobID, ownerID, "done", "v2 已发布")
+	require.NoError(t, err)
+	assert.Equal(t, "done", job.Status)
+	assert.Equal(t, "v2 已发布", job.Note)
+
+	// 终态不可再变
+	_, err = svc.UpdateJob(result.JobID, ownerID, "failed", "")
+	assert.Error(t, err)
+
+	// 列表视图带 job_status
+	views, err := svc.ListByIdea(ideaID, "", "")
+	require.NoError(t, err)
+	require.Len(t, views, 1)
+	assert.Equal(t, "done", views[0].JobStatus)
+
+	// 任务队列（owner 视角）
+	jobs, err := svc.ListJobs(ownerID)
+	require.NoError(t, err)
+	require.Len(t, jobs, 1)
+	assert.Equal(t, ideaID, jobs[0].IdeaID)
+	assert.NotEmpty(t, jobs[0].IdeaTitle)
+	assert.Equal(t, "s1", jobs[0].SuggestionContent)
+}

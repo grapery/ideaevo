@@ -14,18 +14,18 @@ const (
 
 // messageMeta 是 ChatMessage.Metadata 的统一结构。
 type messageMeta struct {
-	DisplayKind string               `json:"display_kind,omitempty"`
-	ToolCalls   []ToolCall           `json:"tool_calls,omitempty"`
-	ToolCallID  string               `json:"tool_call_id,omitempty"`
-	ToolName    string               `json:"tool_name,omitempty"`
-	Activity    map[string]any       `json:"activity,omitempty"`
-	Attachment  *messageAttachment   `json:"attachment,omitempty"`
+	DisplayKind string             `json:"display_kind,omitempty"`
+	ToolCalls   []ToolCall         `json:"tool_calls,omitempty"`
+	ToolCallID  string             `json:"tool_call_id,omitempty"`
+	ToolName    string             `json:"tool_name,omitempty"`
+	Activity    map[string]any     `json:"activity,omitempty"`
+	Attachment  *messageAttachment `json:"attachment,omitempty"`
 }
 
 // messageAttachment 是消息列表里暴露的附件轻量信息（不含原图/全文）。
 type messageAttachment struct {
 	ID        string `json:"id"`
-	Kind      string `json:"kind"`       // image | document
+	Kind      string `json:"kind"` // image | document
 	FileName  string `json:"file_name"`
 	Summary   string `json:"summary"`    // 简要描述，节省列表渲染开销
 	URL       string `json:"url"`        // image: 原图 URL（浏览器按需加载）；document: md 下载 URL

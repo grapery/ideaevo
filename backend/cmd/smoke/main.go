@@ -327,6 +327,39 @@ func main() {
 	code, _, _ = req("DELETE", "/api/ideas/"+smokeIdea+"/suggestions/"+sugID, nil, "u2")
 	check("已采纳的建议不可删除", code == 400, fmt.Sprint(code))
 
+	// 实现任务队列（owner 推进闭环）
+	code, body, _ = req("GET", "/api/user/implementation-jobs", nil, "u")
+	foundJob := false
+	if jobs, ok := body["jobs"].([]any); ok {
+		for _, j := range jobs {
+			if jm, _ := j.(msi); jm["id"] == jobID {
+				foundJob = true
+			}
+		}
+	}
+	check("owner 任务队列包含采纳产生的任务", code == 200 && foundJob, fmt.Sprint(code))
+
+	code, _, _ = req("PATCH", "/api/user/implementation-jobs/"+jobID, msi{"status": "in_progress"}, "u")
+	check("开始实现（pending → in_progress）", code == 200, fmt.Sprint(code))
+	code, _, _ = req("PATCH", "/api/user/implementation-jobs/"+jobID, msi{"status": "done", "note": "smoke v2 已发布"}, "u")
+	check("标记完成并附备注", code == 200, fmt.Sprint(code))
+	code, _, _ = req("PATCH", "/api/user/implementation-jobs/"+jobID, msi{"status": "failed"}, "u")
+	check("终态不可再变更（400）", code == 400, fmt.Sprint(code))
+	code, _, _ = req("PATCH", "/api/user/implementation-jobs/"+jobID, msi{"status": "done"}, "u2")
+	check("非 owner 推进被拒（403）", code == 403, fmt.Sprint(code))
+
+	// 建议列表附带任务推进状态
+	code, body, _ = req("GET", "/api/ideas/"+smokeIdea+"/suggestions", nil, "")
+	jobDone := false
+	if arr, ok := body["suggestions"].([]any); ok {
+		for _, sv := range arr {
+			if m, _ := sv.(msi); m["id"] == sugID && m["job_status"] == "done" {
+				jobDone = true
+			}
+		}
+	}
+	check("建议列表返回 job_status=done", code == 200 && jobDone, fmt.Sprint(code))
+
 	fmt.Println("== 8. 搜索 / 排行 / 活动流 ==")
 	code, body, _ = req("GET", "/api/ideas/search?q=MCP", nil, "")
 	check("语义搜索（向量或 LIKE 降级）返回结果", code == 200 && len(body["results"].([]any)) > 0, fmt.Sprint(code))

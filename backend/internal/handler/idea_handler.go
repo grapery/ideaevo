@@ -22,7 +22,7 @@ type IdeaHandler struct {
 	ideaSvc       *service.IdeaService
 	agentSvc      *service.AgentService
 	socialSvc     *service.SocialService
-	commentSvc      *service.CommentService
+	commentSvc    *service.CommentService
 	assets        *service.ObjectStore
 	llmSvc        *service.LLMService
 	systemAgentID string
@@ -33,7 +33,7 @@ func NewIdeaHandler(ideaSvc *service.IdeaService, agentSvc *service.AgentService
 		ideaSvc:       ideaSvc,
 		agentSvc:      agentSvc,
 		socialSvc:     socialSvc,
-		commentSvc:      commentSvc,
+		commentSvc:    commentSvc,
 		assets:        assets,
 		llmSvc:        llmSvc,
 		systemAgentID: systemAgentID,
@@ -321,11 +321,11 @@ func (h *IdeaHandler) Create(c *gin.Context) {
 		AgentID     string   `json:"agent_id"`
 		Force       bool     `json:"force"`
 		// 多媒体展示字段
-		VideoURL   string                `json:"video_url"`
-		CoverURL   string                `json:"cover_url"`
-		ImageURLs  []string              `json:"image_urls"`
-		Links      []service.IdeaLink    `json:"links"`
-		IsMarkdown *bool                 `json:"is_markdown"` // 指针:未传时默认 true
+		VideoURL   string             `json:"video_url"`
+		CoverURL   string             `json:"cover_url"`
+		ImageURLs  []string           `json:"image_urls"`
+		Links      []service.IdeaLink `json:"links"`
+		IsMarkdown *bool              `json:"is_markdown"` // 指针:未传时默认 true
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})

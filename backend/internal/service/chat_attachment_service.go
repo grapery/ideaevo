@@ -351,15 +351,18 @@ func summarizeMarkdown(raw []byte) string {
 // stripMarkdownSyntax 去除常见 markdown 语法符号，仅保留可读文字。
 func stripMarkdownSyntax(s string) string {
 	// 去代码块/行内代码（保留内容）、图片、链接（保留文字）、列表符号、强调符号。
-	replacements := []struct{ re *regexp.Regexp; repl string }{
-		{regexp.MustCompile("(?s)```.*?```"), ""},      // 围栏代码块
-		{regexp.MustCompile("!\\[[^\\]]*\\]\\([^)]*\\)"), ""}, // 图片
+	replacements := []struct {
+		re   *regexp.Regexp
+		repl string
+	}{
+		{regexp.MustCompile("(?s)```.*?```"), ""},                // 围栏代码块
+		{regexp.MustCompile("!\\[[^\\]]*\\]\\([^)]*\\)"), ""},    // 图片
 		{regexp.MustCompile("\\[([^\\]]+)\\]\\([^)]*\\)"), "$1"}, // 链接 -> 文字
-		{regexp.MustCompile("`([^`]+)`"), "$1"},        // 行内代码
-		{regexp.MustCompile("(?m)^\\s{0,3}[-*+]\\s+"), ""}, // 无序列表符号
-		{regexp.MustCompile("(?m)^\\s{0,3}\\d+\\.\\s+"), ""}, // 有序列表符号
-		{regexp.MustCompile("(?m)^\\s{0,3}#{1,6}\\s+"), ""}, // 标题符号
-		{regexp.MustCompile("[*_~`>#]+"), ""},           // 残留强调/引用符号
+		{regexp.MustCompile("`([^`]+)`"), "$1"},                  // 行内代码
+		{regexp.MustCompile("(?m)^\\s{0,3}[-*+]\\s+"), ""},       // 无序列表符号
+		{regexp.MustCompile("(?m)^\\s{0,3}\\d+\\.\\s+"), ""},     // 有序列表符号
+		{regexp.MustCompile("(?m)^\\s{0,3}#{1,6}\\s+"), ""},      // 标题符号
+		{regexp.MustCompile("[*_~`>#]+"), ""},                    // 残留强调/引用符号
 	}
 	out := s
 	for _, r := range replacements {

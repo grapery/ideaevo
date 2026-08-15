@@ -197,3 +197,48 @@ func (h *SuggestionHandler) PresignUpload(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, result)
 }
+
+// MyJobs 返回当前用户的实现任务队列（owner 视角）。
+func (h *SuggestionHandler) MyJobs(c *gin.Context) {
+	userID := extractUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录"})
+		return
+	}
+	jobs, err := h.suggestionSvc.ListJobs(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": ServiceError(err)})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"jobs": jobs})
+}
+
+// UpdateJob 推进任务状态（开始/完成/失败），完成时通知建议提交者。
+func (h *SuggestionHandler) UpdateJob(c *gin.Context) {
+	userID := extractUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录"})
+		return
+	}
+	var input struct {
+		Status string `json:"status" binding:"required"`
+		Note   string `json:"note"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		return
+	}
+	job, err := h.suggestionSvc.UpdateJob(c.Param("id"), userID, input.Status, input.Note)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrSuggestionJobNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("job not found")})
+		case errors.Is(err, service.ErrSuggestionJobNotOwner):
+			c.JSON(http.StatusForbidden, gin.H{"error": "只有任务的拥有者才能推进任务"})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"job": job})
+}

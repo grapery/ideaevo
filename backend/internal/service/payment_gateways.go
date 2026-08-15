@@ -155,8 +155,8 @@ func (g *stripeGateway) CreatePayment(input CreatePaymentInput) (*CreatePaymentR
 		return nil, fmt.Errorf("stripe error (%d): %s", resp.StatusCode, string(body))
 	}
 	var parsed struct {
-		ID     string `json:"id"`
-		URL    string `json:"url"`
+		ID  string `json:"id"`
+		URL string `json:"url"`
 	}
 	if err := json.Unmarshal(body, &parsed); err != nil {
 		return nil, fmt.Errorf("parse stripe response: %w", err)

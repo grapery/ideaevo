@@ -444,6 +444,7 @@ func main() {
 			comment_count = (SELECT COUNT(*) FROM wanye_comments WHERE idea_id = i.id AND is_moderated = 0),
 			fork_count    = (SELECT COUNT(*) FROM forks WHERE source_idea_id = i.id)`,
 		`UPDATE ideas SET weighted_score = like_count * 0.4 + wish_count * 0.8 + flower_count * 1.5 + fork_count * 2.0`,
+		`UPDATE ideas i SET suggestion_count = (SELECT COUNT(*) FROM idea_suggestions WHERE idea_id = i.id)`,
 		`UPDATE users u SET
 			follower_count  = (SELECT COUNT(*) FROM follows WHERE following_id = u.id),
 			following_count = (SELECT COUNT(*) FROM follows WHERE follower_id = u.id)`,

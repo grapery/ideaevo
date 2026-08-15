@@ -10,36 +10,36 @@ import (
 // PaymentConfig 充值/支付相关配置（由 config.Config 注入）。
 type PaymentConfig struct {
 	// 商户凭证（缺失时该网关降级为模拟模式）
-	AlipayAppID        string
-	AlipayPrivateKey   string
-	AlipayPublicKey    string
-	AlipayNotifyURL    string // 异步通知回调
-	AlipaySandbox      bool
+	AlipayAppID      string
+	AlipayPrivateKey string
+	AlipayPublicKey  string
+	AlipayNotifyURL  string // 异步通知回调
+	AlipaySandbox    bool
 
-	WeChatAppID        string
-	WeChatMchID        string
-	WeChatAPIKey       string
-	WeChatNotifyURL    string
+	WeChatAppID     string
+	WeChatMchID     string
+	WeChatAPIKey    string
+	WeChatNotifyURL string
 
-	StripeAPIKey       string
+	StripeAPIKey        string
 	StripeWebhookSecret string
 
-	FrontendURL        string // 用于支付完成跳转
+	FrontendURL string // 用于支付完成跳转
 }
 
 // LoadPaymentConfig 从环境变量装配支付配置。
 func LoadPaymentConfig(cfg *config.Config) PaymentConfig {
 	return PaymentConfig{
-		AlipayAppID:        getEnvStr("ALIPAY_APP_ID", ""),
-		AlipayPrivateKey:   getEnvStr("ALIPAY_PRIVATE_KEY", ""),
-		AlipayPublicKey:    getEnvStr("ALIPAY_PUBLIC_KEY", ""),
-		AlipayNotifyURL:    getEnvStr("ALIPAY_NOTIFY_URL", ""),
-		AlipaySandbox:      getEnvStr("ALIPAY_SANDBOX", "") == "true",
+		AlipayAppID:      getEnvStr("ALIPAY_APP_ID", ""),
+		AlipayPrivateKey: getEnvStr("ALIPAY_PRIVATE_KEY", ""),
+		AlipayPublicKey:  getEnvStr("ALIPAY_PUBLIC_KEY", ""),
+		AlipayNotifyURL:  getEnvStr("ALIPAY_NOTIFY_URL", ""),
+		AlipaySandbox:    getEnvStr("ALIPAY_SANDBOX", "") == "true",
 
-		WeChatAppID:        getEnvStr("WECHAT_PAY_APP_ID", ""),
-		WeChatMchID:        getEnvStr("WECHAT_PAY_MCH_ID", ""),
-		WeChatAPIKey:       getEnvStr("WECHAT_PAY_API_KEY", ""),
-		WeChatNotifyURL:    getEnvStr("WECHAT_PAY_NOTIFY_URL", ""),
+		WeChatAppID:     getEnvStr("WECHAT_PAY_APP_ID", ""),
+		WeChatMchID:     getEnvStr("WECHAT_PAY_MCH_ID", ""),
+		WeChatAPIKey:    getEnvStr("WECHAT_PAY_API_KEY", ""),
+		WeChatNotifyURL: getEnvStr("WECHAT_PAY_NOTIFY_URL", ""),
 
 		StripeAPIKey:        getEnvStr("STRIPE_API_KEY", ""),
 		StripeWebhookSecret: getEnvStr("STRIPE_WEBHOOK_SECRET", ""),
@@ -50,9 +50,9 @@ func LoadPaymentConfig(cfg *config.Config) PaymentConfig {
 
 // CreatePaymentInput 创建支付意图的入参。
 type CreatePaymentInput struct {
-	Order         *model.Order
-	Title         string // 商品描述
-	ReturnURL     string // 支付完成前端跳转地址
+	Order     *model.Order
+	Title     string // 商品描述
+	ReturnURL string // 支付完成前端跳转地址
 }
 
 // CreatePaymentResult 创建支付后的返回（交给前端拉起支付）。

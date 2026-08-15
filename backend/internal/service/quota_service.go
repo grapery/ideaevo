@@ -53,7 +53,7 @@ func (s *QuotaService) GetOrInitToday(userID string, todayLimit int) (*model.Dai
 		TokensLimit: todayLimit,
 	}
 	if err := s.db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "user_id"}, {Name: "date"}},
+		Columns:   []clause.Column{{Name: "user_id"}, {Name: "date"}},
 		DoNothing: true,
 	}).Create(&q).Error; err != nil {
 		return nil, fmt.Errorf("create daily quota: %w", err)
@@ -92,7 +92,7 @@ func (s *QuotaService) Deduct(userID string, tokens int) {
 	s.db.Model(&model.DailyQuota{}).
 		Where("user_id = ? AND date = ?", userID, todayString()).
 		Updates(map[string]any{
-			"tokens_used": gorm.Expr("tokens_used + ?", tokens),
+			"tokens_used":  gorm.Expr("tokens_used + ?", tokens),
 			"last_chat_at": &now,
 		})
 }

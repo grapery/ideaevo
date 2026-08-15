@@ -20,12 +20,14 @@ const (
 )
 
 var (
-	ErrSuggestionNotFound   = errors.New("suggestion not found")
-	ErrSuggestionNotAuthor  = errors.New("only the suggestion author can delete it")
-	ErrSuggestionNotOwner   = errors.New("only the idea owner can select suggestions")
-	ErrSuggestionAlreadyVot = errors.New("已经投票过这条建议")
-	ErrSuggestionIdeaGone   = errors.New("idea not found or not accepting suggestions")
-	ErrSuggestionSelected   = errors.New("已采纳的建议不能删除")
+	ErrSuggestionNotFound    = errors.New("suggestion not found")
+	ErrSuggestionNotAuthor   = errors.New("only the suggestion author can delete it")
+	ErrSuggestionNotOwner    = errors.New("only the idea owner can select suggestions")
+	ErrSuggestionAlreadyVot  = errors.New("已经投票过这条建议")
+	ErrSuggestionIdeaGone    = errors.New("idea not found or not accepting suggestions")
+	ErrSuggestionSelected    = errors.New("已采纳的建议不能删除")
+	ErrSuggestionJobNotFound = errors.New("implementation job not found")
+	ErrSuggestionJobNotOwner = errors.New("only the job owner can update it")
 )
 
 type SuggestionService struct {
@@ -125,6 +127,8 @@ func (s *SuggestionService) Create(input CreateSuggestionInput) (*model.IdeaSugg
 	if err := s.db.Create(suggestion).Error; err != nil {
 		return nil, err
 	}
+	s.db.Model(&model.Idea{}).Where("id = ?", input.IdeaID).
+		UpdateColumn("suggestion_count", gorm.Expr("suggestion_count + 1"))
 
 	actorType, actorID := "agent", input.AgentID
 	if input.UserID != "" {
@@ -430,25 +434,31 @@ func (s *SuggestionService) Delete(ideaID, suggestionID, userID, agentID string)
 		if err := tx.Where("suggestion_id = ?", sug.ID).Delete(&model.SuggestionVote{}).Error; err != nil {
 			return err
 		}
-		return tx.Delete(&model.IdeaSuggestion{}, "id = ?", sug.ID).Error
+		if err := tx.Delete(&model.IdeaSuggestion{}, "id = ?", sug.ID).Error; err != nil {
+			return err
+		}
+		return tx.Model(&model.Idea{}).Where("id = ?", ideaID).
+			UpdateColumn("suggestion_count", gorm.Expr("GREATEST(suggestion_count - 1, 0)")).Error
 	})
 }
 
 // SuggestionView 是富化后的建议视图（作者信息 + 当前 viewer 投票状态）。
 type SuggestionView struct {
-	ID           string     `json:"id"`
-	IdeaID       string     `json:"idea_id"`
-	UserID       string     `json:"user_id"`
-	Content      string     `json:"content"`
-	ImageURLs    []string   `json:"image_urls"`
-	VoteCount    int        `json:"vote_count"`
-	Voted        bool       `json:"voted"`
-	Selected     bool       `json:"selected"`
-	SelectedAt   *time.Time `json:"selected_at,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
-	AuthorName   string     `json:"author_name,omitempty"`
-	AuthorAvatar string     `json:"author_avatar,omitempty"`
-	AuthorType   string     `json:"author_type,omitempty"` // user | agent
+	ID         string     `json:"id"`
+	IdeaID     string     `json:"idea_id"`
+	UserID     string     `json:"user_id"`
+	Content    string     `json:"content"`
+	ImageURLs  []string   `json:"image_urls"`
+	VoteCount  int        `json:"vote_count"`
+	Voted      bool       `json:"voted"`
+	Selected   bool       `json:"selected"`
+	SelectedAt *time.Time `json:"selected_at,omitempty"`
+	// JobStatus：采纳后实现任务的当前状态（pending/in_progress/done/failed），空=未采纳
+	JobStatus    string    `json:"job_status,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	AuthorName   string    `json:"author_name,omitempty"`
+	AuthorAvatar string    `json:"author_avatar,omitempty"`
+	AuthorType   string    `json:"author_type,omitempty"` // user | agent
 }
 
 // ListByIdea 返回某 idea 的建议列表（已采纳在前，其后按票数、时间倒序），
@@ -539,7 +549,144 @@ func (s *SuggestionService) ListByIdea(ideaID, viewerUserID, viewerAgentID strin
 		}
 		out[i] = view
 	}
+
+	// 已采纳建议附带实现任务状态（让提交者能看到推进进展）
+	var jobs []model.ImplementationJob
+	if err := s.db.Where("suggestion_id IN ?", suggestionIDs(suggestions)).Find(&jobs).Error; err == nil {
+		for i := range out {
+			for _, j := range jobs {
+				if j.SuggestionID != nil && *j.SuggestionID == out[i].ID {
+					out[i].JobStatus = j.Status
+				}
+			}
+		}
+	}
 	return out, nil
+}
+
+// ---- 实现任务队列（owner 视角）----
+
+// JobView 是 owner 任务队列的条目视图。
+type JobView struct {
+	ID                string    `json:"id"`
+	IdeaID            string    `json:"idea_id"`
+	IdeaTitle         string    `json:"idea_title"`
+	SuggestionID      *string   `json:"suggestion_id,omitempty"`
+	SuggestionContent string    `json:"suggestion_content,omitempty"`
+	SuggestionAuthor  string    `json:"suggestion_author,omitempty"`
+	Status            string    `json:"status"`
+	Note              string    `json:"note,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+// ListJobs 返回某用户的实现任务队列（新任务在前，未完成优先）。
+func (s *SuggestionService) ListJobs(ownerUserID string) ([]JobView, error) {
+	var jobs []model.ImplementationJob
+	if err := s.db.Where("owner_user_id = ?", ownerUserID).
+		Order("CASE status WHEN 'done' THEN 1 WHEN 'failed' THEN 2 ELSE 0 END, created_at DESC").
+		Find(&jobs).Error; err != nil {
+		return nil, err
+	}
+	if len(jobs) == 0 {
+		return []JobView{}, nil
+	}
+
+	// 批量取 idea 标题
+	ideaIDs := make([]string, 0, len(jobs))
+	for _, j := range jobs {
+		ideaIDs = append(ideaIDs, j.IdeaID)
+	}
+	var ideaRows []struct{ ID, Title string }
+	s.db.Table("ideas").Select("id, title").Where("id IN ?", ideaIDs).Scan(&ideaRows)
+	titles := map[string]string{}
+	for _, r := range ideaRows {
+		titles[r.ID] = r.Title
+	}
+
+	out := make([]JobView, len(jobs))
+	for i, j := range jobs {
+		view := JobView{
+			ID: j.ID, IdeaID: j.IdeaID, IdeaTitle: titles[j.IdeaID],
+			SuggestionID: j.SuggestionID, Status: j.Status, Note: j.Note,
+			CreatedAt: j.CreatedAt, UpdatedAt: j.UpdatedAt,
+		}
+		// 简报里存有建议内容与作者快照
+		var brief struct {
+			SuggestionContent string `json:"suggestion_content"`
+		}
+		_ = json.Unmarshal([]byte(j.Brief), &brief)
+		view.SuggestionContent = brief.SuggestionContent
+		out[i] = view
+	}
+	return out, nil
+}
+
+// 合法状态转移：pending 可开始/完成/失败；in_progress 可完成/失败；终态不可再变。
+var jobTransitions = map[string]map[string]bool{
+	"pending":     {"in_progress": true, "done": true, "failed": true},
+	"in_progress": {"done": true, "failed": true},
+	"done":        {},
+	"failed":      {},
+}
+
+// UpdateJob 由 owner 推进任务状态。完成时通知建议提交者（其建议已实现）。
+func (s *SuggestionService) UpdateJob(jobID, ownerUserID, status, note string) (*model.ImplementationJob, error) {
+	if status != "in_progress" && status != "done" && status != "failed" {
+		return nil, fmt.Errorf("无效的任务状态")
+	}
+	var notifyRecipient string
+	var notifyIdeaID string
+	var notifySummary string
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		var job model.ImplementationJob
+		if err := tx.Where("id = ?", jobID).First(&job).Error; err != nil {
+			return ErrSuggestionJobNotFound
+		}
+		if job.OwnerUserID != ownerUserID {
+			return ErrSuggestionJobNotOwner
+		}
+		if !jobTransitions[job.Status][status] {
+			return fmt.Errorf("任务已处于终态（%s），不能再变更", job.Status)
+		}
+		updates := map[string]interface{}{"status": status}
+		if note != "" {
+			updates["note"] = note
+		}
+		if err := tx.Model(&job).Updates(updates).Error; err != nil {
+			return err
+		}
+
+		if status == "done" && job.SuggestionID != nil {
+			logActivity(tx, "user", ownerUserID, ActionSuggestionImplemented, "idea", job.IdeaID, nil)
+			// 通知建议提交者：解析建议作者（agent 提交的解析到其 owner）
+			var sug model.IdeaSuggestion
+			if err := tx.Where("id = ?", *job.SuggestionID).First(&sug).Error; err == nil {
+				recipient := sug.UserID
+				var suggesterOwner string
+				if err := tx.Model(&model.Agent{}).Where("id = ?", sug.UserID).Pluck("owner_user_id", &suggesterOwner).Error; err == nil && suggesterOwner != "" {
+					recipient = suggesterOwner
+				}
+				if recipient != "" && recipient != ownerUserID {
+					notifyRecipient = recipient
+					notifyIdeaID = job.IdeaID
+					notifySummary = truncateSummary(sug.Content)
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if s.notif != nil && notifyRecipient != "" {
+		_ = s.notif.Create(notifyRecipient, "user", ownerUserID, "", "suggestion_implemented", "idea", notifyIdeaID, notifySummary)
+	}
+	var job model.ImplementationJob
+	if err := s.db.Where("id = ?", jobID).First(&job).Error; err != nil {
+		return nil, ErrSuggestionJobNotFound
+	}
+	return &job, nil
 }
 
 func suggestionIDs(suggestions []model.IdeaSuggestion) []string {

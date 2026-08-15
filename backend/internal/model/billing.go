@@ -57,7 +57,7 @@ type Order struct {
 	Status         OrderStatus    `gorm:"size:16;index;default:'pending'" json:"status"`
 	Gateway        PaymentGateway `gorm:"size:16" json:"gateway"`
 	GatewayOrderID string         `gorm:"size:128;uniqueIndex" json:"gateway_order_id,omitempty"` // 网关侧订单号 / PaymentIntent ID
-	PaymentURL     string         `gorm:"size:1024" json:"payment_url,omitempty"`                // 跳转支付页 / 二维码内容
+	PaymentURL     string         `gorm:"size:1024" json:"payment_url,omitempty"`                 // 跳转支付页 / 二维码内容
 	PaidAt         *time.Time     `json:"paid_at,omitempty"`
 	ExpiresAt      time.Time      `gorm:"not null" json:"expires_at"` // 订单自身过期时间（未支付 30 分钟失效）
 	CreatedAt      time.Time      `json:"created_at"`
@@ -77,14 +77,14 @@ func (o *Order) BeforeCreate(tx *gorm.DB) error {
 // Date 用字符串 "2006-01-02" 而非 time.Time，避免 MySQL 时区坑。
 // TokensLimit 存当日额度快照：用户当日升级/降级不影响当日记录，次日按新等级发。
 type DailyQuota struct {
-	ID          string    `gorm:"primaryKey;size:36" json:"id"`
-	UserID      string    `gorm:"size:36;uniqueIndex:idx_quota_user_date,priority:1" json:"user_id"`
-	Date        string    `gorm:"size:10;uniqueIndex:idx_quota_user_date,priority:2" json:"date"` // YYYY-MM-DD（本地时区）
-	TokensUsed  int       `gorm:"default:0" json:"tokens_used"`
-	TokensLimit int       `gorm:"not null" json:"tokens_limit"` // 当日额度上限快照
+	ID          string     `gorm:"primaryKey;size:36" json:"id"`
+	UserID      string     `gorm:"size:36;uniqueIndex:idx_quota_user_date,priority:1" json:"user_id"`
+	Date        string     `gorm:"size:10;uniqueIndex:idx_quota_user_date,priority:2" json:"date"` // YYYY-MM-DD（本地时区）
+	TokensUsed  int        `gorm:"default:0" json:"tokens_used"`
+	TokensLimit int        `gorm:"not null" json:"tokens_limit"` // 当日额度上限快照
 	LastChatAt  *time.Time `json:"last_chat_at,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 func (q *DailyQuota) BeforeCreate(tx *gorm.DB) error {
@@ -123,18 +123,18 @@ const (
 // （唯一索引 order_id + status 限制，配合业务校验防重复申请）。
 // 审批通过时，按订单赋予的 Duration 反向扣减用户 PlanExpiresAt，并把订单置为 refunded。
 type Refund struct {
-	ID          string      `gorm:"primaryKey;size:36" json:"id"`
-	OrderID     string      `gorm:"size:36;index" json:"order_id"`
-	UserID      string      `gorm:"size:36;index" json:"user_id"`
-	Amount      int         `gorm:"not null" json:"amount"`        // 退款金额（同订单最小货币单位）
-	Currency    string      `gorm:"size:8;not null" json:"currency"`
-	Reason      string      `gorm:"size:500" json:"reason"`        // 用户填写的退款原因
-	Status      RefundStatus `gorm:"size:16;index;default:'pending'" json:"status"`
-	AdminNote   string      `gorm:"size:500" json:"admin_note,omitempty"` // 管理员审批备注
-	ReviewedBy  string      `gorm:"size:36" json:"reviewed_by,omitempty"` // 审批管理员 ID
-	ReviewedAt  *time.Time  `json:"reviewed_at,omitempty"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
+	ID         string       `gorm:"primaryKey;size:36" json:"id"`
+	OrderID    string       `gorm:"size:36;index" json:"order_id"`
+	UserID     string       `gorm:"size:36;index" json:"user_id"`
+	Amount     int          `gorm:"not null" json:"amount"` // 退款金额（同订单最小货币单位）
+	Currency   string       `gorm:"size:8;not null" json:"currency"`
+	Reason     string       `gorm:"size:500" json:"reason"` // 用户填写的退款原因
+	Status     RefundStatus `gorm:"size:16;index;default:'pending'" json:"status"`
+	AdminNote  string       `gorm:"size:500" json:"admin_note,omitempty"` // 管理员审批备注
+	ReviewedBy string       `gorm:"size:36" json:"reviewed_by,omitempty"` // 审批管理员 ID
+	ReviewedAt *time.Time   `json:"reviewed_at,omitempty"`
+	CreatedAt  time.Time    `json:"created_at"`
+	UpdatedAt  time.Time    `json:"updated_at"`
 }
 
 func (r *Refund) BeforeCreate(tx *gorm.DB) error {
@@ -143,4 +143,3 @@ func (r *Refund) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
-

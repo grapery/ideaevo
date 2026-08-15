@@ -24,15 +24,15 @@ type LLMMessage struct {
 	Parts []LLMContentPart `json:"-"`
 
 	// 工具调用相关（用于多轮 tool use 对话）
-	ToolCalls    []ToolCall `json:"tool_calls,omitempty"`   // role=assistant 且 LLM 请求工具时
-	ToolCallID   string     `json:"tool_call_id,omitempty"` // role=tool 时关联的调用 ID
-	ToolName     string     `json:"name,omitempty"`         // role=tool 时工具名
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`   // role=assistant 且 LLM 请求工具时
+	ToolCallID string     `json:"tool_call_id,omitempty"` // role=tool 时关联的调用 ID
+	ToolName   string     `json:"name,omitempty"`         // role=tool 时工具名
 }
 
 // LLMContentPart 是 OpenAI 兼容的多模态 content part。
 type LLMContentPart struct {
-	Type     string      `json:"type"`               // "text" | "image_url"
-	Text     string      `json:"text,omitempty"`     // type=text 时
+	Type     string       `json:"type"`                // "text" | "image_url"
+	Text     string       `json:"text,omitempty"`      // type=text 时
 	ImageURL *LLMImageURL `json:"image_url,omitempty"` // type=image_url 时
 }
 
@@ -115,11 +115,11 @@ type chatRequest struct {
 }
 
 type chatMsg struct {
-	Role       string         `json:"role"`
+	Role       string          `json:"role"`
 	Content    json.RawMessage `json:"content,omitempty"` // string 或 content parts 数组
-	ToolCalls  []chatToolCall `json:"tool_calls,omitempty"`
-	ToolCallID string         `json:"tool_call_id,omitempty"`
-	Name       string         `json:"name,omitempty"`
+	ToolCalls  []chatToolCall  `json:"tool_calls,omitempty"`
+	ToolCallID string          `json:"tool_call_id,omitempty"`
+	Name       string          `json:"name,omitempty"`
 }
 
 // encodeChatContent 把 LLMMessage 的内容编码为 OpenAI 兼容的 JSON：

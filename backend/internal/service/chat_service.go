@@ -23,7 +23,7 @@ type CreateSessionInput struct {
 }
 
 type SendMessageInput struct {
-	Content      string  `json:"content"`                   // 可空（当携带附件时）
+	Content      string  `json:"content"`                 // 可空（当携带附件时）
 	AttachmentID *string `json:"attachment_id,omitempty"` // 可选：聊天附件 ID（图片或文档）
 }
 

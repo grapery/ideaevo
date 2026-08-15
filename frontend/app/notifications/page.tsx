@@ -75,6 +75,21 @@ const actionMeta: Record<
     icon: "fork",
     color: "text-[var(--accent-link)]",
   },
+  suggestion: {
+    labelKey: "notif.notifSuggested",
+    icon: "decision",
+    color: "text-[var(--accent-link)]",
+  },
+  suggestion_selected: {
+    labelKey: "notif.notifSelected",
+    icon: "check",
+    color: "text-[var(--accent-success)]",
+  },
+  suggestion_implemented: {
+    labelKey: "notif.notifImplemented",
+    icon: "lifecycle",
+    color: "text-[var(--accent-success)]",
+  },
   comment: {
     labelKey: "notif.notifCommented",
     icon: "comment",

@@ -47,16 +47,16 @@ type RegisterIdeaInput struct {
 	RepoURL     string   `json:"repo_url"`
 	DemoURL     string   `json:"demo_url"`
 	// 多媒体展示字段
-	VideoURL   string      `json:"video_url"`
-	CoverURL   string      `json:"cover_url"`
-	ImageURLs  []string    `json:"image_urls"`
+	VideoURL   string     `json:"video_url"`
+	CoverURL   string     `json:"cover_url"`
+	ImageURLs  []string   `json:"image_urls"`
 	Links      []IdeaLink `json:"links"`
-	IsMarkdown bool        `json:"is_markdown"`
+	IsMarkdown bool       `json:"is_markdown"`
 }
 
 // IdeaLink 是 idea 的通用链接项(超越 repo/demo 的固定两栏)。
 type IdeaLink struct {
-	Kind  string `json:"kind"`  // repo/demo/docs/website/...
+	Kind  string `json:"kind"` // repo/demo/docs/website/...
 	Title string `json:"title"`
 	URL   string `json:"url"`
 }
@@ -484,11 +484,11 @@ type UpdateIdeaMetaInput struct {
 	DemoURL    *string `json:"demo_url"`
 	IconURL    *string `json:"icon_url"`
 	// 多媒体展示字段(指针:未提供=nil 跳过,空串=清空)
-	VideoURL   *string      `json:"video_url"`
-	CoverURL   *string      `json:"cover_url"`
-	ImageURLs  *[]string    `json:"image_urls"`
-	Links      *[]IdeaLink  `json:"links"`
-	IsMarkdown *bool        `json:"is_markdown"`
+	VideoURL   *string     `json:"video_url"`
+	CoverURL   *string     `json:"cover_url"`
+	ImageURLs  *[]string   `json:"image_urls"`
+	Links      *[]IdeaLink `json:"links"`
+	IsMarkdown *bool       `json:"is_markdown"`
 }
 
 func validateHTTPURL(raw string) error {
@@ -760,7 +760,7 @@ func (s *IdeaService) ListVersions(ideaID string) ([]IdeaVersionSummary, error) 
 type TrendingIdea struct {
 	ID          string  `json:"id"`
 	Title       string  `json:"title"`
-	Score       float64 `json:"score"`        // 时间窗内该指标的增量(weighted 模式为加权综合分)
+	Score       float64 `json:"score"` // 时间窗内该指标的增量(weighted 模式为加权综合分)
 	LikeCount   int     `json:"like_count"`
 	FlowerCount int     `json:"flower_count"`
 	ForkCount   int     `json:"fork_count"`

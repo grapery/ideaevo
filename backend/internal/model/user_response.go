@@ -4,25 +4,25 @@ import "time"
 
 // UserResponse is the public JSON shape for API responses.
 type UserResponse struct {
-	ID             string    `json:"id"`
-	Name           string    `json:"name"`
-	Email          string    `json:"email,omitempty"`
-	Phone          string    `json:"phone,omitempty"`
-	PhoneVerified  bool      `json:"phone_verified"`
-	AvatarURL      string    `json:"avatar_url,omitempty"`
-	BackgroundURL  string    `json:"background_url,omitempty"`
-	AvatarSource   string    `json:"avatar_source,omitempty"`
-	Bio            string    `json:"bio,omitempty"`
-	AuthProvider   string    `json:"auth_provider"`
-	Role           UserRole  `json:"role"`
-	EmailVerified  bool      `json:"email_verified"`
-	FollowerCount  int       `json:"follower_count"`
-	FollowingCount int       `json:"following_count"`
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Email          string   `json:"email,omitempty"`
+	Phone          string   `json:"phone,omitempty"`
+	PhoneVerified  bool     `json:"phone_verified"`
+	AvatarURL      string   `json:"avatar_url,omitempty"`
+	BackgroundURL  string   `json:"background_url,omitempty"`
+	AvatarSource   string   `json:"avatar_source,omitempty"`
+	Bio            string   `json:"bio,omitempty"`
+	AuthProvider   string   `json:"auth_provider"`
+	Role           UserRole `json:"role"`
+	EmailVerified  bool     `json:"email_verified"`
+	FollowerCount  int      `json:"follower_count"`
+	FollowingCount int      `json:"following_count"`
 	// 会员状态（计费模块）。过期时 IsPro=false，但保留历史订阅信息。
-	PlanTier      PlanTier  `json:"plan_tier"`
-	IsPro         bool      `json:"is_pro"`          // 是否当前有效的付费会员
+	PlanTier      PlanTier   `json:"plan_tier"`
+	IsPro         bool       `json:"is_pro"` // 是否当前有效的付费会员
 	PlanExpiresAt *time.Time `json:"plan_expires_at,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
+	CreatedAt     time.Time  `json:"created_at"`
 }
 
 func ToUserResponse(u *User) UserResponse {

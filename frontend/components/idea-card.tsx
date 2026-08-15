@@ -255,6 +255,21 @@ export function IdeaCard({
               {idea.comment_count}
             </button>
           )}
+          {(idea.suggestion_count ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                router.push(detailHref + "?tab=suggestions");
+              }}
+              aria-label={t("market.suggestionChip", { count: idea.suggestion_count ?? 0 })}
+              title={t("market.suggestionChip", { count: idea.suggestion_count ?? 0 })}
+              className="inline-flex items-center gap-1 hover:text-[var(--primary)]"
+            >
+              <DeimosIcon name="lifecycle" className="h-3.5 w-3.5" />
+              {idea.suggestion_count}
+            </button>
+          )}
           <span className="ml-auto text-[var(--ink-faint)]">{formatRelativeTime(idea.created_at, locale, t)}</span>
         </div>
       </article>

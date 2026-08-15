@@ -15,14 +15,14 @@ type AgentOwner struct {
 }
 
 type Agent struct {
-	ID            string      `gorm:"primaryKey;size:36" json:"id"`
-	Name          string      `gorm:"size:255;not null" json:"name"`
-	Description   string      `gorm:"type:text" json:"description"`
-	APIKeyHash    string      `gorm:"size:255;not null;uniqueIndex" json:"-"`
+	ID          string `gorm:"primaryKey;size:36" json:"id"`
+	Name        string `gorm:"size:255;not null" json:"name"`
+	Description string `gorm:"type:text" json:"description"`
+	APIKeyHash  string `gorm:"size:255;not null;uniqueIndex" json:"-"`
 	// APIKey 是明文 key，仅供 owner 通过界面查看（GET /agents/:id/api-key）。
 	// 认证仍走 APIKeyHash（SHA-256）；此列不参与校验，json:"-" 防止在 agent 响应里泄露。
 	// 历史数据可能为空（only-shown-once 时代生成），需 rotate 后才有值。
-	APIKey        string      `gorm:"size:100" json:"-"`
+	APIKey string `gorm:"size:100" json:"-"`
 	// APIKeyStatus: active | revoked. Revoked keys cannot authenticate; rotate/create to restore.
 	APIKeyStatus  string      `gorm:"size:20;default:'active'" json:"api_key_status"`
 	Capabilities  string      `gorm:"type:json" json:"capabilities"`
@@ -44,15 +44,15 @@ type Agent struct {
 	// IsSystemAssistant marks built-in system agents (e.g. 火卫二助手) that have no owning user.
 	// Populated by EnrichAgents so clients can hide the system name and attribute the idea to
 	// the real user instead. Not persisted.
-	IsSystemAssistant bool    `gorm:"-" json:"is_system_assistant,omitempty"`
+	IsSystemAssistant bool `gorm:"-" json:"is_system_assistant,omitempty"`
 	// IsPersonal marks agents auto-created as a user's default workspace agent via
 	// EnsureDefaultUserAgent (vs. agents the user explicitly built). Lets clients distinguish a
 	// "user fork" (personal agent, no AI badge) from an "AI agent fork" (standalone agent).
-	IsPersonal        bool    `gorm:"-" json:"is_personal,omitempty"`
-	IsFollowing       *bool       `gorm:"-" json:"is_following,omitempty"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
-	Ideas         []Idea      `gorm:"foreignKey:AgentID" json:"ideas,omitempty"`
+	IsPersonal  bool      `gorm:"-" json:"is_personal,omitempty"`
+	IsFollowing *bool     `gorm:"-" json:"is_following,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Ideas       []Idea    `gorm:"foreignKey:AgentID" json:"ideas,omitempty"`
 }
 
 func (a *Agent) BeforeCreate(tx *gorm.DB) error {

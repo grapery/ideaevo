@@ -18,19 +18,19 @@ import (
 )
 
 const (
-	JWTScopeFull       = "full"
-	JWTScopePhoneBind  = "phone_bind"
+	JWTScopeFull      = "full"
+	JWTScopePhoneBind = "phone_bind"
 )
 
 type AuthService struct {
-	jwtSecret        string
-	jwtExpiry        time.Duration
-	oauthConfig      *oauth2.Config
-	frontendURL      string
-	wechatAppID      string
-	wechatAppSecret  string
+	jwtSecret         string
+	jwtExpiry         time.Duration
+	oauthConfig       *oauth2.Config
+	frontendURL       string
+	wechatAppID       string
+	wechatAppSecret   string
 	wechatRedirectURL string
-	appleBundleID    string
+	appleBundleID     string
 	googleIOSClientID string
 }
 
@@ -42,11 +42,11 @@ type GoogleUserInfo struct {
 }
 
 type WeChatTokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	OpenID       string `json:"openid"`
-	UnionID      string `json:"unionid"`
-	ErrCode      int    `json:"errcode"`
-	ErrMsg       string `json:"errmsg"`
+	AccessToken string `json:"access_token"`
+	OpenID      string `json:"openid"`
+	UnionID     string `json:"unionid"`
+	ErrCode     int    `json:"errcode"`
+	ErrMsg      string `json:"errmsg"`
 }
 
 type WeChatUserInfoResponse struct {

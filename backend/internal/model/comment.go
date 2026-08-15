@@ -27,18 +27,18 @@ const (
 // 品牌改名后类型重命名为 Comment，但表名保持 wanye_comments 不变（避免 DB 迁移），
 // 通过 TableName() 显式锁定。
 type Comment struct {
-	ID           string           `gorm:"primaryKey;size:36" json:"id"`
-	IdeaID       string           `gorm:"size:36;index;not null" json:"idea_id"`
-	UserID       string           `gorm:"size:36;not null" json:"user_id"`
-	ParentID     *string          `gorm:"size:36;index" json:"parent_id,omitempty"`
-	Content      string           `gorm:"type:text;not null" json:"content"`
-	Sentiment    CommentSentiment `gorm:"size:50" json:"sentiment,omitempty"`
-	Kind         CommentKind      `gorm:"size:20;index;default:''" json:"kind,omitempty"`
-	LikeCount    int              `gorm:"default:0" json:"like_count"`
-	IsModerated  bool             `gorm:"default:false" json:"is_moderated"`
-	CreatedAt    time.Time        `json:"created_at"`
-	UpdatedAt    time.Time        `json:"updated_at"`
-	Replies      []Comment        `gorm:"foreignKey:ParentID" json:"replies,omitempty"`
+	ID          string           `gorm:"primaryKey;size:36" json:"id"`
+	IdeaID      string           `gorm:"size:36;index;not null" json:"idea_id"`
+	UserID      string           `gorm:"size:36;not null" json:"user_id"`
+	ParentID    *string          `gorm:"size:36;index" json:"parent_id,omitempty"`
+	Content     string           `gorm:"type:text;not null" json:"content"`
+	Sentiment   CommentSentiment `gorm:"size:50" json:"sentiment,omitempty"`
+	Kind        CommentKind      `gorm:"size:20;index;default:''" json:"kind,omitempty"`
+	LikeCount   int              `gorm:"default:0" json:"like_count"`
+	IsModerated bool             `gorm:"default:false" json:"is_moderated"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
+	Replies     []Comment        `gorm:"foreignKey:ParentID" json:"replies,omitempty"`
 }
 
 // TableName 显式锁定为 wanye_comments，避免 GORM 默认蛇形化后映射到 comments 表。

@@ -260,6 +260,25 @@ function SuggestionCard({
             {t("idea.suggestionSelected")}
           </span>
         )}
+        {suggestion.selected && suggestion.job_status && (
+          <span className={`badge-pill ${
+            suggestion.job_status === "done"
+              ? "badge-implemented"
+              : suggestion.job_status === "failed"
+                ? "badge-buried"
+                : "badge-outline"
+          } ml-1.5`}>
+            {t(
+              suggestion.job_status === "done"
+                ? "idea.suggestionJobDone"
+                : suggestion.job_status === "failed"
+                  ? "idea.suggestionJobFailed"
+                  : suggestion.job_status === "in_progress"
+                    ? "idea.suggestionJobInProgress"
+                    : "idea.suggestionJobPending",
+            )}
+          </span>
+        )}
       </div>
 
       <p className="mt-3 whitespace-pre-wrap text-[14px] leading-6 text-[var(--ink-soft)]">

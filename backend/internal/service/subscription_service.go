@@ -25,9 +25,9 @@ var (
 // 会员有效性规则：PlanTier == pro 且 PlanExpiresAt > now。
 // 过期后「软降级」——不修改数据库，只在判断时视为 free，保留历史订阅记录。
 type SubscriptionService struct {
-	db        *gorm.DB
-	quotaSvc  *QuotaService
-	agentSvc  *AgentService
+	db       *gorm.DB
+	quotaSvc *QuotaService
+	agentSvc *AgentService
 }
 
 func NewSubscriptionService(db *gorm.DB, quotaSvc *QuotaService, agentSvc *AgentService) *SubscriptionService {
@@ -199,10 +199,10 @@ func (s *SubscriptionService) AgentCount(userID string) int64 {
 
 // MembershipView 是对外的会员状态视图（主页 / 充值页展示）。
 type MembershipView struct {
-	IsPro        bool       `json:"is_pro"`
-	PlanTier     string     `json:"plan_tier"`
-	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
-	MaxAgents    int        `json:"max_agents"`
-	AgentCount   int64      `json:"agent_count"`
-	DailyQuota   QuotaView  `json:"daily_quota"`
+	IsPro      bool       `json:"is_pro"`
+	PlanTier   string     `json:"plan_tier"`
+	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
+	MaxAgents  int        `json:"max_agents"`
+	AgentCount int64      `json:"agent_count"`
+	DailyQuota QuotaView  `json:"daily_quota"`
 }

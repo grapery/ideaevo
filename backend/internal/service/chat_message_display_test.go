@@ -86,8 +86,8 @@ func TestBuildToolCallActivityContent(t *testing.T) {
 
 func TestChatMessageToLLMMessage_RestoresToolCalls(t *testing.T) {
 	m := model.ChatMessage{
-		Role:     model.MessageRoleAssistant,
-		Content:  "",
+		Role:    model.MessageRoleAssistant,
+		Content: "",
 		Metadata: marshalMessageMeta(messageMeta{
 			DisplayKind: displayKindLLMOnly,
 			ToolCalls:   []ToolCall{{ID: "call-1", Name: "search_ideas", ArgsJSON: []byte(`{}`)}},

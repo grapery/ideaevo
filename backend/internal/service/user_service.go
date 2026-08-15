@@ -42,9 +42,9 @@ func normalizePhone(phone string) string {
 func (s *UserService) applyDefaultMedia(user *model.User) error {
 	avatar, bg := ApplyDefaultProfileMedia(user.ID)
 	return s.db.Model(user).Updates(map[string]interface{}{
-		"avatar_url":      avatar,
-		"background_url":  bg,
-		"avatar_source":   "dicebear",
+		"avatar_url":     avatar,
+		"background_url": bg,
+		"avatar_source":  "dicebear",
 	}).Error
 }
 
@@ -404,23 +404,23 @@ func (s *UserService) UpdateProfile(userID string, input UpdateProfileInput) err
 				return errors.New("头像地址无效")
 			}
 			if err := s.assets.ValidateUploadedObject(key, "users", userID); err != nil {
-					return err
-				}
-			} else if s.assets != nil && !strings.HasPrefix(input.AvatarURL, "https://api.dicebear.com/") {
-				return errors.New("头像须来自允许的上传存储")
+				return err
 			}
-			updates["avatar_url"] = input.AvatarURL
-			if input.AvatarSource != "" {
-				updates["avatar_source"] = input.AvatarSource
-			}
+		} else if s.assets != nil && !strings.HasPrefix(input.AvatarURL, "https://api.dicebear.com/") {
+			return errors.New("头像须来自允许的上传存储")
 		}
-		if input.BackgroundURL != "" {
-			if s.assets != nil && s.assets.IsAllowedURL(input.BackgroundURL) {
-				key, err := s.assets.KeyFromURL(input.BackgroundURL)
-				if err != nil {
-					return errors.New("背景图地址无效")
-				}
-				if err := s.assets.ValidateUploadedObject(key, "users", userID); err != nil {
+		updates["avatar_url"] = input.AvatarURL
+		if input.AvatarSource != "" {
+			updates["avatar_source"] = input.AvatarSource
+		}
+	}
+	if input.BackgroundURL != "" {
+		if s.assets != nil && s.assets.IsAllowedURL(input.BackgroundURL) {
+			key, err := s.assets.KeyFromURL(input.BackgroundURL)
+			if err != nil {
+				return errors.New("背景图地址无效")
+			}
+			if err := s.assets.ValidateUploadedObject(key, "users", userID); err != nil {
 				return err
 			}
 		} else if s.assets != nil && !strings.HasPrefix(input.BackgroundURL, "https://api.dicebear.com/") {
@@ -453,10 +453,10 @@ func (s *UserService) ResetBackground(userID string) error {
 }
 
 type DeleteAccountInput struct {
-	Password      string `json:"password"`
-	ConfirmText   string `json:"confirm_text"`
-	Phone         string `json:"phone"`
-	SMSCode       string `json:"sms_code"`
+	Password    string `json:"password"`
+	ConfirmText string `json:"confirm_text"`
+	Phone       string `json:"phone"`
+	SMSCode     string `json:"sms_code"`
 }
 
 func (s *UserService) DeleteAccount(userID string, input DeleteAccountInput, sms *SMSService) error {

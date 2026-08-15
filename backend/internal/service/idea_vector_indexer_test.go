@@ -12,11 +12,11 @@ import (
 )
 
 type mockVectorBackend struct {
-	mu       sync.Mutex
-	putMeta  map[string]any
-	putDone  chan struct{}
-	delDone  chan struct{}
-	delKeys  []string
+	mu      sync.Mutex
+	putMeta map[string]any
+	putDone chan struct{}
+	delDone chan struct{}
+	delKeys []string
 }
 
 func newMockVectorBackend() *mockVectorBackend {

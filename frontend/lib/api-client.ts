@@ -26,6 +26,7 @@ import {
   CreateOrderResult,
   BillingOrder,
   Refund,
+  ImplementationJobView,
 } from "./types";
 import { getApiBase } from "./api-base";
 import { parseResponseError, formatApiError } from "./api-error";
@@ -950,6 +951,18 @@ export const userApi = {
     requestWithAuth<{ message: string }>(`/users/${id}/follow`, {
       method: "DELETE",
     }),
+
+  listImplementationJobs: () =>
+    requestWithAuth<{ jobs: ImplementationJobView[] }>("/user/implementation-jobs"),
+
+  updateImplementationJob: (
+    id: string,
+    data: { status: "in_progress" | "done" | "failed"; note?: string },
+  ) =>
+    requestWithAuth<{ job: ImplementationJobView }>(
+      `/user/implementation-jobs/${id}`,
+      { method: "PATCH", body: JSON.stringify(data) },
+    ),
 
   getMyProfile: () => requestWithAuth<UserProfile>("/user/profile"),
 

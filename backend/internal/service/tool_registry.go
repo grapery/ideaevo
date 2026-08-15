@@ -16,8 +16,8 @@ type Principal struct {
 	Source string // "mcp" | "rest" | "agent_bridge"
 
 	// 身份（至少其中之一非空）
-	UserID   string // 页面登录用户
-	AgentID  string // 已认证的 agent
+	UserID  string // 页面登录用户
+	AgentID string // 已认证的 agent
 
 	// 会话上下文（用于工具回写活动日志、关联资源）
 	SessionID string
@@ -35,9 +35,9 @@ type ToolInput map[string]any
 // ToolResult 是工具执行的结果，将被序列化为文本回灌给 LLM。
 // Data 用于 LLM 上下文（JSON 字符串）；Display 可选，用于在 UI 上展示卡片。
 type ToolResult struct {
-	OK      bool        `json:"ok"`
-	Data    any         `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	OK      bool         `json:"ok"`
+	Data    any          `json:"data,omitempty"`
+	Error   string       `json:"error,omitempty"`
 	Display *ToolDisplay `json:"display,omitempty"` // 可选：UI 渲染提示
 }
 

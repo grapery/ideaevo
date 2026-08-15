@@ -238,6 +238,7 @@ export interface Idea {
   fork_count: number;
   comment_count: number;
   wish_count?: number;
+  suggestion_count?: number;
   weighted_score?: number;
   created_at: string;
   updated_at: string;
@@ -317,6 +318,7 @@ export interface IdeaSuggestionView {
   voted: boolean;
   selected: boolean;
   selected_at?: string;
+  job_status?: "pending" | "in_progress" | "done" | "failed";
   created_at: string;
   author_name?: string;
   author_avatar?: string;
@@ -651,4 +653,18 @@ export interface UserDevice {
   token: string;
   platform: string;
   created_at?: string;
+}
+
+/** 实现任务队列条目（owner 视角，后端 JobView） */
+export interface ImplementationJobView {
+  id: string;
+  idea_id: string;
+  idea_title: string;
+  suggestion_id?: string;
+  suggestion_content?: string;
+  suggestion_author?: string;
+  status: "pending" | "in_progress" | "done" | "failed";
+  note?: string;
+  created_at: string;
+  updated_at: string;
 }

@@ -35,22 +35,22 @@ type ActivityView struct {
 	Metadata   string    `json:"metadata,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
 
-	ActorName      string         `json:"actor_name,omitempty"`
-	ActorAvatar    string         `json:"actor_avatar,omitempty"`
-	TargetTitle    string         `json:"target_title,omitempty"`
-	TargetDesc     string         `json:"target_desc,omitempty"`
-	TargetStatus   string         `json:"target_status,omitempty"`
-	TargetCategory string         `json:"target_category,omitempty"`
-	TargetImplStatus string       `json:"target_impl_status,omitempty"`
-	TargetTags     []string       `json:"target_tags,omitempty"`
-	TargetIconURL  string         `json:"target_icon_url,omitempty"`
-	TargetCoverURL string         `json:"target_cover_url,omitempty"`
-	TargetLikeCount    int        `json:"target_like_count,omitempty"`
-	TargetFlowerCount  int        `json:"target_flower_count,omitempty"`
-	TargetWishCount    int        `json:"target_wish_count,omitempty"`
-	TargetForkCount    int        `json:"target_fork_count,omitempty"`
-	TargetCommentCount int        `json:"target_comment_count,omitempty"`
-	Reactions      map[string]int `json:"reactions,omitempty"`
+	ActorName          string         `json:"actor_name,omitempty"`
+	ActorAvatar        string         `json:"actor_avatar,omitempty"`
+	TargetTitle        string         `json:"target_title,omitempty"`
+	TargetDesc         string         `json:"target_desc,omitempty"`
+	TargetStatus       string         `json:"target_status,omitempty"`
+	TargetCategory     string         `json:"target_category,omitempty"`
+	TargetImplStatus   string         `json:"target_impl_status,omitempty"`
+	TargetTags         []string       `json:"target_tags,omitempty"`
+	TargetIconURL      string         `json:"target_icon_url,omitempty"`
+	TargetCoverURL     string         `json:"target_cover_url,omitempty"`
+	TargetLikeCount    int            `json:"target_like_count,omitempty"`
+	TargetFlowerCount  int            `json:"target_flower_count,omitempty"`
+	TargetWishCount    int            `json:"target_wish_count,omitempty"`
+	TargetForkCount    int            `json:"target_fork_count,omitempty"`
+	TargetCommentCount int            `json:"target_comment_count,omitempty"`
+	Reactions          map[string]int `json:"reactions,omitempty"`
 }
 
 // hydrateActivities 批量加载 activity 关联的 idea（标题/描述/状态/分类）、
@@ -335,7 +335,7 @@ func (h *ActivityHandler) Feed(c *gin.Context) {
 
 	h.db.Model(&model.Idea{}).Count(&totalIdeas)
 
-  h.db.Model(&model.Idea{}).Select(rankingCols).
+	h.db.Model(&model.Idea{}).Select(rankingCols).
 		Order("like_count DESC, created_at DESC").Limit(5).Find(&popular)
 	h.db.Model(&model.Idea{}).Select(rankingCols).
 		Order("wish_count DESC, created_at DESC").Limit(5).Find(&flowers)

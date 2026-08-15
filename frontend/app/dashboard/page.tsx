@@ -120,6 +120,7 @@ export default function DashboardPage() {
   ];
 
   const shortcuts = [
+    { href: "/user/jobs", icon: "lifecycle" as const, label: t("jobs.title") },
     { href: "/chat", icon: "chat" as const, label: t("dashboard.actionChat") },
     { href: "/ideas/new", icon: "publish" as const, label: t("dashboard.actionPublish") },
     { href: "/docs/mcp", icon: "tool" as const, label: t("dashboard.actionMcp") },

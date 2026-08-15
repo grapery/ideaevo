@@ -13,9 +13,9 @@ import (
 // DelegateToAgentTool 让一个 Agent 在对话中把任务委派给站内另一个 Agent。
 // 通过内部函数调用（非 HTTP）执行目标 Agent，避免鉴权问题。
 type DelegateToAgentTool struct {
-	db           *gorm.DB
-	agentSvc     *AgentService
-	delegateFn   func(ctx context.Context, targetAgentID string, task string, callerAgentID string) (string, error)
+	db         *gorm.DB
+	agentSvc   *AgentService
+	delegateFn func(ctx context.Context, targetAgentID string, task string, callerAgentID string) (string, error)
 }
 
 // DelegateFunc 是进程内委派函数签名。

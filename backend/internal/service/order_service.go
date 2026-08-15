@@ -229,8 +229,8 @@ func (s *OrderService) MarkPaid(orderID, gatewayOrderID string) error {
 	now := time.Now()
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&order).Updates(map[string]any{
-			"status":          model.OrderPaid,
-			"paid_at":         &now,
+			"status":           model.OrderPaid,
+			"paid_at":          &now,
 			"gateway_order_id": gatewayOrderID,
 		}).Error; err != nil {
 			return err

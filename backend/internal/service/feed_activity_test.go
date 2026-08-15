@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -14,7 +15,13 @@ import (
 // testDB 尝试连接本地 MySQL；连不上则跳过依赖 DB 的测试（CI 用 MySQL service container）。
 func testDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	dsn := "root:12345678@tcp(localhost:3306)/wanye?charset=utf8mb4&parseTime=True&loc=Local"
+	// 默认使用独立的测试库（wanye_test），避免与 seed 灌入的开发数据（wanye）
+	// 互相污染——例如榜单测试的 topN 断言会被 seed 数据挤出。
+	dbName := os.Getenv("TEST_DB_NAME")
+	if dbName == "" {
+		dbName = "wanye_test"
+	}
+	dsn := "root:12345678@tcp(localhost:3306)/" + dbName + "?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
 		t.Skipf("local MySQL unavailable, skipping DB test: %v", err)
@@ -35,16 +42,17 @@ func uniqueSuffix() string {
 
 func TestFeedActions_ContainsCreateForkShare(t *testing.T) {
 	want := map[string]bool{
-		ActionRegister:           true,
-		ActionFork:               true,
-		ActionShare:              true,
-		ActionBury:               true,
-		ActionArchive:            true,
-		ActionImplement:          true,
-		ActionReactivate:         true,
-		ActionUpdateImpl:         true,
-		ActionSuggest:            true,
-		ActionSuggestionSelected: true,
+		ActionRegister:              true,
+		ActionFork:                  true,
+		ActionShare:                 true,
+		ActionBury:                  true,
+		ActionArchive:               true,
+		ActionImplement:             true,
+		ActionReactivate:            true,
+		ActionUpdateImpl:            true,
+		ActionSuggest:               true,
+		ActionSuggestionSelected:    true,
+		ActionSuggestionImplemented: true,
 	}
 	if len(FeedActions) != len(want) {
 		t.Fatalf("FeedActions has %d entries, want %d: %v", len(FeedActions), len(want), FeedActions)

@@ -22,7 +22,7 @@ func NewChatAttachmentHandler(attachmentSvc *service.ChatAttachmentService) *Cha
 func (h *ChatAttachmentHandler) PresignChatFile(c *gin.Context) {
 	userID := c.GetString("user_id")
 	var input struct {
-		Kind        string `json:"kind" binding:"required"`         // image | document
+		Kind        string `json:"kind" binding:"required"` // image | document
 		ContentType string `json:"content_type" binding:"required"`
 		FileName    string `json:"file_name"`
 		FileSize    int64  `json:"file_size" binding:"required"`

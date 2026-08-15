@@ -64,9 +64,9 @@ func (s *AgentBridgeService) ExecuteTool(ctx context.Context, agent *model.Agent
 	}
 
 	p := Principal{
-		Source:   "agent_bridge",
-		AgentID:  agent.ID,
-		IdeaID:   "",
+		Source:  "agent_bridge",
+		AgentID: agent.ID,
+		IdeaID:  "",
 	}
 
 	execCtx, cancel := context.WithTimeout(ctx, 30*time.Second)

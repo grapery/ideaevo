@@ -19,11 +19,11 @@ const (
 
 // Message roles (stored in ChatMessage.Role).
 const (
-	MessageRoleUser       = "user"
-	MessageRoleAssistant  = "assistant"
-	MessageRoleSystem     = "system"
-	MessageRoleSystemErr  = "system_error"
-	MessageRoleTool       = "tool" // tool-call result, OpenAI protocol; not shown to UI
+	MessageRoleUser      = "user"
+	MessageRoleAssistant = "assistant"
+	MessageRoleSystem    = "system"
+	MessageRoleSystemErr = "system_error"
+	MessageRoleTool      = "tool" // tool-call result, OpenAI protocol; not shown to UI
 )
 
 // Assistant/user message content types for rendering.
@@ -34,24 +34,24 @@ const (
 )
 
 type ChatSession struct {
-	ID           string        `gorm:"primaryKey;size:36" json:"id"`
-	SessionType  string        `gorm:"size:20;default:user_agent;index;not null" json:"session_type"`
-	UserID       string        `gorm:"size:36;index" json:"user_id,omitempty"`
-	User         User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	AgentID      string        `gorm:"size:36;index;not null" json:"agent_id"`
-	Agent        Agent         `gorm:"foreignKey:AgentID" json:"agent,omitempty"`
-	PeerAgentID  *string       `gorm:"size:36;index" json:"peer_agent_id,omitempty"`
-	PeerAgent    *Agent        `gorm:"foreignKey:PeerAgentID" json:"peer_agent,omitempty"`
-	IdeaID       *string       `gorm:"size:36;index" json:"idea_id,omitempty"`
-	Idea         *Idea         `gorm:"foreignKey:IdeaID" json:"idea,omitempty"`
+	ID                    string        `gorm:"primaryKey;size:36" json:"id"`
+	SessionType           string        `gorm:"size:20;default:user_agent;index;not null" json:"session_type"`
+	UserID                string        `gorm:"size:36;index" json:"user_id,omitempty"`
+	User                  User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	AgentID               string        `gorm:"size:36;index;not null" json:"agent_id"`
+	Agent                 Agent         `gorm:"foreignKey:AgentID" json:"agent,omitempty"`
+	PeerAgentID           *string       `gorm:"size:36;index" json:"peer_agent_id,omitempty"`
+	PeerAgent             *Agent        `gorm:"foreignKey:PeerAgentID" json:"peer_agent,omitempty"`
+	IdeaID                *string       `gorm:"size:36;index" json:"idea_id,omitempty"`
+	Idea                  *Idea         `gorm:"foreignKey:IdeaID" json:"idea,omitempty"`
 	Title                 string        `gorm:"size:500" json:"title"`
 	MessageCount          int           `gorm:"default:0" json:"message_count"`
 	ForkedFromID          *string       `gorm:"size:36;index" json:"forked_from_id,omitempty"`
 	ForkedBeforeMessageID *string       `gorm:"size:36" json:"forked_before_message_id,omitempty"`
 	ArchivedAt            *time.Time    `gorm:"index" json:"archived_at,omitempty"`
 	CreatedAt             time.Time     `gorm:"index" json:"created_at"`
-	UpdatedAt    time.Time     `json:"updated_at"`
-	Messages     []ChatMessage `gorm:"foreignKey:SessionID" json:"messages,omitempty"`
+	UpdatedAt             time.Time     `json:"updated_at"`
+	Messages              []ChatMessage `gorm:"foreignKey:SessionID" json:"messages,omitempty"`
 }
 
 func (s *ChatSession) BeforeCreate(tx *gorm.DB) error {
@@ -65,15 +65,15 @@ func (s *ChatSession) BeforeCreate(tx *gorm.DB) error {
 }
 
 type ChatMessage struct {
-	ID        string    `gorm:"primaryKey;size:36" json:"id"`
-	SessionID string    `gorm:"size:36;index;not null" json:"session_id"`
-	ActorType string    `gorm:"size:10;index" json:"actor_type"` // user | agent
-	ActorID   string    `gorm:"size:36;index" json:"actor_id"`
+	ID          string    `gorm:"primaryKey;size:36" json:"id"`
+	SessionID   string    `gorm:"size:36;index;not null" json:"session_id"`
+	ActorType   string    `gorm:"size:10;index" json:"actor_type"` // user | agent
+	ActorID     string    `gorm:"size:36;index" json:"actor_id"`
 	Role        string    `gorm:"size:20;not null;index" json:"role"` // user, assistant, system, tool
 	ContentType string    `gorm:"size:20;default:markdown" json:"content_type"`
 	Content     string    `gorm:"type:text;not null" json:"content"`
-	Metadata  string    `gorm:"type:json" json:"metadata,omitempty"`
-	CreatedAt time.Time `gorm:"index" json:"created_at"`
+	Metadata    string    `gorm:"type:json" json:"metadata,omitempty"`
+	CreatedAt   time.Time `gorm:"index" json:"created_at"`
 }
 
 func (m *ChatMessage) BeforeCreate(tx *gorm.DB) error {
@@ -112,7 +112,7 @@ type ChatAttachment struct {
 	FileName    string    `gorm:"size:255" json:"file_name"`
 	ContentType string    `gorm:"size:64;not null" json:"content_type"`
 	Size        int64     `gorm:"not null" json:"size"`
-	ObjectKey   string    `gorm:"size:500;not null" json:"-"` // OSS key，不直接暴露
+	ObjectKey   string    `gorm:"size:500;not null" json:"-"`   // OSS key，不直接暴露
 	URL         string    `gorm:"size:500;not null" json:"url"` // public/CDN URL
 	Summary     string    `gorm:"type:text" json:"summary"`     // 图片: 占位; 文档: 启发式摘要
 	CreatedAt   time.Time `gorm:"index" json:"created_at"`

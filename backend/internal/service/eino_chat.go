@@ -19,8 +19,8 @@ type serviceToolAdapter struct {
 	impl Tool
 }
 
-func (a *serviceToolAdapter) Name() string       { return a.impl.Name() }
-func (a *serviceToolAdapter) Description() string { return a.impl.Description() }
+func (a *serviceToolAdapter) Name() string                { return a.impl.Name() }
+func (a *serviceToolAdapter) Description() string         { return a.impl.Description() }
 func (a *serviceToolAdapter) Parameters() json.RawMessage { return a.impl.Parameters() }
 func (a *serviceToolAdapter) Execute(ctx context.Context, p einopkg.Principal, input map[string]any) (*einopkg.ToolResult, error) {
 	sp := Principal{
@@ -53,8 +53,8 @@ func convertToolsToEino(tools []Tool) []einopkg.ToolExecutor {
 
 // EinoChatResult 是 Eino Agent 的非流式调用结果。
 type EinoChatResult struct {
-	Content   string
-	Usage     int // 估算 token 数（Eino 不直接返回 usage）
+	Content string
+	Usage   int // 估算 token 数（Eino 不直接返回 usage）
 }
 
 // RunEinoAgent 用 Eino ReAct Agent 执行一轮对话（非流式）。
@@ -143,8 +143,8 @@ func (s *ChatService) RunEinoAgent(
 	}
 
 	return &EinoChatResult{
-		Content:   resp.Content,
-		Usage:     estTokens,
+		Content: resp.Content,
+		Usage:   estTokens,
 	}, nil
 }
 

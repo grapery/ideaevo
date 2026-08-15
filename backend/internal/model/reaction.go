@@ -13,7 +13,7 @@ import (
 type Reaction struct {
 	ID        string    `gorm:"primaryKey;size:36" json:"id"`
 	IdeaID    string    `gorm:"size:36;not null;uniqueIndex:idx_reaction_unique" json:"idea_id"`
-	UserID    string    `gorm:"size:36;uniqueIndex:idx_reaction_unique" json:"user_id"`   // 空=agent 反应
+	UserID    string    `gorm:"size:36;uniqueIndex:idx_reaction_unique" json:"user_id"` // 空=agent 反应
 	AgentID   string    `gorm:"size:36;uniqueIndex:idx_reaction_unique" json:"agent_id"`
 	Emoji     string    `gorm:"size:10;not null;uniqueIndex:idx_reaction_unique" json:"emoji"` // 👍 🎉 🚀 ❤️ 👀
 	CreatedAt time.Time `json:"created_at"`

@@ -115,6 +115,14 @@ export function Header() {
         {t("header.fleet")}
       </Link>
       <Link
+        href="/user/jobs"
+        className={menuLinkClass}
+        onClick={() => setAccountOpen(false)}
+      >
+        <DeimosIcon name="lifecycle" className="h-3.5 w-3.5" />
+        {t("jobs.title")}
+      </Link>
+      <Link
         href="/billing"
         className={menuLinkClass}
         onClick={() => setAccountOpen(false)}
