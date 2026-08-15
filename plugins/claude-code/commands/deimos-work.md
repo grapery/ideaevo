@@ -1,6 +1,6 @@
 ---
 description: 领取并实现一个 Deimos 实现任务
-allowed-tools: mcp__deimos__claim_next_job, mcp__deimos__get_job_spec, mcp__deimos__ask_user, mcp__deimos__send_progress, mcp__deimos__report_job_result, mcp__deimos__search_ideas, mcp__deimos__get_idea_detail
+allowed-tools: mcp__deimos__claim_next_job, mcp__deimos__list_my_jobs, mcp__deimos__get_job_spec, mcp__deimos__ask_user, mcp__deimos__send_progress, mcp__deimos__report_job_result, mcp__deimos__search_ideas, mcp__deimos__get_idea_detail
 ---
 
 调用 claim_next_job 领取任务。若返回为空，调用 list_my_jobs 展示当前队列状态，并告诉用户"当前没有待实现的任务"。

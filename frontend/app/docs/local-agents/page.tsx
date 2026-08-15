@@ -17,7 +17,9 @@ export default async function LocalAgentsDocsPage() {
   ];
 
   const workflow = [
+    { tool: "list_my_jobs", desc: t("docs.local.wfList") },
     { tool: "claim_next_job", desc: t("docs.local.wfClaim") },
+    { tool: "get_job_spec", desc: t("docs.local.wfSpec") },
     { tool: "send_progress", desc: t("docs.local.wfProgress") },
     { tool: "ask_user", desc: t("docs.local.wfAsk") },
     { tool: "report_job_result", desc: t("docs.local.wfReport") },

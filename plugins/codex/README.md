@@ -10,6 +10,8 @@
 
 ### 方式二：一键脚本（手动路径）
 
+> 脚本适用于 macOS / Linux / WSL / Git Bash；Windows 原生环境请用方式三。
+
 ```bash
 git clone https://github.com/grapery/deimos-codex && cd deimos-codex
 ./install.sh          # 幂等：复制技能 + 合并 MCP 配置到 ~/.codex/config.toml
