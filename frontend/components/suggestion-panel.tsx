@@ -308,7 +308,7 @@ function SuggestionCard({
           disabled={suggestion.selected || voting}
           aria-pressed={suggestion.voted}
           title={suggestion.selected ? undefined : suggestion.voted ? t("idea.suggestionVoted") : t("idea.suggestionVote")}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium tabular-nums transition-colors ${
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium tabular-nums transition-all active:scale-[0.96] ${
             suggestion.voted
               ? "border-[var(--accent-link)]/30 bg-[var(--accent-link-soft)] text-[var(--accent-link)]"
               : "border-[var(--rule)] text-[var(--ink-soft)] hover:border-[var(--accent-link)] hover:text-[var(--accent-link)]"

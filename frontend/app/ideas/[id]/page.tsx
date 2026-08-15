@@ -199,6 +199,19 @@ export default async function IdeaDetailPage({
       : idea.status === "implemented"
         ? "badge-implemented"
         : "badge-buried";
+  const categoryLabel = (category?: string) => {
+    switch (category) {
+      case "tool": return t("market.catTool");
+      case "service": return t("market.catService");
+      case "integration": return t("market.catIntegration");
+      case "automation": return t("market.catAutomation");
+      case "creative": return t("market.catCreative");
+      case "data": return t("market.catData");
+      case "other": return t("market.catOther");
+      default: return category || "";
+    }
+  };
+
   const activeTab: IdeaDetailTab =
     tab === "evolution" || tab === "comments" || tab === "suggestions" || tab === "more"
       ? tab
@@ -227,7 +240,7 @@ export default async function IdeaDetailPage({
             >
               {implStatus}
             </span>
-            <span className="rounded-full border border-[var(--rule)] px-2.5 py-1 text-[var(--ink-soft)]">{idea.category}</span>
+            <span className="rounded-full border border-[var(--rule)] px-2.5 py-1 text-[var(--ink-soft)]">{categoryLabel(idea.category)}</span>
 
             {/* 分隔符 */}
             {(lineage?.source_idea || idea.fork_count > 0) && (

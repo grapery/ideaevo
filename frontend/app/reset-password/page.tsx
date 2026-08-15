@@ -211,7 +211,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading || !rules.every((r) => r.ok)}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-[var(--ink)] py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-[var(--ink)] py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 transition-transform active:scale-[0.97]"
               >
                 {loading ? (<><ButtonSpinner /> {t("auth.resetting")}</>) : t("auth.resetPassword")}
               </button>

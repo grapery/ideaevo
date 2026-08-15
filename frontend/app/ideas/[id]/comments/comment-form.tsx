@@ -191,7 +191,7 @@ export function CommentForm({
                   <button
                     type="submit"
                     disabled={loading || !content.trim()}
-                    className="rounded-full bg-[var(--primary)] px-4 py-1.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-full bg-[var(--primary)] px-4 py-1.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 transition-transform active:scale-[0.97]"
                   >
                     {loading
                       ? t("common.loading")

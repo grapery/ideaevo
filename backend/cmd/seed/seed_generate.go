@@ -157,12 +157,44 @@ var archiveReasons = []string{
 var repoSlugWords = []string{"kit", "lab", "flow", "hub", "mate", "gen", "scope", "forge", "pilot", "craft"}
 
 func fillDesc(rng *rand.Rand, topic, suffix string) string {
+	_ = suffix
 	opener := fmt.Sprintf(descOpeners[rng.Intn(len(descOpeners))], topic)
-	b1 := fmt.Sprintf(descBodies[rng.Intn(len(descBodies))], descBodyFills[rng.Intn(len(descBodyFills))])
-	b2 := fmt.Sprintf(descBodies[rng.Intn(len(descBodies))], descBodyFills[rng.Intn(len(descBodyFills))])
-	closer := descClosers[rng.Intn(len(descClosers))]
-	title := topic + suffix
-	return fmt.Sprintf("%s\n\n- %s\n- %s\n\n%s", opener, b1, b2, closer) + "\n\n（主题：" + title + "）"
+
+	// 结构随机化：避免每条描述都是「引子 + 两条 bullet + 收尾」的固定模板
+	switch rng.Intn(10) {
+	case 0, 1: // 短平快：一句话 + 一个要点
+		b := fmt.Sprintf(descBodies[rng.Intn(len(descBodies))], descBodyFills[rng.Intn(len(descBodyFills))])
+		return opener + "\n\n- " + b
+	case 2, 3: // 引子 + 正文段落（不用 bullet）
+		b := fmt.Sprintf(descBodies[rng.Intn(len(descBodies))], descBodyFills[rng.Intn(len(descBodyFills))])
+		out := opener + "。" + b + "。"
+		if rng.Intn(2) == 0 {
+			out += descClosers[rng.Intn(len(descClosers))]
+		}
+		return out
+	case 4: // 只有引子和收尾（早期想法）
+		return opener + "。\n\n" + descClosers[rng.Intn(len(descClosers))]
+	default: // 常规：引子 + 1~3 条要点（数量随机，同条内不重复要点）
+		n := 1 + rng.Intn(3)
+		usedFill := map[int]bool{}
+		var bullets []string
+		for i := 0; i < n; i++ {
+			fi := rng.Intn(len(descBodyFills))
+			if usedFill[fi] {
+				continue
+			}
+			usedFill[fi] = true
+			bullets = append(bullets, fmt.Sprintf(descBodies[rng.Intn(len(descBodies))], descBodyFills[fi]))
+		}
+		out := opener + "\n\n"
+		for _, b := range bullets {
+			out += "- " + b + "\n"
+		}
+		if rng.Intn(3) > 0 {
+			out += "\n" + descClosers[rng.Intn(len(descClosers))]
+		}
+		return out
+	}
 }
 
 // genExtraUsers 返回补充用户（打乱顺序由调用方决定）。

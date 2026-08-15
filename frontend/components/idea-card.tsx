@@ -178,7 +178,8 @@ export function IdeaCard({
           </Link>
           <span className="inline-flex items-center gap-1 text-[var(--ink-soft)]">
             <DeimosIcon name="lifecycle" className="h-3 w-3" />
-            {lifecycleLabel} / {implementationLabel}
+            {/* active 是列表默认态，不作为前缀噪声；非默认生命周期才展示 */}
+            {idea.status === "active" ? implementationLabel : `${lifecycleLabel} / ${implementationLabel}`}
           </span>
         </div>
 
