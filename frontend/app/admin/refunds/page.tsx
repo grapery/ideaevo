@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { adminRefundApi, ApiRequestError } from "@/lib/api-client";
 import { Refund } from "@/lib/types";
-import { DeimosIcon } from "@/components/deimos-icon";
+import { EmptyState } from "@/components/empty-state";
 import { SystemPageHeader } from "@/components/system-page-header";
 import { useI18n } from "@/lib/i18n/provider";
 import type { TranslationKey } from "@/lib/i18n/messages";
@@ -127,16 +127,7 @@ export default function AdminRefundsPage() {
         )}
 
         {refunds.length === 0 ? (
-          <div className="surface-card p-12 text-center">
-            <DeimosIcon
-              name="evidence"
-              className="mx-auto mb-3 h-8 w-8 text-[var(--text-muted)]"
-            />
-            <p className="font-medium text-[var(--ink)]">{t("admin.queueClearedShort")}</p>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
-              {t("admin.noRefunds")}
-            </p>
-          </div>
+          <EmptyState icon="evidence" title={t("admin.queueClearedShort")} hint={t("admin.noRefunds")} />
         ) : (
           <div className="space-y-3">
             {refunds.map((refund) => (

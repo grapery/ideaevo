@@ -7,6 +7,7 @@ import { notificationApi, NotificationItem } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/api-error";
 import { notify } from "@/components/ui/notify";
 import { DeimosIcon, type DeimosIconName } from "@/components/deimos-icon";
+import { EmptyState } from "@/components/empty-state";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { useI18n } from "@/lib/i18n/provider";
 import type { TranslationKey } from "@/lib/i18n/messages";
@@ -347,19 +348,7 @@ export default function NotificationsPage() {
                 {t("common.loading")}
               </div>
             ) : groups.length === 0 ? (
-              <div className="flex items-start gap-3 surface-card px-4 py-5">
-                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--ink-faint)]">
-                  <DeimosIcon name="bell" className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-[13px] font-medium text-[var(--ink)]">
-                    {t("notif.empty")}
-                  </p>
-                  <p className="mt-1 text-[12px] text-[var(--ink-faint)]">
-                    {t("notif.emptyHint")}
-                  </p>
-                </div>
-              </div>
+              <EmptyState icon="bell" title={t("notif.empty")} hint={t("notif.emptyHint")} variant="dashed" />
             ) : (
               <div className="space-y-6">
                 {groups.map((group) => (

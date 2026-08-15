@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { FormField, ButtonSpinner } from "@/components/ui/form-field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { AuthSplitShell } from "@/components/auth-split-shell";
 
 function getRemainingSeconds(): number {
   if (typeof window === "undefined") return 60 * 60;
@@ -89,8 +90,8 @@ export default function ResetPasswordPage() {
 
   if (done) {
     return (
-      <div className="page-shell flex items-center justify-center px-4">
-        <div className="w-full max-w-md surface-card p-10 text-center">
+      <AuthSplitShell>
+        <div className="w-full surface-card p-8 text-center">
           <p className="meta-label mb-5">{t("auth.recoveryComplete")}</p>
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-success)]/30 bg-[var(--accent-success-soft)] flex items-center justify-center text-[var(--accent-success)] mb-5">
             <DeimosIcon name="check" className="h-7 w-7" />
@@ -106,22 +107,24 @@ export default function ResetPasswordPage() {
             {t("auth.goLogin")}
           </Link>
         </div>
-      </div>
+      </AuthSplitShell>
     );
   }
 
   if (token === null) {
     return (
-      <div className="page-shell flex items-center justify-center px-4">
-        <div className="animate-spin w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full" />
-      </div>
+      <AuthSplitShell>
+        <div className="flex justify-center">
+          <div className="animate-spin w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full" />
+        </div>
+      </AuthSplitShell>
     );
   }
 
   if (!token) {
     return (
-      <div className="page-shell flex items-center justify-center px-4">
-        <div className="w-full max-w-md surface-card p-10 text-center">
+      <AuthSplitShell>
+        <div className="w-full surface-card p-8 text-center">
           <p className="meta-label mb-5">{t("auth.recoveryInvalid")}</p>
           <div className="mx-auto h-14 w-14 rounded-md border border-[var(--accent-warning)]/30 bg-[var(--accent-warning-soft)] flex items-center justify-center text-[var(--accent-warning)] mb-5">
             <DeimosIcon name="decision" className="h-7 w-7" />
@@ -134,13 +137,13 @@ export default function ResetPasswordPage() {
             {t("auth.reapply")}
           </Link>
         </div>
-      </div>
+      </AuthSplitShell>
     );
   }
 
   return (
-    <div className="page-shell flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <AuthSplitShell>
+      <div>
         <div className="mb-6">
           <p className="meta-label mb-3">{t("auth.recoveryReset")}</p>
           <h1 className="page-heading">{t("auth.resetTitle")}</h1>
@@ -149,7 +152,7 @@ export default function ResetPasswordPage() {
           </p>
         </div>
 
-        <div className="surface-card p-6">
+        <div className="surface-card p-8 shadow-[0_18px_50px_rgba(20,24,32,.07)]">
           <form onSubmit={handleSubmit} className="space-y-5">
             <FormField id="reset-password" label={t("auth.newPassword")} error={errors.password}>
               <PasswordInput
@@ -222,6 +225,6 @@ export default function ResetPasswordPage() {
           </div>
         </div>
       </div>
-    </div>
+    </AuthSplitShell>
   );
 }

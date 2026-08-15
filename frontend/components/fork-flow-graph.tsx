@@ -38,14 +38,23 @@ const PAD_Y = 6;
 const DOT_R = 4.5;
 const CURVE_R = 10;
 
+// 泳道分类色板（GitHub 风，多色区分谱系分支）。
+// 语义色与 globals.css token 同值锚定：#3370ff=--accent-link、
+// #34c759=--accent-success、#71717a=--ink-faint（SVG 属性不支持 var()）。
+const SEMANTIC = {
+  current: "#3370ff", // --accent-link：当前节点
+  implemented: "#34c759", // --accent-success：已落地
+  muted: "#71717a", // --ink-faint：普通节点
+} as const;
+
 const LANE_COLORS = [
-  "#57606a",
-  "#0969da",
+  SEMANTIC.muted,
+  SEMANTIC.current,
   "#8250df",
-  "#1a7f37",
+  SEMANTIC.implemented,
   "#bf8700",
   "#cf222e",
-  "#0550ae",
+  "#2860e8",
 ];
 
 function laneX(lane: number) {
@@ -147,7 +156,7 @@ function GitGraphSvg({ rows }: { rows: LayoutRow[] }) {
     const color = LANE_COLORS[row.lane % LANE_COLORS.length];
     const isCurrent = row.node.kind === "current";
     const isImplemented = row.node.status === "implemented";
-    const nodeColor = isImplemented ? "#1a7f37" : isCurrent ? "#0969da" : color;
+    const nodeColor = isImplemented ? SEMANTIC.implemented : isCurrent ? SEMANTIC.current : color;
 
     if (i > 0) {
       const prev = rows[i - 1];
@@ -241,7 +250,7 @@ function GitGraphSvg({ rows }: { rows: LayoutRow[] }) {
           cx={x}
           cy={yMid}
           r={DOT_R}
-          fill={isImplemented ? nodeColor : "#fff"}
+          fill={isImplemented ? nodeColor : "#ffffff"}
           stroke={nodeColor}
           strokeWidth={1.5}
         />
@@ -345,7 +354,7 @@ function RowContent({
             </Link>
           )}
           {isCurrent && (
-            <span className="inline-flex shrink-0 items-center rounded-full border border-[#0969da]/30 bg-[#ddf4ff] px-1.5 py-px text-[10px] font-semibold text-[#0969da]">
+            <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--accent-link)]/30 bg-[var(--accent-link-light)] px-1.5 py-px text-[10px] font-semibold text-[var(--accent-link)]">
               {t("idea.headBadge")}
             </span>
           )}
@@ -361,7 +370,7 @@ function RowContent({
             </span>
           )}
           {status && (
-            <span className="inline-flex shrink-0 items-center rounded-full border border-[#1a7f37]/25 bg-[#dafbe1] px-1.5 py-px text-[10px] font-medium text-[#1a7f37]">
+            <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--accent-success)]/25 bg-[var(--accent-success-light)] px-1.5 py-px text-[10px] font-medium text-[var(--accent-success)]">
               {status}
             </span>
           )}
@@ -580,17 +589,17 @@ export function ForkFlowGraph({
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--ink-faint)]">
         <span className="flex items-center gap-1.5">
-          <span className="inline-flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[#0969da]">
+          <span className="inline-flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[var(--accent-link)]">
             <span className="h-1 w-1 rounded-full bg-white" />
           </span>
           {t("idea.currentBranch")}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full border-[1.5px] border-[#57606a] bg-white" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full border-[1.5px] border-[var(--ink-faint)] bg-[var(--bg-surface)]" />
           {t("idea.ancestor")}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#1a7f37]" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--accent-success)]" />
           {t("idea.implemented")}
         </span>
       </div>

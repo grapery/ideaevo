@@ -42,6 +42,8 @@
   --primary-hover: #e67e00;
   --primary-light: #fff3e0;
   --primary-soft: #fff7eb;
+  --primary-border: #ffcf93;   /* 品牌色卡片边框（鲜花面板等） */
+  --primary-ink: #914700;      /* 品牌色卡片上的深色文字（WCAG AA on soft bg） */
   --primary-bg: #fff3e0;       /* primary 按钮文字用白 */
 
   --accent-link: #3370ff;      /* Link Blue - 对象名称/深链 */

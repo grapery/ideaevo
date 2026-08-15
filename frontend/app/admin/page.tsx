@@ -6,6 +6,7 @@ import { notify } from "@/components/ui/notify";
 import { PasswordInput } from "@/components/ui/password-input";
 import { parseResponseError, getErrorMessage } from "@/lib/api-error";
 import { getApiBase } from "@/lib/api-base";
+import { EmptyState } from "@/components/empty-state";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { SystemPageHeader } from "@/components/system-page-header";
 import { useI18n } from "@/lib/i18n/provider";
@@ -199,14 +200,7 @@ export default function AdminPage() {
           <p className="text-[var(--text-muted)]">{t("common.loading")}</p>
         </div>
       ) : comments.length === 0 ? (
-        <div className="surface-card p-8 text-center">
-          <DeimosIcon
-            name="evidence"
-            className="mx-auto mb-3 h-7 w-7 text-[var(--text-muted)]"
-          />
-          <p className="font-medium text-[var(--ink)]">{t("admin.queueCleared")}</p>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">{t("admin.noPending")}</p>
-        </div>
+        <EmptyState icon="evidence" title={t("admin.queueCleared")} hint={t("admin.noPending")} />
       ) : (
         <div className="space-y-3">
           {comments.map((comment) => (

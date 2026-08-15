@@ -13,6 +13,7 @@ import {
   BillingOrder,
   Refund,
 } from "@/lib/types";
+import { EmptyState } from "@/components/empty-state";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { SystemPageHeader } from "@/components/system-page-header";
 import { AccountSidebar } from "@/components/account-sidebar";
@@ -514,12 +515,7 @@ export default function BillingPage() {
                 </span>
               </div>
               {orders.length === 0 ? (
-                <div className="flex min-h-32 items-center justify-center gap-3 text-sm text-[var(--text-muted)]">
-                  <DeimosIcon name="document" className="h-5 w-5" />
-                  <span>
-                    {t("billing.noOrders")}
-                  </span>
-                </div>
+                <EmptyState icon="document" title={t("billing.noOrders")} variant="inline" />
               ) : (
                 <div className="space-y-2">
                   {orders.map((order) => {

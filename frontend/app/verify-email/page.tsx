@@ -5,6 +5,7 @@ import Link from "next/link";
 import { authApi } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/api-error";
 import { DeimosIcon } from "@/components/deimos-icon";
+import { AuthSplitShell } from "@/components/auth-split-shell";
 import { useI18n } from "@/lib/i18n/provider";
 
 export default function VerifyEmailPage() {
@@ -37,9 +38,8 @@ export default function VerifyEmailPage() {
   }, [t]);
 
   return (
-    <div className="page-shell">
-      <div className="mx-auto max-w-lg px-4 py-16">
-        <div className="surface-card p-10 text-center shadow-[0_18px_50px_rgba(20,24,32,.05)]">
+    <AuthSplitShell>
+      <div className="surface-card p-8 text-center shadow-[0_18px_50px_rgba(20,24,32,.07)]">
           <p className="meta-label mb-5">{t("auth.verifyEyebrow")}</p>
           {status === "loading" && (
             <>
@@ -92,7 +92,6 @@ export default function VerifyEmailPage() {
             </>
           )}
         </div>
-      </div>
-    </div>
+    </AuthSplitShell>
   );
 }
