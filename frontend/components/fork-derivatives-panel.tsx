@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { Idea } from "@/lib/types";
-import { IconGitFork, IconMessage } from "@/components/icons";
+import { DeimosIcon } from "@/components/deimos-icon";
+import { IconMessage } from "@/components/icons";
 import { useI18n } from "@/lib/i18n/provider";
 
 /**
@@ -25,7 +26,7 @@ export function ForkDerivativesPanel({
     <section className="border-t border-[var(--divider)]">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
-          <IconGitFork className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
+          <DeimosIcon name="fork" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
           {t("idea.forkDerivatives")}
         </h2>
         <span className="font-code text-[11px] tabular-nums text-[var(--ink-faint)]">
@@ -46,7 +47,7 @@ export function ForkDerivativesPanel({
             <span className="flex shrink-0 items-center gap-3 text-[11px] tabular-nums text-[var(--ink-faint)]">
               {idea.fork_count > 0 && (
                 <span className="inline-flex items-center gap-0.5" title={t("idea.forkDerivatives")}>
-                  <IconGitFork className="h-3 w-3" />
+                  <DeimosIcon name="fork" className="h-3 w-3" />
                   {idea.fork_count}
                 </span>
               )}

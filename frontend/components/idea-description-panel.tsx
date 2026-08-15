@@ -7,6 +7,7 @@ import { api } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { notify } from "@/components/ui/notify";
 import { getErrorMessage } from "@/lib/api-error";
+import { DeimosIcon } from "@/components/deimos-icon";
 import { MarkdownContent } from "@/components/markdown-content";
 import { EmptyState } from "@/components/empty-state";
 import {
@@ -183,7 +184,10 @@ export function IdeaDescriptionPanel({ idea }: { idea: Idea }) {
   return (
     <div className="mt-6 border-t border-[var(--divider)] pt-6">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-[13px] font-semibold text-[var(--ink)]">{t("idea.descTitle")}</h2>
+        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
+          <DeimosIcon name="document" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
+          {t("idea.descTitle")}
+        </h2>
         {canEdit && isViewingCurrent && !editing && (
           <button type="button" className="btn-outline btn-sm" onClick={() => setEditing(true)}>
             {t("common.edit")}

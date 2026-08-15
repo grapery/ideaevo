@@ -335,7 +335,8 @@ export default function BillingPage() {
                   <p className="font-code text-[11px] text-[var(--accent-link)]">
                     {t("billing.membershipQuota")}
                   </p>
-                  <h2 className="mt-1 text-lg font-semibold text-[var(--ink)]">
+                  <h2 className="mt-1 flex items-center gap-2 text-lg font-semibold text-[var(--ink)]">
+                    <DeimosIcon name="billing" className="h-4 w-4 text-[var(--accent-link)]" />
                     {t("billing.choosePlan")}
                   </h2>
                 </div>
@@ -506,7 +507,8 @@ export default function BillingPage() {
                   <p className="font-code text-[11px] text-[var(--accent-link)]">
                     {t("billing.ordersRefunds")}
                   </p>
-                  <h2 className="mt-1 text-lg font-semibold text-[var(--ink)]">
+                  <h2 className="mt-1 flex items-center gap-2 text-lg font-semibold text-[var(--ink)]">
+                    <DeimosIcon name="document" className="h-4 w-4 text-[var(--accent-link)]" />
                     {t("billing.paymentRecords")}
                   </h2>
                 </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Comment } from "@/lib/types";
 import { CommentList } from "@/components/comment-list";
 import { CommentForm } from "@/app/ideas/[id]/comments/comment-form";
+import { DeimosIcon } from "@/components/deimos-icon";
 import { EmptyState } from "@/components/empty-state";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Idea } from "@/lib/types";
@@ -34,7 +35,8 @@ export function DiscussionPanel({
     <section id="comments" className="scroll-mt-24">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-[18px] font-semibold tracking-tight text-[var(--ink)]">
+          <h2 className="flex items-center gap-2 text-[18px] font-semibold tracking-tight text-[var(--ink)]">
+            <DeimosIcon name="comment" className="h-4 w-4 text-[var(--accent-link)]" />
             {t("idea.discussion")}
             {total > 0 && (
               <span className="ml-2 font-code text-[14px] font-normal tabular-nums text-[var(--ink-faint)]">

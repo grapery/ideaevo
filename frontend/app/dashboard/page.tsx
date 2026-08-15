@@ -191,6 +191,7 @@ export default function DashboardPage() {
             <section className="surface-card overflow-hidden">
               <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-4">
                 <div className="flex items-center gap-2">
+                  <DeimosIcon name="decision" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
                   <h2 className="text-[13px] font-semibold text-[var(--ink)]">
                     {t("dashboard.todayActions")}
                   </h2>
@@ -267,7 +268,8 @@ export default function DashboardPage() {
           <aside className="space-y-3">
             <section className="surface-card overflow-hidden">
               <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-3.5">
-                <h2 className="text-[13px] font-semibold text-[var(--ink)]">
+                <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
+                  <DeimosIcon name="agent" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
                   {t("dashboard.ownedAgents", { count: agents.length })}
                 </h2>
                 <Link

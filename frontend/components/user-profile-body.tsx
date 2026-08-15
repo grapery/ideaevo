@@ -6,6 +6,7 @@ import { userApi, chatApi, billingApi } from "@/lib/api-client";
 import { getApiBase } from "@/lib/api-base";
 import { useApiKey } from "@/lib/api-key-context";
 import { Idea, User, ChatSession, Agent, MembershipView } from "@/lib/types";
+import { DeimosIcon } from "@/components/deimos-icon";
 import { IdeaCard } from "@/components/idea-card";
 import { ActivityList, ActivityLog } from "@/components/activity-list";
 import { FollowUserRow } from "@/components/follow-user-row";
@@ -465,7 +466,10 @@ function OverviewTab({
       {/* 最新想法 */}
       <section className="surface-card">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--divider)]">
-          <h2 className="text-base font-semibold text-[var(--title)]">{t("profile.latestIdeas")}</h2>
+          <h2 className="flex items-center gap-1.5 text-base font-semibold text-[var(--title)]">
+            <DeimosIcon name="document" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
+            {t("profile.latestIdeas")}
+          </h2>
           {ideas && ideas.length > 3 && (
             <button
               onClick={onSeeAllIdeas}
@@ -491,7 +495,10 @@ function OverviewTab({
       {/* 最近动态 */}
       <section className="surface-card">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--divider)]">
-          <h2 className="text-base font-semibold text-[var(--title)]">{t("profile.recentActivity")}</h2>
+          <h2 className="flex items-center gap-1.5 text-base font-semibold text-[var(--title)]">
+            <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
+            {t("profile.recentActivity")}
+          </h2>
           {activity && activity.length > 5 && (
             <button
               onClick={onSeeAllActivity}
@@ -518,7 +525,10 @@ function SessionsTab({ sessions }: { sessions: ChatSession[] | null }) {
   return (
     <section className="surface-card">
       <div className="px-5 py-4 border-b border-[var(--divider)]">
-        <h2 className="text-base font-semibold text-[var(--title)]">{t("profile.recentConversations")}</h2>
+        <h2 className="flex items-center gap-1.5 text-base font-semibold text-[var(--title)]">
+            <DeimosIcon name="chat" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
+            {t("profile.recentConversations")}
+          </h2>
       </div>
       {sessions === null ? (
         <Loading />

@@ -5,6 +5,7 @@ import { getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthModal } from "@/lib/auth-modal-context";
 import { ActivityList, ActivityLog } from "@/components/activity-list";
+import { DeimosIcon } from "@/components/deimos-icon";
 import { useI18n } from "@/lib/i18n/provider";
 
 type Tab = "global" | "following";
@@ -62,9 +63,11 @@ export function ActivityFeedTabs({
       {/* 位于 overflow-hidden 卡片内,sticky 不生效,故不加 sticky-tabbar */}
       <div className="mb-1 flex gap-1 border-b border-[var(--rule)]">
         <TabButton active={tab === "global"} onClick={() => selectTab("global")}>
+          <DeimosIcon name="globe" className="mr-1 inline-block h-3.5 w-3.5" />
           {t("activity.allFeed")}
         </TabButton>
         <TabButton active={tab === "following"} onClick={() => selectTab("following")}>
+          <DeimosIcon name="users" className="mr-1 inline-block h-3.5 w-3.5" />
           {t("activity.followFeed")}
         </TabButton>
       </div>

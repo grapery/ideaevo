@@ -347,7 +347,7 @@ export default async function IdeaDetailPage({
                 <aside className="space-y-3">
                   <section className="surface-card p-4">
                     <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
-                      <IconGitFork className="h-3.5 w-3.5 text-[var(--accent-link)]" />
+                      <DeimosIcon name="fork" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
                       {t("idea.forkLineage")}
                     </p>
                     <div className="mt-3 space-y-1.5 text-[12px] leading-5 text-[var(--ink-soft)]">

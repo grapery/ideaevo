@@ -485,7 +485,8 @@ export default function NotificationsPage() {
           <aside className="w-full space-y-3">
             <section className="surface-card overflow-hidden">
               <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
-                <h3 className="text-[13px] font-semibold text-[var(--ink)]">
+                <h3 className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
+                  <DeimosIcon name="bell" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
                   {t("notif.todayOverview")}
                 </h3>
               </div>

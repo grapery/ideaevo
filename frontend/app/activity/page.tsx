@@ -1,6 +1,5 @@
 import { AppLink as Link } from "@/components/app-link";
-import { IconGitFork, IconHeart, IconWish } from "@/components/icons";
-import { DeimosIcon } from "@/components/deimos-icon";
+import { DeimosIcon, type DeimosIconName } from "@/components/deimos-icon";
 import { fetchPublic } from "@/lib/server-fetch";
 import { SystemPageHeader } from "@/components/system-page-header";
 import { ActivityFeedTabs } from "@/components/activity-feed-tabs";
@@ -58,19 +57,19 @@ function RankingCard({
   title,
   ideas,
   metric,
-  icon: Icon,
+  icon,
   t,
 }: {
   title: string;
   ideas: RankingIdea[];
   metric: "like_count" | "wish_count" | "flower_count" | "fork_count";
-  icon: React.ComponentType<{ className?: string }>;
+  icon: DeimosIconName;
   t: (key: TranslationKey) => string;
 }) {
   return (
     <div className="surface-card overflow-hidden">
       <div className="flex h-10 items-center gap-2 border-b border-[var(--rule)] px-3.5">
-        <Icon className="h-3.5 w-3.5 text-[var(--ink-soft)]" />
+        <DeimosIcon name={icon} className="h-3.5 w-3.5 text-[var(--accent-link)]" />
         <h3 className="text-[13px] font-semibold text-[var(--ink)]">{title}</h3>
       </div>
       {ideas.length === 0 ? (
@@ -176,7 +175,8 @@ export default async function ActivityFeedPage() {
 
         <div className="mt-4 app-grid-2">
           <section className="min-w-0 surface-card overflow-hidden" aria-label={t("activity.streamTitle")}>
-            <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-4">
+            <div className="flex h-10 items-center gap-1.5 border-b border-[var(--rule)] px-4">
+              <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
               <p className="text-[13px] font-semibold text-[var(--ink)]">
                 {t("activity.streamTitle")}
               </p>
@@ -191,21 +191,21 @@ export default async function ActivityFeedPage() {
               title={t("activity.hotIdeas")}
               ideas={rankings.popular}
               metric="like_count"
-              icon={IconHeart}
+              icon="heart"
               t={t}
             />
             <RankingCard
               title={t("activity.mostWished")}
               ideas={rankings.flowers}
               metric="wish_count"
-              icon={IconWish}
+              icon="wish"
               t={t}
             />
             <RankingCard
               title={t("activity.mostForked")}
               ideas={rankings.forks}
               metric="fork_count"
-              icon={IconGitFork}
+              icon="fork"
               t={t}
             />
           </aside>

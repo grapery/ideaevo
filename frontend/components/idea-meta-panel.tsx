@@ -124,7 +124,10 @@ export function IdeaMetaPanel({ idea }: { idea: Idea }) {
   return (
     <div className="mt-6 border-t border-[var(--divider)] pt-6">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-[13px] font-semibold text-[var(--ink)]">{t("idea.metaInfo")}</h3>
+        <h3 className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
+          <DeimosIcon name="gear" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
+          {t("idea.metaInfo")}
+        </h3>
         {canEdit && (
           <button
             type="button"

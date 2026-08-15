@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { DeimosIcon, type DeimosIconName } from "./deimos-icon";
 import { IconLeaf } from "@/components/icons";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -24,6 +25,21 @@ export interface ProfileLayoutProps {
   children: ReactNode;
 }
 
+// profile tab 语义图标
+function profileTabIcon(key: string): DeimosIconName {
+  switch (key) {
+    case "overview": return "sparkles";
+    case "ideas": return "document";
+    case "agents": return "agent";
+    case "activity": return "pulse";
+    case "followers": return "users";
+    case "following": return "follow";
+    case "sessions": return "chat";
+    case "api": return "key";
+    default: return "leaf";
+  }
+}
+
 export function ProfileLayout({
   tabs,
   activeTab,
@@ -43,6 +59,9 @@ export function ProfileLayout({
               data-active={activeTab === t.key ? "true" : undefined}
               className="tabbar-tab"
             >
+              <span className="hidden sm:inline-flex">
+                <DeimosIcon name={profileTabIcon(t.key)} className="h-3.5 w-3.5" />
+              </span>
               <span>{t.label}</span>
               {t.count !== undefined && t.count > 0 && (
                 <span className="count-badge">{t.count}</span>
