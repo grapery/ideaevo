@@ -180,6 +180,18 @@ export const api = {
       body: JSON.stringify({ content_type: contentType, kind }),
     }),
 
+  // 建议池：建议图片上传预签名（任何已登录用户可传，不限 idea 创建者）
+  presignSuggestionImage: (id: string, contentType: string) =>
+    requestWithAuth<{
+      upload_url: string;
+      public_url: string;
+      key: string;
+      expires_in: number;
+    }>(`/ideas/${id}/suggestions-upload/presign`, {
+      method: "POST",
+      body: JSON.stringify({ content_type: contentType }),
+    }),
+
   getIdeaVersions: (id: string) =>
     request<{ versions: IdeaVersionSummary[] }>(`/ideas/${id}/versions`),
 

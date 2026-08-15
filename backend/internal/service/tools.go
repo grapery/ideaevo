@@ -451,6 +451,7 @@ func (t *WishIdeaTool) Execute(ctx context.Context, p Principal, in ToolInput) (
 	}
 	return &ToolResult{OK: true, Data: map[string]any{"idea_id": ideaID, "wished": true}}, nil
 }
+
 type BuryIdeaTool struct {
 	ideaSvc *IdeaService
 }
@@ -586,13 +587,13 @@ func (t *UpdateIdeaMetaTool) Parameters() json.RawMessage {
 	return rawJSON(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"idea_id":         stringProp("ID of your idea"),
-			"impl_status":     stringEnumProp("Implementation progress", "concept", "in_progress", "implemented", "paused"),
-			"repo_url":        stringProp("Optional source repo URL (e.g. GitHub)"),
-			"demo_url":        stringProp("Optional live demo URL after implementation"),
-			"icon_url":        stringProp("Optional icon URL from allowed storage"),
-			"evidence_url":    stringProp("Optional reference URL to append as a link"),
-			"evidence_title":  stringProp("Optional title for the reference link"),
+			"idea_id":        stringProp("ID of your idea"),
+			"impl_status":    stringEnumProp("Implementation progress", "concept", "in_progress", "implemented", "paused"),
+			"repo_url":       stringProp("Optional source repo URL (e.g. GitHub)"),
+			"demo_url":       stringProp("Optional live demo URL after implementation"),
+			"icon_url":       stringProp("Optional icon URL from allowed storage"),
+			"evidence_url":   stringProp("Optional reference URL to append as a link"),
+			"evidence_title": stringProp("Optional title for the reference link"),
 		},
 		"required": []string{"idea_id"},
 	})
@@ -797,6 +798,120 @@ func (t *GetCommentsTool) Execute(ctx context.Context, _ Principal, in ToolInput
 }
 
 // ---- helpers ----
+
+// ListIdeaSuggestionsTool 列出某 idea 的建议池（只读）。
+type ListIdeaSuggestionsTool struct {
+	suggestionSvc *SuggestionService
+}
+
+func NewListIdeaSuggestionsTool(suggestionSvc *SuggestionService) *ListIdeaSuggestionsTool {
+	return &ListIdeaSuggestionsTool{suggestionSvc: suggestionSvc}
+}
+
+func (t *ListIdeaSuggestionsTool) Name() string { return "list_idea_suggestions" }
+func (t *ListIdeaSuggestionsTool) Description() string {
+	return "List suggestions (feature proposals / requirements) submitted on an idea, with vote counts and selection status. " +
+		"Selected suggestions are what the idea owner has accepted to implement."
+}
+func (t *ListIdeaSuggestionsTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id": stringProp("ID of the idea"),
+		},
+		"required": []string{"idea_id"},
+	})
+}
+func (t *ListIdeaSuggestionsTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	ideaID, err := ToolStrReq(in, "idea_id")
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	suggestions, err := t.suggestionSvc.ListByIdea(ideaID, p.UserID, p.AgentID)
+	if err != nil {
+		return nil, fmt.Errorf("list_idea_suggestions failed: %w", err)
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"suggestions": suggestions}}, nil
+}
+
+// CreateIdeaSuggestionTool 提交建议（文字 + 可选图片 URL）。
+type CreateIdeaSuggestionTool struct {
+	suggestionSvc *SuggestionService
+}
+
+func NewCreateIdeaSuggestionTool(suggestionSvc *SuggestionService) *CreateIdeaSuggestionTool {
+	return &CreateIdeaSuggestionTool{suggestionSvc: suggestionSvc}
+}
+
+func (t *CreateIdeaSuggestionTool) Name() string { return "create_idea_suggestion" }
+func (t *CreateIdeaSuggestionTool) Description() string {
+	return "Submit a suggestion (feature proposal / requirement) to an idea on behalf of the user. " +
+		"Content is required; image URLs must come from this platform's storage. " +
+		"WRITE operation: requires confirmation (call once without `confirm`, then again with the token)."
+}
+func (t *CreateIdeaSuggestionTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id":    stringProp("ID of the idea"),
+			"content":    stringProp("Suggestion content (plain text)"),
+			"image_urls": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Optional image URLs (max 4, platform storage only)"},
+		},
+		"required": []string{"idea_id", "content"},
+	})
+}
+func (t *CreateIdeaSuggestionTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	authorID, err := requireAuthor(p)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	suggestion, err := t.suggestionSvc.Create(CreateSuggestionInput{
+		IdeaID:    ToolStr(in, "idea_id"),
+		UserID:    p.UserID,
+		AgentID:   authorID,
+		Content:   ToolStr(in, "content"),
+		ImageURLs: ToolStrSlice(in, "image_urls"),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create_idea_suggestion failed: %w", err)
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"suggestion": suggestion}}, nil
+}
+
+// VoteSuggestionTool 给建议投票。
+type VoteSuggestionTool struct {
+	suggestionSvc *SuggestionService
+}
+
+func NewVoteSuggestionTool(suggestionSvc *SuggestionService) *VoteSuggestionTool {
+	return &VoteSuggestionTool{suggestionSvc: suggestionSvc}
+}
+
+func (t *VoteSuggestionTool) Name() string { return "vote_suggestion" }
+func (t *VoteSuggestionTool) Description() string {
+	return "Upvote a suggestion on an idea to signal support. Use when user says '支持这条建议', '投一票', 'vote'."
+}
+func (t *VoteSuggestionTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id":       stringProp("ID of the idea the suggestion belongs to"),
+			"suggestion_id": stringProp("ID of the suggestion to vote for"),
+		},
+		"required": []string{"idea_id", "suggestion_id"},
+	})
+}
+func (t *VoteSuggestionTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	authorID, err := requireAuthor(p)
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	suggestionID := ToolStr(in, "suggestion_id")
+	if err := t.suggestionSvc.Vote(ToolStr(in, "idea_id"), suggestionID, p.UserID, authorID); err != nil {
+		return nil, fmt.Errorf("vote_suggestion failed: %w", err)
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"suggestion_id": suggestionID, "voted": true}}, nil
+}
 
 // requireAuthor 从 Principal 中确定执行写操作的作者 ID。
 func requireAuthor(p Principal) (string, error) {

@@ -11,7 +11,12 @@ import {
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/provider";
 
-export type IdeaDetailTab = "overview" | "evolution" | "comments" | "more";
+export type IdeaDetailTab =
+  | "overview"
+  | "evolution"
+  | "comments"
+  | "suggestions"
+  | "more";
 
 interface TabItem {
   key: IdeaDetailTab;
@@ -32,7 +37,13 @@ export function useIdeaDetailTab() {
 }
 
 function isValidTab(value: string | null | undefined): value is IdeaDetailTab {
-  return value === "overview" || value === "evolution" || value === "comments" || value === "more";
+  return (
+    value === "overview" ||
+    value === "evolution" ||
+    value === "comments" ||
+    value === "suggestions" ||
+    value === "more"
+  );
 }
 
 export function IdeaDetailTabs({
@@ -42,6 +53,7 @@ export function IdeaDetailTabs({
   overview,
   evolution,
   comments,
+  suggestions,
   more,
 }: {
   ideaId: string;
@@ -50,6 +62,7 @@ export function IdeaDetailTabs({
   overview: ReactNode;
   evolution: ReactNode;
   comments: ReactNode;
+  suggestions: ReactNode;
   more: ReactNode;
 }) {
   const { t } = useI18n();
@@ -122,6 +135,9 @@ export function IdeaDetailTabs({
       <div hidden={tab !== "evolution"}>{evolution}</div>
       <div hidden={tab !== "comments"} id="comments-panel">
         {comments}
+      </div>
+      <div hidden={tab !== "suggestions"} id="suggestions-panel">
+        {suggestions}
       </div>
       <div hidden={tab !== "more"}>{more}</div>
     </IdeaDetailTabContext.Provider>

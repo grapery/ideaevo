@@ -175,10 +175,16 @@ func main() {
 	}
 	ideaSvc.SetSearcher(searcher)
 
+	// —— 建议池（suggestions）——
+	suggestionSvc := service.NewSuggestionService(db)
+	suggestionSvc.SetModerationService(modSvc)
+	suggestionSvc.SetNotificationService(notifSvc)
+	suggestionSvc.SetObjectStore(assets)
+
 	// —— 工具系统（MCP / REST chat / agent-bridge 三入口共享）——
 	// 先创建不含 delegate 的 registry，后面注入 delegate 函数。
 	var delegateFn service.DelegateFunc // 延迟设置
-	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agentSvc, followSvc, assets, nil)
+	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agentSvc, followSvc, assets, nil, suggestionSvc)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 	chatSvc.SetTools(toolExecutor, nil) // 内置助手暴露全部工具
 
@@ -228,6 +234,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(agentSvc)
 	authHandler.SetSubscription(subSvc) // 启用 Agent 创建权限校验（需付费会员）
 	commentHandler := handler.NewCommentHandler(commentSvc)
+	suggestionHandler := handler.NewSuggestionHandler(suggestionSvc, ideaSvc, assets)
 	activityHandler := handler.NewActivityHandler(db, followSvc, socialSvc)
 	userAuthHandler := handler.NewUserAuthHandler(userSvc, authSvc)
 	chatHandler := handler.NewChatHandler(chatSvc)
@@ -303,6 +310,7 @@ func main() {
 		api.GET("/ideas/:id/versions", ideaHandler.GetVersions)
 		api.GET("/ideas/:id/versions/:versionId", ideaHandler.GetVersion)
 		api.GET("/ideas/:id/comments", middleware.OptionalUserAuth(cfg.JWTSecret), ideaHandler.GetComments)
+		api.GET("/ideas/:id/suggestions", middleware.OptionalUserAuth(cfg.JWTSecret), suggestionHandler.List)
 		api.GET("/ideas/:id/forks", ideaHandler.GetForks)
 		api.GET("/ideas/:id/fork-children", ideaHandler.GetForkChildren)
 		api.GET("/ideas/:id/flowers", ideaHandler.GetFlowers)
@@ -456,6 +464,14 @@ func main() {
 			ideaActionRoutes.POST("/ideas/:id/reactions", ideaHandler.React)
 			ideaActionRoutes.DELETE("/ideas/:id/reactions", ideaHandler.Unreact)
 			ideaActionRoutes.POST("/ideas/:id/comments", ideaHandler.CreateComment)
+			ideaActionRoutes.POST("/ideas/:id/suggestions", suggestionHandler.Create)
+			ideaActionRoutes.DELETE("/ideas/:id/suggestions/:sid", suggestionHandler.Delete)
+			ideaActionRoutes.POST("/ideas/:id/suggestions/:sid/vote", suggestionHandler.Vote)
+			ideaActionRoutes.DELETE("/ideas/:id/suggestions/:sid/vote", suggestionHandler.Unvote)
+			ideaActionRoutes.POST("/ideas/:id/suggestions/:sid/select", suggestionHandler.Select)
+			// 注意：不能注册为 /suggestions/upload/presign —— gin 不允许同一段
+			// 同时存在静态段 upload 与参数段 :sid，否则启动时 panic。
+			ideaActionRoutes.POST("/ideas/:id/suggestions-upload/presign", suggestionHandler.PresignUpload)
 			ideaActionRoutes.GET("/comments/:id/like", commentHandler.GetLikeStatus)
 			ideaActionRoutes.POST("/comments/:id/like", commentHandler.Like)
 			ideaActionRoutes.DELETE("/comments/:id/like", commentHandler.Unlike)

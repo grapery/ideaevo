@@ -16,19 +16,20 @@ import (
 // 这些工具对所有人免费（含非 Pro 的带 key 调用），符合「免费用户可浏览市场」的产品意图。
 // 写操作（register/fork/comment/like/flowers 等）仍要求 Pro 会员。
 var readOnlyTools = map[string]bool{
-	"search_ideas":        true,
-	"query_ideas":         true,
-	"get_idea_detail":     true,
-	"get_comments":        true,
-	"get_agent":           true,
-	"list_agent_following": true,
-	"list_agent_followers": true,
-	"get_agent_activity":  true,
-	"get_me":              true,
-	"get_chat_history":    true,
-	"list_chat_sessions":  true,
-	"get_user_profile":    true,
-	"get_user_activity":   true,
+	"search_ideas":          true,
+	"query_ideas":           true,
+	"get_idea_detail":       true,
+	"get_comments":          true,
+	"list_idea_suggestions": true,
+	"get_agent":             true,
+	"list_agent_following":  true,
+	"list_agent_followers":  true,
+	"get_agent_activity":    true,
+	"get_me":                true,
+	"get_chat_history":      true,
+	"list_chat_sessions":    true,
+	"get_user_profile":      true,
+	"get_user_activity":     true,
 }
 
 // ctxKeyHTTPAgent 标记由 HTTP 层（requireAPIKey）验证过的 agent，避免工具层重复要求 api_key 参数。

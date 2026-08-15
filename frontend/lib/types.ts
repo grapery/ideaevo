@@ -305,6 +305,23 @@ export interface Comment {
   replies?: Comment[];
 }
 
+/** 建议池条目（后端 SuggestionView，snake_case 对齐） */
+export interface IdeaSuggestionView {
+  id: string;
+  idea_id: string;
+  user_id: string;
+  content: string;
+  image_urls: string[];
+  vote_count: number;
+  voted: boolean;
+  selected: boolean;
+  selected_at?: string;
+  created_at: string;
+  author_name?: string;
+  author_avatar?: string;
+  author_type?: "user" | "agent";
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;

@@ -1,0 +1,190 @@
+package service
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/wanye/ideaevo/internal/model"
+)
+
+// newSuggestionFixture 建 owner(user+agent) + idea，并迁移建议相关表。
+func newSuggestionFixture(t *testing.T) (*SuggestionService, string, string) {
+	t.Helper()
+	db := testDB(t)
+	require.NoError(t, db.AutoMigrate(&model.IdeaSuggestion{}, &model.SuggestionVote{}, &model.ImplementationJob{}))
+	svc := NewSuggestionService(db)
+
+	suffix := uniqueSuffix()
+	ownerID := "owner-" + suffix
+	agentID := "agent-" + suffix
+	ideaID := "idea-" + suffix
+	require.NoError(t, db.Create(&model.User{ID: ownerID, Email: "o" + suffix + "@t.dev", Name: "owner"}).Error)
+	require.NoError(t, db.Create(&model.Agent{ID: agentID, OwnerUserID: ownerID, Name: "a", APIKeyHash: "hash-" + suffix, Capabilities: "[]"}).Error)
+	require.NoError(t, db.Create(&model.Idea{ID: ideaID, AgentID: agentID, Title: "t", Status: "active", ImplStatus: model.ImplStatusConcept}).Error)
+	return svc, ideaID, ownerID
+}
+
+func TestSuggestionService_CreateAndList(t *testing.T) {
+	svc, ideaID, _ := newSuggestionFixture(t)
+
+	sug, err := svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u1", Content: "  建议支持暗色模式  "})
+	require.NoError(t, err)
+	assert.Equal(t, "建议支持暗色模式", sug.Content)
+
+	// 空内容拒绝
+	_, err = svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u1", Content: "   "})
+	assert.Error(t, err)
+
+	// buried idea 拒绝（服务层统一校验，MCP 工具路径也覆盖）
+	require.NoError(t, svc.db.Model(&model.Idea{}).Where("id = ?", ideaID).UpdateColumn("status", "buried").Error)
+	_, err = svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u1", Content: "x"})
+	assert.ErrorIs(t, err, ErrSuggestionIdeaGone)
+
+	// 不存在的 idea 拒绝
+	_, err = svc.Create(CreateSuggestionInput{IdeaID: "no-such-idea", UserID: "u1", Content: "x"})
+	assert.ErrorIs(t, err, ErrSuggestionIdeaGone)
+}
+
+func TestSuggestionService_VoteDedupAndCount(t *testing.T) {
+	svc, ideaID, _ := newSuggestionFixture(t)
+
+	sug, err := svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u1", Content: "s"})
+	require.NoError(t, err)
+
+	require.NoError(t, svc.Vote(ideaID, sug.ID, "u2", ""))
+	require.NoError(t, svc.Vote(ideaID, sug.ID, "u3", ""))
+
+	// 同一用户重复投票被拒
+	assert.ErrorIs(t, svc.Vote(ideaID, sug.ID, "u2", ""), ErrSuggestionAlreadyVot)
+
+	// 取消后可重投
+	require.NoError(t, svc.Unvote(ideaID, sug.ID, "u2", ""))
+	require.NoError(t, svc.Vote(ideaID, sug.ID, "u2", ""))
+
+	views, err := svc.ListByIdea(ideaID, "u2", "")
+	require.NoError(t, err)
+	require.Len(t, views, 1)
+	assert.Equal(t, 2, views[0].VoteCount)
+	assert.True(t, views[0].Voted)
+
+	// 未投票的 viewer 标记为 false
+	views, err = svc.ListByIdea(ideaID, "u9", "")
+	require.NoError(t, err)
+	assert.False(t, views[0].Voted)
+}
+
+// 回归：Unvote 只能删除自己的投票，空身份 OR 条件不得误删他人投票。
+func TestSuggestionService_UnvoteDoesNotDeleteOthersVotes(t *testing.T) {
+	svc, ideaID, _ := newSuggestionFixture(t)
+
+	sug, err := svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u1", Content: "s"})
+	require.NoError(t, err)
+	require.NoError(t, svc.Vote(ideaID, sug.ID, "u2", ""))
+	require.NoError(t, svc.Vote(ideaID, sug.ID, "u3", ""))
+
+	// u2 取消投票：不得影响 u3 的票
+	require.NoError(t, svc.Unvote(ideaID, sug.ID, "u2", ""))
+
+	var votes int64
+	svc.db.Model(&model.SuggestionVote{}).Where("suggestion_id = ?", sug.ID).Count(&votes)
+	assert.Equal(t, int64(1), votes)
+
+	var reloaded model.IdeaSuggestion
+	require.NoError(t, svc.db.First(&reloaded, "id = ?", sug.ID).Error)
+	assert.Equal(t, 1, reloaded.VoteCount)
+}
+
+// 回归：同一 owner（用户本人与其 Agent）合并为一个投票主体。
+func TestSuggestionService_VoteOwnerScopeDedup(t *testing.T) {
+	svc, ideaID, ownerID := newSuggestionFixture(t)
+	suffix := uniqueSuffix()
+	// 属于 owner 的另一个 agent
+	agent2 := "agent2-" + suffix
+	require.NoError(t, svc.db.Create(&model.Agent{ID: agent2, OwnerUserID: ownerID, Name: "a2", APIKeyHash: "h-" + suffix, Capabilities: "[]"}).Error)
+
+	sug, err := svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u1", Content: "s"})
+	require.NoError(t, err)
+
+	// owner 本人投票后，其 agent 再投应被拒
+	require.NoError(t, svc.Vote(ideaID, sug.ID, ownerID, ""))
+	assert.ErrorIs(t, svc.Vote(ideaID, sug.ID, "", agent2), ErrSuggestionAlreadyVot)
+
+	var reloaded model.IdeaSuggestion
+	require.NoError(t, svc.db.First(&reloaded, "id = ?", sug.ID).Error)
+	assert.Equal(t, 1, reloaded.VoteCount)
+
+	// 列表视角：owner 查看显示已投
+	views, err := svc.ListByIdea(ideaID, ownerID, "")
+	require.NoError(t, err)
+	assert.True(t, views[0].Voted)
+}
+
+func TestSuggestionService_SelectOwnerOnlyAndCreatesJob(t *testing.T) {
+	svc, ideaID, ownerID := newSuggestionFixture(t)
+	db := svc.db
+
+	sug, err := svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u1", Content: "s"})
+	require.NoError(t, err)
+
+	// 非 owner 采纳被拒
+	_, err = svc.Select(ideaID, sug.ID, "stranger", "")
+	assert.ErrorIs(t, err, ErrSuggestionNotOwner)
+
+	// owner 采纳：置 selected、建 pending job、concept → in_progress
+	result, err := svc.Select(ideaID, sug.ID, ownerID, "")
+	require.NoError(t, err)
+	assert.NotEmpty(t, result.JobID)
+	assert.True(t, result.Suggestion.Selected())
+
+	var job model.ImplementationJob
+	require.NoError(t, db.First(&job, "id = ?", result.JobID).Error)
+	assert.Equal(t, "pending", job.Status)
+	assert.Equal(t, ownerID, job.OwnerUserID)
+	require.NotNil(t, job.SuggestionID)
+	assert.Equal(t, sug.ID, *job.SuggestionID)
+	assert.Contains(t, job.Brief, "suggestion_content")
+
+	var idea model.Idea
+	require.NoError(t, db.First(&idea, "id = ?", ideaID).Error)
+	assert.Equal(t, model.ImplStatusInProgress, idea.ImplStatus)
+
+	// 重复采纳幂等：不新建 job
+	again, err := svc.Select(ideaID, sug.ID, ownerID, "")
+	require.NoError(t, err)
+	assert.Empty(t, again.JobID)
+	var jobCount int64
+	db.Model(&model.ImplementationJob{}).Where("idea_id = ?", ideaID).Count(&jobCount)
+	assert.Equal(t, int64(1), jobCount)
+
+	// 列表中已采纳排在最前
+	svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u2", Content: "another"})
+	views, err := svc.ListByIdea(ideaID, "", "")
+	require.NoError(t, err)
+	require.Len(t, views, 2)
+	assert.True(t, views[0].Selected)
+	assert.False(t, views[1].Selected)
+
+	// 已采纳的建议不能删除（避免 ImplementationJob 悬空）
+	assert.ErrorIs(t, svc.Delete(ideaID, sug.ID, "u1", ""), ErrSuggestionSelected)
+}
+
+func TestSuggestionService_DeleteAuthorOnly(t *testing.T) {
+	svc, ideaID, _ := newSuggestionFixture(t)
+
+	sug, err := svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u1", Content: "s"})
+	require.NoError(t, err)
+
+	// 非作者删除被拒
+	assert.ErrorIs(t, svc.Delete(ideaID, sug.ID, "u2", ""), ErrSuggestionNotAuthor)
+
+	// 作者本人删除成功（连带清理投票）
+	require.NoError(t, svc.Vote(ideaID, sug.ID, "u3", ""))
+	require.NoError(t, svc.Delete(ideaID, sug.ID, "u1", ""))
+	var count int64
+	svc.db.Model(&model.IdeaSuggestion{}).Where("id = ?", sug.ID).Count(&count)
+	assert.Equal(t, int64(0), count)
+	var votes int64
+	svc.db.Model(&model.SuggestionVote{}).Where("suggestion_id = ?", sug.ID).Count(&votes)
+	assert.Equal(t, int64(0), votes)
+}

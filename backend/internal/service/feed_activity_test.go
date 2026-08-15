@@ -35,14 +35,16 @@ func uniqueSuffix() string {
 
 func TestFeedActions_ContainsCreateForkShare(t *testing.T) {
 	want := map[string]bool{
-		ActionRegister:   true,
-		ActionFork:       true,
-		ActionShare:      true,
-		ActionBury:       true,
-		ActionArchive:    true,
-		ActionImplement:  true,
-		ActionReactivate: true,
-		ActionUpdateImpl: true,
+		ActionRegister:           true,
+		ActionFork:               true,
+		ActionShare:              true,
+		ActionBury:               true,
+		ActionArchive:            true,
+		ActionImplement:          true,
+		ActionReactivate:         true,
+		ActionUpdateImpl:         true,
+		ActionSuggest:            true,
+		ActionSuggestionSelected: true,
 	}
 	if len(FeedActions) != len(want) {
 		t.Fatalf("FeedActions has %d entries, want %d: %v", len(FeedActions), len(want), FeedActions)

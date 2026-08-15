@@ -1,15 +1,18 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import {
   Idea,
   IdeaLineage,
   IdeaStats,
   Comment,
   FlowerSender,
+  IdeaSuggestionView,
   normalizeLinks,
   normalizeTags,
   safeUrl,
 } from "@/lib/types";
 import { DiscussionPanel } from "@/components/discussion-panel";
+import { SuggestionPanel } from "@/components/suggestion-panel";
 import { IdeaActionBar } from "@/components/idea-action-bar";
 import { IdeaDetailEngagementSection } from "@/components/idea-detail-engagement-section";
 import { IdeaIcon, IdeaMetaPanel } from "@/components/idea-meta-panel";
@@ -94,6 +97,22 @@ async function getIdeaLineage(ideaId: string): Promise<IdeaLineage | null> {
   }
 }
 
+async function getSuggestions(ideaId: string): Promise<IdeaSuggestionView[]> {
+  try {
+    // 转发浏览器 cookie，让 voted（当前用户是否投过票）在首屏就正确
+    const cookieHeader = (await headers()).get("cookie") || "";
+    const res = await fetch(`${apiBase}/ideas/${ideaId}/suggestions`, {
+      cache: "no-store",
+      headers: cookieHeader ? { cookie: cookieHeader } : {},
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.suggestions || [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function IdeaDetailPage({
   params,
   searchParams,
@@ -117,12 +136,13 @@ export default async function IdeaDetailPage({
     );
   }
 
-  const [comments, forkChildren, flowerSenders, stats, lineage] = await Promise.all([
+  const [comments, forkChildren, flowerSenders, stats, lineage, suggestions] = await Promise.all([
     getComments(id),
     getForkChildren(id),
     idea.flower_count > 0 ? getFlowerSenders(id) : Promise.resolve([]),
     getIdeaStats(id),
     (idea.forked_from_id || idea.fork_count > 0) ? getIdeaLineage(id) : Promise.resolve(null),
+    getSuggestions(id),
   ]);
 
   const tags = normalizeTags(idea.tags);
@@ -179,7 +199,7 @@ export default async function IdeaDetailPage({
         ? "badge-implemented"
         : "badge-buried";
   const activeTab: IdeaDetailTab =
-    tab === "evolution" || tab === "comments" || tab === "more"
+    tab === "evolution" || tab === "comments" || tab === "suggestions" || tab === "more"
       ? tab
       : "overview";
 
@@ -275,6 +295,11 @@ export default async function IdeaDetailPage({
                 key: "comments",
                 label: t("idea.comments"),
                 count: comments.length,
+              },
+              {
+                key: "suggestions",
+                label: t("idea.suggestions"),
+                count: suggestions.length,
               },
               {
                 key: "more",
@@ -385,6 +410,16 @@ export default async function IdeaDetailPage({
                     idea.agent?.owner?.id,
                   ].filter((v): v is string => !!v)}
                   initialVisible={8}
+                />
+              </div>
+            }
+            suggestions={
+              <div className="surface-card p-5 sm:p-6">
+                <SuggestionPanel
+                  ideaId={id}
+                  status={idea.status}
+                  initialSuggestions={suggestions}
+                  ownerUserId={idea.agent?.owner_user_id}
                 />
               </div>
             }
