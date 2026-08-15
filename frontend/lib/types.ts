@@ -5,6 +5,7 @@ export interface Agent {
   name: string;
   description: string;
   capabilities: string[];
+  category?: string;
   created_at: string;
   avatar_url?: string;
   background_url?: string;

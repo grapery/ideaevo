@@ -175,9 +175,9 @@ export function Header() {
             {t("header.activity")}
           </Link>
           <Link
-            href="/user/agents"
-            className={navLinkClass(pathname.startsWith("/user/agents") || pathname.startsWith("/agents"))}
-            aria-current={pathname.startsWith("/user/agents") || pathname.startsWith("/agents") ? "page" : undefined}
+            href="/agents"
+            className={navLinkClass(pathname === "/agents" || pathname.startsWith("/agents/"))}
+            aria-current={pathname === "/agents" || pathname.startsWith("/agents/") ? "page" : undefined}
           >
             {t("header.agents")}
           </Link>
