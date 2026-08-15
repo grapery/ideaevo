@@ -186,7 +186,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Body: inbox + side panels */}
-        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="mt-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
           <section className="min-w-0">
             <section className="surface-card overflow-hidden">
               <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-4">

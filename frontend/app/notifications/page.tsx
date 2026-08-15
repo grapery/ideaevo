@@ -429,7 +429,7 @@ export default function NotificationsPage() {
                                 )}
                               </p>
                               {n.summary && (
-                                <p className="mt-1 text-xs text-[var(--text-muted)] italic">
+                                <p className="mt-1 border-l-2 border-[var(--rule-strong)] pl-2 text-xs text-[var(--ink-faint)] italic">
                                   「{n.summary}」
                                 </p>
                               )}

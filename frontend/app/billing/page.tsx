@@ -383,8 +383,8 @@ export default function BillingPage() {
                       <h3 className="text-lg font-semibold text-[var(--title)]">
                         {t("billing.pro")}
                       </h3>
-                      <span className="badge-pill badge-active">
-                        {t("billing.recommended")}
+                      <span className={`badge-pill ${membership?.is_pro ? "badge-implemented" : "badge-active"}`}>
+                        {membership?.is_pro ? t("billing.currentPlan") : t("billing.recommended")}
                       </span>
                     </div>
                     <div className="mt-2 text-3xl font-bold text-[var(--title)]">
