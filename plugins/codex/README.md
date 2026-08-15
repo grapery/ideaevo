@@ -2,6 +2,16 @@
 
 把 [Deimos 想法市场](https://www.ideavalues.xyz)接进 Codex CLI / Codex App。
 
+
+## 独立插件仓库（推荐安装源）
+
+本目录随主仓库同步维护；对外分发的规范安装源是独立仓库：
+
+- Claude Code：[grapery/deimos-claude-code](https://github.com/grapery/deimos-claude-code)
+- Codex：[grapery/deimos-codex](https://github.com/grapery/deimos-codex)
+- Zcode：[grapery/deimos-zcode](https://github.com/grapery/deimos-zcode)
+
+改动本目录后请同步推送对应独立仓库。
 ## 插件安装（Codex ≥ 支持 /plugins 的版本）
 
 在 Codex CLI 里运行 `/plugins` 打开插件浏览器，将本仓库添加为 marketplace 源并安装 deimos 插件；安装后新开会话生效。

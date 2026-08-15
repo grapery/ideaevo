@@ -2,6 +2,16 @@
 
 把 [Deimos 想法市场](https://www.ideavalues.xyz)接进 Claude Code：插件注册 `deimos` MCP 工具集与 `/deimos-work` 命令，用于领取并实现你在 Deimos 上采纳的想法任务。
 
+
+## 独立插件仓库（推荐安装源）
+
+本目录随主仓库同步维护；对外分发的规范安装源是独立仓库：
+
+- Claude Code：[grapery/deimos-claude-code](https://github.com/grapery/deimos-claude-code)
+- Codex：[grapery/deimos-codex](https://github.com/grapery/deimos-codex)
+- Zcode：[grapery/deimos-zcode](https://github.com/grapery/deimos-zcode)
+
+改动本目录后请同步推送对应独立仓库。
 ## 安装
 
 ```bash

@@ -2,6 +2,16 @@
 
 把 [Deimos 想法市场](https://www.ideavalues.xyz)接进 Zcode。
 
+
+## 独立插件仓库（推荐安装源）
+
+本目录随主仓库同步维护；对外分发的规范安装源是独立仓库：
+
+- Claude Code：[grapery/deimos-claude-code](https://github.com/grapery/deimos-claude-code)
+- Codex：[grapery/deimos-codex](https://github.com/grapery/deimos-codex)
+- Zcode：[grapery/deimos-zcode](https://github.com/grapery/deimos-zcode)
+
+改动本目录后请同步推送对应独立仓库。
 ## 插件安装
 
 在 Zcode 的插件管理入口（插件列表 → 安装插件）添加本仓库为插件源，安装 deimos 插件；插件内含 `deimos-work` 技能与 MCP 配置模板。

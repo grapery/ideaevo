@@ -105,9 +105,9 @@ description: 领取并实现一个 Deimos 实现任务
 </dict>
 </plist>`;
 
-  const claudePluginInstall = `# Claude Code 内执行（本仓库即 marketplace 源）：
-/plugin marketplace add grapery/ideaevo
-/plugin install deimos@ideaevo`;
+  const claudePluginInstall = `# Claude Code 内执行（官方插件仓库）：
+/plugin marketplace add grapery/deimos-claude-code
+/plugin install deimos@grapery`;
 
   const schtasksRecipe = `:: Windows：任务计划程序每 15 分钟触发一次（PowerShell/CMD 均可）
 schtasks /create /tn "DeimosAutoWork" /tr "cmd /c cd /d %USERPROFILE%\\deimos-work && claude -p \"如果有 pending 的 Deimos 任务，领取并实现\" --permission-mode acceptEdits" /sc minute /mo 15`;
