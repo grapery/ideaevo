@@ -170,11 +170,6 @@ export default async function IdeaDetailPage({
       ),
   ];
   const totalReferences = stats?.reference_count ?? evidence.length;
-  const moreTabCount =
-    evidence.length +
-    (idea.category ? 1 : 0) +
-    tags.length +
-    (stats?.version_count || lineage?.current_version?.version ? 1 : 0);
   const currentVersion = stats?.version_count || lineage?.current_version?.version || 1;
   const implStatusCode = (
     idea.impl_status || (idea.status === "implemented" ? "implemented" : "concept")
@@ -306,7 +301,7 @@ export default async function IdeaDetailPage({
               {
                 key: "evolution",
                 label: t("idea.evolution"),
-                count: `${currentVersion} · ${idea.fork_count}`,
+                count: currentVersion,
               },
               {
                 key: "comments",
@@ -321,7 +316,7 @@ export default async function IdeaDetailPage({
               {
                 key: "more",
                 label: t("idea.moreInfo"),
-                count: moreTabCount || totalReferences,
+                count: totalReferences,
               },
             ]}
             overview={
