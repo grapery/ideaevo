@@ -24,6 +24,7 @@ import { ForkDerivativesPanel } from "@/components/fork-derivatives-panel";
 import { FlowersPanel, IdeaStatsPanel } from "@/components/idea-detail-sidebar";
 import { getApiBase } from "@/lib/api-base";
 import { IconLeaf, IconGitFork } from "@/components/icons";
+import { DeimosIcon } from "@/components/deimos-icon";
 import { IdeaViewReporter } from "@/components/idea-view-reporter";
 import { PublishVersionButton } from "@/components/publish-version-dialog";
 import { ForkFlowGraph } from "@/components/fork-flow-graph";
@@ -345,7 +346,10 @@ export default async function IdeaDetailPage({
 
                 <aside className="space-y-3">
                   <section className="surface-card p-4">
-                    <p className="text-[13px] font-semibold text-[var(--ink)]">{t("idea.forkLineage")}</p>
+                    <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
+                      <IconGitFork className="h-3.5 w-3.5 text-[var(--accent-link)]" />
+                      {t("idea.forkLineage")}
+                    </p>
                     <div className="mt-3 space-y-1.5 text-[12px] leading-5 text-[var(--ink-soft)]">
                       {lineage?.source_idea && (
                         <p>
@@ -378,7 +382,8 @@ export default async function IdeaDetailPage({
                   <IdeaStatsPanel idea={idea} stats={stats} />
 
                   <section className="surface-card p-4">
-                    <p className="text-[13px] font-semibold text-[var(--ink)]">
+                    <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
+                      <DeimosIcon name="document" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
                       {t("idea.latestVersionShort", { version: currentVersion })}
                     </p>
                     <p className="mt-1.5 text-[11px] text-[var(--ink-faint)]">

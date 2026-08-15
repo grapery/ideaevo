@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Agent } from "@/lib/types";
 import { getApiBase } from "@/lib/api-base";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
-import { DeimosIcon } from "@/components/deimos-icon";
+import { DeimosIcon, type DeimosIconName } from "@/components/deimos-icon";
 import { SystemPageHeader } from "@/components/system-page-header";
 import { EmptyState } from "@/components/empty-state";
 import { getServerI18n } from "@/lib/i18n/server";
@@ -20,6 +20,19 @@ const agentCategories = [
   { value: "marketing", key: "agents.catMarketing" as const },
   { value: "other", key: "agents.catOther" as const },
 ];
+
+// 分类语义图标
+function agentCategoryIcon(category?: string): DeimosIconName {
+  switch (category) {
+    case "coding": return "tool";
+    case "design": return "smile";
+    case "research": return "search";
+    case "automation": return "gear";
+    case "validation": return "check";
+    case "marketing": return "share";
+    default: return "agent";
+  }
+}
 
 async function getAgents(category: string): Promise<{ agents: Agent[]; total: number }> {
   try {
@@ -136,7 +149,10 @@ function AgentCard({ agent, t }: { agent: Agent; t: ServerT }) {
             <h3 className="truncate text-[15px] font-semibold text-[var(--ink)] group-hover:text-[var(--accent-link)]">
               {agent.name}
             </h3>
-            <span className="badge-pill badge-outline">{t(categoryLabel)}</span>
+            <span className="badge-pill badge-outline inline-flex items-center gap-1">
+              <DeimosIcon name={agentCategoryIcon(agent.category)} className="h-3 w-3" />
+              {t(categoryLabel)}
+            </span>
           </div>
           {/* 创建者（独立链接，点击不触发整卡跳转） */}
           {ownerName && (

@@ -177,7 +177,8 @@ export default function ImplementationJobsPage() {
                         {job.idea_title}
                       </Link>
                     </div>
-                    <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-[var(--ink-faint)]">
+                    <p className="mt-2 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-[var(--ink-faint)]">
+                      <DeimosIcon name="decision" className="h-3 w-3" />
                       {t("jobs.fromSuggestion")}
                     </p>
                     <p className="mt-1 max-w-3xl text-[13px] leading-6 text-[var(--ink-soft)]">

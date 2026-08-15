@@ -10,6 +10,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/provider";
+import { DeimosIcon, type DeimosIconName } from "./deimos-icon";
 
 export type IdeaDetailTab =
   | "overview"
@@ -23,6 +24,15 @@ interface TabItem {
   label: string;
   count?: number | string;
 }
+
+// 每个 tab 的语义图标，与内容一一对应
+const tabIcons: Record<IdeaDetailTab, DeimosIconName> = {
+  overview: "document",
+  evolution: "fork",
+  comments: "comment",
+  suggestions: "decision",
+  more: "evidence",
+};
 
 interface IdeaDetailTabContextValue {
   tab: IdeaDetailTab;
@@ -123,6 +133,7 @@ export function IdeaDetailTabs({
               setTab(item.key);
             }}
           >
+            <DeimosIcon name={tabIcons[item.key]} className="h-3.5 w-3.5" />
             <span>{item.label}</span>
             {item.count !== undefined && item.count !== "" && (
               <span className="count-badge">{item.count}</span>

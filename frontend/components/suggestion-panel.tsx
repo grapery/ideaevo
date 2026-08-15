@@ -518,7 +518,8 @@ export function SuggestionPanel({
     <section id="suggestions" className="scroll-mt-24">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-[18px] font-semibold tracking-tight text-[var(--ink)]">
+          <h2 className="flex items-center gap-2 text-[18px] font-semibold tracking-tight text-[var(--ink)]">
+            <DeimosIcon name="decision" className="h-4 w-4 text-[var(--accent-link)]" />
             {t("idea.suggestions")}
             {items.length > 0 && (
               <span className="ml-2 font-code text-[14px] font-normal tabular-nums text-[var(--ink-faint)]">

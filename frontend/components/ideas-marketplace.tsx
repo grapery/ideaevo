@@ -222,7 +222,10 @@ export function IdeasMarketplace({
           {/* 移动端可折叠筛选:分类 + 热门标签(桌面端走左侧栏,此处隐藏) */}
           <details className="surface-card lg:hidden">
             <summary className="flex h-10 cursor-pointer list-none items-center justify-between px-3.5 text-[13px] font-semibold text-[var(--ink)]">
-              <span>{t("market.discoverBy")}</span>
+              <span className="inline-flex items-center gap-1.5">
+                <DeimosIcon name="radar" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
+                {t("market.discoverBy")}
+              </span>
               <DeimosIcon name="chevron-right" className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
             </summary>
             <div className="border-t border-[var(--rule)] p-2">
@@ -241,11 +244,17 @@ export function IdeasMarketplace({
               ))}
             </div>
             <div className="border-t border-[var(--rule)] px-3.5 py-3">
-              <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.lifecycle")}</p>
+              <p className="mb-2 flex items-center gap-1 text-[11px] font-medium text-[var(--ink-faint)]">
+                <DeimosIcon name="lifecycle" className="h-3 w-3" />
+                {t("market.lifecycle")}
+              </p>
               {lifecycleList}
             </div>
             <div className="border-t border-[var(--rule)] px-3.5 py-3">
-              <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.intentSignals")}</p>
+              <p className="mb-2 flex items-center gap-1 text-[11px] font-medium text-[var(--ink-faint)]">
+                <DeimosIcon name="pulse" className="h-3 w-3" />
+                {t("market.intentSignals")}
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {hotTags.slice(0, 5).map((tag) => (
                   <button
@@ -262,7 +271,8 @@ export function IdeasMarketplace({
           </details>
 
           <aside className="hidden surface-card overflow-hidden lg:block">
-            <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+            <div className="flex h-10 items-center gap-1.5 border-b border-[var(--rule)] px-3.5">
+              <DeimosIcon name="radar" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
               <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.discoverBy")}</p>
             </div>
             <div className="p-2">
@@ -290,12 +300,18 @@ export function IdeasMarketplace({
             </div>
 
             <div className="border-t border-[var(--rule)] px-3.5 py-3">
-              <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.lifecycle")}</p>
+              <p className="mb-2 flex items-center gap-1 text-[11px] font-medium text-[var(--ink-faint)]">
+                <DeimosIcon name="lifecycle" className="h-3 w-3" />
+                {t("market.lifecycle")}
+              </p>
               {lifecycleList}
             </div>
 
             <div className="border-t border-[var(--rule)] px-3.5 py-3">
-              <p className="mb-2 text-[11px] font-medium text-[var(--ink-faint)]">{t("market.intentSignals")}</p>
+              <p className="mb-2 flex items-center gap-1 text-[11px] font-medium text-[var(--ink-faint)]">
+                <DeimosIcon name="pulse" className="h-3 w-3" />
+                {t("market.intentSignals")}
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {hotTags.slice(0, 5).map((tag) => (
                   <button
@@ -369,7 +385,8 @@ export function IdeasMarketplace({
           <aside className="hidden space-y-3 xl:block">
             {(trending.length > 0 || ideas.length > 0) && (
             <section className="surface-card overflow-hidden">
-              <div className="flex h-10 items-center border-b border-[var(--rule)] px-3.5">
+              <div className="flex h-10 items-center gap-1.5 border-b border-[var(--rule)] px-3.5">
+                <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
                 <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.trending")}</p>
               </div>
               <div>
@@ -396,8 +413,11 @@ export function IdeasMarketplace({
             )}
 
             <section className="surface-card overflow-hidden">
-              <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-3.5">
-                <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.agentOperate")}</p>
+              <div className="flex h-10 items-center justify-between gap-1.5 border-b border-[var(--rule)] px-3.5">
+                <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
+                  <DeimosIcon name="agent" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
+                  {t("market.agentOperate")}
+                </p>
                 <Link href="/docs/mcp" className="text-[12px] text-[var(--accent-link)] hover:underline">
                   {t("market.connectAgent")}
                 </Link>

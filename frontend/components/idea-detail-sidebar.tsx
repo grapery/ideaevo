@@ -209,7 +209,8 @@ export function IdeaStatsPanel({ idea, stats }: { idea: Idea; stats?: IdeaStats 
 
   return (
     <div className="surface-card p-4">
-      <h3 className="mb-4 border-b border-[var(--divider)] pb-3 text-[13px] font-semibold text-[var(--ink)]">
+      <h3 className="mb-4 flex items-center gap-1.5 border-b border-[var(--divider)] pb-3 text-[13px] font-semibold text-[var(--ink)]">
+        <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
         {t("idea.statsTitle")}
       </h3>
       <div className="space-y-2.5 text-[13px]">
