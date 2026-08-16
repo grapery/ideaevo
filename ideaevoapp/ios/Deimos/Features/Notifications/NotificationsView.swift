@@ -1,27 +1,6 @@
 import SwiftUI
 import Observation
 
-enum NotificationCategory: String, CaseIterable, Identifiable {
-    case all, flower, fork
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .all: return "全部"
-        case .flower: return "送花"
-        case .fork: return "Fork"
-        }
-    }
-
-    func matches(_ item: AppNotification) -> Bool {
-        switch self {
-        case .all: return true
-        case .flower: return item.action == "flower" || item.action == "flowers"
-        case .fork: return item.action == "fork"
-        }
-    }
-}
 
 @MainActor
 @Observable
@@ -78,14 +57,12 @@ final class NotificationsViewModel {
 struct NotificationsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = NotificationsViewModel()
-    @State private var category: NotificationCategory = .all
     @State private var ideaRoute: IdeaRoute?
     @State private var userRoute: UserRoute?
     @State private var agentRoute: AgentRoute?
 
     private var filteredItems: [AppNotification] {
         viewModel.items.filter { item in
-            guard category.matches(item) else { return false }
             guard AppPreferencesStore.shouldShowNotification(action: item.action) else { return false }
             return BlocklistFiltering.notification(item)
         }
@@ -97,46 +74,34 @@ struct NotificationsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 0) {
-                // ardot S08N (`237:446` Filter Chips): #F5F6F7 container cr20 holding 3 chips.
-                // Active chip #BEE90D lemon + lemonInk text; inactive white + #E8EBF0 stroke.
-                // Each chip 88×40. Previously used dark lemonInk active + grey inactive — wrong.
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(NotificationCategory.allCases) { item in
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    category = item
-                                }
-                            } label: {
-                                Text(item.title)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(category == item ? AtlasColors.lemonInk : AtlasColors.inkSoft)
-                                    .frame(width: 88, height: 40)
-                                    .background(category == item ? AtlasColors.lemonStrong : AtlasColors.surface)
-                                    .overlay(
-                                        Capsule()
-                                            .stroke(AtlasColors.settingsRowStroke, lineWidth: category == item ? 0 : 1)
-                                    )
-                                    .clipShape(Capsule())
-                            }
-                            .buttonStyle(.plain)
+            VStack(alignment: .leading, spacing: 14) {
+                // S09 Header (ardot 715405210175453 `2:498`) — 通知 Bold-22 + lemonSoft
+                // 全部已读 chip (r15, olive Medium-12).
+                HStack {
+                    Text("通知")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Spacer()
+                    if unreadCount > 0 {
+                        Button {
+                            Task { await viewModel.markAllRead() }
+                        } label: {
+                            Text("全部已读")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(AtlasColors.olive)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(AtlasColors.lemonSoft)
+                                )
                         }
+                        .buttonStyle(.plain)
                     }
-                    .padding(4)
-                    .padding(.horizontal, AtlasMetrics.detailX)
-                    .background(
-                        // Container behind the chips — ardot spec shows #F5F6F7 cr20 holding them.
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(AtlasColors.chatAssistantBubble)
-                            .padding(.horizontal, AtlasMetrics.detailX)
-                    )
                 }
-                .padding(.top, 8)
-                .padding(.bottom, 12)
+                .padding(.top, 6)
 
                 if viewModel.isLoading && viewModel.items.isEmpty {
-                    // loading state — keep some height so the empty/loading content centers below
                     Color.clear.frame(height: 1)
                 } else if let error = viewModel.errorMessage, viewModel.items.isEmpty {
                     AtlasDesignedEmptyStates.loadFailed(message: error) {
@@ -152,55 +117,54 @@ struct NotificationsView: View {
                     AtlasDesignedEmptyStates.notificationsCategoryEmpty()
                         .padding(.top, 40)
                 } else {
-                    LazyVStack(spacing: 12) {
-                        if unreadCount > 0 {
-                            // ardot S08N Notification Summary (342×52 #F5FFC7): 13pt #1A2403
-                            // summary text + 13pt #0F1C2E "全部已读" action.
-                            Button {
-                                Task { await viewModel.markAllRead() }
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Text("\(unreadCount) 条未读 · 评论、关注和 Agent 更新")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(AtlasColors.lemonInk)
-                                        .lineLimit(1)
-                                    Spacer(minLength: 4)
-                                    Text("全部已读")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(AtlasColors.ink)
-                                }
-                                .padding(.horizontal, 14)
-                                .frame(height: 52)
-                                .background(AtlasColors.lemonSoft)
-                                .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
+                    // S09 grouping — 今天 / 更早 sections with 12pt SemiBold inkSoft labels.
+                    let todayItems = filteredItems.filter { Calendar.current.isDateInToday($0.createdAt) }
+                    let earlierItems = filteredItems.filter { !Calendar.current.isDateInToday($0.createdAt) }
+
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        if !todayItems.isEmpty {
+                            Text("今天")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(AtlasColors.inkSoft)
+                                .padding(.bottom, 6)
                         }
-                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
+                        ForEach(Array(todayItems.enumerated()), id: \.element.id) { index, item in
                             notificationCell(item)
-                            .onAppear {
-                                if index == filteredItems.count - 1 {
-                                    Task { await viewModel.loadMore() }
+                                .onAppear {
+                                    if index == todayItems.count - 1, earlierItems.isEmpty {
+                                        Task { await viewModel.loadMore() }
+                                    }
                                 }
-                            }
                         }
+
+                        if !earlierItems.isEmpty {
+                            Text("更早")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(AtlasColors.inkSoft)
+                                .padding(.top, 14)
+                                .padding(.bottom, 6)
+                        }
+                        ForEach(Array(earlierItems.enumerated()), id: \.element.id) { index, item in
+                            notificationCell(item)
+                                .onAppear {
+                                    if index == earlierItems.count - 1 {
+                                        Task { await viewModel.loadMore() }
+                                    }
+                                }
+                        }
+
                         if viewModel.isLoadingMore {
-                            ProgressView().padding(.vertical, 12)
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
                         }
                     }
-                    .padding(.top, 4)
-                    .padding(.bottom, 16)
-                    .padding(.horizontal, AtlasMetrics.detailX)
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
         }
         .background(AtlasColors.canvas)
-        // ardot C/Push Toolbar (`237:94`) — float-liquid: transparent container holds the
-        // floating glass back-button circle + title capsule; content scrolls underneath. The
-        // toolbar itself has NO bar background (matching the design).
-        .safeAreaInset(edge: .top, spacing: 0) {
-            AtlasOverlayPushNavBar(title: "通知", onBack: { dismiss() })
-        }
         .navigationBarHidden(true)
         .suppressTabBar()
         .navigationDestination(item: $ideaRoute) { route in
@@ -215,6 +179,9 @@ struct NotificationsView: View {
         .task { await viewModel.load() }
     }
 
+    /// S09 notification row (ardot 715405210175453 `2:498`): 34pt avatar (or tinted icon
+    /// circle), 13pt Regular text (ink when unread, inkTertiary when read), 11pt timestamp,
+    /// trailing 8pt lemonStrong unread dot.
     private func notificationCell(_ item: AppNotification) -> some View {
         let iconStyle = notificationIconStyle(for: item.action)
 
@@ -224,53 +191,61 @@ struct NotificationsView: View {
                 openDestination(for: item)
             }
         } label: {
-            CompactListCard(
-                leading: {
-                    ZStack(alignment: .topTrailing) {
-                        if let url = item.actorAvatarLink {
-                            if item.actorType == "agent" {
-                                EntityAvatar.agent(id: item.actorID, url: url, name: item.actorName, size: 36)
-                            } else {
-                                EntityAvatar.user(id: item.actorID, url: url, name: item.actorName, size: 36)
-                            }
-                        } else {
-                            ZStack {
-                                Circle()
-                                    .fill(iconStyle.color)
-                                    .frame(width: 36, height: 36)
-                                DeimosIconView(icon: iconStyle.icon, size: 16, color: .white)
-                            }
-                        }
-                        if !item.isRead {
-                            Circle()
-                                .fill(AtlasColors.primary)
-                                .frame(width: 8, height: 8)
-                                .offset(x: 2, y: -2)
-                        }
+            HStack(alignment: .top, spacing: 10) {
+                if let url = item.actorAvatarLink {
+                    if item.actorType == "agent" {
+                        EntityAvatar.agent(id: item.actorID, url: url, name: item.actorName, size: 34)
+                    } else {
+                        EntityAvatar.user(id: item.actorID, url: url, name: item.actorName, size: 34)
                     }
-                },
-                title: item.title,
-                subtitle: item.listSubtitle,
-                timestamp: item.createdAt.relativeShort,
-                cardBackground: item.isRead ? AtlasColors.surface : AtlasColors.notificationUnread,
-                layoutStyle: .card
-            )
+                } else {
+                    ZStack {
+                        Circle()
+                            .fill(iconStyle.background)
+                            .frame(width: 34, height: 34)
+                        DeimosIconView(icon: iconStyle.icon, size: 15, color: iconStyle.color)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title)
+                        .font(.system(size: 13))
+                        .foregroundStyle(item.isRead ? AtlasColors.inkTertiary : AtlasColors.ink)
+                        .lineSpacing(6)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    Text(item.createdAt.relativeShort)
+                        .font(.system(size: 11))
+                        .foregroundStyle(item.isRead ? AtlasColors.inkFaint : AtlasColors.inkSoft)
+                }
+                Spacer(minLength: 0)
+                if !item.isRead {
+                    Circle()
+                        .fill(AtlasColors.lemonStrong)
+                        .frame(width: 8, height: 8)
+                        .padding(.top, 5)
+                }
+            }
+            .padding(.vertical, 4)
+            .frame(minHeight: 37)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    private func notificationIconStyle(for action: String) -> (icon: DeimosIcon, color: Color) {
+    /// S09 icon circles — soft fills (lemonSoft/surfaceSecondary) with colored glyphs.
+    private func notificationIconStyle(for action: String) -> (icon: DeimosIcon, color: Color, background: Color) {
         switch action {
         case "flower", "flowers":
-            return (.flower, AtlasColors.coral)
+            return (.flower, AtlasColors.olive, AtlasColors.lemonSoft)
         case "comment":
-            return (.comment, AtlasColors.accentActive)
+            return (.comment, AtlasColors.olive, AtlasColors.lemonSoft)
         case "follow":
-            return (.users, AtlasColors.entityUser.opacity(0.85))
+            return (.users, AtlasColors.success, AtlasColors.successSoft)
         case "fork":
-            return (.fork, AtlasColors.accentFork)
+            return (.fork, AtlasColors.olive, AtlasColors.lemonSoft)
         default:
-            return (.bell, AtlasColors.inkFaint)
+            return (.bell, AtlasColors.success, AtlasColors.surfaceSecondary)
         }
     }
 

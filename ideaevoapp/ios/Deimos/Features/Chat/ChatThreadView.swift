@@ -2,6 +2,9 @@ import SwiftUI
 
 struct ChatThreadView: View {
     let sessionID: String
+    /// Active session — starts as the pushed session, replaced when the user switches
+    /// agents from the thread header (creates a fresh session for the new agent).
+    @State private var activeSessionID: String
     @State private var title: String
 
     @Environment(\.dismiss) private var dismiss
@@ -23,6 +26,7 @@ struct ChatThreadView: View {
     @State private var rateLimitMessage: String?
     /// ardot S07b: holds the streaming Task so it can be cancelled from the Stop button.
     @State private var streamingTask: Task<Void, Never>?
+    @State private var showAgentSwitcher = false
 
     private var isSheetZoomActive: Bool {
         showArchiveResult
@@ -30,6 +34,7 @@ struct ChatThreadView: View {
 
     init(sessionID: String, title: String) {
         self.sessionID = sessionID
+        _activeSessionID = State(initialValue: sessionID)
         _title = State(initialValue: title)
     }
 
@@ -85,7 +90,7 @@ struct ChatThreadView: View {
                                 ForEach(group.messages) { message in
                                     ChatMessageBubble(
                                         message: message,
-                                        sessionID: sessionID,
+                                        sessionID: activeSessionID,
                                         agentName: title,
                                         isStreaming: streamingAssistantID == message.id,
                                         feedbackEnabled: message.isAssistant && !pendingFeedbackIDs.contains(message.id),
@@ -150,9 +155,22 @@ struct ChatThreadView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             ChatThreadNavBar(
                 title: title,
-                subtitle: contextIdea != nil ? "带着 Idea 上下文" : nil,
+                subtitle: "AI Agent · 在线",
+                agentID: session?.agentID ?? "",
+                agentAvatarURL: session?.agent?.avatarLink,
                 onBack: { dismiss() }
-            ) { EmptyView() }
+            ) {
+                Button {
+                    showAgentSwitcher = true
+                } label: {
+                    DeimosIconView(icon: .refresh, size: 16, color: AtlasColors.ink)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(AtlasColors.surfaceSecondary))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("切换 Agent")
+            }
             .contextMenu {
                 Button("封存对话") { Task { await archiveSession() } }
             }
@@ -161,6 +179,12 @@ struct ChatThreadView: View {
         .suppressTabBar()
         .sheet(isPresented: $showArchiveResult) {
             archiveResultSheet
+        }
+        .sheet(isPresented: $showAgentSwitcher) {
+            ChatAgentPickerView(ideaID: nil, ideaTitle: nil) { agent in
+                Task { await switchAgent(agent) }
+            }
+            .presentationDetents([.medium, .large])
         }
         .task { await loadMessages() }
         .navigationDestination(item: $ideaRoute) { route in
@@ -278,12 +302,30 @@ struct ChatThreadView: View {
         isArchiving = true
         defer { isArchiving = false }
         do {
-            let result = try await APIClient.shared.archiveSession(id: sessionID)
+            let result = try await APIClient.shared.archiveSession(id: activeSessionID)
             archiveSummary = result.summary
             showArchiveResult = true
             ToastCenter.shared.showSuccess("已封存对话")
         } catch {
             ToastCenter.shared.showError("封存失败", message: error.localizedDescription)
+        }
+    }
+
+    /// S03 Switch Agent — creates a fresh session with the picked agent and rebuilds
+    /// the thread state in place (title, avatar, messages, stream target).
+    private func switchAgent(_ agent: Agent) async {
+        do {
+            let fresh = try await APIClient.shared.createSession(agentID: agent.id, title: agent.name)
+            activeSessionID = fresh.id
+            title = agent.name
+            session = fresh
+            contextIdea = nil
+            messages = []
+            activityText = nil
+            await loadMessages()
+            ToastCenter.shared.showSuccess("已切换到 \(agent.name)")
+        } catch {
+            ToastCenter.shared.showError("切换失败", message: error.localizedDescription)
         }
     }
 
@@ -298,7 +340,7 @@ struct ChatThreadView: View {
             messages = [
                 ChatMessage(
                     id: "preview-assistant-1",
-                    sessionID: sessionID,
+                    sessionID: activeSessionID,
                     role: "assistant",
                     content: "我已经读取了这个 Idea。你想先 Fork 成公寓版，还是补充储能模块？",
                     contentType: "markdown",
@@ -307,7 +349,7 @@ struct ChatThreadView: View {
                 ),
                 ChatMessage(
                     id: "preview-user-1",
-                    sessionID: sessionID,
+                    sessionID: activeSessionID,
                     role: "user",
                     content: "先 Fork 成公寓版。",
                     contentType: "text",
@@ -316,7 +358,7 @@ struct ChatThreadView: View {
                 ),
                 ChatMessage(
                     id: "preview-assistant-2",
-                    sessionID: sessionID,
+                    sessionID: activeSessionID,
                     role: "assistant",
                     content: "可以。我会保留峰谷电价调度，把设备范围收敛到公共照明、电梯与集中空调，并生成一个更轻量的执行清单。",
                     contentType: "markdown",
@@ -340,7 +382,7 @@ struct ChatThreadView: View {
         // the context banner + agent name) is best-effort enrichment, so a failure there
         // must never block the message list.
         do {
-            messages = try await APIClient.shared.getMessages(sessionID: sessionID)
+            messages = try await APIClient.shared.getMessages(sessionID: activeSessionID)
             pendingFeedbackIDs = []
         } catch {
             errorMessage = error.localizedDescription
@@ -351,7 +393,7 @@ struct ChatThreadView: View {
         // name and discovers the pinned idea context. Failures are swallowed silently so a
         // session-detail glitch never blocks the readable message thread.
         if session == nil {
-            if let fetched = try? await APIClient.shared.getSession(id: sessionID) {
+            if let fetched = try? await APIClient.shared.getSession(id: activeSessionID) {
                 session = fetched
                 if let agentName = fetched.agent?.name, !agentName.isEmpty {
                     title = agentName
@@ -377,7 +419,7 @@ struct ChatThreadView: View {
         draft = ""
         let tempUser = ChatMessage(
             id: UUID().uuidString,
-            sessionID: sessionID,
+            sessionID: activeSessionID,
             role: "user",
             content: content,
             contentType: "text",
@@ -390,7 +432,7 @@ struct ChatThreadView: View {
         streamingAssistantID = assistantID
         messages.append(ChatMessage(
             id: assistantID,
-            sessionID: sessionID,
+            sessionID: activeSessionID,
             role: "assistant",
             content: "",
             contentType: "markdown",
@@ -403,7 +445,7 @@ struct ChatThreadView: View {
         // ardot S07b: wrap the streaming loop in a cancellable Task so the Stop button can end it.
         let task = Task {
             do {
-                for try await event in streamService.stream(sessionID: sessionID, content: content, token: token) {
+                for try await event in streamService.stream(sessionID: activeSessionID, content: content, token: token) {
                     switch event {
                     case .chunk(let text):
                         updateAssistant(id: assistantID, content: text)
@@ -426,7 +468,7 @@ struct ChatThreadView: View {
                         ToastCenter.shared.showError("发送失败", message: message)
                     }
                 }
-                messages = try await APIClient.shared.getMessages(sessionID: sessionID)
+                messages = try await APIClient.shared.getMessages(sessionID: activeSessionID)
                 pendingFeedbackIDs = []
                 streamingAssistantID = nil
             } catch is CancellationError {
@@ -611,9 +653,9 @@ struct ChatMessageBubble: View {
                 HStack(alignment: .top, spacing: 0) {
                     if message.isUser { Spacer(minLength: 0) }
                     // Bubble content — hug text width, cap at 260pt max.
-                    // ardot S07 `237:289`: user bubble 15pt Medium lemonInk on lemonStrong;
-                    // assistant bubble 15pt Regular ink on #F5F6F7. Previous 13pt was under spec.
-                    // ardot S07b (`351:32`): when streaming, append a blinking cursor after text.
+                    // S03 (ardot 715405210175453 `2:5`): 13pt Regular on white assistant /
+                    // lemonStrong user bubbles, r18, 12pt padding.
+                    // Streaming appends a blinking cursor after text.
                     Group {
                         if message.isAssistant, message.contentType == "markdown" {
                             VStack(alignment: .leading, spacing: 0) {
@@ -626,9 +668,7 @@ struct ChatMessageBubble: View {
                             .frame(maxWidth: 232, alignment: .leading)
                         } else {
                             (Text(message.content.plainSummary)
-                                .font(message.isUser
-                                      ? .system(size: 15, weight: .medium)
-                                      : .system(size: 15, weight: .regular))
+                                .font(.system(size: 13))
                                 .foregroundStyle(message.isUser ? AtlasColors.lemonInk : AtlasColors.ink)
                             + Text(isStreaming ? "  " : ""))
                             .fixedSize(horizontal: false, vertical: true)
@@ -642,10 +682,10 @@ struct ChatMessageBubble: View {
                     }
                     .frame(maxWidth: 260, alignment: message.isUser ? .trailing : .leading)
                     .fixedSize(horizontal: message.isUser, vertical: true)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 14)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
                     .background(message.isUser ? AtlasColors.lemonChat : AtlasColors.chatAssistantBubble)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     if !message.isUser { Spacer(minLength: 0) }
                 }
             }

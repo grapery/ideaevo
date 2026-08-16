@@ -8,7 +8,6 @@ enum AppPreferencesStore {
         static let notifyComments = "deimos.pref.notify.comments"
         static let notifyFollows = "deimos.pref.notify.follows"
         static let pushEnabled = "deimos.pref.push.enabled"
-        static let hasOnboarded = "deimos.pref.hasOnboarded"
         static let aiProcessingConsent = "deimos.pref.ai.consent"
     }
 
@@ -18,13 +17,7 @@ enum AppPreferencesStore {
         static let notifyComments = "deimos.pref.notify.comments"
         static let notifyFollows = "deimos.pref.notify.follows"
         static let pushEnabled = "deimos.pref.push.enabled"
-        static let hasOnboarded = "deimos.pref.hasOnboarded"
         static let aiProcessingConsent = "deimos.pref.ai.consent"
-    }
-
-    static var hasCompletedOnboarding: Bool {
-        get { UserDefaults.standard.bool(forKey: Key.hasOnboarded) }
-        set { UserDefaults.standard.set(newValue, forKey: Key.hasOnboarded) }
     }
 
     static var language: String {

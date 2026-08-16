@@ -46,13 +46,16 @@ struct ChineseFriendlyTextField: UIViewRepresentable {
     var keyboardType: UIKeyboardType = .default
     var returnKeyType: UIReturnKeyType = .default
     var autocapitalization: UITextAutocapitalizationType = .none
+    /// UIKit field font size — SwiftUI `.font()` modifiers on the representable have no
+    /// effect, so callers that need a non-16pt field must pass this.
+    var fontSize: CGFloat = 16
     var onSubmit: (() -> Void)?
 
     func makeUIView(context: Context) -> UITextField {
         let field = UITextField()
         field.delegate = context.coordinator
         field.placeholder = placeholder
-        field.font = .systemFont(ofSize: 16)
+        field.font = .systemFont(ofSize: fontSize)
         field.autocapitalizationType = autocapitalization
         field.autocorrectionType = .default
         field.keyboardType = keyboardType
@@ -215,13 +218,14 @@ struct AtlasMultilineTextField: View {
     @Binding var text: String
     var minHeight: CGFloat = 44
     var maxHeight: CGFloat = 120
+    var fontSize: CGFloat = 16
     var onSubmit: (() -> Void)? = nil
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             if text.isEmpty {
                 Text(placeholder)
-                    .font(.system(size: 16))
+                    .font(.system(size: fontSize))
                     .foregroundStyle(AtlasColors.inkFaint)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
@@ -229,6 +233,7 @@ struct AtlasMultilineTextField: View {
             }
             ChineseFriendlyTextEditor(
                 text: $text,
+                fontSize: fontSize,
                 minHeight: minHeight,
                 maxHeight: maxHeight,
                 returnKeyType: onSubmit == nil ? .default : .send,

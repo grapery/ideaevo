@@ -265,24 +265,46 @@ struct UserProfileView: View {
                         }
                     }
 
-                    AtlasSegmentedPill(
-                        items: ["动态", "Agent", "想法"],
-                        selection: Binding(
-                            get: {
+                    // S26 Segmented (ardot 715405210175453 `4:297`): surfaceSecondary
+                    // r14 container (pad 4, gap 6); selected seg lemon with lemonInk
+                    // SemiBold-12 label.
+                    HStack(spacing: 6) {
+                        ForEach(Array([("动态", 0), ("Agent", 1), ("想法", 2)].enumerated()), id: \.element.1) { _, item in
+                            let label = item.0
+                            let index = item.1
+                            let isSelected = {
                                 switch viewModel.selectedTab {
-                                case .activity: return 0
-                                case .agents: return 1
-                                case .ideas: return 2
+                                case .activity: return index == 0
+                                case .agents: return index == 1
+                                case .ideas: return index == 2
                                 }
-                            },
-                            set: {
-                                viewModel.selectedTab = switch $0 {
-                                case 0: .activity
-                                case 1: .agents
-                                default: .ideas
+                            }()
+                            Button {
+                                withAnimation(.easeOut(duration: 0.15)) {
+                                    viewModel.selectedTab = switch index {
+                                    case 0: .activity
+                                    case 1: .agents
+                                    default: .ideas
+                                    }
                                 }
+                            } label: {
+                                Text(label)
+                                    .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
+                                    .foregroundStyle(isSelected ? AtlasColors.lemonInk : AtlasColors.inkTertiary)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 32)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .fill(isSelected ? AtlasColors.lemon : .clear)
+                                    )
                             }
-                        )
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(AtlasColors.settingsGroupFill)
                     )
 
                     tabContent

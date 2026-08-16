@@ -302,9 +302,23 @@ struct BlocklistView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                AtlasSettingsSubSummaryCard(
-                    title: "黑名单管理",
-                    message: "拉黑的用户不会出现在你的动态、广场、搜索与通知中。可在用户主页 ⋯ 菜单中拉黑。"
+                AtlasSubPageNavBar(title: "黑名单管理", onBack: { dismiss() })
+
+                // S29 Summary Card — surfaceSecondary r20, 15 SemiBold title + 13 inkTertiary.
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("黑名单管理")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Text("被拉黑的用户无法评论你的想法、私信或关注你。")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AtlasColors.inkTertiary)
+                        .lineSpacing(6)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(AtlasColors.settingsGroupFill)
                 )
 
                 if blocked.isEmpty {
@@ -312,43 +326,45 @@ struct BlocklistView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 48)
                 } else {
-                    AtlasSettingsGroup {
-                        ForEach(Array(blocked.enumerated()), id: \.element.id) { index, user in
-                            HStack(spacing: 12) {
-                                EntityAvatar.user(id: user.id, url: nil, name: user.name, size: 40)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(user.name)
-                                        .font(AtlasTypography.mobileSubheadline())
-                                        .foregroundStyle(AtlasColors.ink)
-                                    Text("已屏蔽内容")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(AtlasColors.inkFaint)
-                                }
-                                Spacer()
-                                Button("解除") {
-                                    Task {
-                                        await BlocklistStore.shared.unblock(user.id)
-                                        blocked = BlocklistStore.shared.entries
-                                    }
-                                }
-                                .font(AtlasTypography.badge())
-                                .foregroundStyle(AtlasColors.destructive)
+                    // S29 Blocked Row — 44pt avatar, 14 SemiBold name, 11 inkSoft meta,
+                    // lemonSoft r16 解除 pill (olive SemiBold-12).
+                    ForEach(blocked) { user in
+                        HStack(spacing: 10) {
+                            EntityAvatar.user(id: user.id, url: nil, name: user.name, size: 44)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(user.name)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(AtlasColors.ink)
+                                    .lineLimit(1)
+                                Text("已屏蔽其内容与互动")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(AtlasColors.inkSoft)
                             }
-                            .frame(minHeight: 56)
-
-                            if index < blocked.count - 1 {
-                                AtlasSettingsGroupDivider()
+                            Spacer(minLength: 0)
+                            Button {
+                                Task {
+                                    await BlocklistStore.shared.unblock(user.id)
+                                    blocked = BlocklistStore.shared.entries
+                                }
+                            } label: {
+                                Text("解除")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(AtlasColors.olive)
+                                    .frame(width: 72, height: 32)
+                                    .background(
+                                        Capsule(style: .continuous)
+                                            .fill(AtlasColors.lemonSoft)
+                                    )
                             }
+                            .buttonStyle(.plain)
                         }
+                        .frame(minHeight: 44)
                     }
                 }
             }
-            .padding(.horizontal, AtlasMetrics.detailX)
-            .padding(.top, 8)
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
             .padding(.bottom, 40)
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            settingsBackHeader(title: "黑名单", dismiss: dismiss)
         }
         .background(AtlasColors.canvas)
         .navigationBarHidden(true)

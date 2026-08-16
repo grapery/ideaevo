@@ -19,6 +19,7 @@ final class AgentEditorViewModel {
     var visibility = "public"
     var allowFollow = true
     var allowChat = true
+    var capabilities: Set<String> = Set(AgentEditorViewModel.allCapabilities.map(\.id))
     var isLoading = false
     var isSaving = false
     var message: String?
@@ -27,6 +28,21 @@ final class AgentEditorViewModel {
     init(agentID: String?) {
         self.agentID = agentID
     }
+
+    /// MCP tool capabilities an agent can be granted (mirrors the backend
+    /// DefaultUserAgentCapabilities set).
+    static let allCapabilities: [(id: String, label: String)] = [
+        ("search_ideas", "search_ideas · 搜索想法"),
+        ("query_ideas", "query_ideas · 查询想法"),
+        ("get_idea_detail", "get_idea_detail · 想法详情"),
+        ("register_idea", "register_idea · 发布想法"),
+        ("fork_idea", "fork_idea · Fork 想法"),
+        ("like_idea", "like_idea · 点赞"),
+        ("send_flowers", "send_flowers · 送花"),
+        ("create_comment", "create_comment · 发表评论"),
+        ("get_comments", "get_comments · 查看评论"),
+        ("bury_idea", "bury_idea · 埋没想法"),
+    ]
 
     var isEditing: Bool { agentID != nil }
 
@@ -45,8 +61,17 @@ final class AgentEditorViewModel {
             visibility = loaded.visibility ?? "public"
             allowFollow = loaded.allowFollow ?? true
             allowChat = loaded.allowChat ?? true
+            capabilities = Set(loaded.capabilities ?? Self.allCapabilities.map(\.id))
         } catch {
             message = error.localizedDescription
+        }
+    }
+
+    func toggleCapability(_ id: String) {
+        if capabilities.contains(id) {
+            capabilities.remove(id)
+        } else {
+            capabilities.insert(id)
         }
     }
 
@@ -77,22 +102,20 @@ final class AgentEditorViewModel {
                         allowFollow: allowFollow,
                         allowChat: allowChat,
                         avatarURL: nil,
-                        backgroundURL: nil
+                        backgroundURL: nil,
+                        capabilities: capabilities.sorted()
                     )
                 )
                 agent = updated
                 message = "保存成功"
+                ToastCenter.shared.showSuccess("Agent 已保存")
                 return updated.id
             } else {
                 let result = try await APIClient.shared.registerAgent(
                     RegisterAgentBody(
                         name: trimmedName,
                         description: descriptionText.nilIfEmpty,
-                        capabilities: [
-                            "search_ideas", "query_ideas", "get_idea_detail",
-                            "register_idea", "fork_idea", "like_idea",
-                            "create_comment", "get_comments",
-                        ],
+                        capabilities: capabilities.sorted(),
                         systemPrompt: systemPrompt.nilIfEmpty,
                         llmModel: llmModel.nilIfEmpty,
                         temperature: temperature,
@@ -168,6 +191,12 @@ private extension String {
     }
 }
 
+/// S19 Agent 编辑器 (ardot board 715405210175453, node `4:2`).
+///
+/// Board structure: text-action nav (取消 / title / 保存) → identity row
+/// (avatar 64 + name/desc r10 inputs) → System Prompt card (r12 textarea) →
+/// 能力权限 toggle card (r14 surfaceSecondary) → 模型 row + temperature →
+/// 可见性 pill pair → Agent API Key card → 保存 Agent CTA.
 struct AgentEditorView: View {
     let agentID: String?
 
@@ -183,180 +212,57 @@ struct AgentEditorView: View {
     }
 
     var body: some View {
-        Group {
-        if viewModel.isEditing {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                if viewModel.isEditing, let agent = viewModel.agent {
-                    ProfileBanner(
-                        backgroundURL: agent.backgroundURL,
-                        avatarURL: agent.avatarURL,
-                        avatarEntityID: agent.id,
-                        avatarKind: .agent,
-                        avatarSize: 64
-                    )
-                    .padding(.horizontal, -AtlasMetrics.pageX)
+            VStack(alignment: .leading, spacing: 12) {
+                navBar
 
-                    // ardot S22 Agent Identity Editor card — noticeSoft (#F6FFD0) r20.
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("头像 / 背景 / 名称")
-                            .font(.system(size: 15))
-                            .foregroundStyle(AtlasColors.lemonInk)
-                        Text("描述、能力标签、系统指令")
-                            .font(.system(size: 15))
-                            .foregroundStyle(AtlasColors.lemonInk)
-                    }
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(AtlasColors.noticeSoft)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                identityRow
 
-                    HStack(spacing: 12) {
-                        PhotosPicker(selection: $avatarItem, matching: .images) {
-                            Text("更换头像").font(AtlasTypography.caption()).foregroundStyle(AtlasColors.ink)
-                        }
-                        PhotosPicker(selection: $backgroundItem, matching: .images) {
-                            Text("更换背景").font(AtlasTypography.caption()).foregroundStyle(AtlasColors.ink)
-                        }
-                        Button("恢复默认头像") {
-                            Task { await viewModel.resetAvatar() }
-                        }
-                        .font(AtlasTypography.caption())
-                        .foregroundStyle(AtlasColors.inkFaint)
-                    }
-                } else {
-                    // S21 — no hero block; form card follows directly per design 189:22
-                    EmptyView()
-                }
+                AtlasFieldLabel(text: "System Prompt（它如何思考）")
+                AtlasFormTextEditor(text: $viewModel.systemPrompt, minHeight: 84, placeholder: "描述这个 Agent 的思考方式、语气与边界", fontSize: 12)
 
-                // S21 Agent Creation Form card — bg #F7F8FA r16 itemSpacing 10 (Ardot 189:22)
-                VStack(alignment: .leading, spacing: 10) {
-                    editorField("名称", text: $viewModel.name)
-                    editorMultiline("简介", text: $viewModel.descriptionText, minHeight: 80)
-                    editorMultiline("系统提示词", text: $viewModel.systemPrompt, minHeight: 120)
-                    editorField("模型（留空用默认）", text: $viewModel.llmModel)
+                AtlasFieldLabel(text: "能力权限（决定它能调用哪些 MCP 工具）")
+                capabilityCard
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("温度 \(String(format: "%.1f", viewModel.temperature))")
-                            .font(.system(size: 12))
-                            .foregroundStyle(AtlasColors.inkFaint)
-                        Slider(value: $viewModel.temperature, in: 0...1.5, step: 0.1)
-                            .tint(AtlasColors.lemonStrong)
-                    }
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(hex: 0xF7F8FA))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                modelCard
 
-                // S23 Visibility Selector card — bg #F7F8FA r16 itemSpacing 8 (Ardot 189:38)
-                VStack(alignment: .leading, spacing: 8) {
-                    Picker("可见性", selection: $viewModel.visibility) {
-                        Text("公开").tag("public")
-                        Text("私有").tag("private")
-                    }
-                    .pickerStyle(.menu)
-                    .padding(.horizontal, 16)
-                    .frame(height: 52)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(hex: 0xF7F8FA))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                visibilityCard
 
-                // ardot S21 (`237:419` Permissions 350×96): #F6FFD0 fill, cr20.
-                // Replaces the older #F2FFC5 lemon tint — the new spec uses a slightly cooler
-                // noticeSoft tone. Card holds follow/chat toggles + audience preview.
-                VStack(spacing: 0) {
-                    Toggle("允许关注", isOn: $viewModel.allowFollow)
-                        .padding(.horizontal, 16)
-                        .frame(height: 52)
-                        .tint(AtlasColors.lemonStrong)
-                    Divider().overlay(AtlasColors.rule)
-                    Toggle("允许对话", isOn: $viewModel.allowChat)
-                        .padding(.horizontal, 16)
-                        .frame(height: 52)
-                        .tint(AtlasColors.lemonStrong)
-                }
-                .background(AtlasColors.noticeSoft)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                // S23 Audience Preview card — white + 1px border r16 (Ardot 189:147)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("访客可见：头像、简介、公开 Idea、统计")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color(hex: 0x3E4652))
-                    Text("Owner 可见：Prompt、模型、API Key、私有状态")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color(hex: 0x3E4652))
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color(hex: 0xE7EAF0), lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                // S21 Agent Preview card — bg #F2FFC5 r16 itemSpacing 6 (Ardot 189:143)
-                agentPreviewCard
-
-                if let apiKey = viewModel.createdAPIKey {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 8) {
-                            DeimosIconView(icon: .sparkles, size: 14, color: AtlasColors.accentWarning)
-                            Text("API Key（仅显示一次，请妥善保存）")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(AtlasColors.ink)
-                        }
-                        Text(apiKey)
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(AtlasColors.ink)
-                            .textSelection(.enabled)
-                    }
-                    .padding(AtlasMetrics.cardPadding)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(AtlasColors.accentWarningSoft)
-                    .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                            .stroke(AtlasColors.accentWarning.opacity(0.45), lineWidth: 1)
-                    )
-                }
+                apiKeyCard
 
                 if let message = viewModel.message {
                     Text(message)
-                        .font(AtlasTypography.meta())
-                        .foregroundStyle(message.contains("成功") ? AtlasColors.olive : AtlasColors.coral)
+                        .font(.system(size: 12))
+                        .foregroundStyle(message.contains("成功") ? AtlasColors.success : AtlasColors.destructive)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                // S21 Create button: lemonStrong bg + lemonInk text, 48h r12 (Ardot 189:24)
-                // S22 Save button: lemonInk bg + white text, 48h r12 (Ardot 189:145)
-                primarySaveButton
+                AtlasFormCTA(
+                    title: viewModel.isEditing ? "保存 Agent" : "创建 Agent",
+                    isLoading: viewModel.isSaving
+                ) {
+                    Task { await save() }
+                }
 
                 if viewModel.isEditing {
-                    Button("删除 Agent") { showDeleteDialog = true }
-                        .font(AtlasTypography.mobileSubheadline())
-                        .foregroundStyle(AtlasColors.coral)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .overlay(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous).stroke(AtlasColors.coral))
+                    Button {
+                        showDeleteDialog = true
+                    } label: {
+                        Text("删除 Agent")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(AtlasColors.destructive)
+                            .frame(height: 36)
+                            .frame(maxWidth: .infinity)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 20)
+            .padding(.top, 6)
             .padding(.bottom, 40)
         }
-        } else {
-            createAgentContent
-        }
-        }
         .background(AtlasColors.canvas)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            AtlasOverlayPushNavBar(
-                title: viewModel.isEditing ? "编辑 Agent" : "创建 Agent",
-                onBack: { dismiss() }
-            )
-        }
         .navigationBarHidden(true)
         .suppressTabBar()
         .atlasScrollDismissesKeyboard()
@@ -392,118 +298,261 @@ struct AgentEditorView: View {
         }
     }
 
-    private var createAgentContent: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                editorField("名称", text: $viewModel.name)
-                editorMultiline("简介", text: $viewModel.descriptionText, minHeight: 72)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("公开状态")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(AtlasColors.ink)
-                    Text("公开 · 允许关注 · 允许聊天")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                    Text("创建后可随时调整权限")
-                        .font(.system(size: 10))
-                        .foregroundStyle(AtlasColors.oliveMeta)
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
-                .background(AtlasColors.noticeSoft)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                if let message = viewModel.message {
-                    Text(message)
-                        .font(.system(size: 11))
-                        .foregroundStyle(message.contains("成功") ? AtlasColors.olive : AtlasColors.coral)
-                }
-
-                primarySaveButton
+    /// S19 Nav Bar — 取消 (inkSoft) / title (16 SemiBold) / 保存 (olive).
+    private var navBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Text("取消")
+                    .font(.system(size: 14))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                    .frame(height: 40)
+                    .contentShape(Rectangle())
             }
-            .padding(.horizontal, AtlasMetrics.detailX)
-            .padding(.top, 12)
-            .padding(.bottom, 40)
+            .buttonStyle(.plain)
+
+            Text(viewModel.isEditing ? "编辑 Agent" : "创建 Agent")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+                .frame(maxWidth: .infinity)
+
+            AtlasNavTextAction(title: "保存", isLoading: viewModel.isSaving) {
+                Task { await save() }
+            }
         }
     }
 
-    /// S21/S22 primary save button — Create uses lemonStrong bg, Edit uses lemonInk bg.
-    private var primarySaveButton: some View {
-        Button {
-            Task { await save() }
-        } label: {
-            HStack(spacing: 8) {
-                if viewModel.isSaving {
-                    ProgressView().tint(viewModel.isEditing ? .white : AtlasColors.lemonInk)
+    /// S19 Identity Row — avatar 64 (tap to replace) + name/description r10 inputs.
+    /// Agent/draft values are captured as locals so PhotosPicker's non-isolated label
+    /// closure only touches Sendable values.
+    private var identityRow: some View {
+        let agent = viewModel.agent
+        let isEditing = viewModel.isEditing
+        let draftName = viewModel.name
+        return HStack(alignment: .top, spacing: 14) {
+            PhotosPicker(selection: $avatarItem, matching: .images) {
+                if let agent, isEditing {
+                    EntityAvatar.agent(
+                        id: agent.id,
+                        url: agent.avatarLink,
+                        name: agent.name,
+                        size: 64
+                    )
+                } else {
+                    EntityAvatar.agent(
+                        id: agent?.id ?? "draft",
+                        url: nil,
+                        name: draftName.isEmpty ? "A" : draftName,
+                        size: 64
+                    )
                 }
-                Text(viewModel.isEditing ? "保存 Agent 配置" : "创建并生成 API Key")
-                    .font(.system(size: 17, weight: .semibold))
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .foregroundStyle(viewModel.isEditing ? Color.white : AtlasColors.lemonInk)
-            .background(viewModel.isEditing ? AtlasColors.lemonInk : AtlasColors.lemonStrong)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .buttonStyle(.plain)
+
+            VStack(spacing: 8) {
+                TextField("Agent 名称", text: $viewModel.name)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AtlasColors.ink)
+                    .padding(.horizontal, 12)
+                    .frame(height: 40, alignment: .center)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(AtlasColors.bgInput)
+                    )
+                TextField("一句话介绍这个 Agent（选填）", text: $viewModel.descriptionText)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AtlasColors.ink)
+                    .padding(.horizontal, 12)
+                    .frame(height: 40, alignment: .center)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(AtlasColors.bgInput)
+                    )
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    /// S19 Capability Card — r14 surfaceSecondary, tool rows with violet toggles.
+    private var capabilityCard: some View {
+        VStack(spacing: 8) {
+            ForEach(AgentEditorViewModel.allCapabilities, id: \.id) { capability in
+                let enabled = viewModel.capabilities.contains(capability.id)
+                Button {
+                    viewModel.toggleCapability(capability.id)
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(capability.label)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(enabled ? AtlasColors.ink : AtlasColors.inkFaint)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        capabilityToggle(isOn: enabled)
+                    }
+                    .frame(height: 24)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(AtlasColors.settingsGroupFill)
+        )
+    }
+
+    /// Compact 40×24 toggle as drawn on the board (r12, lemonStrong on / #D9DBE0 off).
+    private func capabilityToggle(isOn: Bool) -> some View {
+        ZStack {
+            Capsule(style: .continuous)
+                .fill(isOn ? AtlasColors.lemonStrong : Color(hex: 0xD9DBE0))
+            Circle()
+                .fill(Color.white)
+                .frame(width: 20, height: 20)
+                .offset(x: isOn ? 8 : -8)
+        }
+        .frame(width: 40, height: 24)
+        .animation(.easeOut(duration: 0.15), value: isOn)
+    }
+
+    /// S19 Model Row — r14 bgInput row (label + current model + chevron menu),
+    /// with the temperature slider folded into the same card.
+    private var modelCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Menu {
+                ForEach(["qwen-max", "qwen-plus", "gpt-4o", "deepseek-chat", "claude-sonnet"], id: \.self) { model in
+                    Button(model) { viewModel.llmModel = model }
+                }
+                Button("留空使用默认模型") { viewModel.llmModel = "" }
+            } label: {
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("模型")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
+                        Text(viewModel.llmModel.isEmpty ? "默认" : viewModel.llmModel)
+                            .font(.system(size: 11))
+                            .foregroundStyle(AtlasColors.inkSoft)
+                    }
+                    Spacer(minLength: 0)
+                    DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.inkFaint)
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 37)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(AtlasColors.bgInput)
+                )
+            }
+
+            HStack {
+                Text("温度 \(String(format: "%.1f", viewModel.temperature))")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                Slider(value: $viewModel.temperature, in: 0...1.5, step: 0.1)
+                    .tint(AtlasColors.lemonStrong)
+            }
+            .padding(.horizontal, 14)
+        }
+    }
+
+    /// S19 Visibility Card — 公开 (lemon filled when selected) / 仅自己 (outlined).
+    private var visibilityCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("可见性")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+
+            HStack(spacing: 8) {
+                visibilityPill(title: "公开", value: "public")
+                visibilityPill(title: "仅自己", value: "private")
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(AtlasColors.settingsGroupFill)
+        )
+    }
+
+    private func visibilityPill(title: String, value: String) -> some View {
+        let selected = viewModel.visibility == value
+        return Button {
+            withAnimation(.easeOut(duration: 0.15)) { viewModel.visibility = value }
+        } label: {
+            Text(title)
+                .font(.system(size: 12, weight: selected ? .semibold : .medium))
+                .foregroundStyle(selected ? AtlasColors.lemonInk : AtlasColors.inkTertiary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 38)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(selected ? AtlasColors.lemon : .clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(selected ? .clear : AtlasColors.border, lineWidth: 1)
+                )
         }
         .buttonStyle(.plain)
-        .disabled(viewModel.isSaving)
     }
 
-    /// S21 Agent Preview card — lemon-soft bg, summarises the agent being created.
-    private var agentPreviewCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("公开预览")
-                .font(.system(size: 15))
-                .foregroundStyle(AtlasColors.lemonInk)
-            let visibilityLabel = viewModel.visibility == "private" ? "私有" : "公开"
-            let followLabel = viewModel.allowFollow ? "可关注" : "不可关注"
-            let chatLabel = viewModel.allowChat ? "可聊天" : "不可聊天"
-            Text("\(viewModel.name.isEmpty ? "Agent 名称" : viewModel.name) · \(visibilityLabel) · \(followLabel) · \(chatLabel)")
-                .font(.system(size: 15))
-                .foregroundStyle(AtlasColors.lemonInk)
-                .lineLimit(2)
-            Text("由你创建")
-                .font(.system(size: 15))
-                .foregroundStyle(AtlasColors.olive)
+
+    /// S19 API Key Card — white r14 hairline card; shows the freshly created key
+    /// (create flow) or a masked value with a pointer to rotation.
+    private var apiKeyCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Agent API Key")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+
+            if let apiKey = viewModel.createdAPIKey {
+                HStack(spacing: 8) {
+                    Text(apiKey)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(AtlasColors.inkTertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 0)
+                    Button {
+                        UIPasteboard.general.string = apiKey
+                        ToastCenter.shared.showSuccess("已复制")
+                    } label: {
+                        Text("复制")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(AtlasColors.olive)
+                            .padding(.horizontal, 10)
+                            .frame(height: 26)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(AtlasColors.lemonSoft)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+                Text("仅显示一次，请立即保存到你的 MCP 配置")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AtlasColors.inkFaint)
+            } else {
+                Text("wanye_agt_••••••••")
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundStyle(AtlasColors.inkTertiary)
+                Text("用于 MCP 接入认证，泄露后请立即重新创建")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AtlasColors.inkFaint)
+            }
         }
-        .padding(16)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(hex: 0xF2FFC5))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    private func editorField(_ placeholder: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(placeholder)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(AtlasColors.inkSoft)
-            AtlasTextField(placeholder: placeholder, text: text, height: 44)
-                .padding(.horizontal, 4)
-                .background(AtlasColors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(AtlasColors.border, lineWidth: 1)
-                )
-        }
-    }
-
-    private func editorMultiline(_ placeholder: String, text: Binding<String>, minHeight: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(placeholder)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(AtlasColors.inkSoft)
-            AtlasTextEditor(text: text, minHeight: minHeight, fontSize: 16)
-                .padding(8)
-                .frame(height: minHeight)
-                .background(AtlasColors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(AtlasColors.border, lineWidth: 1)
-                )
-        }
+        .background(AtlasColors.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AtlasColors.cardStroke, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func save() async {

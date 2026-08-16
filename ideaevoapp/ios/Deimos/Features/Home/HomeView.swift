@@ -11,27 +11,14 @@ final class HomeViewModel {
     var hasMoreIdeas = true
     var errorMessage: String?
     var currentSort: String = "popular"
-    /// nil = 全部状态;非空时按 status 过滤广场流。
-    var currentStatus: String? = nil
+    /// nil = 全部分类;非空时按 category 过滤广场流(S01 分类 chips)。
+    var currentCategory: String? = nil
+    /// Categories aggregated from the UNFILTERED feed — the chip row must stay stable
+    /// while a category filter is active, otherwise the other chips vanish.
+    var knownCategories: [String] = []
 
     private let pageSize = 20
     private var ideasOffset = 0
-
-    /// Map UI sort chip index → API sort parameter.
-    static let sortOptions: [(label: String, value: String)] = [
-        ("热门", "popular"),
-        ("最新", "newest"),
-        ("实现中", "most_forked"),
-    ]
-
-    /// 状态筛选选项:label 展示用,value 为 nil 时表示「全部」。
-    static let statusOptions: [(label: String, value: String?)] = [
-        ("全部", nil),
-        ("活跃", "active"),
-        ("已落地", "implemented"),
-        ("已归档", "archived"),
-        ("已埋没", "buried"),
-    ]
 
     var visibleIdeas: [Idea] {
         ideas.filter(BlocklistFiltering.idea)
@@ -47,9 +34,18 @@ final class HomeViewModel {
         defer { isLoading = false }
 
         do {
-            async let freshTask = APIClient.shared.queryIdeas(sort: currentSort, status: currentStatus)
+            async let freshTask = APIClient.shared.queryIdeas(sort: currentSort, category: currentCategory)
             async let trendingTask = APIClient.shared.rankingTrending(window: "week", metric: "weighted", limit: 10)
             let fresh = try await freshTask
+            if currentCategory == nil {
+                var counts: [String: Int] = [:]
+                for idea in fresh.ideas where !idea.category.isEmpty {
+                    counts[idea.category, default: 0] += 1
+                }
+                knownCategories = counts.sorted { lhs, rhs in
+                    lhs.value == rhs.value ? lhs.key < rhs.key : lhs.value > rhs.value
+                }.prefix(6).map(\.key)
+            }
             ideas = fresh.ideas.filter(BlocklistFiltering.idea)
             ideasOffset = fresh.ideas.count
             hasMoreIdeas = Pagination.hasMore(offset: ideasOffset, loaded: fresh.ideas.count, total: fresh.total)
@@ -75,7 +71,7 @@ final class HomeViewModel {
         defer { isLoadingMore = false }
 
         do {
-            let next = try await APIClient.shared.queryIdeas(offset: ideasOffset, sort: currentSort, status: currentStatus)
+            let next = try await APIClient.shared.queryIdeas(offset: ideasOffset, sort: currentSort, category: currentCategory)
             let filtered = next.ideas.filter(BlocklistFiltering.idea)
             ideas.append(contentsOf: filtered)
             ideasOffset = ideas.count
@@ -97,6 +93,9 @@ struct HomeView: View {
     @State private var debugSearchQuery = ""
     @State private var sortIndex = 0
     @State private var statusIndex = 0
+    @State private var showNotifications = false
+    @State private var unreadCount = 0
+    @State private var showTrending = true
     @State private var startChat = false
     @State private var quickActionIdea: Idea?
     @State private var forkActionIdea: Idea?
@@ -145,6 +144,9 @@ struct HomeView: View {
         }
         .navigationDestination(isPresented: $startChat) {
             ChatListView()
+        }
+        .navigationDestination(isPresented: $showNotifications) {
+            NotificationsView()
         }
         .sheet(isPresented: $showAuthSheet) {
             AuthRequiredSheet()
@@ -208,6 +210,7 @@ struct HomeView: View {
         }
         .task {
             await viewModel.loadPlaza()
+            unreadCount = (try? await APIClient.shared.filteredUnreadNotificationCount()) ?? 0
         }
         .refreshable {
             await viewModel.loadPlaza()
@@ -249,104 +252,108 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - v6 Large Title Header
+    // MARK: - S01 Header (ardot 715405210175453 `2:3`)
 
+    /// 火卫二 Bold-22 + slogan, trailing 40pt surfaceSecondary circles:
+    /// publish · search · bell (violet unread dot).
     private var largeTitleHeader: some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("DEIMOS")
-                    .font(AtlasTypography.overline())
-                    .foregroundStyle(AtlasColors.inkSoft)
-                Text("探索")
-                    .font(AtlasTypography.largeTitle())
+            VStack(alignment: .leading, spacing: 3) {
+                Text("火卫二")
+                    .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(AtlasColors.ink)
-                    .atlasTrackedTitle(30)
+                Text("AI Agent 的想法市场")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.inkSoft)
             }
 
             Spacer()
+
+            Button {
+                showPublishIdea = true
+            } label: {
+                DeimosIconView(icon: .plus, size: 18, color: AtlasColors.ink)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(AtlasColors.surfaceSecondary))
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("发布想法")
+
+            Button {
+                showSearch = true
+            } label: {
+                DeimosIconView(icon: .search, size: 18, color: AtlasColors.ink)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(AtlasColors.surfaceSecondary))
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("搜索")
+
+            Button {
+                showNotifications = true
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    DeimosIconView(icon: .bell, size: 18, color: AtlasColors.ink)
+                        .frame(width: 40, height: 40)
+                        .background(Circle().fill(AtlasColors.surfaceSecondary))
+                        .contentShape(Circle())
+                    if unreadCount > 0 {
+                        Circle()
+                            .fill(AtlasColors.lemonStrong)
+                            .overlay(Circle().stroke(AtlasColors.canvas, lineWidth: 1.5))
+                            .frame(width: 9, height: 9)
+                            .offset(x: -4, y: 4)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(unreadCount > 0 ? "通知, \(unreadCount) 条未读" : "通知")
         }
         .padding(.horizontal, AtlasMetrics.pageX)
         .padding(.top, 8)
-        .padding(.bottom, 20)
+        .padding(.bottom, 6)
+    }
+
+    // MARK: - Category Chips (S01)
+
+    /// S01 Category Chips (ardot 715405210175453 `2:3`): h32 r16 — selected lemon fill
+    /// with lemonInk SemiBold-13 label, unselected surfaceSecondary with inkTertiary
+    /// Medium-13. Categories are aggregated from the loaded feed (web-parity behavior).
+    private var categoryChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(categoryOptions, id: \.value) { option in
+                    let isSelected = viewModel.currentCategory == option.value
+                    Button {
+                        viewModel.ideas = []
+                        viewModel.currentCategory = option.value
+                        Task { await viewModel.loadPlaza() }
+                    } label: {
+                        Text(option.label)
+                            .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
+                            .foregroundStyle(isSelected ? AtlasColors.lemonInk : AtlasColors.inkTertiary)
+                            .padding(.horizontal, 14)
+                            .frame(height: 32)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(isSelected ? AtlasColors.lemon : AtlasColors.surfaceSecondary)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, AtlasMetrics.pageX)
+        }
+    }
+
+    private var categoryOptions: [(label: String, value: String?)] {
+        [("全部", nil)] + viewModel.knownCategories.map { ($0, $0) }
     }
 
     // MARK: - Sort Chips
 
-    /// ardot S02 (`237:137` Sort Chips): each chip 88×36. Active = #BEE90D lemon fill, no
-    /// border; Inactive = white fill + #E8EBF0 hairline border. Label 15pt Semibold.
-    private var sortChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(HomeViewModel.sortOptions.indices, id: \.self) { index in
-                    let isSelected = sortIndex == index
-                    Button {
-                        selectSort(index)
-                    } label: {
-                        Text(HomeViewModel.sortOptions[index].label)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(isSelected ? AtlasColors.lemonInk : AtlasColors.inkSoft)
-                            .frame(width: 88, height: 36)
-                            .background(isSelected ? AtlasColors.lemonStrong : AtlasColors.surface)
-                            .overlay(
-                                Capsule()
-                                    .stroke(AtlasColors.settingsRowStroke, lineWidth: isSelected ? 0 : 1)
-                            )
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, AtlasMetrics.pageX)
-        }
-    }
-
-    private func selectSort(_ index: Int) {
-        let needsReload = sortIndex != index
-        sortIndex = index
-        viewModel.currentSort = HomeViewModel.sortOptions[index].value
-        if needsReload {
-            viewModel.ideas = []
-            Task { await viewModel.loadPlaza() }
-        }
-    }
-
-    /// 状态筛选 chips(与 sortChips 同形,略小)。让用户按生命周期状态分桶浏览。
-    private var statusChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(HomeViewModel.statusOptions.indices, id: \.self) { index in
-                    let isSelected = statusIndex == index
-                    Button {
-                        selectStatus(index)
-                    } label: {
-                        Text(HomeViewModel.statusOptions[index].label)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(isSelected ? AtlasColors.ink : AtlasColors.inkFaint)
-                            .padding(.horizontal, 14)
-                            .frame(height: 30)
-                            .background(isSelected ? AtlasColors.ink.opacity(0.06) : AtlasColors.surface)
-                            .overlay(
-                                Capsule()
-                                    .stroke(AtlasColors.settingsRowStroke, lineWidth: isSelected ? 0 : 1)
-                            )
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, AtlasMetrics.pageX)
-        }
-    }
-
-    private func selectStatus(_ index: Int) {
-        let needsReload = statusIndex != index
-        statusIndex = index
-        viewModel.currentStatus = HomeViewModel.statusOptions[index].value
-        if needsReload {
-            viewModel.ideas = []
-            Task { await viewModel.loadPlaza() }
-        }
-    }
 
     /// 本周热榜 banner:横向滚动的 top idea 列表(按 wish 增量排序)。
     /// 让近期值得关注的 idea 集中曝光,对标 Product Hunt 的榜单机制。
@@ -430,73 +437,38 @@ struct HomeView: View {
     private var content: some View {
         largeTitleHeader
 
-        // ardot S02 (`237:137` Search Trigger): 342×44 #F5F6F7 fill, cr16, 15pt Regular
-        // #8A94A6 placeholder "搜索想法、Agent…". Previous AtlasColors.fill (#F2F3F7) was
-        // a touch too grey; spec wants the slightly bluer #F5F6F7 chatAssistantBubble token.
-        Button { showSearch = true } label: {
-            HStack(spacing: 0) {
-                Text("搜索想法、Agent…")
-                    .font(.system(size: 15))
-                    .foregroundStyle(AtlasColors.inkSoft)
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 44)
-            .background(AtlasColors.chatAssistantBubble)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, AtlasMetrics.pageX)
-        .padding(.bottom, 16)
-
-        // AI Hero Card — S02 (`237:146` instance overrides): Title "还没有方向？问万叶" 18pt Bold,
-        // Subtitle "从问题、素材或一个想法开始" 13pt Regular, CTA "开始对话" 14pt Semibold.
-        // Card 342×132 cr22, lemonInk fill, padding 20, itemSpacing 12.
-        AIHeroCard(
-            title: "还没有方向？问万叶",
-            subtitle: "从问题、素材或一个想法开始",
-            sizeVariant: .small
-        ) {
-            startChat = true
-        }
-        .frame(height: 132)
-        .padding(.horizontal, AtlasMetrics.pageX)
-        .padding(.bottom, 16)
-
-        sortChips
-            .padding(.bottom, 12)
-
-        statusChips
-            .padding(.bottom, 16)
-
-        if !viewModel.trendingIdeas.isEmpty {
-            trendingBanner
-                .padding(.bottom, 20)
-        }
+        categoryChips
+            .padding(.bottom, 14)
 
         plazaContent
     }
 
     @ViewBuilder
     private var plazaContent: some View {
-        // Section header — design always shows "热门想法" regardless of selected sort chip
+        // S01 Section Row — 为你推荐 + 查看热榜 (inkSoft Medium-12 link).
         HStack {
-            Text("为你挑选 · 公开可 Fork")
-                .font(.system(size: 17, weight: .semibold))
+            Text("为你推荐")
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AtlasColors.ink)
             Spacer()
-            Button {
-                // No dedicated "all ideas" page yet — reload for more
-                Task { await viewModel.loadPlaza() }
-            } label: {
-                Text("筛选 ›")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(AtlasColors.oliveMeta)
+            if !viewModel.trendingIdeas.isEmpty {
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showTrending.toggle() }
+                } label: {
+                    Text(showTrending ? "收起热榜" : "查看热榜")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, AtlasMetrics.pageX)
-        .padding(.bottom, 20)
+        .padding(.bottom, 12)
+
+        if showTrending && !viewModel.trendingIdeas.isEmpty {
+            trendingBanner
+                .padding(.bottom, 16)
+        }
 
         if let errorMessage = viewModel.errorMessage, viewModel.visibleIdeas.isEmpty {
             AtlasDesignedEmptyStates.loadFailed(message: errorMessage) {

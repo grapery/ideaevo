@@ -1,22 +1,22 @@
 import SwiftUI
 
-/// Wanye iOS system, synchronized with the current Ardot mobile board.
+/// Wanye iOS system, synchronized with the current Ardot mobile board (715405210175453).
 ///
-/// Visual language: white canvas, deep ink, lime interaction state, and restrained
+/// Visual language: cream canvas, deep ink, violet interaction state, and restrained
 /// translucent chrome for contextual toolbars. Colors stay semantic so the feature
 /// layer does not need to know which surface it is rendering on.
 ///
-/// Key changes v5→v6:
-/// - App background: `#FAFAFA` → `#FFFFFF` pure white
-/// - Ink: `#0F172A` → `#0F1B2D` deep navy
-/// - Primary: `#2563EB` → `#2F6BE4`; action `#3E7BF0`
-/// - AI gradient: purple→indigo → `#6BA5F8→#3A6EDA` blue
-/// - Tab Bar: floating glass pill → native iOS edge-to-edge
+/// Key changes v6→v7 (Cream Violet retheme, 2026-08-16):
+/// - App background: `#FFFFFF` → `#FAF7F2` warm cream
+/// - Brand family: lemon `#D9FF40`/`#BEE90D` → violet `#9D8FF7`(lemon) / `#8C7DF4`(lemonStrong)
+/// - Soft accent: `#F5FFC7` → `#E9E7FF`; oliveMeta `#65703A` → `#5B4FE8` violet-ink
+/// - lemonInk stays a deep ink (`#1A2403`-grade) so every "dark text on accent fill"
+///   call site keeps ≥5:1 contrast on the new mid-tone violet fills.
 enum AtlasColors {
-    // MARK: - Neutral (白底基底)
+    // MARK: - Neutral (v7: 奶油底基底)
 
-    /// App background — `#FFFFFF` pure white. Global page base (v6: was #FAFAFA).
-    static let canvas = Color.white
+    /// App background — `#FAF7F2` warm cream. Global page base (v7: was #FFFFFF).
+    static let canvas = Color(hex: 0xFAF7F2)
     /// Muted background — `#F2F3F7` (Deimos iOS26 bg-muted). Back button base, steppers.
     static let surfaceSecondary = Color(hex: 0xF2F3F7)
     /// Input background — `#F2F3F5`. Input fields, clear buttons.
@@ -26,15 +26,18 @@ enum AtlasColors {
     static let settingsGroupFill = Color(hex: 0xF2F2F7)
     /// `#E8EBF0` — settings row hairline border (ardot S11 `237:369` C/Settings Row stroke).
     static let settingsRowStroke = Color(hex: 0xE8EBF0)
+    /// `#EDF0F2` — white card hairline stroke (ardot board 715405210175453 S06 Profile Card /
+    /// S18 Agent Card / S19 API Key Card).
+    static let cardStroke = Color(hex: 0xEDF0F2)
     /// `#F2F5F8` — secondary stat tile fill (ardot S08 `237:168` second Stats tile).
     /// Slightly cooler than #F5F6F7 (chatAssistantBubble).
     static let statTileSecondary = Color(hex: 0xF2F5F8)
     /// `#657080` — secondary stat tile label text (ardot S08 `237:168` "今日 Fork" label).
     static let statLabelSecondary = Color(hex: 0x657080)
     // MARK: - Privacy / Moderation surface tints (ardot S14/S16/S17/S19/S18)
-    /// `#F6FFD0` — report reasons card fill (ardot S16 `237:466` Reasons) + create-agent
-    /// permissions card (ardot S21 `237:419` Permissions). Slightly cooler than #F3FFC8.
-    static let noticeSoft = Color(hex: 0xF6FFD0)
+    /// `#E9E7FF` — report reasons card fill + create-agent permissions card (v7: was
+    /// lemon-tinted #F6FFD0; now violet-tinted, matches lemonSoft).
+    static let noticeSoft = Color(hex: 0xE9E7FF)
     /// `#FFF7E8` — block-user info card fill (ardot S17 `237:479` Info). Warm cream.
     static let infoWarm = Color(hex: 0xFFF7E8)
     /// `#FFF1F1` — delete-account warning card fill (ardot S19 `237:492` Warning). Soft red.
@@ -67,14 +70,20 @@ enum AtlasColors {
     static let inkFaint = Color(hex: 0xA9B2C0)
     static let inkDisabled = Color(hex: 0xC7C7CC)
 
-    // MARK: - Brand (品牌色)
+    // MARK: - Brand (品牌色 · v7: Cream Violet)
 
-    /// Accent used for selected tabs, status pills and the primary action — `#D9FF40` (Deimos iOS26 lemon).
-    static let lemon = Color(hex: 0xD9FF40)
-    static let lemonSoft = Color(hex: 0xF5FFC7)
+    /// Accent used for selected tabs, status pills and decorative surfaces — `#9D8FF7`
+    /// soft violet (v7: was lemon #D9FF40). Pairs with white/ink text.
+    static let lemon = Color(hex: 0x9D8FF7)
+    /// `#E9E7FF` — violet-tinted soft fill for badges, chips, summary cards (v7: was #F5FFC7).
+    static let lemonSoft = Color(hex: 0xE9E7FF)
+    /// `#1A2403` deep olive-ink. Kept as the "dark text on accent fill" token so every
+    /// v6 call site (selected chips, CTA labels, flower buttons) keeps its contrast on
+    /// the new mid-tone violet fills (contrast vs #8C7DF4 ≈ 5:1, WCAG AA).
     static let lemonInk = Color(hex: 0x1A2403)
-    /// `#BEE90D` — lemon-strong, a distinct token from `lemon` (Deimos iOS26 lemon-strong).
-    static let lemonStrong = Color(hex: 0xBEE90D)
+    /// `#8C7DF4` — violet-strong, primary interactive fill (v7: was #BEE90D).
+    /// CTAs, send buttons, active tabs, user chat bubbles.
+    static let lemonStrong = Color(hex: 0x8C7DF4)
     /// `#BEE90D` lemon-strong reused for chat user bubbles + the send button (ardot S07
     /// `237:289` user bubble + Glass Input Bar Send). The earlier `lemonChat` (#CBEA16)
     /// + `chatAssistantBubble` (#EAF1FF) tokens were aligned to an OBSOLETE design frame
@@ -84,20 +93,27 @@ enum AtlasColors {
     static let lemonChat = lemonStrong
     /// `#F5F6F7` — assistant chat bubble fill (ardot S07 `237:289` AI Bubble). Neutral grey,
     /// NOT the previous blue (#EAF1FF) which was aligned to the obsolete `179:*` design.
-    static let chatAssistantBubble = Color(hex: 0xF5F6F7)
-    /// `#F3FFC8` — tool-activity pill background (ardot S07 `237:289` Tool Activity). Lemon-tinted.
-    static let chatActivityFill = Color(hex: 0xF3FFC8)
-    /// `#5A6472` — tool-activity pill label text (ardot S07 `237:289` Tool Activity).
-    static let chatActivityInk = Color(hex: 0x5A6472)
+    /// AI chat bubble — white per the current board (chatAI variable, `2:13`).
+    static let chatAssistantBubble = Color.white
+    /// `#F2FFC7` — tool-activity pill background (ardot 715405210175453 S03 Tool Activity).
+    static let chatActivityFill = Color(hex: 0xF2FFC7)
+    /// `#596472` — tool-activity pill label text (ardot S03 Tool Activity).
+    static let chatActivityInk = Color(hex: 0x596472)
+    /// `#D1F521` — lime CTA fill inside chat idea-suggestion cards (ardot S03 View CTA).
+    static let limeCTA = Color(hex: 0xD1F521)
     /// `#F2F3F5` — chat toolbar back-circle fill (ardot S07 `237:289` C/Back Button instance).
     static let chatNavCircle = Color(hex: 0xF2F3F5)
     /// `#E8EBF0` — Glass Input Bar hairline stroke (ardot S07 `237:289` C/Glass Input Bar).
     static let chatInputStroke = Color(hex: 0xE8EBF0)
-    static let olive = Color(hex: 0x627405)
-    /// Olive meta text on lemon-tinted surfaces — `#65703A` (ardot 237:662 eyebrow, 237:666 筛选, 237:179 stat label).
-    static let oliveMeta = Color(hex: 0x65703A)
-    /// Small CTA fill inside cards — `#D2F522` (ardot 237:691 查看详情, Design Rules "lemon #D2F522").
-    static let lemonCTA = Color(hex: 0xD2F522)
+    /// Action-text accent — `#65703A` olive (ardot board 715405210175453: S17 去绑定,
+    /// S27 保存/更换头像, S18 个人 Agent badge, S19 复制 button). Text-only accent on
+    /// neutral surfaces; never used as a fill.
+    static let olive = Color(hex: 0x65703A)
+    /// Violet-ink meta text on violet-tinted surfaces — `#5B4FE8` (v7: was olive #65703A).
+    /// Used for eyebrows, filter links, stat labels on lemonSoft fills.
+    static let oliveMeta = Color(hex: 0x5B4FE8)
+    /// Small CTA fill inside cards — `#8C7DF4` violet-strong (v7: was #D2F522).
+    static let lemonCTA = Color(hex: 0x8C7DF4)
     /// Legacy semantic names are kept while the feature layer is migrated.
     /// `primaryAction`/`chatBlue`/`heroBlue` resolve to lemon-strong (#BEE90D),
     /// the interactive lemon fill used by primary buttons, send buttons, and active
@@ -127,6 +143,15 @@ enum AtlasColors {
     static let star = Color(hex: 0xF5BA43)
     /// Success / online — `#2EA36B` (Deimos iOS26 success). Success states, online indicator.
     static let success = Color(hex: 0x2EA36B)
+    /// Success soft fill — `#E8F5ED` (ardot board 715405210175453 S18 公开 badge). Pair with
+    /// `success` text.
+    static let successSoft = Color(hex: 0xE8F5ED)
+    /// Danger soft fill — `#FFF2F2` (ardot board 715405210175453 S28 Warning Card, S16 埋没 pill).
+    /// Pair with `destructive` text.
+    static let dangerSoft = Color(hex: 0xFFF2F2)
+    /// Tab bar active segment fill — `#BFE80D` lime (ardot board 715405210175453 C/Pill Tab Bar
+    /// active tab). Label stays `lemonInk`.
+    static let tabAccent = Color(hex: 0xBFE80D)
     /// Warning — `#F5A524` (Deimos iOS26 warning). Warning states, caution.
     static let warning = Color(hex: 0xF5A524)
 
@@ -144,8 +169,9 @@ enum AtlasColors {
 
     // MARK: - Selected / Chip tints
 
-    /// Selected chip background — `#E7F0FE` badge blue.
+    /// Chip selected background — violet-strong (v7).
     static let chipSelectedBg = lemon
+    /// Chip selected text — deep ink, keeps contrast on violet fills (v7).
     static let chipSelectedText = lemonInk
 
     // MARK: - Entity identity colors (v6: retained for avatar identity)
@@ -163,7 +189,7 @@ enum AtlasColors {
     }
     /// Compatibility gradient for legacy consumers.
     static var primaryGradient: LinearGradient {
-        LinearGradient(colors: [ink, Color(hex: 0x1C2D12)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        LinearGradient(colors: [lemonStrong, lemon], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
     // MARK: - Legacy aliases (kept for backward compat; delegate to v6 tokens)

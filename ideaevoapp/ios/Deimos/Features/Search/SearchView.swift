@@ -142,17 +142,46 @@ struct SearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AtlasPushNavBar(title: "搜索", onBack: { dismiss() })
+            // S07 Search Nav (ardot 715405210175453 `2:496`): back circle + r20
+            // bgInput field with inkSoft search icon, 13pt query text.
+            HStack(spacing: 10) {
+                Button { dismiss() } label: {
+                    DeimosIconView(icon: .chevronBack, size: 18, color: AtlasColors.ink)
+                        .frame(width: 40, height: 40)
+                        .background(Circle().fill(AtlasColors.surfaceSecondary))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("返回")
 
-            AtlasEmbeddedSearchBar(
-                placeholder: "搜索想法、Agent、标签…",
-                text: $viewModel.query,
-                onSubmit: { Task { await viewModel.search() } }
-            )
-            .focused($searchFocused)
-            .submitLabel(.search)
-            .padding(.horizontal, AtlasMetrics.detailX)
-            .padding(.top, 12)
+                HStack(spacing: 8) {
+                    DeimosIconView(icon: .search, size: 16, color: AtlasColors.inkSoft)
+                    TextField("搜索想法、Agent、标签…", text: $viewModel.query)
+                        .font(.system(size: 13))
+                        .foregroundStyle(AtlasColors.ink)
+                        .focused($searchFocused)
+                        .submitLabel(.search)
+                        .onSubmit { Task { await viewModel.search() } }
+                    if !viewModel.isQueryEmpty {
+                        Button {
+                            viewModel.query = ""
+                            viewModel.hasSearched = false
+                        } label: {
+                            DeimosIconView(icon: .close, size: 14, color: AtlasColors.inkFaint)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("清空")
+                    }
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 40)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(AtlasColors.bgInput)
+                )
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
             .padding(.bottom, 4)
 
             if viewModel.isSearching && viewModel.ideaMatches.isEmpty && viewModel.agentResults.isEmpty {
@@ -226,11 +255,11 @@ struct SearchView: View {
                 } else {
                     HStack {
                         Text("最近搜索")
-                            .font(AtlasTypography.badge())
-                            .foregroundStyle(AtlasColors.inkSoft)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
                         Spacer()
-                        Button("清除") { viewModel.clearRecent() }
-                            .font(.system(size: 12))
+                        Button("清空") { viewModel.clearRecent() }
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(AtlasColors.inkFaint)
                     }
 
@@ -248,7 +277,16 @@ struct SearchView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
                 if !viewModel.ideaMatches.isEmpty {
-                    searchSectionHeader("语义搜索结果 · \(viewModel.ideaMatches.count) 条匹配")
+                    // S07 Results Header — 相关想法 + N 条语义匹配.
+                    HStack {
+                        Text("相关想法")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
+                        Spacer()
+                        Text("\(viewModel.ideaMatches.count) 条语义匹配")
+                            .font(.system(size: 12))
+                            .foregroundStyle(AtlasColors.inkSoft)
+                    }
 
                     Button {
                         withAnimation(.easeInOut(duration: 0.18)) {
@@ -295,7 +333,7 @@ struct SearchView: View {
                     VStack(spacing: 0) {
                         ForEach(Array(viewModel.ideaMatches.enumerated()), id: \.element.idea.id) { index, match in
                             Button { ideaRoute = IdeaRoute(id: match.idea.id) } label: {
-                                searchIdeaRow(match, isTopMatch: index == 0)
+                                searchIdeaRow(match)
                             }
                             .buttonStyle(.plain)
                             .onAppear {
@@ -305,15 +343,9 @@ struct SearchView: View {
                             }
 
                             if index < viewModel.ideaMatches.count - 1 {
-                                Divider().padding(.leading, 14)
+                                Divider().padding(.leading, 58)
                             }
                         }
-                    }
-                    .background(AtlasColors.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(AtlasColors.border, lineWidth: 1)
                     }
 
                     if viewModel.isLoadingMore {
@@ -322,7 +354,10 @@ struct SearchView: View {
                 }
 
                 if !viewModel.agentResults.isEmpty {
-                    searchSectionHeader("AGENT")
+                    Text("相关 Agent")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, viewModel.ideaMatches.isEmpty ? 0 : 8)
 
                     ForEach(viewModel.agentResults) { agent in
@@ -383,22 +418,44 @@ struct SearchView: View {
         .buttonStyle(.plain)
     }
 
-    private func searchIdeaRow(_ match: SearchMatch, isTopMatch: Bool) -> some View {
+    /// S07 Result Row (ardot 715405210175453 `2:496`): 48pt r12 thumb, 13pt SemiBold
+    /// title (2 lines), 11pt inkSoft meta (status · 花 · Fork), trailing lemonSoft
+    /// match badge (10pt SemiBold olive).
+    private func searchIdeaRow(_ match: SearchMatch) -> some View {
         let idea = match.idea
-        return VStack(alignment: .leading, spacing: 3) {
-            Text(idea.displayTitle)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AtlasColors.ink)
-                .lineLimit(1)
-            Text("\(Int(match.similarity * 100))% 匹配 · \(idea.agent?.name ?? "Agent") · 公开")
-                .font(.system(size: 11))
-                .foregroundStyle(AtlasColors.inkSoft)
-                .lineLimit(1)
+        return HStack(spacing: 10) {
+            EntityAvatar.idea(
+                id: idea.id,
+                url: idea.iconLink,
+                name: idea.title,
+                size: 48
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(idea.displayTitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .lineLimit(2)
+                Text("\(idea.statusLabel) · \(idea.flowerCount) 花 · \(idea.forkCount) Fork")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Text("\(Int(match.similarity * 100))% 匹配")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(AtlasColors.olive)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(AtlasColors.lemonSoft)
+                )
         }
-        .padding(.horizontal, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 68)
-        .background(isTopMatch ? AtlasColors.lemonSoft : AtlasColors.surface)
+        .padding(.vertical, 6)
+        .frame(minHeight: 57)
+        .contentShape(Rectangle())
     }
 }
 
@@ -416,12 +473,14 @@ private struct FlowChips: View {
                             onTap(term)
                         } label: {
                             Text(term)
-                                .font(AtlasTypography.meta())
-                                .foregroundStyle(AtlasColors.ink)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(AtlasColors.surface)
-                                .clipShape(Capsule())
+                                .font(.system(size: 12))
+                                .foregroundStyle(AtlasColors.inkTertiary)
+                                .padding(.horizontal, 14)
+                                .frame(height: 32)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(AtlasColors.surfaceSecondary)
+                                )
                         }
                         .buttonStyle(.plain)
                     }

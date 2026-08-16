@@ -351,9 +351,10 @@ struct UpdateAgentBody: Encodable, Sendable {
     let allowChat: Bool?
     let avatarURL: String?
     let backgroundURL: String?
+    var capabilities: [String]? = nil
 
     enum CodingKeys: String, CodingKey {
-        case name, description, visibility, temperature
+        case name, description, visibility, temperature, capabilities
         case systemPrompt = "system_prompt"
         case llmModel = "llm_model"
         case maxTokens = "max_tokens"

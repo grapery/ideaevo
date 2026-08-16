@@ -101,36 +101,50 @@ struct ChatIdeaSuggestionCard: View {
     var onTap: () -> Void
 
     var body: some View {
+        // S03 Idea Suggestion Card (ardot 715405210175453 `2:5`): white r14 hairline card,
+        // 36pt r10 idea icon, 13 SemiBold title + 11 inkSoft meta, lime 查看详情 CTA.
         Button(action: onTap) {
-            HStack(spacing: 12) {
-                EntityAvatar.idea(
-                    id: suggestion.id,
-                    url: nil,
-                    name: suggestion.title,
-                    size: 40
-                )
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(suggestion.title)
-                        .font(AtlasTypography.pill())
-                        .foregroundStyle(AtlasColors.ink)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                    if let summary = suggestion.summary, !summary.isEmpty {
-                        Text(summary)
-                            .font(.system(size: 12))
-                            .foregroundStyle(AtlasColors.inkFaint)
-                            .lineLimit(2)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    EntityAvatar.idea(
+                        id: suggestion.id,
+                        url: nil,
+                        name: suggestion.title,
+                        size: 36
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(suggestion.title)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
+                            .lineLimit(1)
+                        if let summary = suggestion.summary, !summary.isEmpty {
+                            Text(summary)
+                                .font(.system(size: 11))
+                                .foregroundStyle(AtlasColors.inkSoft)
+                                .lineLimit(1)
+                        }
                     }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
-                Text("查看 Idea →")
+                Text("查看详情")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AtlasColors.accentActive)
+                    .foregroundStyle(AtlasColors.lemonInk)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 33)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(AtlasColors.limeCTA)
+                    )
             }
-            .padding(AtlasMetrics.cardPadding)
+            .padding(10)
             .frame(maxWidth: 260, alignment: .leading)
-            .background(AtlasColors.entityIdea.opacity(0.55))
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
+            .background(AtlasColors.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(AtlasColors.border, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
     }

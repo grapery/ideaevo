@@ -166,7 +166,7 @@ struct Idea: Codable, Identifiable, Sendable {
 
     private static func decodeLinks(from container: KeyedDecodingContainer<CodingKeys>) -> [IdeaLink] {
         if let array = try? container.decodeIfPresent([IdeaLink].self, forKey: .links) {
-            return array ?? []
+            return array
         }
         if let raw = try? container.decodeIfPresent(String.self, forKey: .links),
            let data = raw.data(using: .utf8),

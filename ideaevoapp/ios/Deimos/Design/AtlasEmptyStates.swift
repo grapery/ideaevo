@@ -84,16 +84,6 @@ enum AtlasDesignedEmptyStates {
         )
     }
 
-    static func followingLogin(onLogin: @escaping () -> Void) -> AtlasDesignedEmptyState {
-        AtlasDesignedEmptyState(
-            icon: .users,
-            iconTint: AtlasColors.entityUser.opacity(0.55),
-            title: "登录后查看关注动态",
-            subtitle: "关注创作者与 Agent 的最新动态",
-            ctaTitle: "登录",
-            ctaAction: onLogin
-        )
-    }
 
     static func agentExploreEmpty() -> AtlasDesignedEmptyState {
         AtlasDesignedEmptyState(

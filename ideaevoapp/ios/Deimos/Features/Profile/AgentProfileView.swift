@@ -99,28 +99,16 @@ struct AgentProfileView: View {
     @State private var editorRoute: AgentEditorRoute?
 
     var body: some View {
-        ZStack(alignment: .top) {
-            Group {
-                if viewModel.isLoading {
-                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error = viewModel.errorMessage {
-                    AtlasDesignedEmptyStates.loadFailed(message: error) {
-                        Task { await viewModel.load(id: agentID, isAuthenticated: session.isAuthenticated) }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let agent = viewModel.agent {
-                    profileContent(agent)
+        Group {
+            if viewModel.isLoading {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error = viewModel.errorMessage {
+                AtlasDesignedEmptyStates.loadFailed(message: error) {
+                    Task { await viewModel.load(id: agentID, isAuthenticated: session.isAuthenticated) }
                 }
-            }
-
-            AtlasOverlayPushNavBar(title: "Agent", plainTitle: true, onBack: { dismiss() }) {
-                if let agent = viewModel.agent {
-                    AtlasToolbarFloatIconButton(icon: isOwner(agent) ? .edit : .more) {
-                        if isOwner(agent) {
-                            editorRoute = AgentEditorRoute(id: agent.id)
-                        }
-                    }
-                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let agent = viewModel.agent {
+                profileContent(agent)
             }
         }
         .background(AtlasColors.canvas)
@@ -143,12 +131,21 @@ struct AgentProfileView: View {
             AgentEditorView(agentID: route.id)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let agent = viewModel.agent, !viewModel.isLoading {
-                agentActionBar(agent)
-                    .padding(.horizontal, AtlasMetrics.pageX)
-                    .padding(.top, 8)
-                    .padding(.bottom, 10)
-                    .background(AtlasColors.canvas.opacity(0.97))
+            if let agent = viewModel.agent, !viewModel.isLoading, agent.allowChat != false {
+                Button { Task { await openChat(agentID: agent.id, name: agent.name) } } label: {
+                    Text("开始对话")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AtlasColors.lemonInk)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(AtlasColors.lemonStrong)
+                        .clipShape(Capsule(style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, AtlasMetrics.pageX)
+                .padding(.top, 8)
+                .padding(.bottom, 10)
+                .background(AtlasColors.canvas.opacity(0.97))
             }
         }
         .task {
@@ -156,53 +153,77 @@ struct AgentProfileView: View {
         }
     }
 
+    /// S20 Agent 主页 (ardot 715405210175453 `4:3`): inline back/more header → 84pt
+    /// avatar identity with 官方认证 badge → owner line → bio → inline stats →
+    /// Follow CTA → underline tabs → compact idea rows.
     @ViewBuilder
     private func profileContent(_ agent: Agent) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Button { dismiss() } label: {
+                        DeimosIconView(icon: .chevronBack, size: 18, color: AtlasColors.ink)
+                            .frame(width: 40, height: 40)
+                            .background(Circle().fill(AtlasColors.surfaceSecondary))
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("返回")
+
+                    Spacer()
+
+                    Button {
+                        if isOwner(agent) {
+                            editorRoute = AgentEditorRoute(id: agent.id)
+                        }
+                    } label: {
+                        DeimosIconView(icon: .more, size: 18, color: AtlasColors.ink)
+                            .frame(width: 40, height: 40)
+                            .background(Circle().fill(AtlasColors.surfaceSecondary))
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isOwner(agent) ? "编辑 Agent" : "更多")
+                }
+
                 agentIdentityCard(agent)
                 agentStatsBand(agent)
+                followCTA(agent)
+                agentTabBar
+                tabContent
 
-                HStack(spacing: 8) {
-                    Text("这个 Agent 的想法")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(AtlasColors.ink)
-                    Spacer(minLength: 0)
-                    Text("最新  ›")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                }
-                .frame(height: 28)
-
-                if viewModel.originalIdeas.isEmpty {
-                    emptyTab("暂无原创想法")
-                } else {
-                    ForEach(viewModel.originalIdeas) { idea in
-                        IdeaCoverCard(
-                            idea: idea,
-                            coverImageURL: idea.iconLink,
-                            onTap: { ideaRoute = IdeaRoute(id: idea.id) }
-                        )
-                    }
-                }
-
-                HStack(spacing: 8) {
-                    Text(accessLine(agent))
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                    Spacer(minLength: 0)
-                    Text("查看资料 ›")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(AtlasColors.ink)
-                }
-                .padding(.horizontal, 12)
-                .frame(height: 44)
-                .background(AtlasColors.fill)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                Text(accessLine(agent))
+                    .font(.system(size: 11))
+                    .foregroundStyle(AtlasColors.inkFaint)
+                    .padding(.top, 4)
             }
             .padding(.horizontal, AtlasMetrics.pageX)
-            .padding(.top, 67)
+            .padding(.top, 6)
             .padding(.bottom, 28)
+        }
+    }
+
+    /// S20 Follow CTA — r22 44pt capsule, 200pt wide; lemonStrong fill with plus icon
+    /// when unfollowed, lemonSoft/olive when following.
+    @ViewBuilder
+    private func followCTA(_ agent: Agent) -> some View {
+        if agent.allowFollow != false {
+            Button { Task { await toggleFollow() } } label: {
+                HStack(spacing: 6) {
+                    if !viewModel.isFollowing {
+                        DeimosIconView(icon: .plus, size: 14, color: AtlasColors.lemonInk)
+                    }
+                    Text(viewModel.isFollowing ? "已关注" : "关注")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .foregroundStyle(viewModel.isFollowing ? AtlasColors.olive : AtlasColors.lemonInk)
+                .frame(width: 200, height: 44)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(viewModel.isFollowing ? AtlasColors.lemonSoft : AtlasColors.lemonStrong)
+                )
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -214,44 +235,44 @@ struct AgentProfileView: View {
         ].compactMap { $0 }.joined(separator: " · ")
     }
 
+    /// S20 Identity — 84pt avatar, Bold-22 name + 官方认证 badge (system agents),
+    /// "by owner · model 驱动" line, 13pt inkTertiary bio.
     private func agentIdentityCard(_ agent: Agent) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 12) {
-                EntityAvatar.agent(id: agent.id, url: agent.avatarLink, name: agent.name, size: 56)
+        VStack(alignment: .leading, spacing: 10) {
+            EntityAvatar.agent(id: agent.id, url: agent.avatarLink, name: agent.name, size: 84)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(agent.name)
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(AtlasColors.ink)
-                        .lineLimit(1)
-                    Text(agentOwnerSummary(agent))
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                        .lineLimit(1)
+            HStack(spacing: 8) {
+                Text(agent.name)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .lineLimit(1)
+                if agent.isSystemAssistant == true {
+                    Text("官方认证")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(AtlasColors.olive)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(AtlasColors.lemonSoft)
+                        )
                 }
             }
 
-            Text(agent.description?.isEmpty == false ? agent.description! : "持续发现值得探索的想法，并把可执行方案发布为可 Fork 的想法。")
-                .font(.system(size: 13))
+            Text(agentOwnerSummary(agent))
+                .font(.system(size: 12))
                 .foregroundStyle(AtlasColors.inkSoft)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
 
-            let capabilities = agent.capabilityLabels.prefix(4)
-            if !capabilities.isEmpty {
-                Text(capabilities.joined(separator: " · "))
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(AtlasColors.lemonInk)
-                    .lineLimit(1)
+            if let bio = agent.description, !bio.isEmpty {
+                Text(bio)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AtlasColors.inkTertiary)
+                    .lineSpacing(7)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 142, alignment: .top)
-        .background(AtlasColors.lemonSoft)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(.top, 12)
     }
-
     private func agentOwnerSummary(_ agent: Agent) -> String {
         let visibility = agent.visibility == "private" ? "私有" : "公开"
         if let owner = agent.owner {
@@ -366,30 +387,27 @@ struct AgentProfileView: View {
         }
     }
 
-    /// Ardot 246:98 / S10 — H-scroll tabs: 想法 / Fork / 动态.
+    /// S20 Content Tabs — SemiBold-14 ink label + 3pt lemonStrong underline when
+    /// selected; Medium-14 inkSoft otherwise.
     private var agentTabBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(AgentProfileTab.allCases) { item in
-                    let selected = tab == item
-                    Button {
-                        tab = item
-                    } label: {
+        HStack(spacing: 24) {
+            ForEach(AgentProfileTab.allCases) { item in
+                let selected = tab == item
+                Button {
+                    withAnimation(.easeOut(duration: 0.15)) { tab = item }
+                } label: {
+                    VStack(spacing: 6) {
                         Text(item.label(count: tabCount(for: item)))
                             .font(.system(size: 14, weight: selected ? .semibold : .medium))
-                            .foregroundStyle(selected ? AtlasColors.lemonInk : AtlasColors.inkSoft)
-                            .padding(.horizontal, 14)
-                            .frame(height: 36)
-                            .background(selected ? AtlasColors.lemon : AtlasColors.surface)
-                            .overlay(
-                                Capsule()
-                                    .stroke(AtlasColors.border, lineWidth: selected ? 0 : 1)
-                            )
-                            .clipShape(Capsule())
+                            .foregroundStyle(selected ? AtlasColors.ink : AtlasColors.inkSoft)
+                        Capsule()
+                            .fill(selected ? AtlasColors.lemonStrong : .clear)
+                            .frame(width: 28, height: 3)
                     }
-                    .buttonStyle(.plain)
                 }
+                .buttonStyle(.plain)
             }
+            Spacer(minLength: 0)
         }
     }
 
@@ -412,11 +430,7 @@ struct AgentProfileView: View {
                 emptyTab("暂无原创想法")
             } else {
                 ForEach(viewModel.originalIdeas) { idea in
-                    IdeaCoverCard(
-                        idea: idea,
-                        coverImageURL: idea.iconLink,
-                        onTap: { ideaRoute = IdeaRoute(id: idea.id) }
-                    )
+                    ideaRow(idea)
                 }
             }
         case .forks:
@@ -530,22 +544,17 @@ struct AgentProfileView: View {
         }
     }
 
-    /// ardot S10 (`237:399` Stats 342×64): #F5F6F7 container cr20 with 3 stat tiles.
-    /// First tile (想法) is #F3FFC8 lemon cr16; the other two match the container.
+    /// S20 Stats Row — inline (no container): Bold-18 values + Regular-11 labels.
     private func agentStatsBand(_ agent: Agent) -> some View {
         let ideas = viewModel.stats?.ideaCount ?? viewModel.originalIdeas.count
         let forks = viewModel.stats?.totalForks ?? 0
         let followers = viewModel.stats?.followerCount ?? agent.followerCount ?? 0
-        return HStack(spacing: 0) {
+        return HStack(spacing: 32) {
             agentStatTile(value: "\(ideas)", label: "想法")
-            agentStatTile(value: compactCount(forks), label: "Fork")
-            agentStatTile(value: compactCount(followers), label: "关注")
+            agentStatTile(value: compactCount(followers), label: "关注者")
+            agentStatTile(value: compactCount(forks), label: "被 Fork")
         }
-        .frame(height: 56)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(AtlasColors.chatAssistantBubble)
-        )
+        .padding(.top, 4)
     }
 
     private func agentStatTile(value: String, label: String) -> some View {

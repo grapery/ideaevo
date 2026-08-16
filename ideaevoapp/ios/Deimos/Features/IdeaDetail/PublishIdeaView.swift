@@ -7,7 +7,34 @@ final class PublishIdeaViewModel {
     var title = ""
     var descriptionText = ""
     var category = "other"
+    var tagsText = ""
+    var repoURL = ""
+    var demoURL = ""
     var selectedAgentID = ""
+
+    private static let draftKey = "deimos.draft.publish"
+
+    func saveDraft() {
+        UserDefaults.standard.set(
+            [title, descriptionText, category, tagsText, repoURL, demoURL],
+            forKey: Self.draftKey
+        )
+    }
+
+    func loadDraft() {
+        let draft = UserDefaults.standard.stringArray(forKey: Self.draftKey) ?? []
+        guard draft.count == 6 else { return }
+        title = draft[0]
+        descriptionText = draft[1]
+        category = draft[2]
+        tagsText = draft[3]
+        repoURL = draft[4]
+        demoURL = draft[5]
+    }
+
+    func clearDraft() {
+        UserDefaults.standard.removeObject(forKey: Self.draftKey)
+    }
     var agents: [Agent] = []
     var similarIdeas: [SimilarIdeaMatch] = []
     var isLoadingAgents = false
@@ -52,13 +79,29 @@ final class PublishIdeaViewModel {
         errorMessage = nil
         similarIdeas = []
         defer { isSubmitting = false }
-        return try await APIClient.shared.createIdea(
+        let tags = tagsText
+            .components(separatedBy: CharacterSet(charactersIn: ",，"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let idea = try await APIClient.shared.createIdea(
             title: trimmedTitle,
             description: trimmedDesc,
             category: category,
+            tags: tags.isEmpty ? nil : tags,
+            repoURL: repoURL.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+            demoURL: demoURL.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             agentID: selectedAgentID,
             force: force
         )
+        clearDraft()
+        return idea
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 
@@ -68,56 +111,120 @@ struct PublishIdeaView: View {
     @State private var viewModel = PublishIdeaViewModel()
     @State private var publishedRoute: IdeaRoute?
     @State private var similarRoute: IdeaRoute?
-    @State private var showCategoryPicker = false
 
     /// Card field background per S12 design: `#F8FAFC` light blue-grey.
     private let fieldCardBg = Color(hex: 0xF8FAFC)
-    /// Label / tertiary text per S12 design: `#687083` cool grey.
-    private let labelGrey = Color(hex: 0x687083)
 
     var body: some View {
         Group {
             if viewModel.similarIdeas.isEmpty {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        cardField(label: "标题") {
-                            AtlasTextField(
-                                placeholder: "一句话说明这个想法",
-                                text: $viewModel.title,
-                                height: 44
+                    VStack(alignment: .leading, spacing: 12) {
+                        // S05 Nav Bar (ardot 715405210175453 `2:7`) — close circle +
+                        // 发布想法 + 存草稿 (inkSoft Medium-13).
+                        HStack {
+                            Button { dismiss() } label: {
+                                DeimosIconView(icon: .close, size: 16, color: AtlasColors.ink)
+                                    .frame(width: 40, height: 40)
+                                    .background(Circle().fill(AtlasColors.surfaceSecondary))
+                                    .contentShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("关闭")
+
+                            Text("发布想法")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(AtlasColors.ink)
+                                .padding(.leading, 12)
+
+                            Spacer()
+
+                            Button {
+                                viewModel.saveDraft()
+                                ToastCenter.shared.showSuccess("草稿已保存")
+                            } label: {
+                                Text("存草稿")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(AtlasColors.inkSoft)
+                                    .frame(height: 40)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        AtlasFormField(label: "标题") {
+                            AtlasFormTextField(placeholder: "给你的想法起个名字", text: $viewModel.title)
+                        }
+
+                        AtlasFormField(label: "描述") {
+                            AtlasFormTextEditor(
+                                text: $viewModel.descriptionText,
+                                minHeight: 72,
+                                placeholder: "这个想法解决什么问题？打算怎么实现？"
                             )
                         }
 
-                        cardField(label: "描述 Markdown · \(viewModel.descriptionText.count)/5000") {
-                            AtlasTextEditor(
-                                text: $viewModel.descriptionText,
-                                minHeight: 124,
-                                fontSize: 16
-                            )
-                            .frame(height: 124)
+                        VStack(alignment: .leading, spacing: 8) {
+                            AtlasFieldLabel(text: "分类")
+                            categoryChips
+                        }
+
+                        AtlasFormField(label: "标签") {
+                            AtlasFormTextField(placeholder: "用逗号分隔，如：开源, 周报", text: $viewModel.tagsText)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            AtlasFieldLabel(text: "链接（可选）")
+                            AtlasFormTextField(placeholder: "Repo URL", text: $viewModel.repoURL, keyboard: .URL)
+                            AtlasFormTextField(placeholder: "Demo URL", text: $viewModel.demoURL, keyboard: .URL)
                         }
 
                         agentPickerCard
 
+                        // S05 Dedup Notice — #F5FFD1 r12, olive 12pt with info icon.
+                        HStack(alignment: .top, spacing: 8) {
+                            DeimosIconView(icon: .info, size: 16, color: AtlasColors.olive)
+                            Text("发布时将自动查重：与现有想法相似度过高会先提醒你，避免重复造轮子。")
+                                .font(.system(size: 12))
+                                .foregroundStyle(AtlasColors.olive)
+                                .lineSpacing(4)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color(hex: 0xF5FFD1))
+                        )
+                        .padding(.top, 2)
+
                         if let error = viewModel.errorMessage {
                             Text(error)
-                                .font(AtlasTypography.meta())
-                                .foregroundStyle(AtlasColors.coral)
+                                .font(.system(size: 12))
+                                .foregroundStyle(AtlasColors.destructive)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
-
-                        publishButton
                     }
-                    .padding(.horizontal, AtlasMetrics.detailX)
-                    .padding(.bottom, 40)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 6)
+                    .padding(.bottom, 20)
                 }
             } else {
                 similarConflictScreen
             }
         }
         .background(AtlasColors.canvas)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            AtlasOverlayPushNavBar(title: "发布想法", onBack: { dismiss() })
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            // S05 Publish Bar — white bar + 0.5 rule + r24 CTA.
+            VStack(spacing: 0) {
+                publishButton
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+            }
+            .background(AtlasColors.surface)
+            .overlay(alignment: .top) {
+                Rectangle().fill(AtlasColors.rule).frame(height: 0.5)
+            }
         }
         .navigationBarHidden(true)
         .suppressTabBar()
@@ -128,103 +235,36 @@ struct PublishIdeaView: View {
         .navigationDestination(item: $similarRoute) { route in
             IdeaDetailView(ideaID: route.id)
         }
-        .confirmationDialog("选择分类", isPresented: $showCategoryPicker, titleVisibility: .visible) {
-            ForEach(viewModel.categories, id: \.id) { item in
-                Button(item.label) { viewModel.category = item.id }
-            }
-        }
         .task {
+            viewModel.loadDraft()
             await viewModel.loadAgents()
         }
     }
 
-    // MARK: - Toolbar (Ardot 179:213)
-
-    private var toolbar: some View {
-        // ardot S12 (`237:342` C/Push Nav Bar): floating glass overlay — content scrolls under.
-        // Previously used AtlasPushNavBar (solid canvas bar) — inconsistent with the spec.
-        AtlasOverlayPushNavBar(title: "发布想法", onBack: { dismiss() })
-            .padding(.horizontal, -AtlasMetrics.detailX)
-    }
-
-    // MARK: - Wanye Draft Assist card (Ardot 179:234)
-
-    /// 350×96 r20, light blue bg `#EEF4FF` + border, title 15pt SemiBold + body 12pt Regular.
-    private var draftAssistCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("让万叶帮你整理成可搜索的想法")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AtlasColors.ink)
-            Text("输入一句话，系统会生成标题、描述、分类、标签和初始版本。")
-                .font(.system(size: 12))
-                .foregroundStyle(Color(hex: 0x687083))
-                .lineSpacing(4)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(Color(hex: 0xEEF4FF))
-        .overlay(
-            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-    }
-
-    // MARK: - Card field container (Ardot 179:237 / 179:240)
-
-    /// Keep labels outside the input surface so the form scans like the Ardot layout.
-    @ViewBuilder
-    private func cardField<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(labelGrey)
-
-            content()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(fieldCardBg)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    // MARK: - Meta chips row (Ardot 179:243)
-
-    /// Category chip (gold) + status display. Tapping category opens picker.
-    private var metaChipsRow: some View {
-        HStack(spacing: 8) {
-            // Category chip — gold bg #FFF6CB, brown text
-            Button { showCategoryPicker = true } label: {
-                HStack(spacing: 4) {
-                    Text(currentCategoryLabel)
-                    DeimosIconView(icon: .chevronRight, size: 10, color: Color(hex: 0x6C5600))
-                        .rotationEffect(.degrees(90))
+    /// S05 Category Chips — h32 r16; selected lemon with lemonInk SemiBold-12 label,
+    /// unselected surfaceSecondary with inkTertiary Medium-12.
+    private var categoryChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.categories, id: \.id) { item in
+                    let isSelected = viewModel.category == item.id
+                    Button {
+                        viewModel.category = item.id
+                    } label: {
+                        Text(item.label)
+                            .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
+                            .foregroundStyle(isSelected ? AtlasColors.lemonInk : AtlasColors.inkTertiary)
+                            .padding(.horizontal, 14)
+                            .frame(height: 32)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(isSelected ? AtlasColors.lemon : AtlasColors.surfaceSecondary)
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color(hex: 0x6C5600))
-                .padding(.horizontal, 16)
-                .frame(height: 34)
-                .background(Color(hex: 0xFFF6CB))
-                .clipShape(Capsule())
             }
-            .buttonStyle(.plain)
-
-            // Status chip — green bg, green text (default "新想法")
-            Text("新想法")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color(hex: 0x247A45))
-                .padding(.horizontal, 16)
-                .frame(height: 34)
-                .background(Color(hex: 0xEAF8D1))
-                .clipShape(Capsule())
-
-            Spacer()
         }
-    }
-
-    private var currentCategoryLabel: String {
-        viewModel.categories.first { $0.id == viewModel.category }?.label ?? "其他"
     }
 
     // MARK: - Agent picker card (Ardot 179:250)
@@ -416,13 +456,13 @@ struct PublishIdeaView: View {
                     ProgressView().tint(AtlasColors.lemonInk)
                 }
                 Text("发布想法")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
             }
             .frame(maxWidth: .infinity)
             .frame(height: 48)
             .foregroundStyle(AtlasColors.lemonInk)
             .background(AtlasColors.lemonStrong)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .clipShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(viewModel.agents.isEmpty || viewModel.isSubmitting)

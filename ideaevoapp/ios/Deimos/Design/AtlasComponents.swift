@@ -601,27 +601,39 @@ struct AtlasOverlayPushNavBar<Trailing: View>: View {
 /// authoritative chat header per the current ardot design — the previous implementation
 /// wrongly reused `AtlasOverlayPushNavBar` (centered glass capsule, no subtitle) which
 /// was aligned to a different frame family.
+/// S03 Chat Header (ardot board 715405210175453 `2:5`): grey back circle → 38pt agent
+/// avatar → name (15 SemiBold ink) + status line (11 Regular success) → trailing slot
+/// (the thread view mounts a 36pt switch-agent circle). Solid canvas bar, scrolls away
+/// from under the content.
 struct ChatThreadNavBar<Trailing: View>: View {
     var title: String
     var subtitle: String?
+    var subtitleColor: Color = AtlasColors.success
+    var agentID: String = ""
+    var agentAvatarURL: URL?
     let onBack: () -> Void
     @ViewBuilder var trailing: () -> Trailing
 
     init(
         title: String,
         subtitle: String? = nil,
+        subtitleColor: Color = AtlasColors.success,
+        agentID: String = "",
+        agentAvatarURL: URL? = nil,
         onBack: @escaping () -> Void,
         @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }
     ) {
         self.title = title
         self.subtitle = subtitle
+        self.subtitleColor = subtitleColor
+        self.agentID = agentID
+        self.agentAvatarURL = agentAvatarURL
         self.onBack = onBack
         self.trailing = trailing
     }
 
     var body: some View {
         HStack(spacing: 10) {
-            // Solid grey back circle (NOT floating glass) — ardot `237:289` C/Back Button instance.
             Button(action: onBack) {
                 DeimosIconView(icon: .chevronBack, size: 17, color: AtlasColors.ink)
                     .frame(width: AtlasMetrics.backButtonSize, height: AtlasMetrics.backButtonSize)
@@ -631,16 +643,22 @@ struct ChatThreadNavBar<Trailing: View>: View {
             .buttonStyle(.plain)
             .accessibilityLabel("返回")
 
-            // Left-aligned title + subtitle stack
+            EntityAvatar.agent(
+                id: agentID,
+                url: agentAvatarURL,
+                name: title,
+                size: 38
+            )
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AtlasColors.ink)
                     .lineLimit(1)
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkSoft)
+                        .font(.system(size: 11))
+                        .foregroundStyle(subtitleColor)
                         .lineLimit(1)
                 }
             }
@@ -704,55 +722,6 @@ struct AtlasToolbarFloatIconButton: View {
     }
 }
 
-/// Detail pages keep their actions above the scroll content. The material surface
-/// deliberately blurs whatever moves beneath it, matching the Ardot scrolled state.
-/// Floating glass overlay controls for Idea Detail (ardot S04 `179:74` + `296:14`).
-/// NOT a bar — these are independent 44×44 floating glass circles overlaid on the scroll content.
-/// Back button on left, action cluster (Save/Fork/More) on right. No background blur, no divider.
-struct AtlasDetailGlassToolbar: View {
-    let onBack: () -> Void
-    var onShare: () -> Void = {}
-    var onSave: () -> Void = {}
-    var onForkLineage: () -> Void = {}
-    var onMore: () -> Void = {}
-    /// Scrolled-state title (ardot S04C `246:6` "想法详情" 18pt Bold).
-    var navTitle: String? = nil
-    var showTitle: Bool = false
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            // Left: back button (ardot 179:74)
-            AtlasToolbarFloatIconButton(icon: .chevronBack, size: 44, iconSize: 18, action: onBack)
-
-            Spacer(minLength: 0)
-
-            // Center: scrolled-state title
-            if showTitle, let navTitle {
-                Text(navTitle)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(AtlasColors.ink)
-                    .lineLimit(1)
-                    .frame(maxWidth: 180)
-                    .transition(.opacity)
-                    .frame(height: 44)
-            } else {
-                Color.clear.frame(width: 0, height: 44)
-            }
-
-            Spacer(minLength: 0)
-
-            // Right: action cluster (ardot 296:14 — Save Snapshot / Fork Lineage / More)
-            HStack(spacing: 4) {
-                AtlasToolbarFloatIconButton(icon: .share, size: 44, iconSize: 18, action: onShare)
-                AtlasToolbarFloatIconButton(icon: .bookmark, size: 44, iconSize: 18, action: onSave)
-                AtlasToolbarFloatIconButton(icon: .fork, size: 44, iconSize: 18, action: onForkLineage)
-                AtlasToolbarFloatIconButton(icon: .more, size: 44, iconSize: 18, action: onMore)
-            }
-        }
-        .padding(.horizontal, AtlasMetrics.detailX)
-        .frame(height: 48)
-    }
-}
 
 /// Tab root breaking action (`+`) · 56×56 hit per Marvel V4.0.
 struct AtlasToolbarCenterActionButton: View {
@@ -891,76 +860,6 @@ struct IdeaMiniStatsRow: View {
     }
 }
 
-/// Ardot `C/IdeaIdentityHero` · detail hero band · avatar 56.
-struct IdeaIdentityHero: View {
-    let idea: Idea
-    var iconNamespace: Namespace.ID? = nil
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            heroAvatar
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(idea.displayTitle)
-                    .font(AtlasTypography.button())
-                    .foregroundStyle(AtlasColors.lemonInk)
-                    .lineLimit(1)
-
-                HStack(spacing: 6) {
-                    if let owner = idea.agent?.owner {
-                        EntityAvatar.user(
-                            id: owner.id,
-                            url: owner.avatarLink,
-                            name: owner.name,
-                            size: 18
-                        )
-                    }
-                    Text(idea.creatorLine)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.white.opacity(0.85))
-                        .lineLimit(1)
-                }
-
-                Text(idea.createdUpdatedLine)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .lineLimit(2)
-
-                IdeaMiniStatsRow(
-                    forkCount: idea.forkCount,
-                    flowerCount: idea.flowerCount,
-                    likeCount: idea.likeCount,
-                    commentCount: idea.commentCount,
-                    iconColor: .white.opacity(0.8),
-                    textColor: .white.opacity(0.9)
-                )
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(minHeight: 100)
-        .padding(.horizontal, AtlasMetrics.cardPadding)
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(minHeight: 110)
-        .background(AtlasColors.aiGradient)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusHero, style: .continuous))
-        .shadow(color: AtlasColors.aiStart.opacity(0.2), radius: 12, y: 4)
-    }
-
-    @ViewBuilder
-    private var heroAvatar: some View {
-        let avatar = EntityAvatar.idea(id: idea.id, url: idea.iconLink, name: idea.displaySlug, size: 56)
-        if let iconNamespace {
-            avatar.matchedGeometryEffect(id: "idea-icon-\(idea.id)", in: iconNamespace)
-        } else {
-            avatar
-        }
-    }
-}
 
 /// Ardot `C/IdeaCardHero` · feed card top band · h96 · avatar 48.
 struct IdeaCardHero: View {
@@ -1049,147 +948,6 @@ enum RepoTab: Int, CaseIterable {
     }
 }
 
-/// Ardot `C/RepoTabs` · README · Forks · Activity · 讨论.
-struct RepoTabs: View {
-    @Binding var selection: Int
-    let forkCount: Int
-    let commentCount: Int
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(RepoTab.allCases, id: \.rawValue) { tab in
-                let isSelected = selection == tab.rawValue
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selection = tab.rawValue
-                    }
-                } label: {
-                    VStack(spacing: 8) {
-                        Text(tab.title(forkCount: forkCount, commentCount: commentCount))
-                            .font(.system(size: 15, weight: isSelected ? .semibold : .medium))
-                            .foregroundStyle(isSelected ? AtlasColors.ink : AtlasColors.inkSoft)
-                        Capsule()
-                            .fill(isSelected ? AtlasColors.aiStart : Color.clear)
-                            .frame(height: 3)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, AtlasMetrics.pageX)
-        .padding(.vertical, 8)
-        .background(AtlasColors.surface)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color(hex: 0xEEF1F4))
-                .frame(height: 1)
-        }
-    }
-}
-
-/// Detail README tab · compact flowers preview linking to grid.
-/// v2 (ardot S04 `179:3` redesign): single-row flower card. Donor avatars stack on the
-/// left, count sits in the middle, and a circular lemonStrong send-flower button anchors the
-/// right edge. Replaces the old vertical card with a "收到的花" header, avatar grid, and a
-/// full-width `AtlasOutlineButton("送一朵花")` — the user asked for the text button to go
-/// away in favour of a compact circular action.
-struct FlowersPreviewCard: View {
-    let flowerCount: Int
-    let donors: [FlowerDonor]
-    let onOpen: () -> Void
-    let onSendFlower: () -> Void
-
-    private let avatarSize: CGFloat = 36
-    private let avatarOverlap: CGFloat = -10
-    private let buttonSize: CGFloat = 44
-
-    var body: some View {
-        HStack(spacing: 10) {
-            // Tapping the avatar stack opens the full donor list.
-            Button(action: onOpen) {
-                donorStack
-            }
-            .buttonStyle(.plain)
-            .disabled(donors.isEmpty)
-
-            Text("\(flowerCount) 朵")
-                .font(AtlasTypography.badge())
-                .foregroundStyle(AtlasColors.accentFork)
-                .lineLimit(1)
-
-            Spacer(minLength: 0)
-
-            sendFlowerButton
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AtlasColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous)
-                .stroke(AtlasColors.rule, lineWidth: 1)
-        )
-        .atlasElevatedCard()
-    }
-
-    private var donorStack: some View {
-        Group {
-            if donors.isEmpty {
-                Text("还没有人送花")
-                    .font(AtlasTypography.meta())
-                    .foregroundStyle(AtlasColors.inkFaint)
-            } else {
-                HStack(spacing: avatarOverlap) {
-                    ForEach(donors.prefix(5)) { donor in
-                        flowerDonorAvatar(donor, size: avatarSize)
-                            .overlay(Circle().stroke(AtlasColors.surface, lineWidth: 2))
-                    }
-                    if donors.count > 5 {
-                        ZStack {
-                            Circle()
-                                .fill(AtlasColors.fill)
-                                .frame(width: avatarSize, height: avatarSize)
-                            Text("+\(donors.count - 5)")
-                                .font(AtlasTypography.overline())
-                                .foregroundStyle(AtlasColors.inkSoft)
-                        }
-                        .overlay(Circle().stroke(AtlasColors.surface, lineWidth: 2))
-                    }
-                }
-            }
-        }
-    }
-
-    private var sendFlowerButton: some View {
-        Button(action: onSendFlower) {
-            ZStack {
-                Circle()
-                    .fill(AtlasColors.lemonStrong)
-                    .frame(width: buttonSize, height: buttonSize)
-                DeimosIconView(icon: .flower, size: 20, color: AtlasColors.lemonInk)
-            }
-            .shadow(color: AtlasColors.lemonInk.opacity(0.18), radius: 10, x: 0, y: 6)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("送花")
-    }
-
-    @ViewBuilder
-    private func flowerDonorAvatar(_ donor: FlowerDonor, size: CGFloat) -> some View {
-        if donor.isAgent, let agentID = donor.agentID {
-            EntityAvatar.agent(id: agentID, url: donor.avatarLink, name: donor.name, size: size)
-        } else {
-            EntityAvatar.user(
-                id: donor.userID ?? donor.id,
-                url: donor.avatarLink,
-                name: donor.name,
-                size: size
-            )
-        }
-    }
-}
 
 /// Ardot `C/FlowerContributorRow` · donor list row on flowers grid.
 struct FlowerContributorRow: View {
@@ -1293,20 +1051,20 @@ struct BottomInputBar: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                HStack(alignment: .center, spacing: 12) {
+                HStack(alignment: .center, spacing: 10) {
                     AtlasMultilineTextField(
                         placeholder: placeholder,
                         text: $text,
                         minHeight: 44,
                         maxHeight: 120,
+                        fontSize: 13,
                         onSubmit: onSend
                     )
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, 16)
                     .frame(height: 44)
                     .background(
-                        // ardot S07c (`351:55` Field focused): when typing, the field switches
-                        // from #F2F3F5 fill to white + lemon stroke (lemonStrong) to signal focus.
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        // S03 Input Field (ardot 715405210175453 `2:5`): r22 capsule fill #F2F2F5.
+                        Capsule(style: .continuous)
                             .fill(AtlasColors.chatNavCircle)
                     )
 
@@ -1319,10 +1077,10 @@ struct BottomInputBar: View {
                                     .tint(AtlasColors.lemonInk)
                                     .frame(width: 22, height: 22)
                             } else {
-                                DeimosIconView(icon: .send, size: 22, color: AtlasColors.lemonInk)
+                                DeimosIconView(icon: .send, size: 18, color: AtlasColors.lemonInk)
                             }
                         }
-                        .frame(width: 52, height: 52)
+                        .frame(width: 44, height: 44)
                         .background(sendEnabled ? AtlasColors.lemonStrong : AtlasColors.inkDisabled)
                         .clipShape(Circle())
                     }
@@ -1342,13 +1100,14 @@ struct BottomInputBar: View {
                 }
             }
         }
-        .padding(.horizontal, AtlasMetrics.detailX)
-        .padding(.vertical, 15)
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
         .background(AtlasColors.surface)
         .overlay(
             Rectangle()
-                .fill(AtlasColors.chatInputStroke)
-                .frame(height: 1),
+                .fill(AtlasColors.rule)
+                .frame(height: 0.5),
             alignment: .top
         )
     }
@@ -2099,30 +1858,26 @@ struct HomeSearchAgentCell: View {
 
 /// `C/Glass Tab Bar · Floating Pill Material` (ardot `237:80`).
 ///
-/// Floating glass pill (348×62, white/72% fill, #E8EAEC border, r36, ink shadow), containing
-/// 4 tabs. Active tab = lemon capsule (lemonStrong @ 0.82, lemonInk text/icon). Inactive tabs
-/// are plain (#8A94A6 text/icon, no fill). Label is ABOVE icon per ardot spec.
+/// Floating pill tab bar per the current board (ardot 715405210175453 C/Pill Tab Bar):
+/// solid white pill (348×62, #E8EBED border, r36, ink shadow) holding 4 tabs.
+/// Active tab = lime capsule (`tabAccent` #BFE80D) with lemonInk label; icon sits
+/// ABOVE the label. Inactive icon is ink, inactive label inkSoft.
 struct NativeTabBar: View {
     @Binding var selection: MainTab
 
     var body: some View {
-        // ardot `237:*` C/Glass Tab Bar (390×83): OPAQUE white edge-to-edge container bar
-        // (fill #FFFFFF(1)) holding an inner glass pill (348×62 #FFFFFF(0.72) + #E8EBF0 stroke,
-        // cr36, shadow). The previous implementation rendered only the floating pill with no
-        // backing bar, leaving content visible through the gaps beside the pill — the
-        // "transparent tabbar" bug. This wraps the pill in a solid-white 83pt bar matching spec.
+        // Opaque white edge-to-edge container bar (390×83) holding the inner pill,
+        // so content never shows through beside the pill.
         VStack {
             Spacer()
-            // Inner glass pill — Liquid Glass control sitting on top of the opaque bar.
             HStack(spacing: 4) {
                 ForEach(MainTab.allCases, id: \.self) { tab in
                     tabItem(tab)
                 }
             }
             .padding(4)
-            // ardot 237:81: Glass Pill — white/72% solid fill + #E8EBF0 border + r36 + ink shadow.
-            .background(Capsule().fill(Color.white.opacity(0.72)))
-            .overlay(Capsule().stroke(AtlasColors.settingsRowStroke, lineWidth: 1))
+            .background(Capsule().fill(Color.white))
+            .overlay(Capsule().stroke(AtlasColors.border, lineWidth: 1))
             .shadow(color: Color(hex: 0x0F1B2D, opacity: 0.14), radius: 18, x: 0, y: 8)
             .padding(.horizontal, 21)
             .padding(.top, 10)
@@ -2142,16 +1897,15 @@ struct NativeTabBar: View {
                 selection = tab
             }
         } label: {
-            // ardot 237:82/85/88/91: label ABOVE icon (VStack spacing 4), not icon above label.
-            VStack(spacing: 4) {
+            // C/Pill Tab Bar: icon ABOVE label (VStack spacing 3).
+            VStack(spacing: 3) {
+                DeimosIconView(icon: tab.icon, size: 18, color: isSelected ? AtlasColors.lemonInk : AtlasColors.ink)
                 Text(tab.title)
                     .font(isSelected ? AtlasTypography.tabBarLabel() : AtlasTypography.tabBarLabelInactive())
-                DeimosIconView(icon: tab.icon, size: 18, color: isSelected ? AtlasColors.lemonInk : AtlasColors.inkSoft)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 54)
-            .foregroundStyle(isSelected ? AtlasColors.lemonInk : AtlasColors.inkSoft)
-            .background(isSelected ? AtlasColors.lemonStrong.opacity(0.82) : .clear, in: Capsule())
+            .background(isSelected ? AtlasColors.tabAccent : .clear, in: Capsule())
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())
@@ -2275,35 +2029,6 @@ struct SegmentControl: View {
     }
 }
 
-struct AtlasSegmentedPill: View {
-    let items: [String]
-    @Binding var selection: Int
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(items.indices, id: \.self) { index in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selection = index
-                    }
-                }                 label: {
-                    Text(items[index])
-                        .font(.system(size: 14, weight: selection == index ? .semibold : .medium))
-                        .foregroundStyle(selection == index ? AtlasColors.lemonInk : AtlasColors.inkSoft)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 36)
-                        .background(selection == index ? AtlasColors.primaryAction : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .frame(height: 44)
-        .background(AtlasColors.bgInput)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-}
 
 struct AtlasPageHeader: View {
     let eyebrow: String
@@ -2358,213 +2083,170 @@ struct AtlasCard<Content: View>: View {
 
 // MARK: - v6 AI Hero Card (Ardot `149:260`)
 
-/// Ardot C/AI Hero Card (237:74): dark lemon-ink surface, 22pt Bold white title,
-/// 14pt Regular lemon subtitle, optional lemon pill CTA (S02 hides it, S06 shows it).
-struct AIHeroCard: View {
-    let title: String
-    let subtitle: String
-    var ctaTitle: String?
-    /// ardot S02 (`237:137` C/AI Hero Card) uses 18pt Bold title + 13pt Regular subtitle.
-    /// S06 (`237:154`) uses 22pt Bold + 14pt Regular. Default to S06 (larger) for backwards
-    /// compatibility; S02 callers pass `.small`.
-    var sizeVariant: AIHeroSize = .large
-    let action: () -> Void
-
-    enum AIHeroSize { case large, small }
-
-    var body: some View {
-        let titleFont: Font = sizeVariant == .large
-            ? .system(size: 22, weight: .bold)
-            : .system(size: 18, weight: .bold)
-        let subtitleFont: Font = .system(size: sizeVariant == .large ? 14 : 13)
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(title)
-                    .font(titleFont)
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-
-                Text(subtitle)
-                    .font(subtitleFont)
-                    .foregroundStyle(AtlasColors.lemon)
-
-                if let ctaTitle {
-                    HStack(spacing: 6) {
-                        Text(ctaTitle)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(AtlasColors.lemonInk)
-                        DeimosIconView(icon: .chevronRight, size: 14, color: AtlasColors.lemonInk)
-                    }
-                    .padding(.horizontal, 20)
-                    .frame(height: 40)
-                    .background(AtlasColors.lemonStrong)
-                    .clipShape(Capsule())
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .padding(20)
-            .background(AtlasColors.lemonInk)
-            .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusHero, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-}
 
 // MARK: - Product Idea Card (Ardot S02 / S04B)
 
 /// A compact, text-first Idea surface. Media is intentionally handled inside
 /// the detail document; discovery needs the status, provenance and Fork signal
 /// to remain scan-friendly even when an Idea has no image.
+/// S01 Idea Card (ardot board 715405210175453 `2:3`): white r20 hairline card, pad 12 —
+/// 150pt r12 cover with overlaid status badge + category chip → 16pt SemiBold title →
+/// 13pt inkTertiary summary (lh 20, 2 lines) → footer with 22pt creator avatar,
+/// "作者 · 时间" 12pt inkSoft and flower/fork/comment stats (12pt Medium inkSoft).
 struct IdeaCoverCard: View {
     let idea: Idea
     var coverImageURL: URL?
     var iconNamespace: Namespace.ID?
     var onTap: () -> Void
 
+    private var summaryText: String {
+        let summary = idea.feedSummaryText ?? idea.description.plainSummary
+        let trimmed = summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "公开 · 可 Fork" : trimmed
+    }
+
+    /// S01 status badge pair — 已落地 lemon/lemonInk · 活跃 successSoft/success ·
+    /// 归档 gray · 埋没 dangerSoft/destructive.
+    private var statusBadge: (text: String, fill: Color, foreground: Color) {
+        switch idea.status {
+        case "implemented": return (idea.statusLabel, AtlasColors.lemon, AtlasColors.lemonInk)
+        case "active": return (idea.statusLabel, AtlasColors.successSoft, AtlasColors.success)
+        case "buried": return (idea.statusLabel, AtlasColors.dangerSoft, AtlasColors.destructive)
+        default: return (idea.statusLabel, AtlasColors.surfaceSecondary, AtlasColors.inkSoft)
+        }
+    }
+
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 0) {
-                identitySection
-                provenanceSection
-                actionSection
+            VStack(alignment: .leading, spacing: 10) {
+                cover
+
+                Text(idea.displayTitle)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .lineSpacing(7)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                Text(summaryText)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AtlasColors.inkTertiary)
+                    .lineSpacing(7)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                HStack(spacing: 8) {
+                    EntityAvatar.agent(
+                        id: idea.agent?.id ?? idea.id,
+                        url: idea.authorAvatarLink,
+                        name: idea.authorDisplayName,
+                        size: 22
+                    )
+                    Text(idea.coverCreatorLine)
+                        .font(.system(size: 12))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    HStack(spacing: 14) {
+                        stat(icon: .flower, count: idea.flowerCount)
+                        stat(icon: .fork, count: idea.forkCount)
+                        stat(icon: .comment, count: idea.commentCount)
+                    }
+                }
             }
+            .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(AtlasColors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(AtlasColors.borderProfile, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(AtlasColors.cardStroke, lineWidth: 1)
             )
-            .atlasProfileCard()
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
     }
 
-    private var identitySection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("IDEA · \(idea.category.uppercased())")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(AtlasColors.oliveMeta)
-                    RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(AtlasColors.primaryAction)
-                        .frame(width: 44, height: 3)
-                }
-                Spacer()
-                Text(idea.statusLabel)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(idea.statusColor)
-                    .padding(.horizontal, 12)
-                    .frame(height: 24)
-                    .background(idea.statusBadgeBackground)
-                    .clipShape(Capsule())
-            }
-            Text(idea.displaySlug.uppercased())
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(AtlasColors.inkTertiary)
-                .lineLimit(1)
-                .padding(.top, 7)
-            Text(idea.displayTitle)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(AtlasColors.ink)
-                .lineLimit(2)
-                .padding(.top, 5)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
-        .background(
-            // 封面图优先;无图回退柠檬色块。有封面时叠加渐变保证文字可读。
+    /// 150pt cover — image when available, lemonSoft fallback; status badge top-left,
+    /// category chip (white 0.92) top-right.
+    @ViewBuilder
+    private var cover: some View {
+        ZStack(alignment: .top) {
             Group {
-                if let coverURL = coverImageURL, coverURL != idea.iconLink {
-                    ZStack(alignment: .bottom) {
-                        AsyncImage(url: coverURL) { phase in
-                            switch phase {
-                            case .success(let image):
-                                image.resizable().scaledToFill()
-                            default:
-                                AtlasColors.lemonSoft
-                            }
+                if let coverURL = coverImageURL ?? idea.primaryImageURL {
+                    AsyncImage(url: coverURL) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFill()
+                        default:
+                            AtlasColors.lemonSoft
                         }
-                        LinearGradient(
-                            colors: [.clear, .white.opacity(0.85)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .allowsHitTesting(false)
                     }
                 } else {
                     AtlasColors.lemonSoft
                 }
             }
-        )
-    }
+            .frame(height: 150)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-    private var provenanceSection: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(idea.coverCreatorLine)
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Text("公开 · 可 Fork · 更新于 \(idea.updatedAt.relativeShort)")
-                .lineLimit(1)
-        }
-        .font(.system(size: 11, weight: .regular))
-        .foregroundStyle(AtlasColors.inkSoft)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .frame(height: 36)
-    }
-
-    private var actionSection: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 8) {
-                compactAction(
-                    icon: .flower,
-                    count: idea.flowerCount,
-                    foreground: AtlasColors.inkTertiary,
-                    background: AtlasColors.surface
-                )
-                compactAction(
-                    icon: .fork,
-                    count: idea.forkCount,
-                    foreground: AtlasColors.olive,
-                    background: Color(hex: 0xF2F9D8)
-                )
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity)
-
-            HStack(spacing: 3) {
-                Text("详情")
+            HStack(alignment: .top) {
+                Text(statusBadge.text)
                     .font(.system(size: 11, weight: .semibold))
-                DeimosIconView(icon: .chevronRight, size: 12, color: AtlasColors.lemonInk)
+                    .foregroundStyle(statusBadge.foreground)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(statusBadge.fill)
+                    )
+                Spacer()
+                if !idea.category.isEmpty {
+                    Text(idea.category)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AtlasColors.inkTertiary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Color.white.opacity(0.92))
+                        )
+                }
             }
-                .foregroundStyle(AtlasColors.lemonInk)
-                .frame(width: 76, height: 28)
-                .background(AtlasColors.lemonCTA)
-                .clipShape(Capsule())
+            .padding(8)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(height: 44)
-        .background(Color(hex: 0xF8F9FB))
     }
 
-    private func compactAction(
-        icon: DeimosIcon,
-        count: Int,
-        foreground: Color,
-        background: Color
-    ) -> some View {
+    private func stat(icon: DeimosIcon, count: Int) -> some View {
         HStack(spacing: 4) {
-            DeimosIconView(icon: icon, size: 14, color: foreground)
+            DeimosIconView(icon: icon, size: 14, color: AtlasColors.inkSoft)
             Text("\(count)")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(foreground)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AtlasColors.inkSoft)
+                .monospacedDigit()
         }
-        .frame(width: 64, height: 28)
-        .background(background)
-        .clipShape(Capsule())
+    }
+}
+
+/// S04 rank-row thumbnail — 42pt r10 image tile with lemonSoft fallback.
+struct RankingThumb: View {
+    let idea: RankingIdea
+
+    var body: some View {
+        Group {
+            if let thumb = idea.thumbLink {
+                AsyncImage(url: thumb) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        AtlasColors.lemonSoft
+                    }
+                }
+            } else {
+                AtlasColors.lemonSoft
+            }
+        }
+        .frame(width: 42, height: 42)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -2637,31 +2319,6 @@ struct StatChip: View {
     }
 }
 
-/// 圆圈线框统计（动态页等）。
-struct WireframeStatCircle: View {
-    let value: String
-    let label: String
-    var diameter: CGFloat = 72
-
-    var body: some View {
-        VStack(spacing: 6) {
-            Text(value)
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(AtlasColors.ink)
-                .frame(width: diameter, height: diameter)
-                .background(AtlasColors.canvas)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(AtlasColors.rule, lineWidth: 1))
-            Text(label)
-                .font(.system(size: 10))
-                .foregroundStyle(AtlasColors.inkFaint)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
 
 struct IdeaRoute: Identifiable, Hashable {
     let id: String
@@ -2679,24 +2336,27 @@ struct ActivityCell: View {
     let activity: ActivityView
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        // S04 Feed Row (ardot 715405210175453 `2:6`): 30pt avatar, 13pt Regular ink line
+        // (lh 19, up to 2 lines), 11pt inkSoft timestamp.
+        HStack(alignment: .center, spacing: 10) {
             actorAvatar
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(activityLine)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 13))
                     .foregroundStyle(AtlasColors.ink)
-                    .lineLimit(1)
+                    .lineSpacing(6)
+                    .lineLimit(2)
 
                 Text(activitySubtitle ?? activity.createdAt.relativeShort)
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(AtlasColors.inkSoft)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 16)
-        .frame(minHeight: 72, maxHeight: 72)
+        .padding(.vertical, 4)
+        .frame(minHeight: 37)
         .contentShape(Rectangle())
     }
 
@@ -2704,9 +2364,9 @@ struct ActivityCell: View {
     private var actorAvatar: some View {
         let url = activity.actorAvatar.flatMap(URL.init(string:))
         if activity.actorType == "agent" {
-            EntityAvatar.agent(id: activity.actorID, url: url, name: activity.actorName ?? "A", size: 36)
+            EntityAvatar.agent(id: activity.actorID, url: url, name: activity.actorName ?? "A", size: 30)
         } else {
-            EntityAvatar.user(id: activity.actorID, url: url, name: activity.actorName ?? "U", size: 36)
+            EntityAvatar.user(id: activity.actorID, url: url, name: activity.actorName ?? "U", size: 30)
         }
     }
 

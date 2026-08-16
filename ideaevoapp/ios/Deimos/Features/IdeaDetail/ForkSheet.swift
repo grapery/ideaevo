@@ -28,16 +28,20 @@ struct ForkSheet: View {
 
                     sourceIdeaCard
 
-                    field("新标题", placeholder: "为这个版本重新命名", text: $title)
-                    multilineField("Fork 理由", placeholder: "你将如何推进或改变它？", text: $reason, minHeight: 96)
+                    AtlasFormField(label: "新标题") {
+                        AtlasFormTextField(placeholder: "为这个版本重新命名", text: $title)
+                    }
+                    AtlasFormField(label: "Fork 理由（必填）") {
+                        AtlasFormTextEditor(text: $reason, minHeight: 84, placeholder: "你将如何推进或改变它？")
+                    }
 
                     if let errorMessage {
                         Text(errorMessage)
-                            .font(AtlasTypography.meta())
-                            .foregroundStyle(AtlasColors.coral)
+                            .font(.system(size: 12))
+                            .foregroundStyle(AtlasColors.destructive)
                     }
 
-                    AtlasPrimaryButton(title: "确认 Fork", isLoading: isSubmitting) {
+                    AtlasFormCTA(title: "确认 Fork", isLoading: isSubmitting) {
                         onSubmit(
                             title.trimmingCharacters(in: .whitespacesAndNewlines),
                             description.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -45,6 +49,18 @@ struct ForkSheet: View {
                         )
                     }
                     .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    // S15 Cancel Row — inkSoft Medium-13, centered under the CTA.
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("取消")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(AtlasColors.inkSoft)
+                            .frame(height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, AtlasMetrics.pageX)
                 .padding(.bottom, 24)
@@ -71,54 +87,29 @@ struct ForkSheet: View {
         }
     }
 
+    /// S15 Source Card (ardot 715405210175453 `2:772`): surfaceSecondary r14 with a 30pt
+    /// lemon fork icon circle, 源想法 eyebrow (11 inkSoft) + 13pt SemiBold title.
     private var sourceIdeaCard: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("源想法：\(sourceTitle)")
-                    .font(.system(size: 12, weight: .semibold))
+        HStack(spacing: 10) {
+            DeimosIconView(icon: .fork, size: 14, color: AtlasColors.lemonInk)
+                .frame(width: 30, height: 30)
+                .background(Circle().fill(AtlasColors.lemon))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("源想法")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                Text(sourceTitle)
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AtlasColors.ink)
                     .lineLimit(2)
-                Text("保留谱系与版本历史")
-                    .font(.system(size: 11))
-                    .foregroundStyle(AtlasColors.inkFaint)
             }
             Spacer(minLength: 0)
         }
-        .padding(AtlasMetrics.cardPadding)
-        .background(AtlasColors.lemonSoft)
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
-    }
-
-    private func field(_ label: String, placeholder: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(AtlasColors.inkFaint)
-            AtlasTextField(placeholder: placeholder, text: text, height: 48)
-                .padding(.horizontal, 4)
-                .background(AtlasColors.fill)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-    }
-
-    private func multilineField(_ label: String, placeholder: String, text: Binding<String>, minHeight: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(AtlasColors.inkFaint)
-            ZStack(alignment: .topLeading) {
-                if text.wrappedValue.isEmpty {
-                    Text(placeholder)
-                        .font(.system(size: 15))
-                        .foregroundStyle(AtlasColors.inkFaint)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 14)
-                }
-                AtlasTextEditor(text: text, minHeight: minHeight, fontSize: 15)
-                    .padding(4)
-            }
-            .background(AtlasColors.fill)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(AtlasColors.settingsGroupFill)
+        )
     }
 }

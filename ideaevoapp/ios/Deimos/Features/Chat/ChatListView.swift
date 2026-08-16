@@ -171,6 +171,10 @@ struct ChatListView: View {
                 let id = arg.replacingOccurrences(of: "--deimos-goto-chat=", with: "")
                 if !id.isEmpty { selectedSession = ChatSessionRoute(id: id, title: "对话") }
             }
+            // Verify-only launch hook: `--deimos-goto-agent-picker` opens the S21 picker sheet.
+            if ProcessInfo.processInfo.arguments.contains("--deimos-goto-agent-picker") {
+                showAgentPicker = true
+            }
         }
         #endif
     }
@@ -187,92 +191,72 @@ struct ChatListView: View {
         }
     }
 
+    /// S14 header (ardot 715405210175453 `2:771`): 对话 Bold-22 + 40pt lemonStrong
+    /// circular new-chat button.
     private func chatHeader(newChatAction: @escaping () -> Void) -> some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("DEIMOS")
-                    .font(AtlasTypography.overline())
-                    .foregroundStyle(AtlasColors.inkSoft)
-                Text("对话")
-                    .font(AtlasTypography.largeTitle())
-                    .foregroundStyle(AtlasColors.ink)
-                    .atlasTrackedTitle(30)
-            }
+            Text("对话")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
 
             Spacer()
 
-            // ardot S06 (`237:161` New Chat): 64×36 #BEE90D lemon capsule cr18 + 14pt Semibold
-            // #1A2403 label "新建".
             Button(action: newChatAction) {
-                Text("新建")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AtlasColors.lemonInk)
-                    .padding(.horizontal, 16)
-                    .frame(height: 36)
-                    .background(AtlasColors.lemonStrong)
-                    .clipShape(Capsule(style: .continuous))
+                DeimosIconView(icon: .plus, size: 18, color: AtlasColors.lemonInk)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(AtlasColors.lemonStrong))
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("新对话")
         }
-        .padding(.horizontal, AtlasMetrics.pageX)
+        .padding(.horizontal, 20)
         .padding(.top, 8)
-        .padding(.bottom, 20)
+        .padding(.bottom, 4)
+    }
+
+    /// S14 Search Field — r20 bgInput, 40pt tall, 13pt text.
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            DeimosIconView(icon: .search, size: 16, color: AtlasColors.inkFaint)
+            TextField("搜索会话", text: $viewModel.searchQuery)
+                .font(.system(size: 13))
+                .foregroundStyle(AtlasColors.ink)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 40)
+        .background(AtlasColors.bgInput)
+        .clipShape(Capsule(style: .continuous))
     }
 
     private var authenticatedContent: some View {
-        VStack(spacing: 0) {
-            chatHeader(newChatAction: { showAgentPicker = true })
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                chatHeader(newChatAction: { showAgentPicker = true })
+                searchField
 
-            HStack(spacing: 10) {
-                DeimosIconView(icon: .search, size: 16, color: AtlasColors.inkFaint)
-                TextField("搜索会话...", text: $viewModel.searchQuery)
-                    .font(.system(size: 15))
-                    .foregroundStyle(AtlasColors.ink)
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 44)
-            .background(AtlasColors.bgInput)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .padding(.horizontal, AtlasMetrics.pageX)
-                .padding(.bottom, 16)
-
-            if viewModel.isLoading && viewModel.sessions.isEmpty {
-                Spacer()
-                ProgressView()
-                Spacer()
-            } else if let error = viewModel.errorMessage, viewModel.sessions.isEmpty {
-                errorEmptyState(error)
-            } else if viewModel.filteredSessions.isEmpty && !viewModel.searchQuery.isEmpty {
-                searchEmptyState
-            } else if viewModel.sessions.isEmpty {
-                sessionsEmptyState
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
-                        Text("最近会话")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(AtlasColors.ink)
-
-                        VStack(spacing: 0) {
-                            ForEach(Array(viewModel.filteredSessions.enumerated()), id: \.element.id) { index, chatSession in
-                                sessionCard(chatSession)
-                                if index < viewModel.filteredSessions.count - 1 {
-                                    Divider().padding(.leading, 56)
-                                }
-                            }
-                        }
-                        .background(AtlasColors.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(AtlasColors.border, lineWidth: 1)
+                if viewModel.isLoading && viewModel.sessions.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 60)
+                } else if let error = viewModel.errorMessage, viewModel.sessions.isEmpty {
+                    errorEmptyState(error)
+                } else if viewModel.filteredSessions.isEmpty && !viewModel.searchQuery.isEmpty {
+                    searchEmptyState
+                } else if viewModel.sessions.isEmpty {
+                    sessionsEmptyState
+                } else {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(viewModel.filteredSessions) { chatSession in
+                            sessionCard(chatSession)
                         }
                     }
-                    .padding(.horizontal, AtlasMetrics.pageX)
-                    .padding(.bottom, AtlasMetrics.bottomClear)
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, AtlasMetrics.bottomClear)
         }
+        .scrollDismissesKeyboard(.immediately)
     }
 
     private var sessionsEmptyState: some View {
@@ -302,10 +286,9 @@ struct ChatListView: View {
         }
     }
 
-    /// ardot S06 (`237:154` C/List Row): 342×56 white row with a 40×40 lemon avatar circle
-    /// (cr20) + 16pt Semibold #0F1B2D title + 13pt Regular #8A94A6 subtitle (single line).
-    /// Trailing menu (rename/fork/delete) is preserved as the row's long-press affordance —
-    /// the design shows no trailing element but the functionality is still needed.
+    /// S14 session row (ardot 715405210175453 `2:771`): 44pt plain row on the canvas —
+    /// 44 avatar, 14 SemiBold name (+置顶 badge on the assistant session), 12 Regular
+    /// inkSoft preview, trailing 11 inkFaint time. Swipe actions + context menu preserved.
     private func sessionCard(_ chatSession: ChatSession) -> some View {
         let pinned = ChatListViewModel.isAssistantSession(chatSession)
         return ChatSessionSwipeRow(
@@ -324,38 +307,48 @@ struct ChatListView: View {
                 showDeleteDialog = true
             }
         ) {
-            HStack(alignment: .center, spacing: 12) {
+            HStack(alignment: .center, spacing: 10) {
                 EntityAvatar.agent(
                     id: chatSession.agentID,
                     url: chatSession.agent?.avatarLink,
                     name: chatSession.displayTitle,
-                    size: 36
+                    size: 44
                 )
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text(chatSession.displayTitle)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(AtlasColors.ink)
                             .lineLimit(1)
                         if pinned {
-                            Text("助手")
+                            Text("置顶")
                                 .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(AtlasColors.lemonInk)
+                                .foregroundStyle(AtlasColors.olive)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Capsule(style: .continuous).fill(AtlasColors.lemon))
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(AtlasColors.lemonSoft)
+                                )
                         }
                     }
                     Text(viewModel.previews[chatSession.id] ?? "开始新的讨论")
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundStyle(AtlasColors.inkSoft)
-                        .lineLimit(1)
+                        .lineLimit(pinned ? 2 : 1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(Self.sessionTimeLabel(chatSession.updatedAt))
+                        .font(.system(size: 11))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                }
             }
-            .padding(.horizontal, 16)
-            .frame(minHeight: 56)
+            .padding(.vertical, 6)
+            .frame(minHeight: 44)
+            .background(AtlasColors.canvas)
             .contentShape(Rectangle())
             .onTapGesture {
                 selectedSession = ChatSessionRoute(id: chatSession.id, title: chatSession.displayTitle)
@@ -385,6 +378,18 @@ struct ChatListView: View {
                 }
             }
         }
+    }
+
+    /// 09:41 today · 昨天 · 周三 style labels per the S14 board.
+    private static func sessionTimeLabel(_ date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return date.formatted(.dateTime.hour().minute())
+        }
+        if calendar.isDateInYesterday(date) {
+            return "昨天"
+        }
+        return date.formatted(.dateTime.weekday(.abbreviated).locale(Locale(identifier: "zh_CN")))
     }
 
     private func renameSheet(_ chatSession: ChatSession) -> some View {

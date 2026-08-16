@@ -73,12 +73,10 @@ struct MainTabView: View {
     @Environment(AuthSession.self) private var session
     @State private var selection: MainTab = .home
     @State private var tabBarVisibility = TabBarVisibility()
-    @State private var showRateSheet = false
     @State private var debugAgentRoute: AgentRoute?
     @State private var debugUserRoute: UserRoute?
     @State private var showGuestLogin = false
 
-    private static let launchCountKey = "deimos.launch.count"
 
     private var isGuestBrowse: Bool {
         #if DEBUG
@@ -180,32 +178,9 @@ struct MainTabView: View {
             }
         }
         #endif
-        .sheet(isPresented: $showRateSheet) {
-            RateAppSheet(isPresented: $showRateSheet)
-                .presentationDetents([.height(380)])
-                .presentationDragIndicator(.hidden)
-                .presentationCornerRadius(24)
-        }
         .sheet(isPresented: $showGuestLogin) {
             NavigationStack {
                 LoginView(initialRegister: false, onCancel: { showGuestLogin = false })
-            }
-        }
-        .onAppear {
-            incrementLaunchCount()
-        }
-    }
-
-    private func incrementLaunchCount() {
-        let count = UserDefaults.standard.integer(forKey: Self.launchCountKey) + 1
-        UserDefaults.standard.set(count, forKey: Self.launchCountKey)
-        // Show rate prompt on 5th, 20th, and 50th launch (if not already rated)
-        if count == 5 || count == 20 || count == 50 {
-            let lastRated = UserDefaults.standard.bool(forKey: "deimos.rated")
-            if !lastRated {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    showRateSheet = true
-                }
             }
         }
     }

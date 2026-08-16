@@ -77,11 +77,6 @@ struct CommentsView: View {
             }
         }
         .background(AtlasColors.canvas)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            // S05 (ardot 296:251): "Toolbar · 评论 · floating glass overlay" — translucent,
-            // content scrolls underneath. Uses AtlasOverlayPushNavBar (ultraThinMaterial, not solid).
-            AtlasOverlayPushNavBar(title: commentCount > 0 ? "评论 · \(commentCount)" : "评论", onBack: { dismiss() })
-        }
         .atlasSheetZoomBackground(isPresented: showAuthSheet)
         .navigationBarHidden(true)
         .suppressTabBar()
@@ -117,36 +112,38 @@ struct CommentsView: View {
                 .padding(.horizontal, AtlasMetrics.detailX)
                 .padding(.bottom, 6)
             }
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 AtlasMultilineTextField(
-                    placeholder: replyingTo == nil ? "写下评论…" : "写下回复…",
+                    placeholder: replyingTo == nil ? "写下你的评论…" : "写下回复…",
                     text: $draft,
                     minHeight: 44,
                     maxHeight: 44,
+                    fontSize: 13,
                     onSubmit: { Task { await submitComment() } }
                 )
                 .focused($composerFocused)
                 .frame(height: 44)
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 16)
                 .background(AtlasColors.bgInput)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(Capsule(style: .continuous))
 
                 Button {
                     Task { await submitComment() }
                 } label: {
-                    DeimosIconView(icon: .send, size: 20, color: AtlasColors.lemonInk)
-                        .frame(width: 52, height: 52)
+                    DeimosIconView(icon: .send, size: 18, color: AtlasColors.lemonInk)
+                        .frame(width: 44, height: 44)
                         .background(canSend ? AtlasColors.lemonStrong : AtlasColors.inkDisabled)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .disabled(!canSend)
             }
-            .padding(.horizontal, 20)
-            .frame(height: 82)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 18)
             .background(AtlasColors.surface)
             .overlay(alignment: .top) {
-                Rectangle().fill(AtlasColors.settingsRowStroke).frame(height: 1)
+                Rectangle().fill(AtlasColors.rule).frame(height: 0.5)
             }
         }
     }
@@ -163,10 +160,14 @@ struct CommentsView: View {
             Spacer()
         } else {
             ScrollView {
-                LazyVStack(spacing: 0) {
-                    // S05 Idea context card — lemon-soft bg r20 (Ardot 179:255)
+                LazyVStack(spacing: 14) {
+                    // S08 Nav Bar (ardot 715405210175453 `2:497`) — inline, scrolls with content.
+                    AtlasSubPageNavBar(
+                        title: commentCount > 0 ? "评论 \(commentCount)" : "评论",
+                        onBack: { dismiss() }
+                    )
+
                     ideaContextCard
-                        .padding(.top, 4)
 
                     if viewModel.comments.isEmpty {
                         AtlasDesignedEmptyStates.commentsEmpty {
@@ -191,100 +192,114 @@ struct CommentsView: View {
         }
     }
 
-    // MARK: - S05 Idea context card (lemon-soft, r20)
+    // MARK: - S08 Context Card (surfaceSecondary r14, 40pt thumb)
 
     private var ideaContextCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(ideaTitle)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AtlasColors.ink)
-                .lineLimit(1)
-            Text(contextSubtitle)
-                .font(.system(size: 11))
-                .foregroundStyle(AtlasColors.inkTertiary)
+        HStack(spacing: 10) {
+            EntityAvatar.idea(
+                id: ideaID,
+                url: iconURL.flatMap(URL.init(string:)),
+                name: ideaTitle,
+                size: 40
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(ideaTitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .lineLimit(1)
+                Text(contextSubtitle)
+                    .font(.system(size: 11))
+                    .foregroundStyle(AtlasColors.inkSoft)
+            }
+            Spacer(minLength: 0)
         }
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 14)
-        .frame(height: 68)
-        .background(AtlasColors.lemonSoft)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(AtlasColors.settingsGroupFill)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     // MARK: - S05 Comment stream
 
-    /// The discussion view is a continuous reading flow. Cards would make short comments feel too heavy.
+    /// S08 comment row (ardot 715405210175453 `2:497`): 30pt avatar, name · time in one
+    /// 12 SemiBold ink line, 13 Regular inkTertiary body (lh 20), 11 Medium inkSoft actions.
+    /// Nested replies indent 40pt with a 26pt avatar.
     private func commentCard(_ item: FlatComment) -> some View {
         let isAgent = item.comment.authorType == "agent"
-        return HStack(alignment: .top, spacing: 12) {
-            commentAvatar(item.comment)
+        let isNested = item.depth > 0
+        return HStack(alignment: .top, spacing: isNested ? 8 : 10) {
+            commentAvatar(item.comment, size: isNested ? 26 : 30)
 
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
                     Text(item.comment.displayName)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(AtlasColors.ink)
                     if isAgent {
                         Text("Agent")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(AtlasColors.lemonInk)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(AtlasColors.olive)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(AtlasColors.lemonSoft)
+                            )
                     }
-                    Text("· \(item.comment.createdAt.relativeShort)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkTertiary)
+                    Text(item.comment.createdAt.relativeShort)
+                        .font(.system(size: 11))
+                        .foregroundStyle(AtlasColors.inkFaint)
                 }
 
-                if let replyTo = item.replyTo {
+                if let replyTo = item.replyTo, !isNested {
                     Text("回复 \(replyTo.displayName)")
                         .font(.system(size: 11))
                         .foregroundStyle(AtlasColors.inkFaint)
                 }
 
                 Text(item.comment.content)
-                    .font(.system(size: 16))
-                    .foregroundStyle(AtlasColors.ink)
-                    .lineSpacing(2)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AtlasColors.inkTertiary)
+                    .lineSpacing(7)
                     .fixedSize(horizontal: false, vertical: true)
 
-                HStack(spacing: 12) {
+                HStack(spacing: 14) {
                     Button("回复") { replyingTo = item }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(AtlasColors.olive)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AtlasColors.inkSoft)
                     if let label = item.comment.sentimentLabel {
                         Text(label)
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(AtlasColors.olive)
+                            .foregroundStyle(AtlasColors.inkSoft)
                     }
                 }
             }
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 12)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(AtlasColors.rule).frame(height: 1)
-        }
-        .padding(.leading, item.depth > 0 ? CGFloat(item.depth * 20) : 0)
+        .padding(.vertical, 8)
+        .padding(.leading, isNested ? 40 : 0)
     }
 
     @ViewBuilder
-    private func commentAvatar(_ comment: WanyeComment) -> some View {
+    private func commentAvatar(_ comment: WanyeComment, size: CGFloat) -> some View {
         if comment.authorType == "agent" {
             EntityAvatar.agent(
                 id: comment.userID,
                 url: comment.avatarLink,
                 name: comment.displayName,
-                size: 32
+                size: size
             )
         } else {
             EntityAvatar.user(
                 id: comment.userID,
                 url: comment.avatarLink,
                 name: comment.displayName,
-                size: 32
+                size: size
             )
         }
     }

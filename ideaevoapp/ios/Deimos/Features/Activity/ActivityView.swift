@@ -42,7 +42,6 @@ enum ActivityRankingTab: Int, CaseIterable, Identifiable {
 @MainActor
 @Observable
 final class ActivityScreenViewModel {
-    var segment = 0
     var searchQuery = ""
     var actionFilter: ActivityActionFilter = .all
     var rankingTab: ActivityRankingTab = .popular
@@ -96,58 +95,36 @@ final class ActivityScreenViewModel {
         }
     }
 
-    func load(segment: Int, isAuthenticated: Bool) async {
-        isLoading = activities.isEmpty && segment == 0
+    func load() async {
+        isLoading = activities.isEmpty
         errorMessage = nil
         isOffline = false
         defer { isLoading = false }
 
         do {
-            if segment == 0 {
-                let feed = try await APIClient.shared.activityFeed(limit: 20)
-                stats = feed.stats
-                rankings = feed.rankings
-                activities = feed.activities
-                hasMore = feed.activities.count < feed.total && feed.activities.count < 50
-            } else if isAuthenticated {
-                stats = ActivityStats(todayNewIdeas: 0, todayForks: 0, activeAgents: 0, totalActions: 0)
-                rankings = ActivityRankings(popular: [], flowers: [], forks: [])
-                activities = try await APIClient.shared.followingFeed(limit: 20)
-                hasMore = activities.count == 20
-            } else {
-                stats = ActivityStats(todayNewIdeas: 0, todayForks: 0, activeAgents: 0, totalActions: 0)
-                rankings = ActivityRankings(popular: [], flowers: [], forks: [])
-                activities = []
-                hasMore = false
-            }
+            let feed = try await APIClient.shared.activityFeed(limit: 20)
+            stats = feed.stats
+            rankings = feed.rankings
+            activities = feed.activities
+            hasMore = feed.activities.count < feed.total && feed.activities.count < 50
         } catch {
             errorMessage = error.localizedDescription
             isOffline = true
-            if segment != 0 {
-                activities = []
-            }
         }
     }
 
-    func loadMore(segment: Int, isAuthenticated: Bool) async {
+    func loadMore() async {
         guard hasMore, !isLoadingMore else { return }
         isLoadingMore = true
         defer { isLoadingMore = false }
 
         do {
-            if segment == 0 {
-                // `/activity/feed` currently returns the newest prefix rather than accepting an
-                // offset. Increase the requested prefix and retain stable identity ordering.
-                let requested = min(activities.count + 20, 50)
-                let feed = try await APIClient.shared.activityFeed(limit: requested)
-                activities = feed.activities
-                hasMore = activities.count < feed.total && activities.count < 50
-            } else if isAuthenticated {
-                let more = try await APIClient.shared.followingFeed(limit: 20, offset: activities.count)
-                let existing = Set(activities.map(\.id))
-                activities.append(contentsOf: more.filter { !existing.contains($0.id) })
-                hasMore = more.count == 20
-            }
+            // `/activity/feed` currently returns the newest prefix rather than accepting an
+            // offset. Increase the requested prefix and retain stable identity ordering.
+            let requested = min(activities.count + 20, 50)
+            let feed = try await APIClient.shared.activityFeed(limit: requested)
+            activities = feed.activities
+            hasMore = activities.count < feed.total && activities.count < 50
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -159,38 +136,9 @@ struct ActivityScreen: View {
     @State private var viewModel = ActivityScreenViewModel()
     @State private var selectedRoute: IdeaRoute?
     @State private var showAuthSheet = false
-    @State private var showStats = false
-    @State private var showRankings = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("DEIMOS")
-                    .font(AtlasTypography.overline())
-                    .foregroundStyle(AtlasColors.inkSoft)
-                Text("动态")
-                    .font(AtlasTypography.largeTitle())
-                    .foregroundStyle(AtlasColors.ink)
-                    .atlasTrackedTitle(30)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, AtlasMetrics.pageX)
-            .padding(.top, 8)
-            .padding(.bottom, 20)
-
-            AtlasSegmentedPill(items: ["全局", "关注"], selection: $viewModel.segment)
-                .padding(.horizontal, AtlasMetrics.pageX)
-                .padding(.bottom, 12)
-
-            // ardot S08 (`237:168`): compact 342×80 stats row below the segments.
-            // Left tile #F3FFC8 lemon cr20 (今日新增想法) + Right tile #F2F5F8 stroke #E8EBF0 cr20
-            // (今日 Fork). Each tile: Label 13pt + Value 26pt Bold + Trend 11pt Medium.
-            statsSection
-                .padding(.horizontal, AtlasMetrics.pageX)
-                .padding(.bottom, 16)
-
-            content
-        }
+        content
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(AtlasColors.canvas)
         .atlasSheetZoomBackground(isPresented: showAuthSheet)
@@ -201,39 +149,83 @@ struct ActivityScreen: View {
         .sheet(isPresented: $showAuthSheet) {
             AuthRequiredSheet()
         }
-        .task(id: viewModel.segment) {
-            await viewModel.load(segment: viewModel.segment, isAuthenticated: session.isAuthenticated)
+        .task {
+            await viewModel.load()
         }
         .refreshable {
-            await viewModel.load(segment: viewModel.segment, isAuthenticated: session.isAuthenticated)
-        }
-        .onChange(of: viewModel.segment) { _, newValue in
-            if newValue == 1 && !session.isAuthenticated {
-                viewModel.segment = 0
-                showAuthSheet = true
-            }
-            if newValue != 0 {
-                showStats = false
-                showRankings = false
-            }
-        }
-        .onChange(of: session.isAuthenticated) { _, _ in
-            Task {
-                await viewModel.load(segment: viewModel.segment, isAuthenticated: session.isAuthenticated)
-            }
+            await viewModel.load()
         }
     }
 
     @ViewBuilder
     private var content: some View {
-        if viewModel.segment == 1 && !session.isAuthenticated {
-            followingLoginPrompt
-        } else if viewModel.isLoading && viewModel.activities.isEmpty && viewModel.segment == 0 {
-            loadingSkeleton
+        if viewModel.isLoading && viewModel.activities.isEmpty {
+            VStack(spacing: 0) {
+                activityHeader
+                loadingSkeleton
+            }
         } else if viewModel.isOffline && viewModel.activities.isEmpty {
-            errorState
+            VStack(spacing: 0) {
+                activityHeader
+                errorState
+            }
         } else {
-            feedScroll
+            // Single scroll container — header, stats and ranking scroll with the feed.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    activityHeader
+                    statsSection
+                        .padding(.horizontal, AtlasMetrics.pageX)
+                    rankingSection
+                        .padding(.horizontal, AtlasMetrics.pageX)
+                    feedRows
+                }
+                .padding(.bottom, AtlasMetrics.bottomClear)
+            }
+        }
+    }
+
+    /// S04 Header (ardot 715405210175453 `2:6`): 动态 Bold-22 + lemonSoft 筛选
+    /// chip (r15, olive Medium-12). Scope/type/ranking filters live in its menu.
+    private var activityHeader: some View {
+        HStack {
+            Text("动态")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+            Spacer()
+            filterChip
+        }
+        .padding(.horizontal, AtlasMetrics.pageX)
+        .padding(.top, 8)
+    }
+
+    /// S04 Filter Chip — lemonSoft r15 capsule; menu holds scope (全局/关注),
+    /// action type and ranking metric.
+    private var filterChip: some View {
+        Menu {
+            Picker("动态类型", selection: $viewModel.actionFilter) {
+                ForEach(ActivityActionFilter.allCases) { filter in
+                    Text(filter.title).tag(filter)
+                }
+            }
+            Picker("榜单指标", selection: $viewModel.rankingTab) {
+                ForEach(ActivityRankingTab.allCases) { tab in
+                    Text(tab.title).tag(tab)
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                DeimosIconView(icon: .sliders, size: 13, color: AtlasColors.olive)
+                Text("筛选")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AtlasColors.olive)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(AtlasColors.lemonSoft)
+            )
         }
     }
 
@@ -245,208 +237,121 @@ struct ActivityScreen: View {
         }
     }
 
-    private var feedScroll: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                if viewModel.isOffline, let message = viewModel.errorMessage {
-                    AtlasOfflineBanner(message: message) {
-                        Task {
-                            await viewModel.load(segment: viewModel.segment, isAuthenticated: session.isAuthenticated)
-                        }
-                    }
-                }
-
-                feedSection
-            }
-            .padding(.horizontal, AtlasMetrics.pageX)
-            .padding(.top, 4)
-            .padding(.bottom, AtlasMetrics.bottomClear)
-        }
-    }
-
-    private var actionFilterChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(ActivityActionFilter.allCases) { filter in
-                    AtlasFilterChip(
-                        title: filter.title,
-                        isSelected: viewModel.actionFilter == filter
-                    ) {
-                        viewModel.actionFilter = filter
+    /// Feed rows without their own scroller — lives inside the main ScrollView.
+    /// Wraps the existing feedSection (header + rows + load-more).
+    private var feedRows: some View {
+        VStack(spacing: 12) {
+            if viewModel.isOffline, let message = viewModel.errorMessage {
+                AtlasOfflineBanner(message: message) {
+                    Task {
+                        await viewModel.load()
                     }
                 }
             }
+
+            feedSection
         }
+        .padding(.horizontal, AtlasMetrics.pageX)
+        .padding(.top, 4)
     }
 
-    /// ardot 311:1 — replaced the large `activityOverview` cards with this compact stats chip in
-    /// the title row's top-right. Two metrics side by side: 今日新想法 (lemon tile) | 今日 Fork
-    /// (white tile), separated by a hairline divider inside a lemonSoft pill.
-    @ViewBuilder
-    private var scopeToolbarControl: some View {
-        if viewModel.segment == 0 {
-            Menu {
-                Toggle("统计", isOn: animatedBinding($showStats))
-                Toggle("热门排行", isOn: animatedBinding($showRankings))
-            } label: {
-                AtlasToolbarFloatTextLabel(title: "全局")
-            }
-        } else {
-            AtlasToolbarFloatTextLabel(title: "与我", color: AtlasColors.inkFaint)
-        }
-    }
-
-    private func animatedBinding(_ value: Binding<Bool>) -> Binding<Bool> {
-        Binding(
-            get: { value.wrappedValue },
-            set: { newValue in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    value.wrappedValue = newValue
-                }
-            }
-        )
-    }
-
-    private var statsRow: some View {
-        HStack(spacing: 12) {
-            WireframeStatCircle(value: "\(viewModel.stats.todayNewIdeas)", label: "今日新想法")
-            WireframeStatCircle(value: "\(viewModel.stats.activeAgents)", label: "活跃 Agent")
-            WireframeStatCircle(value: "\(viewModel.stats.totalActions)", label: "全站动作")
-        }
-    }
-
-    /// ardot S08 (`237:168`): two side-by-side 165×80 stat tiles.
-    /// Left tile #F3FFC8 lemon cr20 ("今日新增想法") + Right tile #F2F5F8 stroke #E8EBF0 cr20
-    /// ("今日 Fork"). Each tile holds Label 13pt + Value 26pt Bold + Trend 11pt Medium.
-    /// Replaces the old compact ActivityToolbarStatsChip for the section below the segments.
+    /// S04 Stats Row (ardot 715405210175453 `2:6`): three 72pt r14 tiles —
+    /// 今日新想法 (lemonSoft/olive) · 今日 Fork · 活跃 Agent. Value Bold-20, label Regular-11.
     private var statsSection: some View {
-        HStack(spacing: 12) {
-            activityStatTile(
-                label: "今日新增想法",
-                value: "\(viewModel.stats.todayNewIdeas)",
-                trend: nil,
-                fill: AtlasColors.chatActivityFill,
-                stroke: nil,
-                labelColor: AtlasColors.oliveMeta,
-                trendColor: AtlasColors.oliveMeta
-            )
-            activityStatTile(
-                label: "今日 Fork",
-                value: "\(viewModel.stats.todayForks)",
-                trend: nil,
-                fill: AtlasColors.statTileSecondary,
-                stroke: AtlasColors.settingsRowStroke,
-                labelColor: AtlasColors.statLabelSecondary,
-                trendColor: AtlasColors.inkSoft
-            )
+        HStack(spacing: 8) {
+            activityStatTile(value: viewModel.stats.todayNewIdeas, label: "今日新想法", fill: AtlasColors.lemonSoft, labelColor: AtlasColors.olive)
+            activityStatTile(value: viewModel.stats.todayForks, label: "今日 Fork", fill: Color(hex: 0xF2F5F7), labelColor: Color(hex: 0x657080))
+            activityStatTile(value: viewModel.stats.activeAgents, label: "活跃 Agent", fill: Color(hex: 0xF2F5F7), labelColor: Color(hex: 0x657080))
         }
     }
 
-    private func activityStatTile(
-        label: String,
-        value: String,
-        trend: String?,
-        fill: Color,
-        stroke: Color?,
-        labelColor: Color,
-        trendColor: Color
-    ) -> some View {
-        // ardot S08 (`237:177` Stats): each tile 166×80 cr16, padding 16, itemSpacing 2.
-        // Label 11pt Semibold, Value 22pt Bold, Trend 10pt Medium.
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(labelColor)
-                .lineLimit(1)
-            Text(value)
-                .font(.system(size: 22, weight: .bold))
+    private func activityStatTile(value: Int, label: String, fill: Color, labelColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("\(value)")
+                .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(AtlasColors.ink)
                 .monospacedDigit()
                 .lineLimit(1)
-            if let trend {
-                Text(trend)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(trendColor)
-                    .lineLimit(1)
-            } else {
-                Text(" ")
-                    .font(.system(size: 10))
-            }
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundStyle(labelColor)
+                .lineLimit(1)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 80, maxHeight: 80, alignment: .leading)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(fill)
-        )
-        .overlay(
-            stroke.map {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke($0, lineWidth: 1)
-            }
         )
     }
 
-    private var rankingsCard: some View {
-        settingsGroupedCard {
-            VStack(alignment: .leading, spacing: 9) {
-                Text("热门排行")
-                    .font(AtlasTypography.cardTitle())
-                    .foregroundStyle(AtlasColors.ink)
-                    .padding(.horizontal, AtlasMetrics.cardPadding)
-                    .padding(.top, AtlasMetrics.cardPadding)
-
-                HStack(spacing: 6) {
-                    ForEach(ActivityRankingTab.allCases) { tab in
-                        AtlasFilterChip(
-                            title: tab.title,
-                            isSelected: viewModel.rankingTab == tab
-                        ) {
-                            viewModel.rankingTab = tab
-                        }
-                    }
+    /// S04 本周热榜 — header + compact rank rows (22pt circle badge, 42pt r10 thumb,
+    /// 13pt SemiBold title + 11pt category, olive SemiBold-12 score).
+    @ViewBuilder
+    private var rankingSection: some View {
+        if !viewModel.currentRanking.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("本周热榜")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AtlasColors.ink)
+                    Spacer()
+                    Text(rankingMetricLabel)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(AtlasColors.inkSoft)
                 }
-                .padding(.horizontal, AtlasMetrics.cardPadding)
+                .padding(.bottom, 8)
 
-                if viewModel.currentRanking.isEmpty {
-                    Text(viewModel.isSearchActive ? "没有匹配的排行" : "暂无数据")
-                        .font(AtlasTypography.meta())
-                        .foregroundStyle(AtlasColors.inkFaint)
-                        .padding(.horizontal, AtlasMetrics.cardPadding)
-                        .padding(.bottom, AtlasMetrics.cardPadding)
-                } else {
-                    ForEach(Array(viewModel.currentRanking.prefix(5).enumerated()), id: \.element.id) { index, idea in
-                        Button {
-                            selectedRoute = IdeaRoute(id: idea.id)
-                        } label: {
-                            HStack {
-                                Text(String(format: "%02d", index + 1))
-                                    .font(AtlasTypography.meta())
-                                    .foregroundStyle(AtlasColors.inkFaint)
-                                    .frame(width: 24, alignment: .leading)
-                                Text(idea.title)
-                                    .font(AtlasTypography.meta())
-                                    .foregroundStyle(AtlasColors.ink)
-                                    .lineLimit(1)
-                                Spacer(minLength: 8)
-                                let metric = viewModel.rankingMetric(for: idea)
-                                Text("\(metric.0) \(metric.1)")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(AtlasColors.accentFork)
-                            }
-                            .padding(.horizontal, AtlasMetrics.cardPadding)
-                            .padding(.vertical, 10)
-                        }
-                        .buttonStyle(.plain)
-
-                        if index < min(4, viewModel.currentRanking.count - 1) {
-                            Divider().padding(.leading, AtlasMetrics.cardPadding)
-                        }
+                ForEach(Array(viewModel.currentRanking.prefix(3).enumerated()), id: \.element.id) { index, idea in
+                    Button {
+                        selectedRoute = IdeaRoute(id: idea.id)
+                    } label: {
+                        rankRow(idea, rank: index + 1)
                     }
-                    .padding(.bottom, 8)
+                    .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    private var rankingMetricLabel: String {
+        switch viewModel.rankingTab {
+        case .popular: return "按热度排序"
+        case .flowers: return "按鲜花排序"
+        case .forks: return "按 Fork 排序"
+        }
+    }
+
+    private func rankRow(_ idea: RankingIdea, rank: Int) -> some View {
+        let metric = viewModel.rankingMetric(for: idea)
+        return HStack(spacing: 10) {
+            Text("\(rank)")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(rank == 1 ? AtlasColors.lemonInk : AtlasColors.inkSoft)
+                .frame(width: 22, height: 22)
+                .background(
+                    Circle().fill(rank == 1 ? AtlasColors.lemon : AtlasColors.surfaceSecondary)
+                )
+
+            RankingThumb(idea: idea)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(idea.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                    .lineLimit(1)
+                if !idea.category.isEmpty {
+                    Text(idea.category)
+                        .font(.system(size: 11))
+                        .foregroundStyle(AtlasColors.inkSoft)
+                }
+            }
+            Spacer(minLength: 0)
+            Text("\(metric.1) \(metric.0)")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AtlasColors.olive)
+        }
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder
@@ -455,6 +360,12 @@ struct ActivityScreen: View {
             followingEmptyState
                 .padding(.top, 12)
         } else {
+            // S04 Feed Header — 最新动态 SemiBold-15.
+            Text("最新动态")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+                .padding(.bottom, 4)
+
             VStack(spacing: 0) {
                 ForEach(Array(viewModel.filteredActivities.enumerated()), id: \.element.id) { index, activity in
                     Group {
@@ -472,25 +383,16 @@ struct ActivityScreen: View {
                     .onAppear {
                         if index == viewModel.filteredActivities.count - 1 {
                             Task {
-                                await viewModel.loadMore(
-                                    segment: viewModel.segment,
-                                    isAuthenticated: session.isAuthenticated
-                                )
+                                await viewModel.loadMore()
                             }
                         }
                     }
 
                     if index < viewModel.filteredActivities.count - 1 {
                         Divider()
-                            .padding(.leading, 64)
+                            .padding(.leading, 40)
                     }
                 }
-            }
-            .background(AtlasColors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(AtlasColors.border, lineWidth: 1)
             }
 
             if viewModel.isLoadingMore {
@@ -510,7 +412,7 @@ struct ActivityScreen: View {
 
     @ViewBuilder
     private var followingEmptyState: some View {
-        if viewModel.segment == 0 && !viewModel.isSearchActive && viewModel.actionFilter == .all {
+        if !viewModel.isSearchActive && viewModel.actionFilter == .all {
             AtlasDesignedEmptyStates.activityEmpty()
         } else {
             VStack(alignment: .leading, spacing: 14) {
@@ -528,11 +430,7 @@ struct ActivityScreen: View {
                 .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
                 .atlasElevatedCard()
 
-                if viewModel.segment == 1 {
-                    AtlasPrimaryButton(title: "浏览广场热门") {
-                        viewModel.segment = 0
-                    }
-                } else if viewModel.isSearchActive {
+                if viewModel.isSearchActive {
                     AtlasOutlineButton(title: "清空搜索") {
                         viewModel.searchQuery = ""
                     }
@@ -547,15 +445,12 @@ struct ActivityScreen: View {
 
     private var emptyStateTitle: String {
         if viewModel.isSearchActive { return "没有匹配结果" }
-        return viewModel.segment == 0 ? "暂无匹配动态" : "关注流还是空的"
+        return "暂无匹配动态"
     }
 
     private var emptyDescription: String {
         if viewModel.isSearchActive {
             return "没有匹配「\(viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines))」的内容，试试其他关键词或清空搜索。"
-        }
-        if viewModel.segment == 1 {
-            return "关注 Agent 或用户后，他们的发布、Fork 和分享会出现在这里。"
         }
         if viewModel.actionFilter != .all {
             return "当前筛选下没有动态，试试切换其他类型。"
@@ -563,15 +458,6 @@ struct ActivityScreen: View {
         return "全站还没有新的公开动态。"
     }
 
-    private var followingLoginPrompt: some View {
-        VStack(spacing: 16) {
-            AtlasDesignedEmptyStates.followingLogin {
-                showAuthSheet = true
-            }
-            Spacer()
-        }
-        .frame(maxHeight: .infinity)
-    }
 
     private var errorState: some View {
         VStack(spacing: 16) {
@@ -580,7 +466,7 @@ struct ActivityScreen: View {
                 message: viewModel.errorMessage ?? "网络异常",
                 onRetry: {
                     Task {
-                        await viewModel.load(segment: viewModel.segment, isAuthenticated: session.isAuthenticated)
+                        await viewModel.load()
                     }
                 },
                 secondaryTitle: nil,

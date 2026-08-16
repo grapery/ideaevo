@@ -11,7 +11,12 @@ extension EnvironmentValues {
     }
 }
 
-/// v6 Login (Ardot 138:165) — gradient logo block, icon inputs, pill buttons, filled OAuth.
+/// S10 登录 / S11 注册 (ardot board 715405210175453, nodes `2:639` / `2:640`).
+///
+/// Login: close circle → brand block (64 r20 lemon logo, 火卫二 Bold-26, slogan
+/// 13 inkSoft) → 邮箱/密码 r12 bgInput fields → 忘记密码 link → 登录 CTA →
+/// divider → Apple/Google/WeChat 52pt circles → 立即注册 footer.
+/// Register: inline back nav 创建账号 → 昵称/邮箱/密码 → terms checkbox → CTA.
 struct LoginView: View {
     var initialRegister = false
     var onCancel: (() -> Void)?
@@ -22,25 +27,32 @@ struct LoginView: View {
     @State private var password = ""
     @State private var name = ""
     @State private var isRegistering = false
+    @State private var agreedToTerms = false
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showWeChatBind = false
     @State private var showForgotPassword = false
     @State private var showPassword = false
-    @State private var showCredentials = false
 
     var body: some View {
-        Group {
-            if showCredentials {
-                credentialsForm
-            } else {
-                loginEntry
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                if isRegistering {
+                    registerScreen
+                } else {
+                    loginScreen
+                }
             }
+            .padding(.horizontal, 24)
+            .padding(.top, 6)
+            .padding(.bottom, 40)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         .background(AtlasColors.canvas)
-        .atlasSheetZoomBackground(isPresented: showWeChatBind || showForgotPassword)
+        .atlasSheetZoomBackground(isPresented: showForgotPassword)
         .atlasScrollDismissesKeyboard()
-        .sheet(isPresented: $showWeChatBind) {
+        .fullScreenCover(isPresented: $showWeChatBind) {
             WeChatPhoneBindView()
         }
         .sheet(isPresented: $showForgotPassword) {
@@ -48,344 +60,287 @@ struct LoginView: View {
         }
         .onAppear {
             isRegistering = initialRegister
+            #if DEBUG
+            // Review-only hook: `--deimos-review=forgot` opens the S12 sheet directly.
+            if ProcessInfo.processInfo.arguments.contains("--deimos-review=forgot") {
+                showForgotPassword = true
+            }
+            #endif
         }
         .navigationBarHidden(true)
     }
 
-    private var loginEntry: some View {
-        // Ardot S00 (179:524) Content Wrapper: VStack, itemSpacing 18, horizontal padding 24,
-        // top-anchored under the status bar. Top→bottom: brand mark → title → subtitle →
-        // launch motion → Apple → email → legal. A flexible spacer keeps the buttons clear of the
-        // bottom safe area on tall devices; the whole stack scrolls on small devices.
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // ardot S00 (`237:362` Brand Mark): 56×56 circle cr28, lemon fill.
-                Circle()
-                    .fill(AtlasColors.lemonStrong)
-                    .frame(width: 56, height: 56)
+    // MARK: - S10 登录
 
-                // Ardot S00 (`237:363`): product wordmark “Deimos”, 40pt Bold.
-                Text("Deimos")
-                    .font(.system(size: 40, weight: .bold))
+    private var loginScreen: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            // S10 Close Row — 40pt surfaceSecondary circle when guest browsing is allowed.
+            HStack {
+                if let cancelAction {
+                    Button {
+                        cancelAction()
+                    } label: {
+                        DeimosIconView(icon: .close, size: 16, color: AtlasColors.ink)
+                            .frame(width: 40, height: 40)
+                            .background(Circle().fill(AtlasColors.surfaceSecondary))
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("先逛逛")
+                }
+                Spacer()
+            }
+
+            // S10 Brand Block — 64 r20 lemon logo + 火卫二 Bold-26 + slogan.
+            VStack(alignment: .leading, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(AtlasColors.lemon)
+                        .frame(width: 64, height: 64)
+                    DeimosIconView(icon: .sparkles, size: 30, color: AtlasColors.lemonInk)
+                }
+                .padding(.top, 16)
+
+                Text("火卫二")
+                    .font(.system(size: 26, weight: .bold))
                     .foregroundStyle(AtlasColors.ink)
 
-                // Subtitle — 16pt Regular, inkSoft (ardot 179:530).
-                Text("发现、登记、Fork 你的下一个 Agent 想法")
-                    .font(.system(size: 16, weight: .regular))
+                Text("AI Agent 的想法市场 · 让好想法不再重复")
+                    .font(.system(size: 13))
                     .foregroundStyle(AtlasColors.inkSoft)
+            }
 
-                // Sign in with Apple — 54h, ink fill, white label (ardot 179:531).
-                SignInWithAppleButtonView { result in
-                    Task {
-                        isLoading = true
-                        errorMessage = nil
-                        defer { isLoading = false }
-                        do {
-                            try await AppleSignInHelper.handle(result, session: session)
-                        } catch {
-                            errorMessage = error.localizedDescription
-                        }
+            VStack(spacing: 12) {
+                formField("邮箱", text: $email, keyboardType: .emailAddress)
+                secureField("密码", text: $password, onSubmit: { Task { await submit() } })
+
+                HStack {
+                    Spacer()
+                    Button("忘记密码？") {
+                        showForgotPassword = true
                     }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AtlasColors.inkSoft)
                 }
-                .frame(height: 52)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(AtlasColors.border, lineWidth: 1))
-                .disabled(isLoading)
+            }
 
-                // ardot S00 (`237:359` C/Primary Button 342×52): #BEE90D fill, cr26, 17pt Semibold
-                // #1A2403 label "邮箱或手机号登录". Previous 15pt Semibold was under spec.
-                Button {
-                    showCredentials = true
-                } label: {
-                    Text("邮箱或手机号登录")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(AtlasColors.lemonInk)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(AtlasColors.lemonStrong)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
+            AtlasFormCTA(title: "登录", isLoading: isLoading) {
+                Task { await submit() }
+            }
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(AtlasTypography.caption())
-                        .foregroundStyle(AtlasColors.destructive)
-                }
-
-                // Legal copy — 12pt Regular, inkSoft (ardot 179:535).
-                Text("继续即表示同意《服务条款》和《隐私政策》")
+            if let errorMessage {
+                Text(errorMessage)
                     .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.destructive)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // S10 Divider — 或使用以下方式继续.
+            HStack(spacing: 12) {
+                Rectangle().fill(AtlasColors.border).frame(height: 0.5)
+                Text("或使用以下方式继续")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.inkFaint)
+                Rectangle().fill(AtlasColors.border).frame(height: 0.5)
+            }
+
+            thirdPartyRow
+
+            // S10 Footer — 立即注册.
+            HStack(spacing: 4) {
+                Text("还没有账号？")
+                    .font(.system(size: 13))
                     .foregroundStyle(AtlasColors.inkSoft)
-                    .frame(maxWidth: .infinity, alignment: .center)
-
-                // ardot S00 (`237:359` Privacy Promise 342×76): #F5F6F7 fill, cr20.
-                // Title "安全登录" 14pt #0F1B2D + body "凭证仅用于身份验证，不用于训练 Agent"
-                // 12pt #8A94A6. Reassures the user about credential handling.
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("安全登录")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(AtlasColors.ink)
-                    Text("凭证仅用于身份验证，不用于训练 Agent")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkSoft)
-                        .fixedSize(horizontal: false, vertical: true)
+                Button("立即注册") {
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        isRegistering = true
+                        errorMessage = nil
+                    }
                 }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(AtlasColors.chatAssistantBubble)
-                )
-                .padding(.top, 8)
-
-                // "先逛逛" — guest browse affordance (RootView sets allowGuestBrowse via onCancel).
-                if let cancelAction {
-                    Button("先逛逛") {
-                        cancelAction()
-                    }
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(AtlasColors.inkSoft)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, 4)
-                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AtlasColors.olive)
             }
-            .padding(.horizontal, AtlasMetrics.pageX)
-            .padding(.top, 24)
-            .padding(.bottom, 40)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-        .ignoresSafeArea(.keyboard)
-    }
-
-    private var credentialsForm: some View {
-        VStack(spacing: 0) {
-            AtlasPushNavBar(onBack: { showCredentials = false }, trailing: {
-                if let cancelAction {
-                    AtlasToolbarFloatIconButton(icon: .close, iconSize: 15, color: AtlasColors.inkSoft, action: {
-                        cancelAction()
-                    })
-                    .accessibilityLabel("关闭")
-                }
-            })
-
-            ScrollView {
-                VStack(spacing: 28) {
-                    // Logo block — 80×80 r20 lemon square with sparkles, centered under the nav bar.
-                    VStack(spacing: 12) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(AtlasColors.lemon)
-                                .frame(width: 80, height: 80)
-                            DeimosIconView(icon: .sparkles, size: 40, color: AtlasColors.lemonInk)
-                        }
-                        .padding(.top, 8)
-
-                        Text("万叶")
-                            .font(.system(size: 28, weight: .heavy))
-                            .foregroundStyle(AtlasColors.ink)
-
-                        Text(isRegistering ? "创建账号，开始探索想法" : "Agent 想法市场")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(AtlasColors.inkSoft)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    // Form
-                    VStack(spacing: 16) {
-                        if isRegistering {
-                            v6InputField(icon: .user, placeholder: "昵称", text: $name)
-                        }
-                        v6InputField(icon: .mail, placeholder: "邮箱地址", text: $email, keyboardType: .emailAddress)
-                        v6SecureField(icon: .lock, placeholder: "密码", text: $password, showPassword: $showPassword)
-
-                        // Forgot password — right-aligned blue link
-                        if !isRegistering {
-                            HStack {
-                                Spacer()
-                                Button("忘记密码？") {
-                                    showForgotPassword = true
-                                }
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(AtlasColors.primary)
-                            }
-                        }
-
-                        // Primary button — pill
-                        AtlasLoginPrimaryButton(title: isRegistering ? "注册" : "登录", isLoading: isLoading) {
-                            Task { await submit() }
-                        }
-                    }
-
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(AtlasTypography.bodyMedium())
-                            .foregroundStyle(AtlasColors.destructive)
-                    }
-
-                    // Divider "或"
-                    HStack(spacing: 12) {
-                        Rectangle().fill(AtlasColors.border).frame(height: 1)
-                        Text("或")
-                            .font(AtlasTypography.bodyMedium())
-                            .foregroundStyle(AtlasColors.inkSoft)
-                        Rectangle().fill(AtlasColors.border).frame(height: 1)
-                    }
-
-                    // OAuth — Google + WeChat side-by-side, then Apple full-width (Ardot v11 layout)
-                    VStack(spacing: 12) {
-                        HStack(spacing: 12) {
-                            oauthFilledButton("Google", icon: .globe, bgColor: AtlasColors.surface, textColor: AtlasColors.ink, borderColor: AtlasColors.border) {
-                                Task { await oauthSignIn(.google) }
-                            }
-                            oauthFilledButton("微信", icon: .chat, bgColor: Color(hex: 0x43BD60), textColor: .white, borderColor: nil) {
-                                Task { await oauthSignIn(.wechat) }
-                            }
-                        }
-
-                        SignInWithAppleButtonView { result in
-                            Task {
-                                isLoading = true
-                                errorMessage = nil
-                                defer { isLoading = false }
-                                do {
-                                    try await AppleSignInHelper.handle(result, session: session)
-                                } catch {
-                                    errorMessage = error.localizedDescription
-                                }
-                            }
-                        }
-                        .frame(height: 56)
-                        .clipShape(Capsule())
-                        .disabled(isLoading)
-                    }
-
-                    // Hint text
-                    Text("登录方式：邮箱密码 / Apple / Google / 微信扫码")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkTertiary)
-
-                    // Signup row — centered
-                    HStack(spacing: 4) {
-                        Text(isRegistering ? "已有账号？" : "还没有账号？")
-                            .font(.system(size: 15))
-                            .foregroundStyle(AtlasColors.ink)
-                        Button(isRegistering ? "立即登录" : "立即注册") {
-                            isRegistering.toggle()
-                            errorMessage = nil
-                        }
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(AtlasColors.primary)
-                    }
-
-                    Text("登录即表示同意《用户协议》和《隐私政策》")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AtlasColors.inkFaint)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.horizontal, AtlasMetrics.pageX)
-                .padding(.bottom, 40)
-            }
-        }
-    }
-
-    private var cancelAction: (() -> Void)? {
-        onCancel ?? loginCancelAction
-    }
-
-    // MARK: - v6 Input Field (icon + text, r16, bg #F1F3F7, border #E7EAF0)
-
-    private func v6InputField(
-        icon: DeimosIcon,
-        placeholder: String,
-        text: Binding<String>,
-        keyboardType: UIKeyboardType = .default
-    ) -> some View {
-        HStack(spacing: 12) {
-            DeimosIconView(icon: icon, size: 18, color: AtlasColors.inkSoft)
-            ChineseFriendlyTextField(
-                placeholder: placeholder,
-                text: text,
-                keyboardType: keyboardType
-            )
-            .frame(height: 21)
-        }
-        .padding(.horizontal, 16)
-        .frame(height: 56)
-        .background(AtlasColors.surfaceSecondary)
-        .overlay(
-            RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
-    }
-
-    private func v6SecureField(
-        icon: DeimosIcon,
-        placeholder: String,
-        text: Binding<String>,
-        showPassword: Binding<Bool>
-    ) -> some View {
-        HStack(spacing: 12) {
-            DeimosIconView(icon: icon, size: 18, color: AtlasColors.inkSoft)
-            ChineseFriendlyTextField(
-                placeholder: placeholder,
-                text: text,
-                isSecure: !showPassword.wrappedValue,
-                keyboardType: .default,
-                returnKeyType: .done,
-                onSubmit: { Task { await submit() } }
-            )
-            .frame(height: 21)
-            Spacer(minLength: 0)
-            Button {
-                showPassword.wrappedValue.toggle()
-            } label: {
-                DeimosIconView(icon: showPassword.wrappedValue ? .eyeOff : .eye, size: 18, color: AtlasColors.inkSoft)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .frame(height: 56)
-        .background(AtlasColors.surfaceSecondary)
-        .overlay(
-            RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous)
-                .stroke(AtlasColors.border, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusInput, style: .continuous))
-    }
-
-    // MARK: - v6 OAuth Button (filled pill with icon)
-
-    private func oauthFilledButton(
-        _ title: String,
-        icon: DeimosIcon,
-        bgColor: Color,
-        textColor: Color,
-        borderColor: Color?,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                DeimosIconView(icon: icon, size: 18, color: textColor)
-                Text(title)
-                    .font(AtlasTypography.mobileSubheadline())
-            }
-            .foregroundStyle(textColor)
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background(bgColor)
-            .overlay {
-                if let borderColor {
-                    Capsule().stroke(borderColor, lineWidth: 1)
+            .padding(.top, 10)
+        }
+    }
+
+    /// S10 Third Party Row — 52pt white circles with hairline borders.
+    private var thirdPartyRow: some View {
+        HStack(spacing: 20) {
+            SignInWithAppleButtonView { result in
+                Task {
+                    isLoading = true
+                    errorMessage = nil
+                    defer { isLoading = false }
+                    do {
+                        try await AppleSignInHelper.handle(result, session: session)
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
                 }
             }
-            .clipShape(Capsule())
+            .frame(width: 52, height: 52)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(AtlasColors.border, lineWidth: 1))
+            .disabled(isLoading)
+            .accessibilityLabel("通过 Apple 登录")
+
+            oauthCircle(icon: .globe, tint: AtlasColors.ink, label: "通过 Google 登录") {
+                Task { await oauthSignIn(.google) }
+            }
+            oauthCircle(icon: .chat, tint: Color(hex: 0x07C160), label: "通过微信登录") {
+                Task { await oauthSignIn(.wechat) }
+            }
+
+            Spacer()
+        }
+    }
+
+    private func oauthCircle(icon: DeimosIcon, tint: Color, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            DeimosIconView(icon: icon, size: 20, color: tint)
+                .frame(width: 52, height: 52)
+                .background(Circle().fill(AtlasColors.surface))
+                .overlay(Circle().stroke(AtlasColors.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .disabled(isLoading)
+        .accessibilityLabel(label)
+    }
+
+    // MARK: - S11 注册
+
+    private var registerScreen: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            AtlasSubPageNavBar(title: "创建账号", onBack: {
+                withAnimation(.easeOut(duration: 0.15)) {
+                    isRegistering = false
+                    errorMessage = nil
+                }
+            })
+
+            VStack(spacing: 12) {
+                formField("昵称", text: $name)
+                formField("邮箱", text: $email, keyboardType: .emailAddress)
+                secureField("设置密码（8 位以上）", text: $password, onSubmit: { Task { await submit() } })
+            }
+            .padding(.top, 16)
+
+            termsRow
+
+            AtlasFormCTA(title: "注册并进入火卫二", isLoading: isLoading) {
+                Task { await submit() }
+            }
+            .opacity(agreedToTerms ? 1 : 0.5)
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.destructive)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            HStack(spacing: 4) {
+                Text("已有账号？")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                Button("去登录") {
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        isRegistering = false
+                        errorMessage = nil
+                    }
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AtlasColors.olive)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 6)
+        }
+    }
+
+    /// S11 Terms Row — 18pt r5 checkbox (lemonStrong when agreed) + 12 inkSoft copy.
+    private var termsRow: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.12)) { agreedToTerms.toggle() }
+        } label: {
+            HStack(alignment: .top, spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(agreedToTerms ? AtlasColors.lemonStrong : AtlasColors.bgInput)
+                        .frame(width: 18, height: 18)
+                    if agreedToTerms {
+                        DeimosIconView(icon: .check, size: 10, color: AtlasColors.lemonInk)
+                    }
+                }
+                Text("我已阅读并同意《用户协议》和《隐私政策》")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.inkSoft)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Fields (S10/S11: r12 bgInput, 48pt, 14pt text)
+
+    private func formField(
+        _ placeholder: String,
+        text: Binding<String>,
+        keyboardType: UIKeyboardType = .default
+    ) -> some View {
+        ChineseFriendlyTextField(
+            placeholder: placeholder,
+            text: text,
+            keyboardType: keyboardType,
+            fontSize: 14
+        )
+        .padding(.horizontal, 14)
+        .frame(height: 48)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(AtlasColors.bgInput)
+        )
+    }
+
+    private func secureField(
+        _ placeholder: String,
+        text: Binding<String>,
+        onSubmit: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 14) {
+            ChineseFriendlyTextField(
+                placeholder: placeholder,
+                text: text,
+                isSecure: !showPassword,
+                keyboardType: .default,
+                returnKeyType: .done,
+                fontSize: 14,
+                onSubmit: onSubmit
+            )
+            Button {
+                showPassword.toggle()
+            } label: {
+                DeimosIconView(icon: showPassword ? .eyeOff : .eye, size: 18, color: AtlasColors.inkFaint)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(showPassword ? "隐藏密码" : "显示密码")
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, 14)
+        .frame(height: 48)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(AtlasColors.bgInput)
+        )
+    }
+
+    // MARK: - Actions
+
+    private var cancelAction: (() -> Void)? {
+        onCancel ?? loginCancelAction
     }
 
     private func oauthSignIn(_ provider: OAuthProvider) async {
@@ -408,6 +363,10 @@ struct LoginView: View {
     }
 
     private func submit() async {
+        if isRegistering && !agreedToTerms {
+            errorMessage = "请先阅读并同意协议"
+            return
+        }
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
