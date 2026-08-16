@@ -32,6 +32,7 @@ function formatAt(at: string, locale: Locale) {
     if (hours < 1) return locale === "en" ? "just now" : "刚刚";
     return locale === "en" ? `${hours}h ago` : `${hours} 小时前`;
   }
+  if (days < 30) return locale === "en" ? `${days}d ago` : `${days} 天前`;
   return d.toLocaleDateString(locale === "en" ? "en-US" : "zh-CN", {
     month: "short",
     day: "numeric",
@@ -39,8 +40,9 @@ function formatAt(at: string, locale: Locale) {
 }
 
 /**
- * idea 公开演进时间线：版本 / 状态 / 采纳建议 / 实现进展与结果。
- * job_progress 默认折叠（Agent 的阶段性汇报较密），其余类型平铺。
+ * idea 公开演进时间线：单行紧凑流（图标内联 + 标题 + 右对齐时间），
+ * 不用竖线/圆底装饰——密度优先，十级事件也只占一小块。
+ * job_progress 默认只平铺最新 2 条，其余折叠。
  */
 export async function IdeaChangelogPanel({
   entries,
@@ -55,43 +57,42 @@ export async function IdeaChangelogPanel({
 
   const progress = entries.filter((e) => e.type === "job_progress");
   const rest = entries.filter((e) => e.type !== "job_progress");
-  const renderItems = [...rest, ...progress.slice(0, 2)]; // 最新 2 条进展平铺，其余折叠
+  const renderItems = [...rest, ...progress.slice(0, 2)];
 
-  const row = (e: ChangelogEntry) => (
-    <li key={e.id} className="relative pl-6">
-      <span
-        className={`absolute left-0 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--bg-subtle)] ${typeTone[e.type] || "text-[var(--ink-faint)]"}`}
-      >
-        <DeimosIcon name={typeIcon[e.type] || "document"} className="h-2.5 w-2.5" />
-      </span>
-      <p className="text-[13px] leading-6">
-        <span className="font-medium text-[var(--ink)]">{e.title}</span>
-        {e.detail && (
-          <span className="ml-2 break-all text-[12px] text-[var(--ink-faint)]">{e.detail}</span>
-        )}
-      </p>
-      <p className="text-[11px] text-[var(--ink-faint)]">
+  const row = (e: ChangelogEntry, compact = false) => (
+    <li
+      key={e.id}
+      className={`flex items-center gap-2 ${compact ? "py-0.5" : "py-0.5"} text-[12.5px] leading-5`}
+    >
+      <DeimosIcon
+        name={typeIcon[e.type] || "document"}
+        className={`h-3.5 w-3.5 shrink-0 ${typeTone[e.type] || "text-[var(--ink-faint)]"}`}
+      />
+      <span className="min-w-0 shrink truncate font-medium text-[var(--ink)]">{e.title}</span>
+      {e.detail && (
+        <span className="hidden min-w-0 shrink truncate text-[11px] text-[var(--ink-faint)] sm:inline">
+          {e.detail}
+        </span>
+      )}
+      <time className="ml-auto shrink-0 pl-2 text-[11px] tabular-nums text-[var(--ink-faint)]">
         {formatAt(e.created_at, locale)}
-        {e.actor_name ? ` · ${e.actor_name}` : ""}
-      </p>
+      </time>
     </li>
   );
 
   return (
-    <section className="surface-card p-5 sm:p-6" id="changelog">
-      <h2 className="mb-4 flex items-center gap-2 text-[15px] font-semibold text-[var(--ink)]">
-        <DeimosIcon name="pulse" className="h-4 w-4 text-[var(--primary)]" />
+    <section className="surface-card px-4 py-3.5 sm:px-5" id="changelog">
+      <h2 className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
+        <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--primary)]" />
         {t("changelog.title")}
       </h2>
-      <ul className="space-y-4 border-l border-[var(--rule)]">
-        {renderItems.map(row)}
-      </ul>
+      <ul className="space-y-0.5">{renderItems.map((e) => row(e))}</ul>
       {progress.length > 2 && (
-        <details className="mt-3">
-          <summary className="cursor-pointer list-none text-[12px] font-medium text-[var(--ink-faint)] hover:text-[var(--ink-soft)]">
+        <details className="mt-1.5">
+          <summary className="cursor-pointer list-none text-[11px] font-medium text-[var(--ink-faint)] hover:text-[var(--ink-soft)]">
             {t("changelog.moreProgress", { count: progress.length - 2 })}
           </summary>
-          <ul className="mt-3 space-y-3 border-l border-[var(--rule)]">{progress.slice(2).map(row)}</ul>
+          <ul className="mt-1 space-y-0.5">{progress.slice(2).map((e) => row(e, true))}</ul>
         </details>
       )}
     </section>
