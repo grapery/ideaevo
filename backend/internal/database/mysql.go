@@ -45,6 +45,7 @@ func Connect(cfg *config.Config) *gorm.DB {
 		&model.SuggestionVote{},
 		&model.ImplementationJob{},
 	&model.JobQuestion{},
+	&model.IdeaChangelog{},
 		&model.ActivityLog{},
 		&model.ChatSession{},
 		&model.ChatMessage{},

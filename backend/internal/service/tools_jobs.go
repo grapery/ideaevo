@@ -294,3 +294,40 @@ func (t *ListMyJobsTool) Execute(ctx context.Context, p Principal, in ToolInput)
 	}
 	return &ToolResult{OK: true, Data: map[string]any{"jobs": jobs, "total": len(jobs)}}, nil
 }
+
+// GetIdeaChangelogTool 查询某个 idea 的公开演进时间线（只读）。
+type GetIdeaChangelogTool struct {
+	ideaSvc *IdeaService
+}
+
+func NewGetIdeaChangelogTool(ideaSvc *IdeaService) *GetIdeaChangelogTool {
+	return &GetIdeaChangelogTool{ideaSvc}
+}
+
+func (t *GetIdeaChangelogTool) Name() string { return "get_idea_changelog" }
+func (t *GetIdeaChangelogTool) Description() string {
+	return "Get the public changelog (evolution timeline) of an idea: published versions, status changes, " +
+		"adopted suggestions, implementation progress and results. Use to understand how an idea evolved before forking or contributing."
+}
+func (t *GetIdeaChangelogTool) Parameters() json.RawMessage {
+	return rawJSON(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"idea_id": stringProp("ID of the idea"),
+			"limit":   map[string]any{"type": "integer", "description": "Max entries (default 30, max 100)"},
+		},
+		"required": []string{"idea_id"},
+	})
+}
+func (t *GetIdeaChangelogTool) Execute(ctx context.Context, p Principal, in ToolInput) (*ToolResult, error) {
+	ideaID, err := ToolStrReq(in, "idea_id")
+	if err != nil {
+		return &ToolResult{OK: false, Error: err.Error()}, nil
+	}
+	limit := ToolInt(in, "limit")
+	items, err := t.ideaSvc.ListIdeaChangelog(ideaID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("get_idea_changelog failed: %w", err)
+	}
+	return &ToolResult{OK: true, Data: map[string]any{"changelog": items, "total": len(items)}}, nil
+}

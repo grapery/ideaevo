@@ -14,7 +14,7 @@ import (
 func newSuggestionFixture(t *testing.T) (*SuggestionService, string, string) {
 	t.Helper()
 	db := testDB(t)
-	require.NoError(t, db.AutoMigrate(&model.IdeaSuggestion{}, &model.SuggestionVote{}, &model.ImplementationJob{}))
+	require.NoError(t, db.AutoMigrate(&model.IdeaSuggestion{}, &model.SuggestionVote{}, &model.ImplementationJob{}, &model.IdeaVersion{}))
 	svc := NewSuggestionService(db)
 
 	suffix := uniqueSuffix()
@@ -365,4 +365,65 @@ func TestJobBridge_ManualDoneSyncsIdea(t *testing.T) {
 	var idea model.Idea
 	require.NoError(t, svc.db.Where("id = ?", job.IdeaID).First(&idea).Error)
 	assert.Equal(t, model.ImplStatusImplemented, idea.ImplStatus)
+}
+
+// ---- Idea Changelog 埋点 ----
+
+func TestIdeaChangelog_Instrumentation(t *testing.T) {
+	svc, ideaID, ownerID := newSuggestionFixture(t)
+	require.NoError(t, svc.db.AutoMigrate(&model.JobQuestion{}, &model.IdeaChangelog{}, &model.IdeaVersion{}))
+
+	// 版本事件：AppendIdeaVersion 落 version 事件
+	idea := model.Idea{ID: ideaID, AgentID: "a-" + ideaID, Title: "t"}
+	require.NoError(t, AppendIdeaVersion(svc.db, &idea, "新增暗色模式"))
+
+	// 采纳建议事件
+	sug, err := svc.Create(CreateSuggestionInput{IdeaID: ideaID, UserID: "u1", Content: "支持导出"})
+	require.NoError(t, err)
+	_, err = svc.Select(ideaID, sug.ID, ownerID, "")
+	require.NoError(t, err)
+
+	// 进展 + 完成事件
+	jobs, err := svc.ListJobs(ownerID)
+	require.NoError(t, err)
+	require.Len(t, jobs, 1)
+	require.NoError(t, svc.AppendProgress(jobs[0].ID, ownerID, "脚手架完成"))
+	_, err = svc.UpdateJob(jobs[0].ID, ownerID, "done", "v2 发布")
+	require.NoError(t, err)
+
+	items, err := ListChangelog(svc.db, ideaID, 50)
+	require.NoError(t, err)
+	// 倒序：job_done → job_progress → suggestion_selected → version
+	require.Len(t, items, 4)
+	assert.Equal(t, ChangelogTypeJobDone, items[0].Type)
+	assert.Equal(t, "实现完成", items[0].Title)
+	assert.Equal(t, ChangelogTypeJobProgress, items[1].Type)
+	assert.Equal(t, "脚手架完成", items[1].Title)
+	assert.Equal(t, ChangelogTypeSuggestionSelected, items[2].Type)
+	assert.Contains(t, items[2].Title, "支持导出")
+	assert.Equal(t, ChangelogTypeVersion, items[3].Type)
+	assert.Equal(t, "新增暗色模式", items[3].Title)
+
+	// 终态后进展不再产生事件（守卫生效），事件数不变
+	assert.Error(t, svc.AppendProgress(jobs[0].ID, ownerID, "多余"))
+	items2, _ := ListChangelog(svc.db, ideaID, 50)
+	assert.Len(t, items2, 4)
+}
+
+func TestIdeaChangelog_BackfillIdempotent(t *testing.T) {
+	svc, ideaID, _ := newSuggestionFixture(t)
+	require.NoError(t, svc.db.AutoMigrate(&model.IdeaChangelog{}, &model.IdeaVersion{}))
+	idea := model.Idea{ID: ideaID, AgentID: "a-" + ideaID, Title: "t"}
+	require.NoError(t, AppendIdeaVersion(svc.db, &idea, "v1 说明"))
+	// AppendIdeaVersion 已带事件；仅清掉本 idea 的事件模拟存量数据（测试库为全包共享，不能清全表）
+	require.NoError(t, svc.db.Where("idea_id = ?", ideaID).Delete(&model.IdeaChangelog{}).Error)
+	n1, err := BackfillVersionEvents(svc.db)
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, n1, int64(1))
+	n2, err := BackfillVersionEvents(svc.db)
+	require.NoError(t, err)
+	_ = n2 // 全局幂等由 source_id 兜底；本用例断言本 idea 视角
+	items, _ := ListChangelog(svc.db, ideaID, 10)
+	require.Len(t, items, 1)
+	assert.Equal(t, "v1 说明", items[0].Title)
 }

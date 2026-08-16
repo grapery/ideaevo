@@ -55,6 +55,7 @@ func BootstrapTools(db *gorm.DB, ideaSvc *IdeaService, socialSvc *SocialService,
 	// 本地编码 Agent 桥：Claude Code / Codex / Zcode 经 MCP 操作任务队列
 	registry.Register(NewGetJobSpecTool(suggestionSvc, agentSvc))
 	registry.Register(NewListMyJobsTool(suggestionSvc, agentSvc))
+	registry.Register(NewGetIdeaChangelogTool(ideaSvc))
 	registry.Register(NewClaimNextJobTool(suggestionSvc, agentSvc))
 	registry.Register(NewSendProgressTool(suggestionSvc, agentSvc))
 	registry.Register(NewAskUserTool(suggestionSvc, agentSvc))

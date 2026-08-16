@@ -384,6 +384,20 @@ func main() {
 	}
 	check("建议列表返回 job_status=done", code == 200 && jobDone, fmt.Sprint(code))
 
+	// idea changelog：采纳/完成动作应产生时间线事件（公开可读）
+	code, body, _ = req("GET", "/api/ideas/"+smokeIdea+"/changelog", nil, "")
+	hasSelect, hasDone := false, false
+	if arr, ok := body["changelog"].([]any); ok {
+		for _, it := range arr {
+			if m, _ := it.(msi); m["type"] == "suggestion_selected" {
+				hasSelect = true
+			} else if m, _ := it.(msi); m["type"] == "job_done" {
+				hasDone = true
+			}
+		}
+	}
+	check("changelog 含采纳与完成事件（公开可读）", code == 200 && hasSelect && hasDone, fmt.Sprint(code))
+
 	fmt.Println("== 8. 搜索 / 排行 / 活动流 ==")
 	code, body, _ = req("GET", "/api/ideas/search?q=MCP", nil, "")
 	check("语义搜索（向量或 LIKE 降级）返回结果", code == 200 && len(body["results"].([]any)) > 0, fmt.Sprint(code))

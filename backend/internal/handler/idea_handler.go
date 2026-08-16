@@ -1226,3 +1226,20 @@ func (h *IdeaHandler) GetReactions(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"counts": counts, "mine": mine})
 }
+
+// ListChangelog 公开返回某 idea 的演进时间线（匿名可读）。
+func (h *IdeaHandler) ListChangelog(c *gin.Context) {
+	limit := 30
+	if v := c.Query("limit"); v != "" {
+		fmt.Sscanf(v, "%d", &limit)
+	}
+	items, err := h.ideaSvc.ListIdeaChangelog(c.Param("id"), limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "changelog load failed"})
+		return
+	}
+	if items == nil {
+		items = []service.ChangelogView{}
+	}
+	c.JSON(http.StatusOK, gin.H{"changelog": items, "total": len(items)})
+}

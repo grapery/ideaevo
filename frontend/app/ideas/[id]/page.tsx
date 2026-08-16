@@ -28,6 +28,8 @@ import { DeimosIcon } from "@/components/deimos-icon";
 import { IdeaViewReporter } from "@/components/idea-view-reporter";
 import { PublishVersionButton } from "@/components/publish-version-dialog";
 import { ForkFlowGraph } from "@/components/fork-flow-graph";
+import { IdeaChangelogPanel } from "@/components/idea-changelog-panel";
+import type { ChangelogEntry } from "@/lib/types";
 import {
   IdeaDetailTabs,
   type IdeaDetailTab,
@@ -114,6 +116,22 @@ async function getSuggestions(ideaId: string): Promise<IdeaSuggestionView[]> {
   }
 }
 
+// 最近 7 天内有事件时，正文 tab 顶部显示“最近更新”横幅
+function isRecent(at: string) {
+  return Date.now() - new Date(at).getTime() < 7 * 86400000;
+}
+
+async function getChangelog(ideaId: string): Promise<ChangelogEntry[]> {
+  try {
+    const res = await fetch(`${apiBase}/ideas/${ideaId}/changelog?limit=50`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.changelog || [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function IdeaDetailPage({
   params,
   searchParams,
@@ -137,13 +155,14 @@ export default async function IdeaDetailPage({
     );
   }
 
-  const [comments, forkChildren, flowerSenders, stats, lineage, suggestions] = await Promise.all([
+  const [comments, forkChildren, flowerSenders, stats, lineage, suggestions, changelog] = await Promise.all([
     getComments(id),
     getForkChildren(id),
     idea.flower_count > 0 ? getFlowerSenders(id) : Promise.resolve([]),
     getIdeaStats(id),
     (idea.forked_from_id || idea.fork_count > 0) ? getIdeaLineage(id) : Promise.resolve(null),
     getSuggestions(id),
+    getChangelog(id),
   ]);
 
   const tags = normalizeTags(idea.tags);
@@ -322,6 +341,17 @@ export default async function IdeaDetailPage({
             overview={
               <div className="app-grid-2">
                 <section id="overview" className="scroll-mt-24 space-y-4">
+                  {changelog.length > 0 && isRecent(changelog[0].created_at) && (
+                    <Link
+                      href={`/ideas/${id}?tab=evolution`}
+                      className="flex items-center gap-2 rounded-[var(--radius-card)] border border-[var(--accent-link)]/25 bg-[var(--accent-link-soft)]/60 px-4 py-2.5 text-[13px] text-[var(--ink-soft)] transition-colors hover:border-[var(--accent-link)]/50"
+                    >
+                      <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
+                      <span className="font-medium text-[var(--ink)]">{t("changelog.recent")}</span>
+                      <span className="min-w-0 flex-1 truncate">{changelog[0].title}</span>
+                      <span className="shrink-0 text-[var(--accent-link)]">→</span>
+                    </Link>
+                  )}
                   <IdeaLifecycleRail idea={idea} />
 
                   {/* 进化健康度:让访客一眼看到这个想法在进化树中的活力 */}
@@ -409,8 +439,11 @@ export default async function IdeaDetailPage({
               </div>
             }
             evolution={
-              <div className="surface-card p-5 sm:p-6">
-                <ForkFlowGraph idea={idea} lineage={lineage} children={forkChildren} />
+              <div className="space-y-4">
+                <IdeaChangelogPanel entries={changelog} locale={locale} />
+                <div className="surface-card p-5 sm:p-6">
+                  <ForkFlowGraph idea={idea} lineage={lineage} children={forkChildren} />
+                </div>
               </div>
             }
             comments={

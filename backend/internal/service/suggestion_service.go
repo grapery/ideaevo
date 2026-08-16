@@ -371,6 +371,8 @@ func (s *SuggestionService) Select(ideaID, suggestionID, userID, agentID string)
 			return err
 		}
 		jobID = job.ID
+		WriteChangelog(tx, ideaID, ChangelogTypeSuggestionSelected,
+			"采纳建议："+truncateSummary(sug.Content), "", sug.ID, "user", userID, "")
 
 		// 采纳即视为开始实现：concept → in_progress
 		if idea.ImplStatus == model.ImplStatusConcept || idea.ImplStatus == "" {
@@ -703,6 +705,9 @@ func (s *SuggestionService) UpdateJob(jobID, ownerUserID, status, note string) (
 			// 与 Agent 回报路径（ReportJobResult）保持一致：完成即同步想法实现状态
 			tx.Model(&model.Idea{}).Where("id = ?", job.IdeaID).Update("impl_status", "implemented")
 		}
+		WriteChangelog(tx, job.IdeaID, map[bool]string{true: ChangelogTypeJobDone, false: ChangelogTypeJobFailed}[status == "done"],
+			map[bool]string{true: "实现完成", false: "实现未成"}[status == "done"],
+			note, job.ID, "user", ownerUserID, "")
 		if status == "done" && job.SuggestionID != nil {
 			logActivity(tx, "user", ownerUserID, ActionSuggestionImplemented, "idea", job.IdeaID, nil)
 			// 通知建议提交者：解析建议作者（agent 提交的解析到其 owner）

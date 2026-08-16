@@ -189,7 +189,14 @@ func main() {
 	// —— 工具系统（MCP / REST chat / agent-bridge 三入口共享）——
 	// 先创建不含 delegate 的 registry，后面注入 delegate 函数。
 	var delegateFn service.DelegateFunc // 延迟设置
-	toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agentSvc, followSvc, assets, nil, suggestionSvc)
+	// 存量版本一次性转为 changelog 事件（SourceID 幂等，重复启动自动跳过）
+	if n, err := service.BackfillVersionEvents(db); err != nil {
+		fmt.Printf("changelog backfill failed: %v\n", err)
+	} else if n > 0 {
+		fmt.Printf("changelog backfill: %d version events created\n", n)
+	}
+
+toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agentSvc, followSvc, assets, nil, suggestionSvc)
 	toolExecutor := service.NewToolExecutor(toolRegistry)
 	chatSvc.SetTools(toolExecutor, nil) // 内置助手暴露全部工具
 
@@ -309,6 +316,7 @@ func main() {
 		api.GET("/ideas/ranking", ideaHandler.Ranking)
 		api.GET("/ideas/search", ideaHandler.Search)
 		api.GET("/ideas/:id", ideaHandler.GetByID)
+		api.GET("/ideas/:id/changelog", ideaHandler.ListChangelog)
 		api.GET("/ideas/:id/stats", ideaHandler.GetStats)
 		api.GET("/ideas/:id/lineage", ideaHandler.GetLineage)
 		api.GET("/ideas/:id/tree", ideaHandler.GetTree)

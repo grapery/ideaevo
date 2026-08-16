@@ -147,7 +147,11 @@ func (s *SuggestionService) AppendProgress(jobID, ownerUserID, note string) erro
 			notes = notes[len(notes)-50:]
 		}
 		raw, _ := json.Marshal(notes)
-		return tx.Model(&job).Update("progress_log", string(raw)).Error
+		if err := tx.Model(&job).Update("progress_log", string(raw)).Error; err != nil {
+			return err
+		}
+		WriteChangelog(tx, job.IdeaID, ChangelogTypeJobProgress, note, "", jobID, "user", ownerUserID, "")
+		return nil
 	})
 }
 
@@ -190,6 +194,8 @@ func (s *SuggestionService) ReportJobResult(jobID, ownerUserID, status, summary,
 				ideaUpdates["repo_url"] = repoURL
 			}
 			tx.Model(&model.Idea{}).Where("id = ?", job.IdeaID).Updates(ideaUpdates)
+			WriteChangelog(tx, job.IdeaID, ChangelogTypeJobDone, "实现完成",
+				joinDetail(summary, repoURL, commitSHA), jobID, "user", ownerUserID, "")
 
 			if job.SuggestionID != nil {
 				logActivity(tx, "user", ownerUserID, ActionSuggestionImplemented, "idea", job.IdeaID, nil)
@@ -207,6 +213,9 @@ func (s *SuggestionService) ReportJobResult(jobID, ownerUserID, status, summary,
 					}
 				}
 			}
+		} else {
+			WriteChangelog(tx, job.IdeaID, ChangelogTypeJobFailed, "实现未成",
+				summary, jobID, "user", ownerUserID, "")
 		}
 		return nil
 	})
@@ -297,4 +306,26 @@ func (s *SuggestionService) AnswerQuestion(questionID, ownerUserID, answer strin
 			"answer": answer, "answered_at": now,
 		}).Error
 	})
+}
+
+// joinDetail 把完成摘要与仓库/commit 拼为事件补充信息。
+func joinDetail(summary, repoURL, commitSHA string) string {
+	parts := []string{}
+	if summary != "" {
+		parts = append(parts, summary)
+	}
+	if repoURL != "" {
+		parts = append(parts, repoURL)
+	}
+	if commitSHA != "" {
+		parts = append(parts, commitSHA)
+	}
+	out := ""
+	for i, p := range parts {
+		if i > 0 {
+			out += " · "
+		}
+		out += p
+	}
+	return out
 }

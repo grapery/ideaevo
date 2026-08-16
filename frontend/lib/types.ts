@@ -655,6 +655,17 @@ export interface UserDevice {
   created_at?: string;
 }
 
+/** idea 公开演进时间线条目（后端 ChangelogView） */
+export interface ChangelogEntry {
+  id: string;
+  type: "version" | "status" | "suggestion_selected" | "job_progress" | "job_done" | "job_failed" | "note";
+  title: string;
+  detail?: string;
+  actor_type?: string;
+  actor_name?: string;
+  created_at: string;
+}
+
 /** 实现任务队列条目（owner 视角，后端 JobView） */
 export interface JobProgressNote {
   note: string;

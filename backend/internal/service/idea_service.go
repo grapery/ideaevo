@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wanye/ideaevo/internal/model"
 	"gorm.io/gorm"
 )
@@ -320,6 +321,7 @@ func (s *IdeaService) Bury(ideaID, agentID, reason string) (*model.Idea, error) 
 	}
 
 	logActivity(s.db, "agent", agentID, ActionBury, "idea", ideaID, map[string]string{"reason": reason})
+	WriteChangelog(s.db, ideaID, ChangelogTypeStatus, "想法被埋没", reason, "", "agent", agentID, "")
 	return &idea, nil
 }
 
@@ -385,6 +387,7 @@ func (s *IdeaService) Archive(ideaID, agentID, reason string) (*model.Idea, erro
 		meta["reason"] = reason
 	}
 	logActivity(s.db, "agent", agentID, ActionArchive, "idea", ideaID, meta)
+	WriteChangelog(s.db, ideaID, ChangelogTypeStatus, "想法已归档", reason, "", "agent", agentID, "")
 	return &idea, nil
 }
 
@@ -417,6 +420,8 @@ func (s *IdeaService) MarkImplemented(ideaID, agentID, reason string) (*model.Id
 		meta["reason"] = reason
 	}
 	logActivity(s.db, "agent", agentID, ActionImplement, "idea", ideaID, meta)
+	WriteChangelog(s.db, ideaID, ChangelogTypeStatus, "标记为已落地",
+		reason, "", "agent", agentID, "")
 	return &idea, nil
 }
 
@@ -684,7 +689,12 @@ func AppendIdeaVersion(db *gorm.DB, idea *model.Idea, changelog string) error {
 		ImplStatus:  idea.ImplStatus,
 		Changelog:   changelog,
 	}
-	return db.Create(v).Error
+	if err := db.Create(v).Error; err != nil {
+		return err
+	}
+	WriteChangelog(db, idea.ID, ChangelogTypeVersion, changelog,
+		fmt.Sprintf("v%d", v.Version), v.ID, "system", "", "")
+	return nil
 }
 
 // EnsureVersions 为尚无版本记录的历史 idea 回填 v1。
@@ -696,11 +706,22 @@ func (s *IdeaService) EnsureVersions(ideaID string) error {
 	if count > 0 {
 		return nil
 	}
-	var idea model.Idea
-	if err := s.db.First(&idea, "id = ?", ideaID).Error; err != nil {
-		return err
+	// 原子条件插入：WHERE NOT EXISTS 由数据库保证并发请求下仅产生一条 v1
+	//（先查后插的两段式曾在并发下产生重复 v1，并被 changelog 回填暴露）。
+	res := s.db.Exec(`INSERT INTO idea_versions
+		(id, idea_id, version, title, description, category, tags, repo_url, demo_url, impl_status, changelog, created_at)
+		SELECT ?, i.id, 1, i.title, i.description, i.category, i.tags, i.repo_url, i.demo_url, i.impl_status, ?, NOW()
+		FROM ideas i
+		WHERE i.id = ?
+		AND NOT EXISTS (SELECT 1 FROM idea_versions v WHERE v.idea_id = i.id AND v.version = 1)`,
+		uuid.NewString(), "初始版本", ideaID)
+	if res.Error != nil {
+		return res.Error
 	}
-	return AppendIdeaVersion(s.db, &idea, "初始版本")
+	if res.RowsAffected > 0 {
+		WriteChangelog(s.db, ideaID, ChangelogTypeVersion, "初始版本", "v1", "", "system", "", "")
+	}
+	return nil
 }
 
 // ListVersions 返回 idea 的描述版本时间线（从旧到新）。
