@@ -79,7 +79,9 @@ func ListChangelog(db *gorm.DB, ideaID string, limit int) ([]ChangelogView, erro
 	}
 	var rows []model.IdeaChangelog
 	if err := db.Where("idea_id = ?", ideaID).
-		Order("id DESC, created_at DESC").Limit(limit).Find(&rows).Error; err != nil {
+		// created_at 为主（回填事件的历史时间戳优先），时间前缀 ID 只做
+		// 同毫秒内的平局裁决（其字典序=插入序）。
+		Order("created_at DESC, id DESC").Limit(limit).Find(&rows).Error; err != nil {
 		return nil, err
 	}
 	out := make([]ChangelogView, len(rows))

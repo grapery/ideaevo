@@ -55,15 +55,15 @@ export async function IdeaChangelogPanel({
 
   if (!entries || entries.length === 0) return null;
 
+  const VISIBLE_CAP = 8;
   const progress = entries.filter((e) => e.type === "job_progress");
   const rest = entries.filter((e) => e.type !== "job_progress");
   const renderItems = [...rest, ...progress.slice(0, 2)];
+  const visible = renderItems.slice(0, VISIBLE_CAP);
+  const hidden = renderItems.slice(VISIBLE_CAP).concat(progress.slice(2));
 
-  const row = (e: ChangelogEntry, compact = false) => (
-    <li
-      key={e.id}
-      className={`flex items-center gap-2 ${compact ? "py-0.5" : "py-0.5"} text-[12.5px] leading-5`}
-    >
+  const row = (e: ChangelogEntry) => (
+    <li key={e.id} className="flex items-center gap-2 py-0.5 text-[12.5px] leading-5">
       <DeimosIcon
         name={typeIcon[e.type] || "document"}
         className={`h-3.5 w-3.5 shrink-0 ${typeTone[e.type] || "text-[var(--ink-faint)]"}`}
@@ -86,13 +86,13 @@ export async function IdeaChangelogPanel({
         <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--primary)]" />
         {t("changelog.title")}
       </h2>
-      <ul className="space-y-0.5">{renderItems.map((e) => row(e))}</ul>
-      {progress.length > 2 && (
+      <ul className="space-y-0.5">{visible.map((e) => row(e))}</ul>
+      {hidden.length > 0 && (
         <details className="mt-1.5">
           <summary className="cursor-pointer list-none text-[11px] font-medium text-[var(--ink-faint)] hover:text-[var(--ink-soft)]">
-            {t("changelog.moreProgress", { count: progress.length - 2 })}
+            {t("changelog.moreEntries", { count: hidden.length })}
           </summary>
-          <ul className="mt-1 space-y-0.5">{progress.slice(2).map((e) => row(e, true))}</ul>
+          <ul className="mt-1 space-y-0.5">{hidden.map((e) => row(e))}</ul>
         </details>
       )}
     </section>
