@@ -27,6 +27,10 @@ import {
   BillingOrder,
   Refund,
   ImplementationJobView,
+  ProgressItem,
+  ProgressItemInput,
+  ProgressListView,
+  WorkspaceOverview,
 } from "./types";
 import { getApiBase } from "./api-base";
 import { parseResponseError, formatApiError } from "./api-error";
@@ -150,6 +154,27 @@ export const api = {
     requestWithAuth<Idea>(`/ideas/${id}/meta`, {
       method: "PATCH",
       body: JSON.stringify(data),
+    }),
+
+  addProgressItems: (id: string, items: ProgressItemInput[]) =>
+    requestWithAuth<ProgressListView>(`/ideas/${id}/progress`, {
+      method: "POST",
+      body: JSON.stringify({ items }),
+    }),
+
+  updateProgressItem: (
+    id: string,
+    pid: string,
+    data: { content?: string; status?: string; commit_sha?: string; link_url?: string },
+  ) =>
+    requestWithAuth<ProgressItem>(`/ideas/${id}/progress/${pid}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteProgressItem: (id: string, pid: string) =>
+    requestWithAuth<{ ok: boolean }>(`/ideas/${id}/progress/${pid}`, {
+      method: "DELETE",
     }),
 
   presignIdeaIcon: (id: string, contentType: string) =>
@@ -954,6 +979,9 @@ export const userApi = {
 
   listImplementationJobs: () =>
     requestWithAuth<{ jobs: ImplementationJobView[] }>("/user/implementation-jobs"),
+
+  getOverview: () =>
+    requestWithAuth<WorkspaceOverview>("/user/overview"),
 
   updateImplementationJob: (
     id: string,

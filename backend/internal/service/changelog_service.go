@@ -23,6 +23,7 @@ const (
 	ChangelogTypeJobProgress        = "job_progress"
 	ChangelogTypeJobDone            = "job_done"
 	ChangelogTypeJobFailed          = "job_failed"
+	ChangelogTypeProgress           = "progress"
 	ChangelogTypeNote               = "note"
 )
 

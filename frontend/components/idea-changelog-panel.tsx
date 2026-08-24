@@ -10,6 +10,7 @@ const typeIcon: Record<string, DeimosIconName> = {
   job_progress: "pulse",
   job_done: "check",
   job_failed: "close",
+  progress: "check",
   note: "document",
 };
 
@@ -20,6 +21,7 @@ const typeTone: Record<string, string> = {
   job_progress: "text-[var(--ink-faint)]",
   job_done: "text-[var(--accent-success)]",
   job_failed: "text-[var(--accent-warning)]",
+  progress: "text-[var(--accent-success)]",
   note: "text-[var(--primary)]",
 };
 
@@ -56,11 +58,13 @@ export async function IdeaChangelogPanel({
   if (!entries || entries.length === 0) return null;
 
   const VISIBLE_CAP = 8;
-  const progress = entries.filter((e) => e.type === "job_progress");
-  const rest = entries.filter((e) => e.type !== "job_progress");
-  const renderItems = [...rest, ...progress.slice(0, 2)];
+  // 高频流水类事件（任务进展 / done list 完成）只平铺最新 2 条，
+  // 避免批量汇报挤掉 version/status 等关键演进事件。
+  const flowing = entries.filter((e) => e.type === "job_progress" || e.type === "progress");
+  const rest = entries.filter((e) => e.type !== "job_progress" && e.type !== "progress");
+  const renderItems = [...rest, ...flowing.slice(0, 2)];
   const visible = renderItems.slice(0, VISIBLE_CAP);
-  const hidden = renderItems.slice(VISIBLE_CAP).concat(progress.slice(2));
+  const hidden = renderItems.slice(VISIBLE_CAP).concat(flowing.slice(2));
 
   const row = (e: ChangelogEntry) => (
     <li key={e.id} className="flex items-center gap-2 py-0.5 text-[12.5px] leading-5">

@@ -658,12 +658,60 @@ export interface UserDevice {
 /** idea 公开演进时间线条目（后端 ChangelogView） */
 export interface ChangelogEntry {
   id: string;
-  type: "version" | "status" | "suggestion_selected" | "job_progress" | "job_done" | "job_failed" | "note";
+  type: "version" | "status" | "suggestion_selected" | "job_progress" | "job_done" | "job_failed" | "progress" | "note";
   title: string;
   detail?: string;
   actor_type?: string;
   actor_name?: string;
   created_at: string;
+}
+
+/** idea 实现进度条目（待办/已完成 checklist，后端 IdeaProgressItem） */
+export interface ProgressItem {
+  id: string;
+  idea_id: string;
+  author_type?: string;
+  author_id?: string;
+  author_name?: string;
+  content: string;
+  status: "todo" | "done" | string;
+  done_at?: string;
+  commit_sha?: string;
+  link_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProgressItemInput {
+  content: string;
+  status?: string;
+  commit_sha?: string;
+  link_url?: string;
+}
+
+/** 进度面板分组视图（后端 ProgressListView） */
+export interface ProgressListView {
+  todos: ProgressItem[];
+  dones: ProgressItem[];
+}
+
+/** 工作区总览里单个 idea 的进度摘要（后端 IdeaProgressSummary） */
+export interface IdeaProgressSummary {
+  idea_id: string;
+  title: string;
+  status: string;
+  impl_status?: string;
+  todos: number;
+  dones: number;
+  last_progress_at?: string;
+  updated_at: string;
+}
+
+/** 私域总览（后端 WorkspaceOverview） */
+export interface WorkspaceOverview {
+  ideas: IdeaProgressSummary[];
+  jobs: Record<string, number>;
+  generated_at: string;
 }
 
 /** 实现任务队列条目（owner 视角，后端 JobView） */

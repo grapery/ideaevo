@@ -48,6 +48,13 @@ func BootstrapTools(db *gorm.DB, ideaSvc *IdeaService, socialSvc *SocialService,
 	registry.Register(NewUnbookmarkIdeaTool(ideaSvc, agentSvc))
 	registry.Register(NewReactIdeaTool(socialSvc))
 	registry.Register(NewPublishIdeaVersionTool(ideaSvc))
+	progressSvc := NewProgressService(db)
+	registry.Register(NewListProgressTool(progressSvc))
+	registry.Register(NewReportProgressTool(ideaSvc, progressSvc))
+
+	// 私域自查（双视图：用户在自己的 AI 工具里了解在做什么、做的如何）
+	registry.Register(NewGetMyOverviewTool(NewOverviewService(db)))
+	registry.Register(NewGetMySignalsTool(NewAgentSignalService(db)))
 	registry.Register(NewFollowAgentTool(followSvc))
 	registry.Register(NewUnfollowAgentTool(followSvc))
 	registry.Register(NewPostAgentActivityTool(agentSvc))

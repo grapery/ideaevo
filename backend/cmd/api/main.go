@@ -39,6 +39,8 @@ func main() {
 
 	agentSvc := service.NewAgentService(db)
 	ideaSvc := service.NewIdeaService(db)
+	progressSvc := service.NewProgressService(db)
+	overviewSvc := service.NewOverviewService(db)
 	socialSvc := service.NewSocialService(db)
 	commentSvc := service.NewCommentService(db)
 	emailSvc := service.NewEmailService(cfg)
@@ -241,6 +243,8 @@ toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agent
 	bridgeSvc := service.NewAgentBridgeService(db, agentSvc, toolExecutor)
 
 	ideaHandler := handler.NewIdeaHandler(ideaSvc, agentSvc, socialSvc, commentSvc, assets, llmSvc, systemAgentID)
+	progressHandler := handler.NewProgressHandler(ideaSvc, agentSvc, progressSvc)
+	overviewHandler := handler.NewOverviewHandler(overviewSvc)
 	agentSvc.SetObjectStore(assets)
 	agentHandler := handler.NewAgentHandler(agentSvc, ideaSvc, assets, followSvc)
 	authHandler := handler.NewAuthHandler(agentSvc)
@@ -316,7 +320,8 @@ toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agent
 		api.GET("/ideas/ranking", ideaHandler.Ranking)
 		api.GET("/ideas/search", ideaHandler.Search)
 		api.GET("/ideas/:id", ideaHandler.GetByID)
-		api.GET("/ideas/:id/changelog", ideaHandler.ListChangelog)
+			api.GET("/ideas/:id/changelog", ideaHandler.ListChangelog)
+			api.GET("/ideas/:id/progress", progressHandler.List)
 		api.GET("/ideas/:id/stats", ideaHandler.GetStats)
 		api.GET("/ideas/:id/lineage", ideaHandler.GetLineage)
 		api.GET("/ideas/:id/tree", ideaHandler.GetTree)
@@ -367,6 +372,7 @@ toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agent
 
 			// 实现任务队列（owner 视角：采纳建议后创建的任务的推进与管理）
 			userRoutes.GET("/user/implementation-jobs", suggestionHandler.MyJobs)
+			userRoutes.GET("/user/overview", overviewHandler.Mine)
 			userRoutes.PATCH("/user/implementation-jobs/:id", suggestionHandler.UpdateJob)
 			userRoutes.POST("/user/implementation-jobs/:id/questions/:qid/answer", suggestionHandler.AnswerJobQuestion)
 
@@ -495,6 +501,9 @@ toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agent
 			ideaActionRoutes.DELETE("/comments/:id/like", commentHandler.Unlike)
 			ideaActionRoutes.POST("/ideas/:id/versions", ideaHandler.PublishVersion)
 			ideaActionRoutes.PATCH("/ideas/:id/meta", ideaHandler.UpdateMeta)
+			ideaActionRoutes.POST("/ideas/:id/progress", progressHandler.Create)
+			ideaActionRoutes.PATCH("/ideas/:id/progress/:pid", progressHandler.Update)
+			ideaActionRoutes.DELETE("/ideas/:id/progress/:pid", progressHandler.Delete)
 			ideaActionRoutes.PATCH("/ideas/:id/description", ideaHandler.UpdateDescription)
 			ideaActionRoutes.POST("/ideas/:id/upload/presign", ideaHandler.PresignUpload)
 			ideaActionRoutes.POST("/ideas/:id/icon/reset", ideaHandler.ResetIcon)

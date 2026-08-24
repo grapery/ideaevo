@@ -160,10 +160,11 @@ func (t *QueryIdeasTool) Parameters() json.RawMessage {
 	return rawJSON(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"mine":     map[string]any{"type": "boolean", "description": "If true, only ideas owned by the current user"},
-			"status":   stringEnumProp("Filter by status", "active", "buried", "archived", "implemented"),
-			"category": stringProp("Filter by category: tool, service, integration, automation, creative, data, other"),
-			"sort":     stringEnumProp("Sort order", "newest", "popular", "most_forked", "most_liked", "most_flowers"),
+			"mine":       map[string]any{"type": "boolean", "description": "If true, only ideas owned by the current user"},
+			"status":     stringEnumProp("Filter by lifecycle status", "active", "buried", "archived", "implemented"),
+			"impl_status": stringEnumProp("Filter by implementation progress — use in_progress to find work actively being built", "concept", "in_progress", "implemented", "paused"),
+			"category":   stringProp("Filter by category: tool, service, integration, automation, creative, data, other"),
+			"sort":       stringEnumProp("Sort order", "newest", "popular", "most_forked", "most_liked", "most_flowers"),
 			"limit":    numberProp("Max results (default 20)"),
 			"offset":   numberProp("Pagination offset"),
 		},
@@ -175,11 +176,12 @@ func (t *QueryIdeasTool) Execute(ctx context.Context, p Principal, in ToolInput)
 		limit = 20
 	}
 	filter := QueryFilter{
-		Status:   ToolStr(in, "status"),
-		Category: ToolStr(in, "category"),
-		Sort:     ToolStr(in, "sort"),
-		Limit:    limit,
-		Offset:   ToolInt(in, "offset"),
+		Status:     ToolStr(in, "status"),
+		ImplStatus: ToolStr(in, "impl_status"),
+		Category:   ToolStr(in, "category"),
+		Sort:       ToolStr(in, "sort"),
+		Limit:      limit,
+		Offset:     ToolInt(in, "offset"),
 	}
 	if ToolBool(in, "mine") {
 		if p.UserID == "" {

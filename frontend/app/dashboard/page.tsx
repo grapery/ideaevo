@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { agentApi, notificationApi, NotificationItem, userApi } from "@/lib/api-client";
-import { Agent, UserProfile } from "@/lib/types";
+import { Agent, UserProfile, WorkspaceOverview } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/lib/i18n/provider";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { SystemPageHeader } from "@/components/system-page-header";
+import { ImplStatusBadge } from "@/components/impl-status-badge";
 
 function formatRelativeTime(
   dateStr: string,
@@ -35,6 +36,7 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [overview, setOverview] = useState<WorkspaceOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -49,12 +51,14 @@ export default function DashboardPage() {
       userApi.getMyProfile(),
       agentApi.listMyAgents(8, 0),
       notificationApi.list({ limit: 8 }),
+      userApi.getOverview().catch(() => null),
     ])
-      .then(([profileResult, agentResult, notificationResult]) => {
+      .then(([profileResult, agentResult, notificationResult, overviewResult]) => {
         if (cancelled) return;
         setProfile(profileResult);
         setAgents(agentResult.agents || []);
         setNotifications(notificationResult.items || []);
+        setOverview(overviewResult);
       })
       .catch(() => {
         if (!cancelled) setLoadFailed(true);
@@ -71,6 +75,16 @@ export default function DashboardPage() {
     () => notifications.filter((item) => !item.read).slice(0, 6),
     [notifications],
   );
+
+  // 只展示「有实现迹象」的 idea：进度条目非空或 impl_status 非概念期
+  const progressIdeas = useMemo(
+    () =>
+      (overview?.ideas || [])
+        .filter((s) => s.todos + s.dones > 0 || (s.impl_status && s.impl_status !== "concept"))
+        .slice(0, 6),
+    [overview],
+  );
+  const activeJobs = (overview?.jobs?.pending || 0) + (overview?.jobs?.in_progress || 0);
 
   if (loadFailed) {
     return (
@@ -260,6 +274,74 @@ export default function DashboardPage() {
                       </Link>
                     </li>
                   ))}
+                </ul>
+              )}
+            </section>
+
+            {/* 我的实现进度:跨 idea 一屏自查(私域视图) */}
+            <section className="surface-card overflow-hidden">
+              <div className="flex h-10 items-center justify-between border-b border-[var(--rule)] px-4">
+                <h2 className="flex items-center gap-2 text-[13px] font-semibold text-[var(--ink)]">
+                  <DeimosIcon name="check" className="h-3.5 w-3.5 text-[var(--accent-success)]" />
+                  {t("dashboard.progressTitle")}
+                </h2>
+                <Link
+                  href="/user/jobs"
+                  className={`text-[12px] hover:underline ${activeJobs > 0 ? "text-[var(--accent-link)]" : "text-[var(--ink-faint)]"}`}
+                >
+                  {activeJobs > 0
+                    ? t("dashboard.progressJobs", { count: activeJobs })
+                    : t("jobs.title")}
+                </Link>
+              </div>
+
+              {progressIdeas.length === 0 ? (
+                <p className="px-4 py-5 text-[12px] leading-5 text-[var(--ink-faint)]">
+                  {t("dashboard.progressEmpty")}
+                </p>
+              ) : (
+                <ul>
+                  {progressIdeas.map((s) => {
+                    const total = s.todos + s.dones;
+                    const percent = total > 0 ? Math.round((s.dones / total) * 100) : 0;
+                    return (
+                      <li key={s.idea_id} className="border-b border-[var(--rule)] last:border-0">
+                        <Link
+                          href={`/ideas/${s.idea_id}`}
+                          className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-subtle)]"
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-2">
+                              <span className="truncate text-[13px] font-medium text-[var(--ink)]">
+                                {s.title}
+                              </span>
+                              <ImplStatusBadge status={s.impl_status} />
+                            </span>
+                            <span className="mt-1.5 flex items-center gap-2">
+                              <span className="h-1 w-24 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                                <span
+                                  className="block h-full rounded-full bg-[var(--accent-success)]"
+                                  style={{ width: `${percent}%` }}
+                                />
+                              </span>
+                              <span className="text-[11px] tabular-nums text-[var(--ink-faint)]">
+                                {t("idea.progressCount", { done: s.dones, total })}
+                              </span>
+                              {s.last_progress_at && (
+                                <span className="text-[11px] tabular-nums text-[var(--ink-faint)]">
+                                  · {formatRelativeTime(s.last_progress_at, locale)}
+                                </span>
+                              )}
+                            </span>
+                          </span>
+                          <DeimosIcon
+                            name="chevron-right"
+                            className="h-3.5 w-3.5 shrink-0 text-[var(--ink-disabled)]"
+                          />
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>

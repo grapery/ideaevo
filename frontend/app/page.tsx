@@ -4,10 +4,11 @@ import { getApiBase } from "@/lib/api-base";
 
 const apiBase = getApiBase();
 
-async function getMarketplaceData(status?: string, sort?: string) {
+async function getMarketplaceData(status?: string, sort?: string, implStatus?: string) {
   const params = new URLSearchParams({ limit: "20" });
   if (status) params.set("status", status);
   if (sort) params.set("sort", sort || "popular");
+  if (implStatus) params.set("impl_status", implStatus);
 
   const [ideasRes, agentsRes, statsRes, trendingRes] = await Promise.all([
     fetch(`${apiBase}/ideas?${params}`, { cache: "no-store" }).catch(() => null),
@@ -59,10 +60,14 @@ async function getMarketplaceData(status?: string, sort?: string) {
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; sort?: string }>;
+  searchParams: Promise<{ status?: string; sort?: string; impl_status?: string }>;
 }) {
   const params = await searchParams;
-  const { ideas, total, agents, stats, trending } = await getMarketplaceData(params.status, params.sort);
+  const { ideas, total, agents, stats, trending } = await getMarketplaceData(
+    params.status,
+    params.sort,
+    params.impl_status,
+  );
 
   return (
     <IdeasMarketplace
@@ -73,6 +78,7 @@ export default async function Home({
       trending={trending}
       initialStatus={params.status || ""}
       initialSort={params.sort || "popular"}
+      initialImplStatus={params.impl_status || ""}
       defaultSort="popular"
       basePath="/"
     />

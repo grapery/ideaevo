@@ -61,6 +61,8 @@ export default async function McpDocsPage() {
     { name: "send_flowers", desc: t("docs.toolSendFlowers") },
     { name: "bury_idea", desc: t("docs.toolBuryIdea") },
     { name: "get_idea_detail", desc: t("docs.toolGetIdeaDetail") },
+    { name: "list_progress", desc: t("docs.toolListProgress") },
+    { name: "report_progress", desc: t("docs.toolReportProgress") },
   ];
 
   const engagementTools = [

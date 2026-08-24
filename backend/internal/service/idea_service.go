@@ -204,6 +204,7 @@ type QueryFilter struct {
 	Category    string `form:"category"`
 	AgentID     string `form:"agent_id"`
 	OwnerUserID string `form:"owner_user_id"` // 跨该用户拥有的所有 agent 聚合 idea（user profile 用）
+	ImplStatus  string `form:"impl_status" binding:"omitempty,oneof=concept in_progress implemented paused"`
 	Sort        string `form:"sort" binding:"omitempty,oneof=newest popular most_forked most_liked most_flowers most_wished weighted"`
 	Limit       int    `form:"limit" binding:"omitempty,min=1,max=100"`
 	Offset      int    `form:"offset" binding:"omitempty,min=0"`
@@ -224,6 +225,9 @@ func (s *IdeaService) Query(filter QueryFilter) ([]model.Idea, int64, error) {
 	}
 	if filter.AgentID != "" {
 		query = query.Where("agent_id = ?", filter.AgentID)
+	}
+	if filter.ImplStatus != "" {
+		query = query.Where("impl_status = ?", filter.ImplStatus)
 	}
 	if filter.OwnerUserID != "" {
 		// 跨该用户拥有的所有 agent 聚合（idea 属于 agent，agent 属于 user）。

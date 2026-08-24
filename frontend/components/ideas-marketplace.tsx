@@ -32,6 +32,7 @@ interface MarketplaceProps {
   trending?: TrendingIdea[];
   initialStatus?: string;
   initialSort?: string;
+  initialImplStatus?: string;
   hotTags?: string[];
   basePath?: string;
   defaultSort?: string;
@@ -45,6 +46,7 @@ export function IdeasMarketplace({
   trending = [],
   initialStatus = "",
   initialSort = "popular",
+  initialImplStatus = "",
   hotTags: hotTagsProp,
   basePath = "/",
   defaultSort = "popular",
@@ -75,10 +77,13 @@ export function IdeasMarketplace({
     [ideas],
   );
 
-  function updateParams(status: string, sort: string) {
+  function updateParams(status: string, sort: string, impl?: string) {
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (sort && sort !== defaultSort) params.set("sort", sort);
+    // impl 是独立维度:未显式传入时保留当前实现进度筛选
+    const implStatus = impl === undefined ? initialImplStatus : impl;
+    if (implStatus) params.set("impl_status", implStatus);
     router.push(`${basePath}${params.toString() ? `?${params}` : ""}`);
   }
 
@@ -228,7 +233,7 @@ export function IdeasMarketplace({
               </span>
               <DeimosIcon name="chevron-right" className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
             </summary>
-            <div className="border-t border-[var(--rule)] p-2">
+            <div className="border-t border-[var(--rule-light)] p-2">
               {categoryGroups.map((category) => (
                 <button
                   key={category.label}
@@ -243,14 +248,14 @@ export function IdeasMarketplace({
                 </button>
               ))}
             </div>
-            <div className="border-t border-[var(--rule)] px-3.5 py-3">
+            <div className="border-t border-[var(--rule-light)] px-3.5 py-3">
               <p className="mb-2 flex items-center gap-1 text-[11px] font-medium text-[var(--ink-faint)]">
                 <DeimosIcon name="lifecycle" className="h-3 w-3" />
                 {t("market.lifecycle")}
               </p>
               {lifecycleList}
             </div>
-            <div className="border-t border-[var(--rule)] px-3.5 py-3">
+            <div className="border-t border-[var(--rule-light)] px-3.5 py-3">
               <p className="mb-2 flex items-center gap-1 text-[11px] font-medium text-[var(--ink-faint)]">
                 <DeimosIcon name="pulse" className="h-3 w-3" />
                 {t("market.intentSignals")}
@@ -261,7 +266,7 @@ export function IdeasMarketplace({
                     key={tag}
                     type="button"
                     onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
-                    className="rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 py-0.5 text-[11px] text-[var(--accent-link)] hover:border-[var(--accent-link)]"
+                    className="rounded-[var(--radius-pill)] bg-[var(--bg-subtle)] px-2.5 py-0.5 text-[11px] text-[var(--ink-soft)] transition-colors hover:bg-[var(--accent-link-soft)] hover:text-[var(--accent-link)]"
                   >
                     #{tag}
                   </button>
@@ -271,7 +276,7 @@ export function IdeasMarketplace({
           </details>
 
           <aside className="hidden surface-card overflow-hidden lg:block">
-            <div className="flex h-10 items-center gap-1.5 border-b border-[var(--rule)] px-3.5">
+            <div className="flex h-10 items-center gap-1.5 border-b border-[var(--rule-light)] px-3.5">
               <DeimosIcon name="radar" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
               <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.discoverBy")}</p>
             </div>
@@ -299,7 +304,7 @@ export function IdeasMarketplace({
               ))}
             </div>
 
-            <div className="border-t border-[var(--rule)] px-3.5 py-3">
+            <div className="border-t border-[var(--rule-light)] px-3.5 py-3">
               <p className="mb-2 flex items-center gap-1 text-[11px] font-medium text-[var(--ink-faint)]">
                 <DeimosIcon name="lifecycle" className="h-3 w-3" />
                 {t("market.lifecycle")}
@@ -307,7 +312,7 @@ export function IdeasMarketplace({
               {lifecycleList}
             </div>
 
-            <div className="border-t border-[var(--rule)] px-3.5 py-3">
+            <div className="border-t border-[var(--rule-light)] px-3.5 py-3">
               <p className="mb-2 flex items-center gap-1 text-[11px] font-medium text-[var(--ink-faint)]">
                 <DeimosIcon name="pulse" className="h-3 w-3" />
                 {t("market.intentSignals")}
@@ -318,7 +323,7 @@ export function IdeasMarketplace({
                     key={tag}
                     type="button"
                     onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
-                    className="rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 py-0.5 text-[11px] text-[var(--accent-link)] hover:border-[var(--accent-link)]"
+                    className="rounded-[var(--radius-pill)] bg-[var(--bg-subtle)] px-2.5 py-0.5 text-[11px] text-[var(--ink-soft)] transition-colors hover:bg-[var(--accent-link-soft)] hover:text-[var(--accent-link)]"
                   >
                     #{tag}
                   </button>
@@ -344,6 +349,26 @@ export function IdeasMarketplace({
                   {t(filter.key)}
                 </button>
               ))}
+              {/* 实现进度维度(与生命周期独立):一键聚焦正在被实现的工作 */}
+              <span className="mx-1 h-4 w-px shrink-0 bg-[var(--rule)]" aria-hidden />
+              <button
+                type="button"
+                onClick={() =>
+                  updateParams(
+                    initialStatus,
+                    initialSort,
+                    initialImplStatus === "in_progress" ? "" : "in_progress",
+                  )
+                }
+                className={`flex shrink-0 items-center gap-1 rounded-[var(--radius-pill)] border px-2.5 py-0.5 text-[12px] transition-colors ${
+                  initialImplStatus === "in_progress"
+                    ? "border-[var(--accent-link)]/40 bg-[var(--accent-link-soft)] font-medium text-[var(--accent-link)]"
+                    : "border-[var(--rule)] text-[var(--ink-soft)] hover:border-[var(--accent-link)]/40 hover:text-[var(--accent-link)]"
+                }`}
+              >
+                <DeimosIcon name="tool" className="h-3 w-3" />
+                {t("market.inProgress")}
+              </button>
               <label className="ml-auto flex shrink-0 items-center gap-1.5 py-1 pr-1 text-[12px] text-[var(--ink-soft)] sm:py-2">
                 {t("market.sort")}:
                 <select
@@ -362,7 +387,7 @@ export function IdeasMarketplace({
 
             {ideas.length === 0 ? (
               <div className="mt-3 flex items-start gap-3 surface-card px-4 py-5">
-                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--ink-faint)]">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-btn)] bg-[var(--bg-subtle)] text-[var(--ink-faint)]">
                   <DeimosIcon name="document" className="h-4 w-4" />
                 </span>
                 <div>
@@ -385,7 +410,7 @@ export function IdeasMarketplace({
           <aside className="hidden space-y-3 xl:block">
             {(trending.length > 0 || ideas.length > 0) && (
             <section className="surface-card overflow-hidden">
-              <div className="flex h-10 items-center gap-1.5 border-b border-[var(--rule)] px-3.5">
+              <div className="flex h-10 items-center gap-1.5 border-b border-[var(--rule-light)] px-3.5">
                 <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
                 <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.trending")}</p>
               </div>
@@ -394,7 +419,7 @@ export function IdeasMarketplace({
                   <Link
                     key={item.id}
                     href={`/ideas/${item.id}`}
-                    className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-2 border-b border-[var(--rule)] px-3.5 py-2.5 text-[12px] last:border-0 hover:bg-[var(--bg-subtle)]"
+                    className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-2 border-b border-[var(--rule-light)] px-3.5 py-2.5 text-[12px] last:border-0 hover:bg-[var(--bg-subtle)]"
                   >
                     <span className="font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
                       {String(index + 1).padStart(2, "0")}
@@ -406,14 +431,14 @@ export function IdeasMarketplace({
                   </Link>
                 ))}
               </div>
-              <p className="border-t border-[var(--rule)] px-3.5 py-2.5 text-[11px] leading-5 text-[var(--ink-faint)]">
+              <p className="border-t border-[var(--rule-light)] px-3.5 py-2.5 text-[11px] leading-5 text-[var(--ink-faint)]">
                 {t("market.signalExplain")}
               </p>
             </section>
             )}
 
             <section className="surface-card overflow-hidden">
-              <div className="flex h-10 items-center justify-between gap-1.5 border-b border-[var(--rule)] px-3.5">
+              <div className="flex h-10 items-center justify-between gap-1.5 border-b border-[var(--rule-light)] px-3.5">
                 <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
                   <DeimosIcon name="agent" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
                   {t("market.agentOperate")}
@@ -426,7 +451,7 @@ export function IdeasMarketplace({
                 {t("market.agentOperateHint")}
               </p>
               {agents.length > 0 && (
-                <p className="border-t border-[var(--rule)] px-3.5 py-2.5 text-[11px] text-[var(--ink-faint)]">
+                <p className="border-t border-[var(--rule-light)] px-3.5 py-2.5 text-[11px] text-[var(--ink-faint)]">
                   {t("market.liveExecutors")} · {agents.slice(0, 3).map((agent) => agent.name).join(" · ")}
                 </p>
               )}

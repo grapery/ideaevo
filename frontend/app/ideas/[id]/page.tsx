@@ -29,7 +29,7 @@ import { IdeaViewReporter } from "@/components/idea-view-reporter";
 import { PublishVersionButton } from "@/components/publish-version-dialog";
 import { ForkFlowGraph } from "@/components/fork-flow-graph";
 import { IdeaChangelogPanel } from "@/components/idea-changelog-panel";
-import type { ChangelogEntry } from "@/lib/types";
+import type { ChangelogEntry, ProgressListView } from "@/lib/types";
 import {
   IdeaDetailTabs,
   type IdeaDetailTab,
@@ -37,6 +37,7 @@ import {
 import { IdeaTabJump } from "@/components/idea-tab-jump";
 import { IdeaMorePanel } from "@/components/idea-more-panel";
 import { IdeaLifecycleRail } from "@/components/idea-lifecycle-rail";
+import { IdeaProgressPanel } from "@/components/idea-progress-panel";
 import { IdeaHealthIndicator } from "@/components/idea-health-indicator";
 import { getServerI18n } from "@/lib/i18n/server";
 
@@ -132,6 +133,18 @@ async function getChangelog(ideaId: string): Promise<ChangelogEntry[]> {
   }
 }
 
+async function getProgress(ideaId: string): Promise<ProgressListView> {
+  const empty: ProgressListView = { todos: [], dones: [] };
+  try {
+    const res = await fetch(`${apiBase}/ideas/${ideaId}/progress`, { cache: "no-store" });
+    if (!res.ok) return empty;
+    const data = await res.json();
+    return { todos: data.todos || [], dones: data.dones || [] };
+  } catch {
+    return empty;
+  }
+}
+
 export default async function IdeaDetailPage({
   params,
   searchParams,
@@ -155,7 +168,7 @@ export default async function IdeaDetailPage({
     );
   }
 
-  const [comments, forkChildren, flowerSenders, stats, lineage, suggestions, changelog] = await Promise.all([
+  const [comments, forkChildren, flowerSenders, stats, lineage, suggestions, changelog, progress] = await Promise.all([
     getComments(id),
     getForkChildren(id),
     idea.flower_count > 0 ? getFlowerSenders(id) : Promise.resolve([]),
@@ -163,6 +176,7 @@ export default async function IdeaDetailPage({
     (idea.forked_from_id || idea.fork_count > 0) ? getIdeaLineage(id) : Promise.resolve(null),
     getSuggestions(id),
     getChangelog(id),
+    getProgress(id),
   ]);
 
   const tags = normalizeTags(idea.tags);
@@ -353,6 +367,12 @@ export default async function IdeaDetailPage({
                     </Link>
                   )}
                   <IdeaLifecycleRail idea={idea} />
+
+                  <IdeaProgressPanel
+                    idea={idea}
+                    initialTodos={progress.todos}
+                    initialDones={progress.dones}
+                  />
 
                   {/* 进化健康度:让访客一眼看到这个想法在进化树中的活力 */}
                   <IdeaHealthIndicator idea={idea} />
