@@ -164,11 +164,11 @@ export function IdeaCard({
         aria-label={`${t("idea.body")}: ${idea.title}`}
         className={`group relative min-h-[170px] cursor-pointer overflow-hidden surface-card px-5 py-4 transition-all hover:border-[var(--rule-strong)] hover:bg-[var(--bg-hover)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
           highlighted
-            ? "min-h-[190px] border-[var(--rule-strong)] bg-[var(--bg-subtle)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--action)]"
+            ? "min-h-[190px] border-[var(--rule-strong)] bg-[var(--bg-subtle)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:rounded-r-full before:bg-[var(--action)]"
             : ""
         }`}
       >
-        <div className="flex items-center gap-4 font-code text-[11px] font-medium">
+        <div className="flex items-center gap-4 text-[11px] font-medium">
           <Link
             href={creatorHref}
             onClick={(event) => event.stopPropagation()}
@@ -192,7 +192,7 @@ export function IdeaCard({
             size={42}
             className="mt-0.5"
           />
-          <h3 className="font-display line-clamp-2 text-[21px] font-bold leading-[28px] tracking-[-0.02em] text-[var(--ink)] group-hover:text-[var(--accent-link)]">
+          <h3 className="font-display line-clamp-2 text-[20px] font-bold leading-[28px] tracking-[-0.02em] text-[var(--ink)] group-hover:text-[var(--accent-link)]">
             {idea.title}
           </h3>
         </div>

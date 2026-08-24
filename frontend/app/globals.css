@@ -27,10 +27,10 @@
   --ink-faint: #71717a;        /* 辅助信息/占位符 (zinc-500, 满足 WCAG AA) */
   --ink-disabled: #d4d4d8;     /* 禁用 (zinc-300) */
 
-  /* ---- 边框/分隔 (Rule, 中性 zinc) ---- */
-  --rule: #e4e4e7;             /* 标准边框 (zinc-200) */
-  --rule-light: #f4f4f5;       /* 浅分隔 (zinc-100) */
-  --rule-strong: #d4d4d8;      /* 强边框/hover (zinc-300) */
+  /* ---- 边框/分隔 (Rule, 中性 zinc, 柔化: 降一档线宽存在感) ---- */
+  --rule: #e9e9ec;             /* 标准边框 (zinc-200/100 之间, 柔和不割裂) */
+  --rule-light: #f1f1f4;       /* 浅分隔 */
+  --rule-strong: #d6d6da;      /* 强边框/hover (zinc-300 微调) */
 
   --card: var(--bg-surface);
   --card-hover: var(--bg-subtle);
@@ -96,18 +96,18 @@
   --text-muted: var(--ink-faint);
   --muted: var(--text-muted);
 
-  /* ---- 形状 (Shape, 圆角加大靠拢 mcpservers) ---- */
-  --radius-card: 12px;         /* 卡片圆角 rounded-xl (mcpservers 目录卡) */
-  --radius-float: 12px;        /* 浮层/弹窗 */
+  /* ---- 形状 (Shape, 圆角整体上调一档, 更柔) ---- */
+  --radius-card: 14px;         /* 卡片圆角 */
+  --radius-float: 16px;        /* 浮层/弹窗 */
   --radius-pill: 999px;        /* 胶囊 */
-  --radius-btn: 8px;           /* 按钮 */
-  --radius-input: 8px;
+  --radius-btn: 10px;          /* 按钮 */
+  --radius-input: 10px;
 
-  /* ---- 阴影 (Elevation, zinc 调更中性) ---- */
-  --shadow: 0 1px 3px rgba(9, 9, 11, 0.07), 0 1px 2px rgba(9, 9, 11, 0.05);
-  --shadow-md: 0 2px 6px rgba(9, 9, 11, 0.08), 0 1px 3px rgba(9, 9, 11, 0.06);
-  --shadow-lg: 0 4px 12px rgba(9, 9, 11, 0.10), 0 2px 4px rgba(9, 9, 11, 0.06);
-  --shadow-float: 0 6px 24px rgba(9, 9, 11, 0.1), 0 2px 8px rgba(9, 9, 11, 0.06);
+  /* ---- 阴影 (Elevation, 柔化: 大模糊 + 低透明度弥散, 卡片"贴"在页面上而非悬浮) ---- */
+  --shadow: 0 1px 2px rgba(9, 9, 11, 0.02), 0 3px 10px rgba(9, 9, 11, 0.03);
+  --shadow-md: 0 1px 2px rgba(9, 9, 11, 0.03), 0 6px 18px rgba(9, 9, 11, 0.05);
+  --shadow-lg: 0 2px 4px rgba(9, 9, 11, 0.03), 0 10px 28px rgba(9, 9, 11, 0.06);
+  --shadow-float: 0 2px 6px rgba(9, 9, 11, 0.04), 0 16px 44px rgba(9, 9, 11, 0.09);
 
   --input-bg: #ffffff;
 
@@ -143,7 +143,8 @@
   --panel-inverse-muted: rgba(255, 255, 255, 0.55);
   --panel-inverse-accent: #9bff00;
   --avatar-ring: rgba(255, 255, 255, 0.92);
-  --avatar-frame: var(--panel-inverse);
+  /* 头像描边柔化: 近黑硬框 → 浅灰细框, 白卡上不再有"贴纸"割裂感 */
+  --avatar-frame: #dcdce1;
   --callout-link-bg: #edf3ff;
   --callout-link-border: #9bbcff;
   --callout-primary-bg: #fff6ea;
@@ -302,7 +303,7 @@ input:focus,
 textarea:focus,
 select:focus {
   border-color: var(--accent-link);
-  box-shadow: 0 0 0 2px var(--accent-link-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-link) 10%, transparent);
   outline: none;
 }
 
@@ -421,12 +422,12 @@ a {
   border-color: var(--rule-strong);
 }
 
-/* ============ Chip / Badge (ardot 风格) ============ */
+/* ============ Chip / Badge (ardot 风格, 柔化: 去描边纯底色) ============ */
 .tag-pill,
 .chip {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: var(--radius-pill);
   font-size: 12px;
   font-weight: 400;
@@ -434,7 +435,7 @@ a {
   letter-spacing: 0;
   background: var(--bg-subtle);
   color: var(--ink-soft);
-  border: 1px solid var(--rule);
+  border: 1px solid transparent;
 }
 
 .badge-pill {
@@ -531,15 +532,26 @@ a {
   }
 }
 
-/* 全站 app 页外壳：统一画布色 + 最小高度 */
+/* 全站 app 页外壳：统一画布色 + 最小高度。
+   顶部加一段极浅的白→画布渐变, 让 header 下的首屏内容自然"落"在页面上, 避免生硬断层。 */
 .page-shell {
   min-height: calc(100dvh - var(--header-height));
-  background: var(--bg-canvas);
+  background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface) 50%, var(--bg-canvas)) 0%,
+      var(--bg-canvas) 340px
+    ),
+    var(--bg-canvas);
 }
 
 .page-shell-full {
   min-height: calc(100dvh - var(--header-height));
-  background: var(--bg-canvas);
+  background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface) 50%, var(--bg-canvas)) 0%,
+      var(--bg-canvas) 340px
+    ),
+    var(--bg-canvas);
 }
 
 /* 内容区垂直节奏 —— 挂在 page-container 上 */
@@ -859,26 +871,21 @@ a {
   width: 28px;
   height: 28px;
   flex-shrink: 0;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-btn);
+  border-radius: 10px;
   background: var(--bg-subtle);
   color: var(--ink-soft);
   transition:
-    border-color var(--dur-fast) var(--ease-out),
     background-color var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out);
 }
 .dashboard-metric:hover .dashboard-metric__icon {
-  border-color: var(--rule-strong);
   color: var(--ink);
 }
 .dashboard-metric__icon[data-tone="attention"] {
-  border-color: color-mix(in srgb, var(--primary) 35%, var(--rule));
   background: var(--primary-soft);
   color: var(--primary);
 }
 .dashboard-metric__icon[data-tone="link"] {
-  border-color: color-mix(in srgb, var(--accent-link) 30%, var(--rule));
   background: var(--accent-link-soft);
   color: var(--accent-link);
 }
@@ -1084,14 +1091,14 @@ input[type="search"]::-webkit-search-decoration {
   to { opacity: 1; }
 }
 @keyframes modal-card-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .modal-backdrop {
-  animation: modal-backdrop-in 0.18s ease-out;
+  animation: modal-backdrop-in 0.2s ease-out;
 }
 .modal-card {
-  animation: modal-card-in 0.2s var(--ease-out);
+  animation: modal-card-in 0.26s var(--ease-out);
 }
 @media (prefers-reduced-motion: reduce) {
   .field-shake,
@@ -1118,6 +1125,7 @@ input[type="search"]::-webkit-search-decoration {
   white-space: nowrap;
   color: var(--action-foreground);
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(9, 9, 11, 0.10);
   transition: background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
     transform var(--dur-fast) var(--ease-out),
@@ -1126,6 +1134,7 @@ input[type="search"]::-webkit-search-decoration {
 .btn-primary:hover:not(:disabled) {
   background: var(--action-hover);
   border-color: var(--action-hover);
+  box-shadow: 0 2px 6px rgba(9, 9, 11, 0.12);
 }
 .btn-primary:active {
   transform: scale(0.97);

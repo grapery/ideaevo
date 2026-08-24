@@ -49,7 +49,7 @@ export function SystemPageHeader({
           {avatar ? (
             <span className="shrink-0">{avatar}</span>
           ) : icon ? (
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-btn)] border border-[var(--rule)] bg-[var(--bg-subtle)] text-[var(--ink-soft)]">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-btn)] bg-[var(--bg-subtle)] text-[var(--ink-soft)]">
               <DeimosIcon name={icon} className="h-4 w-4" />
             </span>
           ) : null}
