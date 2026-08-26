@@ -1,11 +1,7 @@
 "use client";
 
 import { AppLink as Link } from "@/components/app-link";
-import { StatusBadge } from "@/components/status-badge";
-import { ImplStatusBadge } from "@/components/impl-status-badge";
-import { ReactionBar } from "@/components/reaction-bar";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
-import { DeimosIcon } from "@/components/deimos-icon";
 import {
   IconGitFork,
   IconHeart,
@@ -18,7 +14,6 @@ import {
 } from "@/components/icons";
 import { useI18n } from "@/lib/i18n/provider";
 import type { TranslationKey } from "@/lib/i18n/messages";
-import { normalizeTags, type IdeaImplStatus } from "@/lib/types";
 
 export interface ActivityLog {
   id: string;
@@ -50,51 +45,50 @@ export interface ActivityLog {
 interface ActionConfig {
   labelKey: TranslationKey;
   icon: React.ComponentType<{ className?: string }>;
-  bg: string;
   color: string;
 }
 
+// 动作词与后端 FeedActions 白名单对齐(internal/service/activity.go);
+// 未知 action 一律回退为通用动词, 绝不向用户展示原始键名。
 const actionConfig: Record<string, ActionConfig> = {
-  register: { labelKey: "idea.published", icon: IconFlame, bg: "bg-[var(--coral-soft)]", color: "text-[var(--coral)]" },
-  fork: { labelKey: "idea.forkedVerb", icon: IconGitFork, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
-  share: { labelKey: "idea.shared", icon: IconShare, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
-  like: { labelKey: "idea.liked", icon: IconHeart, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
-  flower: { labelKey: "idea.wished", icon: IconWish, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
-  flowers: { labelKey: "idea.wished", icon: IconWish, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
-  comment: { labelKey: "idea.commented", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
-  follow: { labelKey: "idea.followed", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
-  unfollow: { labelKey: "idea.unfollowed", icon: IconUser, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
-  create_session: { labelKey: "idea.startedChat", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
-  send_message: { labelKey: "idea.sentMessage", icon: IconMessage, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
-  fork_session: { labelKey: "idea.forkedChat", icon: IconGitFork, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
-  bury: { labelKey: "idea.buriedVerb", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
-  archive: { labelKey: "idea.archivedVerb", icon: IconLeaf, bg: "bg-[var(--bg-subtle)]", color: "text-[var(--ink-soft)]" },
-  implement: { labelKey: "idea.implementedVerb", icon: IconFlame, bg: "bg-[var(--accent-success-soft,#e8f9ed)]", color: "text-[var(--accent-success)]" },
-  reactivate: { labelKey: "idea.reactivatedVerb", icon: IconFlame, bg: "bg-[var(--primary-soft)]", color: "text-[var(--primary)]" },
-  update_impl: { labelKey: "idea.updatedImplVerb", icon: IconFlame, bg: "bg-[var(--accent-link-soft)]", color: "text-[var(--accent-link)]" },
+  register: { labelKey: "idea.published", icon: IconFlame, color: "text-[var(--accent-warning)]" },
+  fork: { labelKey: "idea.forkedVerb", icon: IconGitFork, color: "text-[var(--primary)]" },
+  share: { labelKey: "idea.shared", icon: IconShare, color: "text-[var(--primary)]" },
+  like: { labelKey: "idea.liked", icon: IconHeart, color: "text-[var(--coral)]" },
+  flower: { labelKey: "idea.wished", icon: IconWish, color: "text-[var(--accent-link)]" },
+  flowers: { labelKey: "idea.wished", icon: IconWish, color: "text-[var(--accent-link)]" },
+  comment: { labelKey: "idea.commented", icon: IconMessage, color: "text-[var(--ink-soft)]" },
+  follow: { labelKey: "idea.followed", icon: IconUser, color: "text-[var(--ink-soft)]" },
+  unfollow: { labelKey: "idea.unfollowed", icon: IconUser, color: "text-[var(--ink-soft)]" },
+  bury: { labelKey: "idea.buriedVerb", icon: IconLeaf, color: "text-[var(--ink-soft)]" },
+  archive: { labelKey: "idea.archivedVerb", icon: IconLeaf, color: "text-[var(--ink-soft)]" },
+  implement: { labelKey: "idea.implementedVerb", icon: IconFlame, color: "text-[var(--accent-success)]" },
+  reactivate: { labelKey: "idea.reactivatedVerb", icon: IconFlame, color: "text-[var(--primary)]" },
+  update_impl: { labelKey: "idea.updatedImplVerb", icon: IconFlame, color: "text-[var(--accent-link)]" },
+  suggest: { labelKey: "activity.actionSuggest", icon: IconMessage, color: "text-[var(--accent-link)]" },
+  suggestion_selected: { labelKey: "activity.actionSuggestionSelected", icon: IconMessage, color: "text-[var(--accent-link)]" },
+  suggestion_implemented: { labelKey: "activity.actionSuggestionImplemented", icon: IconFlame, color: "text-[var(--accent-success)]" },
 };
 
 function resolveActionConfig(
   action: string,
   t: (key: TranslationKey, values?: Record<string, string | number>) => string,
-): { icon: React.ComponentType<{ className?: string }>; bg: string; color: string; label: string } {
+): { icon: React.ComponentType<{ className?: string }>; color: string; label: string } {
   const base = actionConfig[action];
   if (base) {
-    return { icon: base.icon, bg: base.bg, color: base.color, label: t(base.labelKey) };
+    return { icon: base.icon, color: base.color, label: t(base.labelKey) };
   }
   if (action.startsWith("tool:")) {
     return {
       label: t("idea.calledTool", { name: action.slice(5) }),
       icon: IconShare,
-      bg: "bg-[var(--bg-subtle)]",
-      color: "text-[var(--text-muted)]",
+      color: "text-[var(--ink-faint)]",
     };
   }
   return {
     label: t("idea.didAction"),
     icon: IconMessage,
-    bg: "bg-[var(--bg-subtle)]",
-    color: "text-[var(--text-muted)]",
+    color: "text-[var(--ink-faint)]",
   };
 }
 
@@ -116,128 +110,39 @@ function formatRelativeTime(
   return t("common.monthsAgo", { count: Math.floor(days / 30) });
 }
 
-function Metric({
-  icon,
-  value,
-  label,
-}: {
-  icon: React.ReactNode;
-  value: number;
-  label: string;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1 text-[12px] text-[var(--ink-faint)]" title={label}>
-      {icon}
-      <span className="font-medium tabular-nums text-[var(--ink-soft)]">{value}</span>
-    </span>
-  );
+interface ActivityGroup {
+  key: string;
+  /** 组内按时间倒序: acts[0] 为最新 */
+  acts: ActivityLog[];
 }
 
-function IdeaPreviewCard({ act }: { act: ActivityLog }) {
-  const { t, locale } = useI18n();
-  const href = `/ideas/${act.target_id}`;
-  const tags = normalizeTags(act.target_tags).slice(0, 4);
-  const cover = act.target_cover_url;
-
-  return (
-    <Link
-      href={href}
-      className="group mt-3 block overflow-hidden rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] transition-colors hover:border-[var(--primary)]"
-    >
-      {cover && (
-        <div className="h-28 w-full overflow-hidden border-b border-[var(--rule-light)] bg-[var(--bg-subtle)] sm:h-32">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={cover}
-            alt=""
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-          />
-        </div>
-      )}
-
-      <div className="flex gap-3 p-3.5 sm:p-4">
-        <WireframeAvatar
-          name={act.target_title || t("idea.ideas")}
-          avatarUrl={act.target_icon_url}
-          entityId={act.target_id}
-          kind="idea"
-          size={44}
-          className="mt-0.5"
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <h3 className="text-[15px] font-semibold leading-snug text-[var(--ink)] group-hover:text-[var(--primary)]">
-              {act.target_title}
-            </h3>
-            <span className="shrink-0 text-[12px] font-medium text-[var(--primary)] opacity-0 transition-opacity group-hover:opacity-100">
-              {t("activity.viewIdea")} →
-            </span>
-          </div>
-
-          {act.target_desc && (
-            <p className="mt-1.5 text-[13px] leading-6 text-[var(--ink-soft)] line-clamp-2">
-              {act.target_desc}
-            </p>
-          )}
-
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            {act.target_status && <StatusBadge status={act.target_status} />}
-            {act.target_impl_status && (
-              <ImplStatusBadge status={act.target_impl_status as IdeaImplStatus} />
-            )}
-            {act.target_category && (
-              <span className="rounded-full border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 py-0.5 text-[11px] text-[var(--ink-soft)]">
-                {act.target_category}
-              </span>
-            )}
-            {tags.map((tag) => (
-              <span key={tag} className="tag-pill text-[11px]">
-                #{tag}
-              </span>
-            ))}
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-[var(--rule-light)] pt-2.5">
-            <Metric
-              icon={<DeimosIcon name="heart" className="h-3.5 w-3.5" />}
-              value={act.target_like_count ?? 0}
-              label={t("idea.statLikes")}
-            />
-            <Metric
-              icon={<DeimosIcon name="wish" className="h-3.5 w-3.5" />}
-              value={act.target_wish_count ?? act.target_flower_count ?? 0}
-              label={t("idea.statWishes")}
-            />
-            <Metric
-              icon={<DeimosIcon name="fork" className="h-3.5 w-3.5" />}
-              value={act.target_fork_count ?? 0}
-              label={t("agents.tabForks")}
-            />
-            <Metric
-              icon={<DeimosIcon name="comment" className="h-3.5 w-3.5" />}
-              value={act.target_comment_count ?? 0}
-              label={t("idea.statComments")}
-            />
-            <time
-              dateTime={act.created_at}
-              className="ml-auto text-[11px] text-[var(--ink-faint)]"
-              title={new Date(act.created_at).toLocaleString(locale === "en" ? "en-US" : "zh-CN")}
-            >
-              {new Date(act.created_at).toLocaleDateString(
-                locale === "en" ? "en-US" : "zh-CN",
-                { month: "short", day: "numeric" },
-              )}
-            </time>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
+/** 连续的同 actor + 同 target 动作合并为一行, 避免对同一个想法
+ *  的连续操作(更新进度×3 之类)在 feed 里刷屏。 */
+function groupActivities(activities: ActivityLog[]): ActivityGroup[] {
+  const groups: ActivityGroup[] = [];
+  for (const act of activities) {
+    const last = groups[groups.length - 1];
+    if (
+      last &&
+      last.acts[0].actor_id === act.actor_id &&
+      last.acts[0].target_type === act.target_type &&
+      last.acts[0].target_id === act.target_id
+    ) {
+      last.acts.push(act);
+    } else {
+      groups.push({ key: act.id, acts: [act] });
+    }
+  }
+  return groups;
 }
 
+/** 单行动态流(GitHub activity 式): 头像 + 谁 + 动作词 + 想法链接 + 时间。
+ *  不再为每条动作挂完整想法预览卡 —— 预览卡体积远大于动作信号本身,
+ *  且连续操作会重复挂载几乎相同的卡片, 把 feed 淹没。 */
 export function ActivityList({ activities }: { activities: ActivityLog[] }) {
   const { t, locale } = useI18n();
   const visible = activities.filter((a) => !hiddenActions.has(a.action));
+  const groups = groupActivities(visible);
 
   if (visible.length === 0) {
     return (
@@ -250,29 +155,33 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
 
   return (
     <ul className="divide-y divide-[var(--rule-light)]">
-      {visible.map((act) => {
-        const cfg = resolveActionConfig(act.action, t);
+      {groups.map(({ key, acts }) => {
+        const head = acts[0];
+        const cfg = resolveActionConfig(head.action, t);
         const Icon = cfg.icon;
-        const isAgent = act.actor_type === "agent";
+        const isAgent = head.actor_type === "agent";
         const actorName =
-          act.actor_name ||
+          head.actor_name ||
           (isAgent
-            ? `${t("activity.agent")} ${act.actor_id.slice(0, 6)}`
-            : `${t("activity.user")} ${act.actor_id.slice(0, 6)}`);
-        const actorHref = isAgent ? `/agents/${act.actor_id}` : `/users/${act.actor_id}`;
-        const isIdeaTarget = act.target_type === "idea";
-        const showIdeaCard = isIdeaTarget && !!act.target_title;
+            ? `${t("activity.agent")} ${head.actor_id.slice(0, 6)}`
+            : `${t("activity.user")} ${head.actor_id.slice(0, 6)}`);
+        const actorHref = isAgent ? `/agents/${head.actor_id}` : `/users/${head.actor_id}`;
+        const isIdeaTarget = head.target_type === "idea";
+
         let reasonNote = "";
-        if (act.metadata) {
+        if (head.metadata) {
           try {
-            const meta = JSON.parse(act.metadata) as {
+            const meta = JSON.parse(head.metadata) as {
               reason?: string;
               from?: string;
               to?: string;
+              progress?: string;
             };
             if (meta.reason?.trim()) {
               reasonNote = meta.reason.trim();
-            } else if (act.action === "update_impl" && (meta.from || meta.to)) {
+            } else if (meta.progress?.trim()) {
+              reasonNote = meta.progress.trim();
+            } else if (head.action === "update_impl" && (meta.from || meta.to)) {
               reasonNote = t("idea.implProgressNote", {
                 from: meta.from || "—",
                 to: meta.to || "—",
@@ -284,80 +193,64 @@ export function ActivityList({ activities }: { activities: ActivityLog[] }) {
         }
 
         return (
-          <li key={act.id} className="px-4 py-5 sm:px-5">
-            <div className="flex items-start gap-3">
-              <WireframeAvatar
-                name={actorName}
-                avatarUrl={act.actor_avatar}
-                entityId={act.actor_id}
-                kind={isAgent ? "agent" : "user"}
-                size={40}
+          <li key={key} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+            <WireframeAvatar
+              name={actorName}
+              avatarUrl={head.actor_avatar}
+              entityId={head.actor_id}
+              kind={isAgent ? "agent" : "user"}
+              size={28}
+              href={actorHref}
+              className="shrink-0"
+            />
+            <Icon className={`h-3.5 w-3.5 shrink-0 ${cfg.color}`} aria-hidden="true" />
+            <p className="min-w-0 flex-1 truncate text-[13px] leading-6 text-[var(--ink-soft)]">
+              <Link
                 href={actorHref}
-              />
-
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span
-                    className={`inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--rule)] ${cfg.bg}`}
-                  >
-                    <Icon className={`h-3.5 w-3.5 ${cfg.color}`} />
-                  </span>
-                  <Link
-                    href={actorHref}
-                    className="text-[14px] font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
-                  >
-                    {actorName}
-                  </Link>
-                  {isAgent && (
-                    <span className="rounded-full bg-[var(--bg-subtle)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ink-faint)]">
-                      Agent
-                    </span>
-                  )}
-                  <span className="text-[13px] text-[var(--ink-soft)]">{cfg.label}</span>
-                  {!showIdeaCard && act.target_title && (
-                    isIdeaTarget ? (
-                      <Link
-                        href={`/ideas/${act.target_id}`}
-                        className="max-w-full truncate text-[13px] font-medium text-[var(--primary)] hover:underline"
-                      >
-                        {act.target_title}
-                      </Link>
-                    ) : (
-                      <span className="max-w-full truncate text-[13px] font-medium text-[var(--ink-soft)]">
-                        {act.target_title}
-                      </span>
-                    )
-                  )}
-                  <time
-                    dateTime={act.created_at}
-                    className="ml-auto inline-flex items-center rounded-full border border-[var(--rule)] bg-[var(--bg-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--ink-faint)]"
-                    title={new Date(act.created_at).toLocaleString(
-                      locale === "en" ? "en-US" : "zh-CN",
-                    )}
-                  >
-                    {formatRelativeTime(act.created_at, t)}
-                  </time>
-                </div>
-
-                {reasonNote && (
-                  <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[var(--ink-soft)]">
-                    {t("idea.conclusionReason")}: {reasonNote}
-                  </p>
-                )}
-
-                {showIdeaCard && <IdeaPreviewCard act={act} />}
-
-                {showIdeaCard && (
-                  <div className="mt-2">
-                    <ReactionBar
-                      ideaId={act.target_id}
-                      initialCounts={act.reactions}
-                      compact
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+                className="font-semibold text-[var(--ink)] hover:text-[var(--primary)]"
+              >
+                {actorName}
+              </Link>
+              {isAgent && (
+                <span className="ml-1.5 rounded-full bg-[var(--bg-subtle)] px-1.5 py-0.5 align-[1px] text-[10px] font-medium text-[var(--ink-faint)]">
+                  Agent
+                </span>
+              )}
+              <span className="ml-1.5">{cfg.label}</span>
+              {isIdeaTarget && head.target_title && (
+                <Link
+                  href={`/ideas/${head.target_id}`}
+                  className="ml-1 font-medium text-[var(--ink)] hover:text-[var(--primary)] hover:underline"
+                >
+                  《{head.target_title}》
+                </Link>
+              )}
+              {acts.length > 1 && (
+                <span
+                  className="ml-1.5 whitespace-nowrap rounded-full border border-[var(--rule)] bg-[var(--bg-subtle)] px-1.5 py-0.5 align-[1px] text-[11px] tabular-nums text-[var(--ink-faint)]"
+                  title={acts
+                    .map((a) => resolveActionConfig(a.action, t).label)
+                    .filter((v, i, arr) => arr.indexOf(v) === i)
+                    .join(" · ")}
+                >
+                  {t("activity.andMoreActions", { count: acts.length - 1 })}
+                </span>
+              )}
+              {reasonNote && (
+                <span className="ml-1.5 text-[var(--ink-faint)]" title={reasonNote}>
+                  — {reasonNote}
+                </span>
+              )}
+            </p>
+            <time
+              dateTime={head.created_at}
+              className="shrink-0 text-[11px] tabular-nums text-[var(--ink-faint)]"
+              title={new Date(head.created_at).toLocaleString(
+                locale === "en" ? "en-US" : "zh-CN",
+              )}
+            >
+              {formatRelativeTime(head.created_at, t)}
+            </time>
           </li>
         );
       })}
