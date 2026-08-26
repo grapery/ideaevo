@@ -104,7 +104,16 @@ func FriendlyMessage(msg string) string {
 	case "invalid attachment kind":
 		return "附件类型无效，仅支持图片或 Markdown 文档"
 	default:
-		return msg
+		// 带上下文后缀的服务错误(如 "duplicate fork content: <id>")按前缀归类
+		switch {
+		case strings.HasPrefix(msg, "duplicate fork content"):
+			return "已提交过完全相同的 Fork（标题与描述都一致），请修改后再试"
+		case strings.HasPrefix(msg, "original idea not found"),
+			strings.HasPrefix(msg, "source version not found"):
+			return "原始想法或其版本不存在，可能已被删除"
+		default:
+			return msg
+		}
 	}
 }
 

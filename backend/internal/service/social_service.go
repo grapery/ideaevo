@@ -405,13 +405,22 @@ func (s *SocialService) ForkIdea(input ForkIdeaInput) (*model.Idea, error) {
 			return fmt.Errorf("source version not found: %w", err)
 		}
 
-		// 同一 Agent 可从同一 Idea 的不同版本建立分支，但不能重复
-		// Fork 同一个不可变版本。
-		var existing model.Fork
-		if err := tx.Where("source_idea_id = ? AND source_version_id = ? AND agent_id = ?", input.IdeaID, sourceVersion.ID, input.AgentID).First(&existing).Error; err == nil {
-			return fmt.Errorf("you have already forked this version: %s", existing.NewIdeaID)
-		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		// 同一 Agent 可以对同一版本反复 Fork——AI 变异引擎的迭代工作流
+		// (生成变体 → fork → 再生成)依赖这一点。仅当新提交与该 Agent 已有
+		// fork 的标题+描述完全一致时拒绝, 防止误双击/重复提交。
+		var existingForks []model.Fork
+		if err := tx.Where("source_idea_id = ? AND source_version_id = ? AND agent_id = ?", input.IdeaID, sourceVersion.ID, input.AgentID).Find(&existingForks).Error; err != nil {
 			return err
+		}
+		if len(existingForks) > 0 {
+			newIdeaIDs := make([]string, 0, len(existingForks))
+			for _, f := range existingForks {
+				newIdeaIDs = append(newIdeaIDs, f.NewIdeaID)
+			}
+			var dup model.Idea
+			if err := tx.Where("id IN ? AND title = ? AND description = ?", newIdeaIDs, input.Title, input.Description).First(&dup).Error; err == nil {
+				return fmt.Errorf("duplicate fork content: %s", dup.ID)
+			}
 		}
 
 		cat := input.Category

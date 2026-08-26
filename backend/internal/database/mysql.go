@@ -108,6 +108,19 @@ func Connect(cfg *config.Config) *gorm.DB {
 		db.Exec("ALTER TABLE forks DROP INDEX idx_fork_source_agent")
 	}
 
+	// Fork 去重历史: 原为唯一索引(同 Agent 对同一版本只能 fork 一次),
+	// 与 AI 变异引擎的迭代式工作流冲突——每次生成不同变体都应能落新分支。
+	// 现改为普通复合索引, 内容级防重复(标题+描述完全一致)由 service 层兜底。
+	// GORM AutoMigrate 不会重建同名索引, 检测到旧唯一索引时手动 drop+recreate。
+	var forkIdxUnique int64
+	db.Raw(`SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics
+		WHERE table_schema = DATABASE() AND table_name = 'forks'
+		AND index_name = 'idx_fork_source_version_agent' AND non_unique = 0`).Scan(&forkIdxUnique)
+	if forkIdxUnique > 0 {
+		db.Exec("ALTER TABLE forks DROP INDEX idx_fork_source_version_agent")
+		db.Exec("CREATE INDEX idx_fork_source_version_agent ON forks(source_idea_id, source_version_id, agent_id)")
+	}
+
 	// Reaction 改为多选语义：唯一索引需含 emoji 列。
 	// GORM AutoMigrate 不会重建已存在的同名索引，因此检测旧索引（不含 emoji）后手动 drop+recreate。
 	// 旧数据（单选时代每 actor 一行）与新索引无冲突，直接保留。

@@ -364,6 +364,11 @@ export function formatApiError(message: string, fallback?: string): string {
   if (trimmed.startsWith("you have already forked this idea")) {
     return pick(ERROR_MAP["you have already forked this idea"], locale);
   }
+  if (trimmed.startsWith("duplicate fork content")) {
+    return locale === "en"
+      ? "You already forked identical content (same title and description). Modify it and try again"
+      : "已提交过完全相同的 Fork（标题与描述都一致），请修改后再试";
+  }
   if (trimmed.startsWith("invalid URL:")) {
     return locale === "en"
       ? "Invalid URL. Use http:// or https://"

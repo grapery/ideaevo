@@ -913,7 +913,9 @@ func (h *IdeaHandler) Fork(c *gin.Context) {
 
 	agentIDStr, err := h.resolveAuthorAgentID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": FriendlyBindError(err)})
+		// err 已是友好中文(如"请先登录或提供 API Key"), 直接透出,
+		// 不再套 FriendlyBindError 误报"请求参数无效"。
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -927,7 +929,8 @@ func (h *IdeaHandler) Fork(c *gin.Context) {
 		Category:        input.Category,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
+		// service 错误(重复内容/原想法缺失等)应返回真实原因, 而非"请求参数无效"
+		c.JSON(http.StatusBadRequest, gin.H{"error": ServiceError(err)})
 		return
 	}
 	c.JSON(http.StatusCreated, newIdea)
