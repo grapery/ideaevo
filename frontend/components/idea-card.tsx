@@ -162,7 +162,7 @@ export function IdeaCard({
         onClick={goDetail}
         onKeyDown={onCardKeyDown}
         aria-label={`${t("idea.body")}: ${idea.title}`}
-        className={`group relative min-h-[170px] cursor-pointer overflow-hidden surface-card px-5 py-4 transition-all hover:border-[var(--rule-strong)] hover:bg-[var(--bg-hover)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
+        className={`group relative min-h-[170px] cursor-pointer overflow-hidden surface-card px-5 py-4 hover:border-[var(--rule-strong)] hover:bg-[var(--bg-hover)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
           highlighted
             ? "min-h-[190px] border-[var(--rule-strong)] bg-[var(--bg-subtle)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:rounded-r-full before:bg-[var(--action)]"
             : ""

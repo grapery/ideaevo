@@ -27,8 +27,8 @@
   --ink-faint: #71717a;        /* 辅助信息/占位符 (zinc-500, 满足 WCAG AA) */
   --ink-disabled: #d4d4d8;     /* 禁用 (zinc-300) */
 
-  /* ---- 边框/分隔 (Rule, 中性 zinc, 柔化: 降一档线宽存在感) ---- */
-  --rule: #e9e9ec;             /* 标准边框 (zinc-200/100 之间, 柔和不割裂) */
+  /* ---- 边框/分隔 (Rule, 中性 zinc, 柔化但保留卡片区隔度) ---- */
+  --rule: #e4e4e7;             /* 标准边框 (zinc-200, 白卡在浅画布上仍有清晰轮廓) */
   --rule-light: #f1f1f4;       /* 浅分隔 */
   --rule-strong: #d6d6da;      /* 强边框/hover (zinc-300 微调) */
 
@@ -103,11 +103,11 @@
   --radius-btn: 10px;          /* 按钮 */
   --radius-input: 10px;
 
-  /* ---- 阴影 (Elevation, 柔化: 大模糊 + 低透明度弥散, 卡片"贴"在页面上而非悬浮) ---- */
-  --shadow: 0 1px 2px rgba(9, 9, 11, 0.02), 0 3px 10px rgba(9, 9, 11, 0.03);
-  --shadow-md: 0 1px 2px rgba(9, 9, 11, 0.03), 0 6px 18px rgba(9, 9, 11, 0.05);
-  --shadow-lg: 0 2px 4px rgba(9, 9, 11, 0.03), 0 10px 28px rgba(9, 9, 11, 0.06);
-  --shadow-float: 0 2px 6px rgba(9, 9, 11, 0.04), 0 16px 44px rgba(9, 9, 11, 0.09);
+  /* ---- 阴影 (Elevation, 柔化回调一档: 保住弥散感的同时给卡片足够"落纸"重量) ---- */
+  --shadow: 0 1px 2px rgba(9, 9, 11, 0.04), 0 3px 10px rgba(9, 9, 11, 0.05);
+  --shadow-md: 0 1px 2px rgba(9, 9, 11, 0.05), 0 6px 18px rgba(9, 9, 11, 0.07);
+  --shadow-lg: 0 2px 4px rgba(9, 9, 11, 0.05), 0 10px 28px rgba(9, 9, 11, 0.08);
+  --shadow-float: 0 2px 6px rgba(9, 9, 11, 0.05), 0 16px 44px rgba(9, 9, 11, 0.10);
 
   --input-bg: #ffffff;
 
@@ -191,6 +191,12 @@ body {
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+/* 预留滚动条槽位: 弹窗锁定 body 滚动(overflow: hidden)时,
+   自定义滚动条(6px, 非 overlay)消失不再引起整页横向平移。 */
+html {
+  scrollbar-gutter: stable;
 }
 
 @layer base {
@@ -318,18 +324,16 @@ select:focus-visible,
   border-radius: var(--radius-btn);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  button:not(:disabled):active {
-    transform: scale(0.98);
-  }
-}
+/* 交互反馈只用颜色/阴影变化, 不做全局按压缩放:
+   全站按钮数量多且多为小控件, 统一 scale 会造成"到处在晃"的不稳定感。
+   按压实感(缩放)只保留在 .btn-primary 主 CTA 上。 */
 
 input,
 textarea,
 select,
 button,
 a {
-  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-property: color, background-color, border-color, box-shadow, opacity;
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
 }
@@ -1162,16 +1166,12 @@ input[type="search"]::-webkit-search-decoration {
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
+    color var(--dur-fast) var(--ease-out);
 }
 .btn-outline:hover:not(:disabled) {
   background: var(--bg-subtle);
   border-color: var(--ink-faint);
   color: var(--ink);
-}
-.btn-outline:active {
-  transform: scale(0.97);
 }
 .btn-outline:disabled {
   opacity: 0.5;
@@ -1246,11 +1246,7 @@ input[type="search"]::-webkit-search-decoration {
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
-}
-.btn-default:active {
-  transform: scale(0.97);
+    color var(--dur-fast) var(--ease-out);
 }
 .btn-default:hover {
   background: var(--bg-subtle);
@@ -1279,11 +1275,7 @@ input[type="search"]::-webkit-search-decoration {
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
-}
-.btn-danger:active {
-  transform: scale(0.97);
+    color var(--dur-fast) var(--ease-out);
 }
 .btn-danger:hover {
   background: var(--accent-warning-soft);
@@ -1308,11 +1300,7 @@ input[type="search"]::-webkit-search-decoration {
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
-}
-.btn-icon:active {
-  transform: scale(0.92);
+    color var(--dur-fast) var(--ease-out);
 }
 .btn-icon:hover {
   border-color: var(--rule);
@@ -1338,11 +1326,7 @@ input[type="search"]::-webkit-search-decoration {
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
-}
-.btn-count:active {
-  transform: scale(0.95);
+    color var(--dur-fast) var(--ease-out);
 }
 .btn-count:hover {
   background: var(--bg-subtle);
@@ -1405,10 +1389,11 @@ input[type="search"]::-webkit-search-decoration {
   color: var(--ink);
   border-bottom-color: var(--rule-strong);
 }
+/* 选中态不加粗(字重恒定), 避免文本宽度变化引起同行相邻 tab 滑动;
+   强调只靠下划线 + 字色。 */
 .profile-tab[data-active="true"] {
   color: var(--accent-link);
   border-bottom-color: var(--accent-link);
-  font-weight: 600;
 }
 
 .count-badge {
@@ -1455,11 +1440,7 @@ input[type="search"]::-webkit-search-decoration {
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
-}
-.filter-chip:active {
-  transform: scale(0.96);
+    color var(--dur-fast) var(--ease-out);
 }
 .filter-chip:hover {
   border-color: var(--rule-strong);
@@ -1502,7 +1483,6 @@ input[type="search"]::-webkit-search-decoration {
 }
 .tabbar-tab[data-active="true"] {
   color: var(--ink);
-  font-weight: 600;
   border-bottom-color: var(--accent-link);
 }
 .tabbar-tab .count-badge {

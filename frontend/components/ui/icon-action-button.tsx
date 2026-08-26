@@ -33,8 +33,8 @@ export function IconActionButton({
 }: IconActionButtonProps) {
   const classes = [
     "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border",
-    "transition-[background-color,color,border-color,transform] duration-150",
-    "hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2",
+    "transition-[background-color,color,border-color] duration-150",
+    "focus-visible:outline-none focus-visible:ring-2",
     "focus-visible:ring-[var(--accent-link)] focus-visible:ring-offset-2",
     "disabled:pointer-events-none disabled:opacity-45",
     toneClass[tone],

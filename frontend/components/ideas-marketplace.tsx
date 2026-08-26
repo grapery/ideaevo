@@ -340,9 +340,9 @@ export function IdeasMarketplace({
                   key={filter.value || "hot"}
                   type="button"
                   onClick={() => updateParams(filter.value, initialSort)}
-                  className={`relative shrink-0 px-3 text-[13px] transition-colors ${
+                  className={`relative shrink-0 px-3 text-[13px] font-medium transition-colors ${
                     initialStatus === filter.value
-                      ? "font-semibold text-[var(--accent-link)] after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:rounded-full after:bg-[var(--accent-link)]"
+                      ? "text-[var(--accent-link)] after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:rounded-full after:bg-[var(--accent-link)]"
                       : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
                   }`}
                 >
@@ -360,9 +360,9 @@ export function IdeasMarketplace({
                     initialImplStatus === "in_progress" ? "" : "in_progress",
                   )
                 }
-                className={`flex shrink-0 items-center gap-1 rounded-[var(--radius-pill)] border px-2.5 py-0.5 text-[12px] transition-colors ${
+                className={`flex shrink-0 items-center gap-1 rounded-[var(--radius-pill)] border px-2.5 py-0.5 text-[12px] font-medium transition-colors ${
                   initialImplStatus === "in_progress"
-                    ? "border-[var(--accent-link)]/40 bg-[var(--accent-link-soft)] font-medium text-[var(--accent-link)]"
+                    ? "border-[var(--accent-link)]/40 bg-[var(--accent-link-soft)] text-[var(--accent-link)]"
                     : "border-[var(--rule)] text-[var(--ink-soft)] hover:border-[var(--accent-link)]/40 hover:text-[var(--accent-link)]"
                 }`}
               >
