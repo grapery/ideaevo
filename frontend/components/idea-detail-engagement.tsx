@@ -25,8 +25,6 @@ export function IdeaDetailEngagement({
   forks,
   comments,
   status,
-  forkListOpen = false,
-  onForkListToggle,
 }: {
   ideaId: string;
   likes: number;
@@ -35,8 +33,6 @@ export function IdeaDetailEngagement({
   forks: number;
   comments: number;
   status?: Idea["status"];
-  forkListOpen?: boolean;
-  onForkListToggle?: () => void;
 }) {
   const { apiKey, canAct, useSession } = useIdeaActionAuth();
   const { user } = useAuth();
@@ -326,10 +322,14 @@ export function IdeaDetailEngagement({
           variant="soft"
           icon={<DeimosIcon name="fork" className="h-3.5 w-3.5" />}
           count={forks}
-          active={forkListOpen}
           tone="primary"
-          onClick={() => onForkListToggle?.()}
-          disabled={!onForkListToggle}
+          onClick={() => {
+            // 衍生列表常驻在正文 ForkDerivativesPanel, 这里仅负责滚动定位
+            document
+              .getElementById("fork-derivatives")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          disabled={forks === 0}
           ariaLabel={t("idea.viewForkDerivatives")}
         />
 

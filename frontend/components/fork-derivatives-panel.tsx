@@ -23,7 +23,10 @@ export function ForkDerivativesPanel({
   if (children.length === 0) return null;
 
   return (
-    <section className="border-t border-[var(--divider)]">
+    <section
+      id="fork-derivatives"
+      className="scroll-mt-24 border-t border-[var(--divider)]"
+    >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]">
           <DeimosIcon name="fork" className="h-3.5 w-3.5 text-[var(--accent-link)]" />

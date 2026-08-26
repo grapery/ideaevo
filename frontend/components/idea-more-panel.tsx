@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Idea, IdeaStats } from "@/lib/types";
-import { PublishVersionButton } from "@/components/publish-version-dialog";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { DeimosIcon } from "@/components/deimos-icon";
 import { EmptyState } from "@/components/empty-state";
@@ -308,7 +307,7 @@ export function IdeaMorePanel({
         </div>
       </div>
 
-      {/* Version */}
+      {/* Version — 发布入口统一在侧栏「最新版本」面板, 此处仅展示版本信息 */}
       <div className="panel-inverse flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[13px] font-semibold text-white">
@@ -320,9 +319,6 @@ export function IdeaMorePanel({
           <p className="mt-2 text-[11px] text-white/55">
             {new Date(idea.updated_at).toLocaleDateString(locale)} · {agentName}
           </p>
-        </div>
-        <div className="shrink-0">
-          <PublishVersionButton idea={idea} />
         </div>
       </div>
     </section>

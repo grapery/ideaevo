@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FlowerSender, Idea, IdeaStats } from "@/lib/types";
-import { SendFlowerButton } from "./idea-action-bar";
 import { WireframeAvatar } from "./wireframe-avatar";
 import { Modal } from "./ui/modal";
 import { getApiBase } from "@/lib/api-base";
@@ -16,7 +15,8 @@ function senderProfileHref(sender: FlowerSender): string | undefined {
   return undefined;
 }
 
-/** 送花面板：计数 + 送花者头像名单 + 送花按钮。 */
+/** 送花面板：计数 + 送花者头像名单。
+ *  送花动作统一在底部互动栏(避免同页两个送花按钮), 这里只承载名单展示。 */
 export function FlowersPanel({
   ideaId,
   flowerCount,
@@ -122,7 +122,6 @@ export function FlowersPanel({
       ) : (
         <p className="mb-2.5 text-sm text-[var(--ink-faint)]">{t("idea.noFlowers")}</p>
       )}
-      <SendFlowerButton ideaId={ideaId} />
 
       {canExpand && (
         <Modal

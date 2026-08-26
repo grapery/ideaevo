@@ -1,16 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { ideaRequestJson } from "@/lib/idea-request";
+import { useState } from "react";
 import { useIdeaActionAuth } from "@/lib/use-idea-action-auth";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthModal } from "@/lib/auth-modal-context";
 import { notify } from "@/components/ui/notify";
-import { getErrorMessage } from "@/lib/api-error";
 import { ForkIdeaDialog } from "./fork-idea-dialog";
 import { DeimosIcon } from "./deimos-icon";
-import { Button } from "./ui/button";
 import { IconActionButton } from "./ui/icon-action-button";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Idea } from "@/lib/types";
@@ -90,126 +87,6 @@ export function IdeaActionBar({
         sourceTitle={title}
         sourceDescription={description}
       />
-    </div>
-  );
-}
-
-export function SendWishButton({ ideaId }: { ideaId: string }) {
-  const { apiKey, canAct, useSession } = useIdeaActionAuth();
-  const { t } = useI18n();
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-
-  async function sendWish() {
-    if (!canAct) {
-      notify.error(t("idea.authRequired"));
-      return;
-    }
-    setLoading(true);
-    try {
-      await ideaRequestJson(`/ideas/${ideaId}/wish`, {
-        method: "POST",
-        apiKey: useSession ? undefined : apiKey,
-        useSession,
-      });
-      notify.success(t("idea.wished"));
-      router.refresh();
-    } catch (err) {
-      notify.error(getErrorMessage(err, t("idea.wishFailed")));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Button
-      variant="ghost"
-      size="md"
-      onClick={sendWish}
-      disabled={loading}
-      icon={<DeimosIcon name="wish" className="h-4 w-4" />}
-    >
-      {loading ? t("idea.recording") : t("idea.wishForThis")}
-    </Button>
-  );
-}
-
-/** 送花：高规格赞赏，可多次；与「看好/期待」(wish) 独立。受每日余额限制。 */
-export function SendFlowerButton({ ideaId }: { ideaId: string }) {
-  const { apiKey, canAct, useSession } = useIdeaActionAuth();
-  const { t } = useI18n();
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [available, setAvailable] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!canAct) {
-      setAvailable(null);
-      return;
-    }
-    ideaRequestJson<{ available: number }>("/user/flowers", {
-      apiKey: useSession ? undefined : apiKey,
-      useSession,
-    })
-      .then((res) => setAvailable(res.available))
-      .catch(() => setAvailable(null));
-  }, [canAct, apiKey, useSession]);
-
-  async function sendFlower() {
-    if (!canAct) {
-      notify.error(t("idea.authRequired"));
-      return;
-    }
-    if (available === 0) {
-      notify.error(t("idea.flowerBudgetExhausted"));
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await ideaRequestJson<{ available: number }>(`/ideas/${ideaId}/flowers`, {
-        method: "POST",
-        body: JSON.stringify({}),
-        apiKey: useSession ? undefined : apiKey,
-        useSession,
-      });
-      setAvailable(res.available);
-      notify.success(t("idea.flowerSent"));
-      router.refresh();
-    } catch (err) {
-      notify.error(getErrorMessage(err, t("idea.flowerFailed")));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const label =
-    loading
-      ? t("idea.recording")
-      : available === 0
-        ? t("idea.flowerBudgetExhausted")
-        : t("idea.sendFlower");
-
-  return (
-    <div className="space-y-1">
-      <Button
-        variant="ghost"
-        size="md"
-        onClick={sendFlower}
-        disabled={loading || available === 0}
-        icon={<DeimosIcon name="flower" className="h-4 w-4" />}
-        title={
-          available !== null && available > 0
-            ? t("idea.flowerAvailable", { count: available })
-            : undefined
-        }
-      >
-        {label}
-      </Button>
-      {canAct && available !== null && available > 0 && (
-        <p className="text-[11px] tabular-nums text-[var(--ink-faint)]">
-          {t("idea.flowerAvailable", { count: available })}
-        </p>
-      )}
     </div>
   );
 }
