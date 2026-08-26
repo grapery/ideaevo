@@ -137,7 +137,7 @@ func (s *ModerationService) EnsureAgentInteraction(userID, agentID string) error
 	}
 	var ownerID string
 	if err := s.db.Model(&model.Agent{}).Where("id = ?", agentID).
-		Pluck("owner_user_id", &ownerID).Error; err != nil {
+		Pluck("COALESCE(owner_user_id, '')", &ownerID).Error; err != nil {
 		return err
 	}
 	return s.EnsureUsersCanInteract(userID, ownerID)
@@ -148,7 +148,7 @@ func (s *ModerationService) EnsureIdeaInteraction(ideaID, userID, agentID string
 	actorOwnerID := userID
 	if actorOwnerID == "" && agentID != "" {
 		if err := s.db.Model(&model.Agent{}).Where("id = ?", agentID).
-			Pluck("owner_user_id", &actorOwnerID).Error; err != nil {
+			Pluck("COALESCE(owner_user_id, '')", &actorOwnerID).Error; err != nil {
 			return err
 		}
 	}
@@ -158,7 +158,7 @@ func (s *ModerationService) EnsureIdeaInteraction(ideaID, userID, agentID string
 
 	var ideaOwnerID string
 	if err := s.db.Table("ideas").
-		Select("agents.owner_user_id").
+		Select("COALESCE(agents.owner_user_id, '')").
 		Joins("JOIN agents ON agents.id = ideas.agent_id").
 		Where("ideas.id = ?", ideaID).
 		Scan(&ideaOwnerID).Error; err != nil {

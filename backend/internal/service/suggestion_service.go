@@ -158,7 +158,7 @@ func (s *SuggestionService) notifyIdeaOwner(ideaID, actorType, actorID, action, 
 		return
 	}
 	var ownerUserID string
-	if err := s.db.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("owner_user_id", &ownerUserID).Error; err != nil || ownerUserID == "" {
+	if err := s.db.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("COALESCE(owner_user_id, '')", &ownerUserID).Error; err != nil || ownerUserID == "" {
 		return
 	}
 	_ = s.notif.Create(ownerUserID, actorType, actorID, "", action, "idea", ideaID, summary)
@@ -205,7 +205,7 @@ func resolveSuggestionVoterOwnerID(tx *gorm.DB, userID, agentID string) string {
 		return ""
 	}
 	var ownerID string
-	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("owner_user_id", &ownerID).Error; err != nil {
+	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("COALESCE(owner_user_id, '')", &ownerID).Error; err != nil {
 		return agentID
 	}
 	if ownerID == "" {
@@ -302,7 +302,7 @@ func (s *SuggestionService) Select(ideaID, suggestionID, userID, agentID string)
 	// 解析操作者对应的用户 ID（会话用户优先，其次 agent 的 owner）
 	actorUserID := userID
 	if actorUserID == "" && agentID != "" {
-		if err := s.db.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("owner_user_id", &actorUserID).Error; err != nil {
+		if err := s.db.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("COALESCE(owner_user_id, '')", &actorUserID).Error; err != nil {
 			return nil, ErrSuggestionNotOwner
 		}
 	}
@@ -319,7 +319,7 @@ func (s *SuggestionService) Select(ideaID, suggestionID, userID, agentID string)
 			return fmt.Errorf("idea not found")
 		}
 		var ownerUserID string
-		if err := tx.Model(&model.Agent{}).Where("id = ?", idea.AgentID).Pluck("owner_user_id", &ownerUserID).Error; err != nil || ownerUserID == "" {
+		if err := tx.Model(&model.Agent{}).Where("id = ?", idea.AgentID).Pluck("COALESCE(owner_user_id, '')", &ownerUserID).Error; err != nil || ownerUserID == "" {
 			return ErrSuggestionNotOwner
 		}
 		if ownerUserID != actorUserID {
@@ -389,7 +389,7 @@ func (s *SuggestionService) Select(ideaID, suggestionID, userID, agentID string)
 		// 记录待发通知，事务提交成功后再发送，避免回滚后残留通知。
 		recipient := sug.UserID
 		var suggesterOwner string
-		if err := tx.Model(&model.Agent{}).Where("id = ?", sug.UserID).Pluck("owner_user_id", &suggesterOwner).Error; err == nil && suggesterOwner != "" {
+		if err := tx.Model(&model.Agent{}).Where("id = ?", sug.UserID).Pluck("COALESCE(owner_user_id, '')", &suggesterOwner).Error; err == nil && suggesterOwner != "" {
 			recipient = suggesterOwner
 		}
 		if recipient != actorUserID {
@@ -426,7 +426,7 @@ func (s *SuggestionService) Delete(ideaID, suggestionID, userID, agentID string)
 		authorized := sug.UserID == userID || sug.UserID == agentID
 		if !authorized && userID != "" {
 			var agentOwner string
-			if err := tx.Model(&model.Agent{}).Where("id = ?", sug.UserID).Pluck("owner_user_id", &agentOwner).Error; err == nil {
+			if err := tx.Model(&model.Agent{}).Where("id = ?", sug.UserID).Pluck("COALESCE(owner_user_id, '')", &agentOwner).Error; err == nil {
 				authorized = agentOwner == userID
 			}
 		}
@@ -715,7 +715,7 @@ func (s *SuggestionService) UpdateJob(jobID, ownerUserID, status, note string) (
 			if err := tx.Where("id = ?", *job.SuggestionID).First(&sug).Error; err == nil {
 				recipient := sug.UserID
 				var suggesterOwner string
-				if err := tx.Model(&model.Agent{}).Where("id = ?", sug.UserID).Pluck("owner_user_id", &suggesterOwner).Error; err == nil && suggesterOwner != "" {
+				if err := tx.Model(&model.Agent{}).Where("id = ?", sug.UserID).Pluck("COALESCE(owner_user_id, '')", &suggesterOwner).Error; err == nil && suggesterOwner != "" {
 					recipient = suggesterOwner
 				}
 				if recipient != "" && recipient != ownerUserID {

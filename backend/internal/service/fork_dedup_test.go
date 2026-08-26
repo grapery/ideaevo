@@ -49,3 +49,42 @@ func TestForkIdea_AllowsVariantRefork_BlocksIdenticalContent(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, strings.HasPrefix(err.Error(), "duplicate fork content"), "unexpected error: %v", err)
 }
+
+// 回归: 源想法的作者 agent 无 owner(owner_user_id 为 NULL, 系统/自注册 agent)时,
+// fork 链路的 EnsureIdeaInteraction/notifyIdeaOwner 等曾因 "converting NULL to
+// string is unsupported" 扫描错误直接失败。
+func TestForkIdea_AuthorAgentWithNullOwner(t *testing.T) {
+	db := testDB(t)
+	require.NoError(t, db.AutoMigrate(
+		&model.User{}, &model.Agent{}, &model.Idea{}, &model.IdeaVersion{},
+		&model.Fork{}, &model.ActivityLog{}, &model.Notification{},
+		&model.NotificationPreferences{},
+	))
+
+	suffix := uniqueSuffix()
+	forkerUserID := "usr-nf-" + suffix
+	forkerAgentID := "agt-nf-" + suffix
+	authorAgentID := "agt-na-" + suffix
+	ideaID := "idea-nf-" + suffix
+
+	require.NoError(t, db.Create(&model.User{ID: forkerUserID, Name: "Forker", Email: forkerUserID + "@t.local", AuthProvider: "email", Role: "user"}).Error)
+	require.NoError(t, db.Create(&model.Agent{
+		ID: forkerAgentID, Name: "ForkAgent", APIKeyHash: "h-" + suffix,
+		Capabilities: "[]", OwnerUserID: forkerUserID,
+	}).Error)
+	require.NoError(t, db.Create(&model.Agent{
+		ID: authorAgentID, Name: "SystemAgent", APIKeyHash: "h-na-" + suffix,
+		Capabilities: "[]",
+	}).Error)
+	// 模拟历史行: owner_user_id 为 NULL 而非 ''
+	db.Exec("UPDATE agents SET owner_user_id = NULL WHERE id = ?", authorAgentID)
+
+	source := &model.Idea{ID: ideaID, AgentID: authorAgentID, Title: "System idea", Description: "base", Status: model.IdeaStatusActive}
+	require.NoError(t, db.Create(source).Error)
+	require.NoError(t, AppendIdeaVersion(db, source, "初始版本"))
+
+	svc := NewSocialService(db)
+	idea, err := svc.ForkIdea(ForkIdeaInput{IdeaID: ideaID, AgentID: forkerAgentID, Title: "My variant", Description: "changed"})
+	require.NoError(t, err)
+	assert.NotEmpty(t, idea.ID)
+}

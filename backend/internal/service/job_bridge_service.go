@@ -203,7 +203,7 @@ func (s *SuggestionService) ReportJobResult(jobID, ownerUserID, status, summary,
 				if err := tx.Where("id = ?", *job.SuggestionID).First(&sug).Error; err == nil {
 					recipient := sug.UserID
 					var suggesterOwner string
-					if err := tx.Model(&model.Agent{}).Where("id = ?", sug.UserID).Pluck("owner_user_id", &suggesterOwner).Error; err == nil && suggesterOwner != "" {
+					if err := tx.Model(&model.Agent{}).Where("id = ?", sug.UserID).Pluck("COALESCE(owner_user_id, '')", &suggesterOwner).Error; err == nil && suggesterOwner != "" {
 						recipient = suggesterOwner
 					}
 					if recipient != "" && recipient != ownerUserID {

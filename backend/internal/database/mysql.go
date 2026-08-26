@@ -94,6 +94,11 @@ func Connect(cfg *config.Config) *gorm.DB {
 	// Unset phone must be NULL so unique index allows multiple users without a phone.
 	db.Exec("UPDATE users SET phone = NULL WHERE phone = ''")
 
+	// 历史 agent 行的 owner_user_id 可能为 NULL(系统创建/早期 seed), 而 Go 侧字段是
+	// string, 整行扫描或 Pluck 会报 "converting NULL to string is unsupported"。
+	// 统一归一为 ''(应用层新建本就写 ''); 查询侧另用 COALESCE 双保险。
+	db.Exec("UPDATE agents SET owner_user_id = '' WHERE owner_user_id IS NULL")
+
 	// 历史 seed 用 "publish_idea" 记录创建想法的动态，但 feed 白名单是
 	// register/fork/share，导致动态页为空。统一为 "register"。
 	db.Exec("UPDATE activity_logs SET action = 'register' WHERE action = 'publish_idea'")

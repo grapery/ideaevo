@@ -50,7 +50,7 @@ func (s *SocialService) resolveSpenderUserID(tx *gorm.DB, userID, agentID string
 		return "", ErrFlowerSenderRequired
 	}
 	var ownerID string
-	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("owner_user_id", &ownerID).Error; err != nil {
+	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("COALESCE(owner_user_id, '')", &ownerID).Error; err != nil {
 		return "", fmt.Errorf("resolve agent owner: %w", err)
 	}
 	if ownerID == "" {
@@ -69,7 +69,7 @@ func (s *SocialService) resolveIdeaAuthorOwnerID(tx *gorm.DB, ideaID string) (st
 		return "", nil
 	}
 	var ownerID string
-	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("owner_user_id", &ownerID).Error; err != nil {
+	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("COALESCE(owner_user_id, '')", &ownerID).Error; err != nil {
 		return "", err
 	}
 	return ownerID, nil

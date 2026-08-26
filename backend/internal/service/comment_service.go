@@ -36,7 +36,7 @@ func (s *CommentService) notifyIdeaOwner(ideaID, actorID, action, summary string
 		return
 	}
 	var ownerUserID string
-	if err := s.db.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("owner_user_id", &ownerUserID).Error; err != nil || ownerUserID == "" {
+	if err := s.db.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("COALESCE(owner_user_id, '')", &ownerUserID).Error; err != nil || ownerUserID == "" {
 		return
 	}
 	_ = s.notif.Create(ownerUserID, "user", actorID, "", action, "idea", ideaID, summary)

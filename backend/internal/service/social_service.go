@@ -45,7 +45,7 @@ func (s *SocialService) notifyIdeaOwner(tx *gorm.DB, ideaID, actorType, actorID,
 		return
 	}
 	var ownerUserID string
-	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("owner_user_id", &ownerUserID).Error; err != nil || ownerUserID == "" {
+	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("COALESCE(owner_user_id, '')", &ownerUserID).Error; err != nil || ownerUserID == "" {
 		return
 	}
 	// self-action 守卫已在 Create 内部处理
@@ -65,7 +65,7 @@ func (s *SocialService) resolveVotingOwnerID(tx *gorm.DB, userID, agentID string
 		return ""
 	}
 	var ownerID string
-	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("owner_user_id", &ownerID).Error; err != nil {
+	if err := tx.Model(&model.Agent{}).Where("id = ?", agentID).Pluck("COALESCE(owner_user_id, '')", &ownerID).Error; err != nil {
 		return agentID
 	}
 	if ownerID == "" {
