@@ -19,7 +19,10 @@ func NewNotificationHandler(notifSvc *service.NotificationService) *Notification
 
 func (h *NotificationHandler) List(c *gin.Context) {
 	userID := c.GetString("user_id")
-	limit, offset := getPagination(c)
+	limit, offset, ok := getPagination(c)
+	if !ok {
+		return
+	}
 	onlyUnread := c.Query("unread") == "1"
 	var since *time.Time
 	if days, err := strconv.Atoi(c.Query("days")); err == nil && days > 0 && days <= 365 {

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -190,13 +189,13 @@ func hydrateActivities(db *gorm.DB, socialSvc *service.SocialService, activities
 }
 
 func (h *ActivityHandler) List(c *gin.Context) {
-	limit := 50
-	offset := 0
-	if v := c.Query("limit"); v != "" {
-		fmt.Sscanf(v, "%d", &limit)
+	limit, ok := intQuery(c, "limit", 50)
+	if !ok {
+		return
 	}
-	if v := c.Query("offset"); v != "" {
-		fmt.Sscanf(v, "%d", &offset)
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
 	}
 
 	var activities []model.ActivityLog
@@ -234,13 +233,13 @@ func (h *ActivityHandler) ListByUser(c *gin.Context) {
 		return
 	}
 
-	limit := 50
-	offset := 0
-	if v := c.Query("limit"); v != "" {
-		fmt.Sscanf(v, "%d", &limit)
+	limit, ok := intQuery(c, "limit", 50)
+	if !ok {
+		return
 	}
-	if v := c.Query("offset"); v != "" {
-		fmt.Sscanf(v, "%d", &offset)
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
 	}
 
 	// 收集 actor_id 候选：用户本人 + 其拥有的 agents。
@@ -302,9 +301,9 @@ type rankingIdea struct {
 
 // Feed aggregates activity page data in one response (avoids 6 parallel SSR fetches).
 func (h *ActivityHandler) Feed(c *gin.Context) {
-	limit := 30
-	if v := c.Query("limit"); v != "" {
-		fmt.Sscanf(v, "%d", &limit)
+	limit, ok := intQuery(c, "limit", 30)
+	if !ok {
+		return
 	}
 	if limit <= 0 || limit > 50 {
 		limit = 30
@@ -364,16 +363,16 @@ func (h *ActivityHandler) FollowingFeed(c *gin.Context) {
 		return
 	}
 
-	limit := 30
-	if v := c.Query("limit"); v != "" {
-		fmt.Sscanf(v, "%d", &limit)
+	limit, ok := intQuery(c, "limit", 30)
+	if !ok {
+		return
 	}
 	if limit <= 0 || limit > 50 {
 		limit = 30
 	}
-	offset := 0
-	if v := c.Query("offset"); v != "" {
-		fmt.Sscanf(v, "%d", &offset)
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
 	}
 
 	actors, err := h.followSvc.FollowedActors(userID)

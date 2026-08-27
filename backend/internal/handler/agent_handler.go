@@ -138,13 +138,13 @@ func (h *AgentHandler) PresignUpload(c *gin.Context) {
 }
 
 func (h *AgentHandler) List(c *gin.Context) {
-	limit := 20
-	offset := 0
-	if v := c.Query("limit"); v != "" {
-		fmt.Sscanf(v, "%d", &limit)
+	limit, ok := intQuery(c, "limit", 20)
+	if !ok {
+		return
 	}
-	if v := c.Query("offset"); v != "" {
-		fmt.Sscanf(v, "%d", &offset)
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
 	}
 	category := c.Query("category")
 
@@ -164,13 +164,13 @@ func (h *AgentHandler) GetIdeas(c *gin.Context) {
 	if !h.requireVisibleAgent(c, c.Param("id")) {
 		return
 	}
-	limit := 20
-	offset := 0
-	if v := c.Query("limit"); v != "" {
-		fmt.Sscanf(v, "%d", &limit)
+	limit, ok := intQuery(c, "limit", 20)
+	if !ok {
+		return
 	}
-	if v := c.Query("offset"); v != "" {
-		fmt.Sscanf(v, "%d", &offset)
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
 	}
 
 	ideas, total, err := h.ideaSvc.Query(service.QueryFilter{
@@ -334,13 +334,13 @@ func (h *AgentHandler) ListMyAgents(c *gin.Context) {
 		return
 	}
 
-	limit := 20
-	offset := 0
-	if v := c.Query("limit"); v != "" {
-		fmt.Sscanf(v, "%d", &limit)
+	limit, ok := intQuery(c, "limit", 20)
+	if !ok {
+		return
 	}
-	if v := c.Query("offset"); v != "" {
-		fmt.Sscanf(v, "%d", &offset)
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
 	}
 
 	agents, total, err := h.agentSvc.ListByOwner(userID, limit, offset)
@@ -357,13 +357,13 @@ func (h *AgentHandler) ListMyAgents(c *gin.Context) {
 
 // ListUserAgents 返回某用户拥有的 Agent（公开主页用；非本人仅 public）。
 func (h *AgentHandler) ListUserAgents(c *gin.Context) {
-	limit := 20
-	offset := 0
-	if v := c.Query("limit"); v != "" {
-		fmt.Sscanf(v, "%d", &limit)
+	limit, ok := intQuery(c, "limit", 20)
+	if !ok {
+		return
 	}
-	if v := c.Query("offset"); v != "" {
-		fmt.Sscanf(v, "%d", &offset)
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
 	}
 
 	ownerID := c.Param("id")
@@ -427,7 +427,10 @@ func (h *AgentHandler) GetAgentFollowing(c *gin.Context) {
 	if !h.requireVisibleAgent(c, agentID) {
 		return
 	}
-	limit, offset := getAgentPagination(c)
+	limit, offset, ok := getAgentPagination(c)
+	if !ok {
+		return
+	}
 
 	agents, total, err := h.agentSvc.GetAgentFollowing(agentID, limit, offset)
 	if err != nil {
@@ -443,7 +446,10 @@ func (h *AgentHandler) GetAgentFollowers(c *gin.Context) {
 	if !h.requireVisibleAgent(c, agentID) {
 		return
 	}
-	limit, offset := getAgentPagination(c)
+	limit, offset, ok := getAgentPagination(c)
+	if !ok {
+		return
+	}
 
 	users, total, err := h.followSvc.GetAgentFollowers(agentID, limit, offset)
 	if err != nil {
@@ -463,7 +469,10 @@ func (h *AgentHandler) GetAgentPeerFollowers(c *gin.Context) {
 	if !h.requireVisibleAgent(c, agentID) {
 		return
 	}
-	limit, offset := getAgentPagination(c)
+	limit, offset, ok := getAgentPagination(c)
+	if !ok {
+		return
+	}
 
 	agents, total, err := h.agentSvc.GetAgentPeerFollowers(agentID, limit, offset)
 	if err != nil {
@@ -479,7 +488,10 @@ func (h *AgentHandler) GetAgentActivity(c *gin.Context) {
 	if !h.requireVisibleAgent(c, agentID) {
 		return
 	}
-	limit, offset := getAgentPagination(c)
+	limit, offset, ok := getAgentPagination(c)
+	if !ok {
+		return
+	}
 
 	logs, total, err := h.agentSvc.ListAgentActivity(agentID, limit, offset)
 	if err != nil {
@@ -489,14 +501,11 @@ func (h *AgentHandler) GetAgentActivity(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"activities": logs, "total": total})
 }
 
-func getAgentPagination(c *gin.Context) (limit, offset int) {
-	limit = 20
-	offset = 0
-	if v := c.Query("limit"); v != "" {
-		fmt.Sscanf(v, "%d", &limit)
+func getAgentPagination(c *gin.Context) (limit, offset int, ok bool) {
+	limit, ok = intQuery(c, "limit", 20)
+	if !ok {
+		return
 	}
-	if v := c.Query("offset"); v != "" {
-		fmt.Sscanf(v, "%d", &offset)
-	}
+	offset, ok = intQuery(c, "offset", 0)
 	return
 }

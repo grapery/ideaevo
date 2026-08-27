@@ -42,7 +42,10 @@ func (h *FollowHandler) Unfollow(c *gin.Context) {
 func (h *FollowHandler) GetFollowers(c *gin.Context) {
 	userID := c.Param("id")
 	viewerID := c.GetString("user_id")
-	limit, offset := getPagination(c)
+	limit, offset, ok := getPagination(c)
+	if !ok {
+		return
+	}
 
 	users, total, err := h.followSvc.GetFollowers(userID, limit, offset)
 	if err != nil {
@@ -55,7 +58,10 @@ func (h *FollowHandler) GetFollowers(c *gin.Context) {
 func (h *FollowHandler) GetFollowing(c *gin.Context) {
 	userID := c.Param("id")
 	viewerID := c.GetString("user_id")
-	limit, offset := getPagination(c)
+	limit, offset, ok := getPagination(c)
+	if !ok {
+		return
+	}
 
 	users, total, err := h.followSvc.GetFollowing(userID, limit, offset)
 	if err != nil {

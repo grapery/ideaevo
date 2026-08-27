@@ -3,7 +3,6 @@ package handler
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -37,7 +36,10 @@ func (h *ChatHandler) CreateSession(c *gin.Context) {
 
 func (h *ChatHandler) ListSessions(c *gin.Context) {
 	userID := c.GetString("user_id")
-	limit, offset := getPagination(c)
+	limit, offset, ok := getPagination(c)
+	if !ok {
+		return
+	}
 
 	sessions, total, err := h.chatSvc.ListSessions(userID, limit, offset)
 	if err != nil {
@@ -175,7 +177,10 @@ func (h *ChatHandler) GetMessages(c *gin.Context) {
 	userID := c.GetString("user_id")
 	sessionID := c.Param("id")
 	beforeID := c.Query("before_id")
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	limit, ok := intQuery(c, "limit", 50)
+	if !ok {
+		return
+	}
 
 	messages, err := h.chatSvc.GetMessages(sessionID, userID, beforeID, limit)
 	if err != nil {
@@ -246,8 +251,11 @@ func (h *ChatHandler) ArchiveSession(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"result": result})
 }
 
-func getPagination(c *gin.Context) (limit, offset int) {
-	limit, _ = strconv.Atoi(c.DefaultQuery("limit", "20"))
-	offset, _ = strconv.Atoi(c.DefaultQuery("offset", "0"))
+func getPagination(c *gin.Context) (limit, offset int, ok bool) {
+	limit, ok = intQuery(c, "limit", 20)
+	if !ok {
+		return
+	}
+	offset, ok = intQuery(c, "offset", 0)
 	return
 }

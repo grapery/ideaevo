@@ -18,11 +18,16 @@ type PaymentConfig struct {
 
 	WeChatAppID     string
 	WeChatMchID     string
-	WeChatAPIKey    string
+	WeChatAPIKey    string // API v3 密钥（32 字节，用于回调 resource 解密）
 	WeChatNotifyURL string
+	// 微信支付平台公钥/证书公钥（PEM 或裸 base64），用于校验 Wechatpay-Signature
+	WeChatPlatformPublicKey string
 
 	StripeAPIKey        string
 	StripeWebhookSecret string
+
+	// MockWebhookEnabled 仅联调环境开启：允许无签名的 mock 网关回调（生产必须为 false）。
+	MockWebhookEnabled bool
 
 	FrontendURL string // 用于支付完成跳转
 }
@@ -36,13 +41,16 @@ func LoadPaymentConfig(cfg *config.Config) PaymentConfig {
 		AlipayNotifyURL:  getEnvStr("ALIPAY_NOTIFY_URL", ""),
 		AlipaySandbox:    getEnvStr("ALIPAY_SANDBOX", "") == "true",
 
-		WeChatAppID:     getEnvStr("WECHAT_PAY_APP_ID", ""),
-		WeChatMchID:     getEnvStr("WECHAT_PAY_MCH_ID", ""),
-		WeChatAPIKey:    getEnvStr("WECHAT_PAY_API_KEY", ""),
-		WeChatNotifyURL: getEnvStr("WECHAT_PAY_NOTIFY_URL", ""),
+		WeChatAppID:             getEnvStr("WECHAT_PAY_APP_ID", ""),
+		WeChatMchID:             getEnvStr("WECHAT_PAY_MCH_ID", ""),
+		WeChatAPIKey:            getEnvStr("WECHAT_PAY_API_KEY", ""),
+		WeChatNotifyURL:         getEnvStr("WECHAT_PAY_NOTIFY_URL", ""),
+		WeChatPlatformPublicKey: getEnvStr("WECHAT_PAY_PLATFORM_PUBLIC_KEY", ""),
 
 		StripeAPIKey:        getEnvStr("STRIPE_API_KEY", ""),
 		StripeWebhookSecret: getEnvStr("STRIPE_WEBHOOK_SECRET", ""),
+
+		MockWebhookEnabled: getEnvStr("MOCK_PAY_WEBHOOK_ENABLED", "") == "true",
 
 		FrontendURL: cfg.FrontendURL,
 	}

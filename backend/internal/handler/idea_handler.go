@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -133,9 +132,9 @@ func (h *IdeaHandler) Query(c *gin.Context) {
 func (h *IdeaHandler) Ranking(c *gin.Context) {
 	window := c.DefaultQuery("window", "week")
 	metric := c.DefaultQuery("metric", "wish")
-	limit := 20
-	if v := c.Query("limit"); v != "" {
-		fmt.Sscanf(v, "%d", &limit)
+	limit, ok := intQuery(c, "limit", 20)
+	if !ok {
+		return
 	}
 
 	trending, err := h.ideaSvc.RankingTrending(window, metric, limit)
@@ -153,23 +152,19 @@ func (h *IdeaHandler) Ranking(c *gin.Context) {
 func (h *IdeaHandler) Search(c *gin.Context) {
 	query := c.Query("q")
 	threshold := 0.3
-	limit := 10
-	page := 1
 
 	if v := c.Query("threshold"); v != "" {
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
 			threshold = f
 		}
 	}
-	if v := c.Query("limit"); v != "" {
-		if i, err := strconv.Atoi(v); err == nil {
-			limit = i
-		}
+	limit, ok := intQuery(c, "limit", 10)
+	if !ok {
+		return
 	}
-	if v := c.Query("page"); v != "" {
-		if i, err := strconv.Atoi(v); err == nil {
-			page = i
-		}
+	page, ok := intQuery(c, "page", 1)
+	if !ok {
+		return
 	}
 	offset := (page - 1) * limit
 
@@ -198,11 +193,13 @@ func (h *IdeaHandler) Search(c *gin.Context) {
 		service.EnrichIdea(&results[i].Idea)
 	}
 
+	// 向量检索只有 top-K 语义，没有全量 total；用「结果数==limit」作为还有下一页的诚实信号
 	c.JSON(http.StatusOK, gin.H{
-		"results": results,
-		"page":    page,
-		"limit":   limit,
-		"offset":  offset,
+		"results":  results,
+		"page":     page,
+		"limit":    limit,
+		"offset":   offset,
+		"has_more": len(results) >= limit,
 	})
 }
 
@@ -561,11 +558,12 @@ func (h *IdeaHandler) GetLineage(c *gin.Context) {
 
 // GetTree 返回完整的进化树(祖先链 + 后代树),一次请求替代前端 N+1 拼接。
 func (h *IdeaHandler) GetTree(c *gin.Context) {
-	depth := 5
-	if d := c.Query("depth"); d != "" {
-		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 && parsed <= 10 {
-			depth = parsed
-		}
+	depth, ok := intQuery(c, "depth", 5)
+	if !ok {
+		return
+	}
+	if depth < 1 || depth > 10 {
+		depth = 5
 	}
 	tree, err := h.socialSvc.GetIdeaTree(c.Param("id"), depth)
 	if err != nil {
@@ -592,14 +590,11 @@ func (h *IdeaHandler) GetBookmarkStatus(c *gin.Context) {
 func (h *IdeaHandler) Bookmark(c *gin.Context) {
 	ideaID := c.Param("id")
 	userID := extractUserID(c)
-	log.Printf("[DIAG:Bookmark] HIT handler method=%s path=%s ideaID=%s userID=%q", c.Request.Method, c.Request.URL.Path, ideaID, userID)
 	if userID == "" {
-		log.Printf("[DIAG:Bookmark] no userID (403)")
 		c.JSON(http.StatusForbidden, gin.H{"error": "收藏仅支持用户账户"})
 		return
 	}
 	if err := h.ideaSvc.Bookmark(ideaID, userID); err != nil {
-		log.Printf("[DIAG:Bookmark] FAIL ideaID=%s userID=%s err=%v", ideaID, userID, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": FriendlyBindError(err)})
 		return
 	}
@@ -629,9 +624,7 @@ func (h *IdeaHandler) RecordReference(c *gin.Context) {
 
 func (h *IdeaHandler) recordMetric(c *gin.Context, kind string) {
 	ideaID := c.Param("id")
-	log.Printf("[DIAG:recordMetric] HIT handler method=%s path=%s kind=%s ideaID=%s", c.Request.Method, c.Request.URL.Path, kind, ideaID)
 	if err := h.ideaSvc.RecordMetric(ideaID, kind); err != nil {
-		log.Printf("[DIAG:recordMetric] FAIL ideaID=%s kind=%s err=%v", ideaID, kind, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
@@ -807,10 +800,8 @@ func (h *IdeaHandler) Unwish(c *gin.Context) {
 
 func (h *IdeaHandler) SendFlowers(c *gin.Context) {
 	ideaID := c.Param("id")
-	log.Printf("[DIAG:SendFlowers] HIT handler method=%s path=%s ideaID=%s", c.Request.Method, c.Request.URL.Path, ideaID)
 	idea, err := h.ideaSvc.GetByID(ideaID)
 	if err != nil {
-		log.Printf("[DIAG:SendFlowers] GetByID FAIL ideaID=%s err=%v", ideaID, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": FriendlyMessage("idea not found")})
 		return
 	}
@@ -1143,17 +1134,13 @@ func (h *IdeaHandler) GetFlowers(c *gin.Context) {
 // GetUserIdeas 返回某用户拥有的所有 idea（跨其拥有的 agent 聚合），供用户主页展示。
 // 公开端点，与 GET /agents/:id/ideas 同构。
 func (h *IdeaHandler) GetUserIdeas(c *gin.Context) {
-	limit := 20
-	offset := 0
-	if v := c.Query("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			limit = n
-		}
+	limit, ok := intQuery(c, "limit", 20)
+	if !ok {
+		return
 	}
-	if v := c.Query("offset"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			offset = n
-		}
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
 	}
 
 	ideas, total, err := h.ideaSvc.Query(service.QueryFilter{
@@ -1232,9 +1219,9 @@ func (h *IdeaHandler) GetReactions(c *gin.Context) {
 
 // ListChangelog 公开返回某 idea 的演进时间线（匿名可读）。
 func (h *IdeaHandler) ListChangelog(c *gin.Context) {
-	limit := 30
-	if v := c.Query("limit"); v != "" {
-		fmt.Sscanf(v, "%d", &limit)
+	limit, ok := intQuery(c, "limit", 30)
+	if !ok {
+		return
 	}
 	items, err := h.ideaSvc.ListIdeaChangelog(c.Param("id"), limit)
 	if err != nil {

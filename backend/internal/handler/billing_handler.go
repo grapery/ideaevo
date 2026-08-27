@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wanye/ideaevo/internal/model"
@@ -30,13 +29,14 @@ import (
 //	POST   /api/admin/refunds/:id/reject      拒绝退款（管理员）
 //	POST   /api/billing/webhooks/:gateway     支付网关异步回调（公开，签名校验）
 type BillingHandler struct {
-	orderSvc  *service.OrderService
-	subSvc    *service.SubscriptionService
-	refundSvc *service.RefundService
+	orderSvc   *service.OrderService
+	subSvc     *service.SubscriptionService
+	refundSvc  *service.RefundService
+	webhooks   *service.WebhookVerifier
 }
 
-func NewBillingHandler(orderSvc *service.OrderService, subSvc *service.SubscriptionService, refundSvc *service.RefundService) *BillingHandler {
-	return &BillingHandler{orderSvc: orderSvc, subSvc: subSvc, refundSvc: refundSvc}
+func NewBillingHandler(orderSvc *service.OrderService, subSvc *service.SubscriptionService, refundSvc *service.RefundService, webhooks *service.WebhookVerifier) *BillingHandler {
+	return &BillingHandler{orderSvc: orderSvc, subSvc: subSvc, refundSvc: refundSvc, webhooks: webhooks}
 }
 
 // Plans 返回所有可购买套餐及价格（公开）。
@@ -136,8 +136,14 @@ func (h *BillingHandler) CreateOrder(c *gin.Context) {
 // ListOrders 当前用户订单列表。
 func (h *BillingHandler) ListOrders(c *gin.Context) {
 	userID := c.GetString("user_id")
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit, ok := intQuery(c, "limit", 20)
+	if !ok {
+		return
+	}
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
+	}
 
 	orders, total, err := h.orderSvc.ListOrders(userID, limit, offset)
 	if err != nil {
@@ -202,45 +208,75 @@ func (h *BillingHandler) MockPay(c *gin.Context) {
 }
 
 // Webhook 支付网关异步回调入口。
-// 不同网关回调格式各异，这里按 gateway 路由分发；
-// 真实实现需按各网关文档验签并解析 out_trade_no / session id。
-//
-// 当前实现：读取原始 body，按 gateway 粗解析 order_id 后调 MarkPaid。
-// 生产部署前必须补全各网关的签名校验逻辑。
+// 按网关验签（Stripe HMAC-SHA256 / 支付宝 RSA2 / 微信 v3 平台公钥 + AES-GCM），
+// 验签失败一律拒绝、绝不触发 MarkPaid；mock 网关回调仅在
+// MOCK_PAY_WEBHOOK_ENABLED=true 的联调环境放行。
 func (h *BillingHandler) Webhook(c *gin.Context) {
-	gateway := c.Param("gateway")
+	gateway := model.PaymentGateway(c.Param("gateway"))
 	body, _ := io.ReadAll(c.Request.Body)
 
-	orderID := parseWebhookOrderID(model.PaymentGateway(gateway), body, c.Query("order"))
-	if orderID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot resolve order id"})
+	var (
+		order service.WebhookOrder
+		err   error
+	)
+	switch gateway {
+	case model.GatewayStripe:
+		order, err = h.webhooks.VerifyStripe(body, c.GetHeader("Stripe-Signature"))
+	case model.GatewayAlipay:
+		order, err = h.webhooks.VerifyAlipay(body)
+	case model.GatewayWeChat:
+		order, err = h.webhooks.VerifyWeChat(body,
+			c.GetHeader("Wechatpay-Signature"),
+			c.GetHeader("Wechatpay-Timestamp"),
+			c.GetHeader("Wechatpay-Nonce"))
+	case model.PaymentGateway("mock"):
+		if !h.webhooks.MockWebhookAllowed() {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "mock webhook disabled"})
+			return
+		}
+		// 联调专用：订单号仅可来自显式声明的 query 参数，且仅对 mock 订单生效
+		orderID := c.Query("order")
+		if orderID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "cannot resolve order id"})
+			return
+		}
+		order = service.WebhookOrder{OrderID: orderID}
+	default:
+		c.JSON(http.StatusNotFound, gin.H{"error": "unknown gateway"})
 		return
 	}
 
-	gatewayOrderID := c.Query("gateway_order_id")
-	if err := h.orderSvc.MarkPaid(orderID, gatewayOrderID); err != nil {
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrWebhookNotPaid):
+			// 非成功状态：按网关期望应答以停止重推，但不入账
+			ackWebhook(c, gateway)
+		case errors.Is(err, service.ErrWebhookNotConfigured):
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "webhook verification not configured"})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "webhook verification failed"})
+		}
+		return
+	}
+
+	if err := h.orderSvc.MarkPaid(order.OrderID, order.GatewayOrderID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	// 各网关期望的响应格式不同，这里统一返回 200 OK。
-	// 支付宝要求返回 "success"，微信要求 XML，Stripe 要求 200 空体。
-	if model.PaymentGateway(gateway) == model.GatewayAlipay {
-		c.String(http.StatusOK, "success")
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	ackWebhook(c, gateway)
 }
 
-// parseWebhookOrderID 从回调数据中提取订单 ID。
-// 不同网关字段名不同，这里做兼容性粗解析。
-func parseWebhookOrderID(gw model.PaymentGateway, body []byte, fallback string) string {
-	if fallback != "" {
-		return fallback
+// ackWebhook 按网关期望格式应答成功：
+// 支付宝要求纯文本 "success"，微信要求 200 + code:SUCCESS，Stripe 200 JSON 即可。
+func ackWebhook(c *gin.Context, gateway model.PaymentGateway) {
+	switch gateway {
+	case model.GatewayAlipay:
+		c.String(http.StatusOK, "success")
+	case model.GatewayWeChat:
+		c.JSON(http.StatusOK, gin.H{"code": "SUCCESS", "message": "成功"})
+	default:
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	}
-	// 占位：真实实现需按网关文档解析 out_trade_no（支付宝/微信）或 client_reference_id（Stripe）。
-	// 此处仅回退到 query 的 order 参数。
-	return ""
 }
 
 // ---- 退款申请（用户侧）----
@@ -280,8 +316,14 @@ func (h *BillingHandler) RequestRefund(c *gin.Context) {
 // ListMyRefunds 当前用户的退款申请列表。
 func (h *BillingHandler) ListMyRefunds(c *gin.Context) {
 	userID := c.GetString("user_id")
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit, ok := intQuery(c, "limit", 20)
+	if !ok {
+		return
+	}
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
+	}
 
 	refunds, total, err := h.refundSvc.ListUserRefunds(userID, limit, offset)
 	if err != nil {
@@ -295,8 +337,14 @@ func (h *BillingHandler) ListMyRefunds(c *gin.Context) {
 
 // ListPendingRefunds 列出待审批退款（管理员后台）。
 func (h *BillingHandler) ListPendingRefunds(c *gin.Context) {
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit, ok := intQuery(c, "limit", 20)
+	if !ok {
+		return
+	}
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
+	}
 
 	refunds, total, err := h.refundSvc.ListPendingRefunds(limit, offset)
 	if err != nil {

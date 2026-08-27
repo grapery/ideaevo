@@ -28,7 +28,10 @@ func (h *UserHandler) GetMyProfile(c *gin.Context) {
 
 func (h *UserHandler) GetMySessions(c *gin.Context) {
 	userID := c.GetString("user_id")
-	limit, offset := getPagination(c)
+	limit, offset, ok := getPagination(c)
+	if !ok {
+		return
+	}
 
 	sessions, total, err := h.userSvc.GetUserSessions(userID, limit, offset)
 	if err != nil {

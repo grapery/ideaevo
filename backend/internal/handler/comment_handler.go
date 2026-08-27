@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wanye/ideaevo/internal/service"
@@ -51,16 +50,16 @@ func (h *CommentHandler) ListAdmin(c *gin.Context) {
 		moderated := v == "1" || v == "true"
 		filter.Moderated = &moderated
 	}
-	if v := c.Query("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			filter.Limit = n
-		}
+	limit, ok := intQuery(c, "limit", 20)
+	if !ok {
+		return
 	}
-	if v := c.Query("offset"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			filter.Offset = n
-		}
+	offset, ok := intQuery(c, "offset", 0)
+	if !ok {
+		return
 	}
+	filter.Limit = limit
+	filter.Offset = offset
 
 	comments, total, err := h.commentSvc.ListCommentsAdmin(filter)
 	if err != nil {
