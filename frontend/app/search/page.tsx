@@ -43,8 +43,10 @@ const suggestedKeywords: { label?: string; labelKey?: string; query: string }[] 
   { label: "AI", query: "AI" },
 ];
 
+const SEARCH_PAGE_SIZE = 10;
+
 function buildSearchParams(query: string, page: number, status: string, category: string) {
-  const params = new URLSearchParams({ q: query, page: String(page), limit: "10" });
+  const params = new URLSearchParams({ q: query, page: String(page), limit: String(SEARCH_PAGE_SIZE) });
   if (status) params.set("status", status);
   if (category) params.set("category", category);
   return params.toString();
@@ -112,8 +114,10 @@ export default function SearchPage() {
         const items: SearchResult[] = data.results || [];
         setResults((previous) => (pageNumber === 1 ? items : [...previous, ...items]));
         setPage(pageNumber);
-        // 不足一页(10 条)说明已到末尾,不再显示"加载更多"
-        setHasMore(items.length >= 10);
+        // 后端 has_more（结果数==limit）指示是否还有下一页；旧版接口无该字段时按页大小兜底
+        setHasMore(
+          typeof data.has_more === "boolean" ? data.has_more : items.length >= SEARCH_PAGE_SIZE
+        );
         // 首次搜索时记录到近期搜索历史
         if (pageNumber === 1) saveRecentSearch(searchQuery);
       } catch (error) {

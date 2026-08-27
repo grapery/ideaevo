@@ -14,10 +14,15 @@ const nextConfig: NextConfig = {
   },
   // Keep local-IP previews hydrated when the dev server starts on localhost.
   allowedDevOrigins: ["127.0.0.1"],
-  // Browser calls same-origin /api/*; Next proxies to the Go API (no CORS / cookie issues).
+  // Browser calls same-origin /api/* and /a2a/*; Next proxies to the Go API
+  // (no CORS / cookie issues). /a2a powers the A2A protocol endpoints shown
+  // on the agent configure page.
   async rewrites() {
     const origin = apiRewriteOrigin();
-    return [{ source: "/api/:path*", destination: `${origin}/api/:path*` }];
+    return [
+      { source: "/api/:path*", destination: `${origin}/api/:path*` },
+      { source: "/a2a/:path*", destination: `${origin}/a2a/:path*` },
+    ];
   },
   // SSR reads API_URL from the repo-root .env when running `make web`.
   env: {

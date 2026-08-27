@@ -7,20 +7,15 @@ import {
   MessageContentType,
   UserProfile,
   FlowerBalance,
-  normalizeCapabilities,
   IdeaVersion,
   IdeaVersionSummary,
   Agent,
-  IdeaStats,
-  IdeaLineage,
   NotificationPreferences,
-  UserDevice,
   PublishIdeaVersionInput,
   ChatArchiveResult,
   ChatAttachmentKind,
   ChatFilePresignResult,
   ChatFileAttachmentView,
-  ChatFileQuota,
   PlansResponse,
   MembershipView,
   CreateOrderResult,
@@ -61,12 +56,14 @@ async function fetchApi(
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  // 仅在携带 body 时声明 JSON Content-Type，GET 等请求不再误发
+  const hasBody = options?.body != null;
   const res = await fetchApi(path, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
     ...options,
+    headers: {
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
+      ...(options?.headers as Record<string, string> | undefined),
+    },
   });
   if (!res.ok) {
     let body: Record<string, unknown> | undefined;
@@ -126,19 +123,8 @@ async function requestWithAuth<T>(
   return res.json();
 }
 
-function withApiKey(apiKey: string): Record<string, string> {
-  return { "X-API-Key": apiKey };
-}
-
 export const api = {
   // Ideas
-  queryIdeas: (params: Record<string, string | number> = {}) => {
-    const qs = new URLSearchParams(
-      Object.entries(params).map(([k, v]) => [k, String(v)]),
-    ).toString();
-    return request<{ ideas: Idea[]; total: number }>(`/ideas?${qs}`);
-  },
-
   getIdea: (id: string) => request<Idea>(`/ideas/${id}`),
 
   updateIdeaMeta: (
@@ -275,13 +261,8 @@ export const api = {
       results: { idea: Idea; similarity: number }[];
       page: number;
       limit: number;
+      has_more?: boolean;
     }>(`/ideas/search?q=${encodeURIComponent(query)}&page=${page}`),
-
-  // 详细统计：views / references / reactions / versions / images / links + 各版本统计
-  getIdeaStats: (id: string) => request<IdeaStats>(`/ideas/${id}/stats`),
-
-  // 权威版本感知血缘（origin / source_idea / source_version / children / stats）
-  getIdeaLineage: (id: string) => request<IdeaLineage>(`/ideas/${id}/lineage`),
 
   // 浏览计数（匿名可调，详情页打开时上报）
   recordIdeaView: (id: string) =>
@@ -332,125 +313,6 @@ export const api = {
     requestWithAuth<{ message: string }>(`/ideas/${id}/bookmark`, {
       method: "DELETE",
     }),
-
-  // Social
-  likeIdea: (id: string, apiKey: string) =>
-    request<{ message: string }>(`/ideas/${id}/like`, {
-      method: "POST",
-      headers: withApiKey(apiKey),
-    }),
-
-  unlikeIdea: (id: string, apiKey: string) =>
-    request<{ message: string }>(`/ideas/${id}/like`, {
-      method: "DELETE",
-      headers: withApiKey(apiKey),
-    }),
-
-  sendFlowers: (id: string, apiKey: string, message?: string) =>
-    request<{
-      message: string;
-      available: number;
-      spent_today: number;
-      received_today: number;
-      grant_quota: number;
-    }>(`/ideas/${id}/flowers`, {
-      method: "POST",
-      body: JSON.stringify({ message }),
-      headers: withApiKey(apiKey),
-    }),
-
-  wishIdea: (id: string, apiKey: string) =>
-    request<{ message: string }>(`/ideas/${id}/wish`, {
-      method: "POST",
-      headers: withApiKey(apiKey),
-    }),
-
-  unwishIdea: (id: string, apiKey: string) =>
-    request<{ message: string }>(`/ideas/${id}/wish`, {
-      method: "DELETE",
-      headers: withApiKey(apiKey),
-    }),
-
-  getWishStatus: (id: string, apiKey: string) =>
-    request<{ wished: boolean }>(`/ideas/${id}/wish`, {
-      headers: withApiKey(apiKey),
-    }),
-
-  forkIdea: (
-    id: string,
-    apiKey: string,
-    data: { title: string; description: string; reason: string },
-  ) =>
-    request<Idea>(`/ideas/${id}/fork`, {
-      method: "POST",
-      body: JSON.stringify(data),
-      headers: withApiKey(apiKey),
-    }),
-
-  // Comments
-  getComments: (ideaId: string) =>
-    request<Comment[]>(`/ideas/${ideaId}/comments`),
-
-  createComment: (
-    ideaId: string,
-    apiKey: string,
-    data: { content: string; sentiment?: string; parent_id?: string },
-  ) =>
-    request<Comment>(`/ideas/${ideaId}/comments`, {
-      method: "POST",
-      body: JSON.stringify({ ...data, user_id: "" }),
-      headers: withApiKey(apiKey),
-    }),
-
-  // Agents
-  registerAgent: (data: { name: string; description?: string }) =>
-    requestWithAuth<{ agent: { id: string; name: string }; api_key: string }>(
-      `/auth/register`,
-      { method: "POST", body: JSON.stringify(data) },
-    ),
-
-  getAgent: async (id: string) => {
-    const data = await request<{
-      id: string;
-      name: string;
-      description: string;
-      capabilities: unknown;
-      created_at: string;
-    }>(`/agents/${id}`);
-    return { ...data, capabilities: normalizeCapabilities(data.capabilities) };
-  },
-
-  getAgentIdeas: (id: string, limit = 20, offset = 0) =>
-    request<{ ideas: Idea[]; total: number }>(
-      `/agents/${id}/ideas?limit=${limit}&offset=${offset}`,
-    ),
-
-  getAgentStats: (id: string) =>
-    request<{
-      idea_count: number;
-      total_likes: number;
-      total_flowers: number;
-      total_forks: number;
-      recent_activity: {
-        id: string;
-        action: string;
-        target_type: string;
-        created_at: string;
-      }[];
-    }>(`/agents/${id}/stats`),
-
-  getMe: (apiKey: string) =>
-    request<{ id: string; name: string; description: string }>(`/auth/me`, {
-      headers: withApiKey(apiKey),
-    }),
-
-  // Activity
-  getActivityStats: () =>
-    request<{
-      today_new_ideas: number;
-      active_agents: number;
-      total_actions: number;
-    }>(`/activity/stats`),
 };
 
 // 评论编辑/删除（PATCH/DELETE /comments/:id，session 鉴权）
@@ -507,12 +369,6 @@ export const agentApi = {
   getFollowing: (id: string, limit = 20, offset = 0) =>
     request<{ agents: Agent[]; total: number }>(
       `/agents/${id}/following?limit=${limit}&offset=${offset}`,
-      { credentials: "include" },
-    ),
-
-  getPeerFollowers: (id: string, limit = 20, offset = 0) =>
-    request<{ agents: Agent[]; total: number }>(
-      `/agents/${id}/peer-followers?limit=${limit}&offset=${offset}`,
       { credentials: "include" },
     ),
 
@@ -899,10 +755,6 @@ export const chatApi = {
       },
     ),
 
-  /** 查询个人存储空间用量与上限（付费用户 limit=-1）。 */
-  getChatFileQuota: () =>
-    requestWithAuth<ChatFileQuota>("/user/chat-files/quota"),
-
   /** 一站式上传聊天文件：presign → PUT → finalize。返回附件引用。 */
   uploadChatFile: async (
     file: File,
@@ -938,12 +790,6 @@ export const chatApi = {
 };
 
 export const userApi = {
-  getProfile: (id: string) =>
-    request<{ profile: UserProfile; is_following: boolean }>(
-      `/users/${id}/profile`,
-      { credentials: "include" },
-    ),
-
   getFollowers: (id: string, limit = 20, offset = 0) =>
     request<{ users: User[]; total: number; following_ids: string[] }>(
       `/users/${id}/followers?limit=${limit}&offset=${offset}`,
@@ -1145,7 +991,7 @@ export const modApi = {
     }),
 };
 
-// 通知偏好（服务端持久化）+ 推送设备 token
+// 通知偏好（服务端持久化）
 export const prefsApi = {
   get: () =>
     requestWithAuth<NotificationPreferences>(`/user/notification-preferences`),
@@ -1154,17 +1000,6 @@ export const prefsApi = {
     requestWithAuth<NotificationPreferences>(`/user/notification-preferences`, {
       method: "PATCH",
       body: JSON.stringify(data),
-    }),
-
-  registerDevice: (input: { token: string; platform?: string }) =>
-    requestWithAuth<UserDevice>(`/user/devices`, {
-      method: "POST",
-      body: JSON.stringify(input),
-    }),
-
-  deleteDevice: (deviceId: string) =>
-    requestWithAuth<{ message: string }>(`/user/devices/${deviceId}`, {
-      method: "DELETE",
     }),
 };
 
@@ -1192,16 +1027,6 @@ export const billingApi = {
     requestWithAuth<{ orders: BillingOrder[]; total: number }>(
       `/billing/orders?limit=${limit}&offset=${offset}`,
     ),
-
-  // 订单详情
-  getOrder: (id: string) =>
-    requestWithAuth<BillingOrder>(`/billing/orders/${id}`),
-
-  // 取消未支付订单
-  cancelOrder: (id: string) =>
-    requestWithAuth<{ message: string }>(`/billing/orders/${id}/cancel`, {
-      method: "POST",
-    }),
 
   // 模拟支付成功（仅 mock 网关降级时可用，联调用）
   mockPay: (id: string) =>

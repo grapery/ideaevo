@@ -79,6 +79,10 @@ export function ChatIdeaWritebackModal({
         demo_url: demoURL.trim(),
         links,
       });
+      // 新增了证据链接 = 一次引用，落 reference_count 埋点（失败不打扰用户）
+      if (trimmedEvidence) {
+        api.recordIdeaReference(ideaId).catch(() => {});
+      }
       notify.success(t("chat.writebackSaved"));
       onSaved?.(updated);
       onClose();

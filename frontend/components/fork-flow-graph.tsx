@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import type { Idea, IdeaLineage } from "@/lib/types";
+import type { Idea, IdeaLineage, IdeaTree } from "@/lib/types";
 import { getApiBase } from "@/lib/api-base";
 import { IconGitFork } from "@/components/icons";
 import { useI18n } from "@/lib/i18n/provider";
@@ -403,42 +403,23 @@ function RowContent({
   );
 }
 
-const ancestorCache = new Map<string, FlowNode[]>();
+const treeCache = new Map<string, IdeaTree | null>();
 
-async function fetchAncestorChain(idea: Idea, apiBase: string): Promise<FlowNode[]> {
-  if (ancestorCache.has(idea.id)) return ancestorCache.get(idea.id)!;
-
-  const ancestors: FlowNode[] = [];
-  let parentId = idea.forked_from_id;
-  let depth = 0;
-
-  while (parentId && depth < 20) {
-    try {
-      const res = await fetch(`${apiBase}/ideas/${parentId}`);
-      if (!res.ok) break;
-      const parent: Idea = await res.json();
-      ancestors.unshift({
-        id: parent.id,
-        title: parent.title,
-        agentName: parent.agent?.name,
-        agentAvatar: parent.agent?.avatar_url,
-        reason: parent.description
-          ? parent.description.split("\n")[0].slice(0, 100)
-          : undefined,
-        createdAt: parent.created_at,
-        status: parent.status,
-        kind: "ancestor",
-        children: [],
-      });
-      parentId = parent.forked_from_id;
-      depth++;
-    } catch {
-      break;
-    }
+/**
+ * 单次请求 GET /ideas/:id/tree 拿到祖先链（近→远排列），
+ * reverse 成远→近（最旧在上）供泳道布局使用，替代旧的逐层 N+1 上溯。
+ */
+async function fetchTree(idea: Idea, apiBase: string): Promise<IdeaTree | null> {
+  if (treeCache.has(idea.id)) return treeCache.get(idea.id)!;
+  try {
+    const res = await fetch(`${apiBase}/ideas/${idea.id}/tree`);
+    const tree: IdeaTree | null = res.ok ? await res.json() : null;
+    treeCache.set(idea.id, tree);
+    return tree;
+  } catch {
+    treeCache.set(idea.id, null);
+    return null;
   }
-
-  ancestorCache.set(idea.id, ancestors);
-  return ancestors;
 }
 
 export function ForkFlowGraph({
@@ -460,40 +441,19 @@ export function ForkFlowGraph({
     if (isFetched.current) return;
     isFetched.current = true;
 
-    const sourceIdea = lineage?.source_idea;
-    if (sourceIdea) {
-      const directParent: FlowNode = {
-        id: sourceIdea.id,
-        title: sourceIdea.title,
-        agentName: sourceIdea.agent?.name,
-        agentAvatar: sourceIdea.agent?.avatar_url,
-        reason: sourceIdea.description
-          ? sourceIdea.description.split("\n")[0].slice(0, 100)
-          : undefined,
-        createdAt: sourceIdea.created_at,
-        status: sourceIdea.status,
-        kind: "ancestor",
-        children: [],
-      };
-
-      if (sourceIdea.forked_from_id) {
-        fetchAncestorChain(sourceIdea, apiBase).then((grandchain) => {
-          setAncestors([...grandchain, directParent]);
-          setLoading(false);
-        });
-      } else {
-        setAncestors([directParent]);
-        setLoading(false);
-      }
-    } else if (idea.forked_from_id) {
-      fetchAncestorChain(idea, apiBase).then((chain) => {
-        setAncestors(chain);
-        setLoading(false);
-      });
-    } else {
+    // 无上下游时无需请求
+    if (!idea.forked_from_id && forkChildren.length === 0) {
       setLoading(false);
+      return;
     }
-  }, [idea, lineage, apiBase]);
+
+    fetchTree(idea, apiBase).then((tree) => {
+      if (tree?.ancestors?.length) {
+        setAncestors(tree.ancestors.slice().reverse().map((a) => ideaToNode(a, "ancestor")));
+      }
+      setLoading(false);
+    });
+  }, [idea, forkChildren.length, apiBase]);
 
   const descendants = useMemo<FlowNode[]>(
     () => forkChildren.map((c) => ideaToNode(c, "fork")),

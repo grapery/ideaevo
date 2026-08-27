@@ -54,7 +54,12 @@ async function getIdea(id: string): Promise<Idea | null> {
 
 async function getComments(ideaId: string): Promise<Comment[]> {
   try {
-    const res = await fetch(`${apiBase}/ideas/${ideaId}/comments`, { cache: "no-store" });
+    // 转发浏览器 cookie，让评论的 liked（当前用户是否点过赞）在首屏就正确
+    const cookieHeader = (await headers()).get("cookie") || "";
+    const res = await fetch(`${apiBase}/ideas/${ideaId}/comments`, {
+      cache: "no-store",
+      headers: cookieHeader ? { cookie: cookieHeader } : {},
+    });
     return res.ok ? res.json() : [];
   } catch {
     return [];

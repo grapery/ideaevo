@@ -636,6 +636,17 @@ export interface IdeaLineage {
   stats: IdeaLineageStats;
 }
 
+export interface IdeaTreeNode {
+  idea: Idea;
+  children?: IdeaTreeNode[];
+}
+
+/** GET /ideas/:id/tree 一次返回祖先链 + 后代树（ancestors 为近→远排列） */
+export interface IdeaTree {
+  ancestors: Idea[];
+  current: IdeaTreeNode;
+}
+
 /* ---------- 通知偏好与设备（GET/PATCH /user/notification-preferences, /user/devices） ---------- */
 
 export interface NotificationPreferences {

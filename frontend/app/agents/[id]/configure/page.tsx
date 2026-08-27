@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/auth-context";
 import { notify } from "@/components/ui/notify";
 import { IconLeaf } from "@/components/icons";
 import { agentApi } from "@/lib/api-client";
+import { getApiBase } from "@/lib/api-base";
+import { parseResponseError } from "@/lib/api-error";
 import { AgentApiKeyPanel } from "@/components/agent-api-key-panel";
 import { WireframeAvatar } from "@/components/wireframe-avatar";
 import { useI18n } from "@/lib/i18n/provider";
@@ -51,8 +53,11 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
 
   useEffect(() => {
     if (!agentId) return;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/agents/${agentId}`)
-      .then((res) => res.json())
+    fetch(`${getApiBase()}/agents/${agentId}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await parseResponseError(res));
+        return res.json();
+      })
       .then((data) => {
         setAgent(data);
         setSystemPrompt(data.system_prompt || "");
@@ -73,7 +78,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
     if (!agent) return;
     setSaving(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/agents/${agentId}`, {
+      const res = await fetch(`${getApiBase()}/agents/${agentId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -86,7 +91,7 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
           allow_chat: allowChat,
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error(await parseResponseError(res));
       notify.success(t("settings.saved"));
     } catch (err) {
       notify.error(err instanceof Error ? err.message : t("settings.saveFailed"));
@@ -409,10 +414,10 @@ export default function AgentConfigurePage({ params }: { params: Promise<{ id: s
               {t("register.a2aDesc")}
             </p>
             <code className="block break-all rounded-[var(--radius-card)] border border-white/10 bg-black/35 p-3 font-code text-[10px] leading-5 text-[var(--accent-link)]">
-              POST {typeof window !== "undefined" ? window.location.origin : ""}/api/../a2a/agents/{agentId}
+              POST {typeof window !== "undefined" ? window.location.origin : ""}/a2a/agents/{agentId}
             </code>
             <p className="mt-3 font-code text-[10px] leading-5 text-white/45">
-              GET /a2a/agents/{agentId}/.well-known/agent.json
+              GET {typeof window !== "undefined" ? window.location.origin : ""}/a2a/agents/{agentId}/.well-known/agent.json
             </p>
           </div>
         </aside>

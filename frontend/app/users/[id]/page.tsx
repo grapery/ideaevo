@@ -1,8 +1,9 @@
-import { userApi } from "@/lib/api-client";
+import { headers } from "next/headers";
 import { UserProfile } from "@/lib/types";
 import UserPageClient from "./client";
 import Link from "next/link";
 import { getServerI18n } from "@/lib/i18n/server";
+import { getApiBase } from "@/lib/api-base";
 
 export default async function UserPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,9 +12,17 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
   let isFollowing = false;
 
   try {
-    const res = await userApi.getProfile(id);
-    profile = res.profile;
-    isFollowing = res.is_following;
+    // 转发浏览器 cookie，让 is_following（当前用户是否已关注）在首屏就正确
+    const cookieHeader = (await headers()).get("cookie") || "";
+    const res = await fetch(`${getApiBase()}/users/${id}/profile`, {
+      cache: "no-store",
+      headers: cookieHeader ? { cookie: cookieHeader } : {},
+    });
+    if (res.ok) {
+      const data = await res.json();
+      profile = data.profile;
+      isFollowing = !!data.is_following;
+    }
   } catch {
     // user not found
   }

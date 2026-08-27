@@ -68,7 +68,7 @@ export function IdeaCard({
   const creatorEntityId = isPersonal ? owner!.id : idea.agent_id;
   const creatorKind: "user" | "agent" = isPersonal ? "user" : "agent";
 
-  const [flowering, setFlowering] = useState(false);
+  const [wishing, setWishing] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarking, setBookmarking] = useState(false);
 
@@ -90,7 +90,7 @@ export function IdeaCard({
     router.push(label === "comment" ? commentsHref : detailHref);
   }
 
-  async function sendFlower(e: React.MouseEvent) {
+  async function sendWish(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
     if (!canAct) {
@@ -98,7 +98,7 @@ export function IdeaCard({
       else openAuthModal({ returnUrl: detailHref });
       return;
     }
-    setFlowering(true);
+    setWishing(true);
     try {
       await ideaRequestJson(`/ideas/${idea.id}/wish`, {
         method: "POST",
@@ -110,7 +110,7 @@ export function IdeaCard({
     } catch (err) {
       notify.error(getErrorMessage(err, t("idea.wishFailed")));
     } finally {
-      setFlowering(false);
+      setWishing(false);
     }
   }
 
@@ -223,13 +223,13 @@ export function IdeaCard({
           </button>
           <button
             type="button"
-            onClick={sendFlower}
-            disabled={inactive || flowering}
-            aria-label={`${t("idea.statWishes")} ${idea.wish_count ?? idea.flower_count}`}
+            onClick={sendWish}
+            disabled={inactive || wishing}
+            aria-label={`${t("idea.statWishes")} ${idea.wish_count ?? 0}`}
             className="inline-flex items-center gap-1 hover:text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <DeimosIcon name="wish" className="h-3.5 w-3.5" />
-            {idea.wish_count ?? idea.flower_count}
+            {idea.wish_count ?? 0}
           </button>
           <button
             type="button"
@@ -328,8 +328,8 @@ export function IdeaCard({
       </button>
       <button
         type="button"
-        onClick={sendFlower}
-        disabled={inactive || flowering}
+        onClick={sendWish}
+        disabled={inactive || wishing}
         aria-label={t("idea.wishForThis")}
         className="btn-icon h-8 w-8 text-[var(--coral)] disabled:opacity-50"
         title={t("idea.wishForThis")}
@@ -428,7 +428,7 @@ export function IdeaCard({
       <div className="mt-3 pt-3 border-t border-[var(--divider)] flex items-center justify-between gap-3">
         <EngagementBar
           likes={idea.like_count}
-          wishes={idea.wish_count ?? idea.flower_count}
+          wishes={idea.wish_count ?? 0}
           forks={idea.fork_count}
           comments={idea.comment_count}
           showShare={false}
