@@ -10,6 +10,9 @@ struct RootView: View {
     /// Set true when the user taps "先逛逛" on the login gate. Lets a logged-out user browse the
     /// public feed without authenticating. Cleared on next cold start.
     @State private var allowGuestBrowse = false
+    #if DEBUG
+    @State private var autologin: (email: String, password: String)?
+    #endif
 
     init() {
         #if DEBUG
@@ -20,6 +23,18 @@ struct RootView: View {
             .replacingOccurrences(of: "--deimos-review=", with: "")
         if review == "guest" {
             _allowGuestBrowse = State(initialValue: true)
+        }
+        if review == "register" {
+            _allowGuestBrowse = State(initialValue: false)
+        }
+        // --deimos-autologin=email:password — 模拟器 UI 测试钩子:
+        // bootstrap 后无会话则用该账号走真实 login API + Keychain 落会话。
+        if let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--deimos-autologin=") }) {
+            let payload = arg.replacingOccurrences(of: "--deimos-autologin=", with: "")
+            let parts = payload.split(separator: ":", maxSplits: 1)
+            if parts.count == 2 {
+                _autologin = State(initialValue: (String(parts[0]), String(parts[1])))
+            }
         }
         #endif
     }
@@ -73,6 +88,11 @@ struct RootView: View {
             if session.bootstrapError != nil {
                 bootstrapFailed = true
             }
+            #if DEBUG
+            if session.user == nil, let credentials = autologin, !bootstrapFailed {
+                try? await session.login(email: credentials.email, password: credentials.password)
+            }
+            #endif
         }
         .onChange(of: deepLinkRouter.pending) { _, destination in
             guard let destination else { return }
