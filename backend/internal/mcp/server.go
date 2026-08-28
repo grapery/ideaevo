@@ -39,6 +39,12 @@ var readOnlyTools = map[string]bool{
 	"get_job_spec":          true,
 	"list_my_jobs":          true,
 	"get_idea_changelog":    true,
+	"get_idea_lineage":      true,
+	"get_activity_feed":     true,
+	// 私域自查类(只读, 不写任何数据; 仍需 api_key 因为绑定身份)
+	"list_progress":         true,
+	"get_my_overview":       true,
+	"get_my_signals":        true,
 }
 
 // ctxKeyHTTPAgent 标记由 HTTP 层（requireAPIKey）验证过的 agent，避免工具层重复要求 api_key 参数。
@@ -47,6 +53,25 @@ type ctxKeyHTTPAgent struct{}
 // HTTPAgentContextKey 返回用于在 context 中存取 HTTP 层验证过的 agent 的 key。
 // 供 cmd/mcp 的鉴权中间件注入身份。
 func HTTPAgentContextKey() any { return ctxKeyHTTPAgent{} }
+
+// rateLimitKey 从调用上下文提取限速 key（agent ID）。
+// 优先 HTTP 层注入的 agent；其次 stdio 的 DEIMOS_API_KEY 环境身份；
+// 再次用调用方显式提供的 api_key 字符串（校验前先限速，无效 key 也无法绕过）；
+// 都没有则匿名共享桶。
+func (s *Server) rateLimitKey(ctx context.Context, rawArgs map[string]any) string {
+	if httpAgent, ok := ctx.Value(ctxKeyHTTPAgent{}).(*model.Agent); ok && httpAgent != nil {
+		return httpAgent.ID
+	}
+	if s.envAgent != nil {
+		return s.envAgent.ID
+	}
+	if rawArgs != nil {
+		if apiKey, _ := rawArgs["api_key"].(string); apiKey != "" {
+			return "key:" + apiKey
+		}
+	}
+	return mcpAnonKey
+}
 
 // ptrStr 安全解引用 *string，nil 返回空串。
 func ptrStr(p *string) string {
@@ -74,6 +99,9 @@ type Server struct {
 	// envAgent 是 DEIMOS_API_KEY 环境变量解析出的默认身份（stdio 本地使用），
 	// 优先级低于 HTTP 层 context 与工具参数 api_key。
 	envAgent *model.Agent
+
+	// limiter 按 agent 限速 MCP 调用（1 req/s），防止 AI Agent 高频重试打爆后端。
+	limiter *RateLimiter
 }
 
 func NewServer(agentSvc *service.AgentService, socialSvc *service.SocialService, chatSvc *service.ChatService, userSvc *service.UserService, db *gorm.DB) *Server {
@@ -84,6 +112,8 @@ func NewServer(agentSvc *service.AgentService, socialSvc *service.SocialService,
 		userSvc:   userSvc,
 		db:        db,
 	}
+
+	s.limiter = NewRateLimiter(nil)
 
 	s.mcpServer = mcp.NewServer(
 		&mcp.Implementation{Name: "deimos-marketplace", Version: "1.0.0"},
@@ -156,6 +186,11 @@ func (s *Server) registerBridgedTools() {
 			}
 			isReadOnly := readOnlyTools[toolName]
 
+			// 限速优先于一切：读、写、鉴权失败都先过桶，避免被拒的调用方继续高频打点。
+			if !s.limiter.Allow(s.rateLimitKey(ctx, rawArgs)) {
+				return nil, ErrRateLimited
+			}
+
 			var principal service.Principal
 			if httpAgent, ok := ctx.Value(ctxKeyHTTPAgent{}).(*model.Agent); ok && httpAgent != nil {
 				// HTTP 层已鉴权：只读工具直接放行；写操作仍校验 Pro。
@@ -221,6 +256,10 @@ func (s *Server) GetServer() *mcp.Server {
 // 身份来源优先级：HTTP 层 context（远程 MCP）> api_key 参数（stdio 老用法）。
 // isReadOnly=true 时跳过 Pro 门控（只读工具对所有人免费）。
 func (s *Server) authenticate(ctx context.Context, apiKey string, isReadOnly bool) (string, error) {
+	// 限速优先于鉴权与 Pro 门控。
+	if !s.limiter.Allow(s.rateLimitKey(ctx, map[string]any{"api_key": apiKey})) {
+		return "", ErrRateLimited
+	}
 	// HTTP 层已鉴权：直接取注入的 agent。
 	if httpAgent, ok := ctx.Value(ctxKeyHTTPAgent{}).(*model.Agent); ok && httpAgent != nil {
 		if !isReadOnly && s.subSvc != nil {
@@ -302,6 +341,12 @@ func (s *Server) registerTools() {
 		Name:        "get_user_activity",
 		Description: "Get recent activity records for a user.",
 	}, s.handleGetUserActivity)
+
+	// delete_chat_session
+	mcp.AddTool(s.mcpServer, &mcp.Tool{
+		Name:        "delete_chat_session",
+		Description: "Delete one of your chat sessions (irreversible).",
+	}, s.handleDeleteChatSession)
 }
 
 // textResult 构造一个只含文本内容的 CallToolResult。
@@ -358,6 +403,22 @@ type listChatSessionsInput struct {
 	APIKey *string `json:"api_key,omitempty"  jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
 	Limit  int     `json:"limit,omitempty"    jsonschema:"max sessions to return (default 20)"`
 	Offset int     `json:"offset,omitempty"   jsonschema:"pagination offset"`
+}
+
+type deleteChatSessionInput struct {
+	APIKey    *string `json:"api_key,omitempty"  jsonschema:"your Deimos API key (optional when authenticated via HTTP)"`
+	SessionID string  `json:"session_id"         jsonschema:"ID of the chat session to delete"`
+}
+
+func (s *Server) handleDeleteChatSession(ctx context.Context, req *mcp.CallToolRequest, in deleteChatSessionInput) (*mcp.CallToolResult, any, error) {
+	agentID, err := s.authenticate(ctx, ptrStr(in.APIKey), false)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := s.chatSvc.DeleteSession(in.SessionID, "agent:"+agentID); err != nil {
+		return nil, nil, err
+	}
+	return textResult("Chat session deleted"), nil, nil
 }
 
 type getUserProfileInput struct {
@@ -471,6 +532,9 @@ func (s *Server) handleListChatSessions(ctx context.Context, req *mcp.CallToolRe
 }
 
 func (s *Server) handleGetUserProfile(ctx context.Context, req *mcp.CallToolRequest, in getUserProfileInput) (*mcp.CallToolResult, any, error) {
+	if !s.limiter.Allow(s.rateLimitKey(ctx, nil)) {
+		return nil, nil, ErrRateLimited
+	}
 	profile, err := s.userSvc.GetProfile(in.UserID)
 	if err != nil {
 		return nil, nil, err
@@ -480,6 +544,9 @@ func (s *Server) handleGetUserProfile(ctx context.Context, req *mcp.CallToolRequ
 }
 
 func (s *Server) handleGetUserActivity(ctx context.Context, req *mcp.CallToolRequest, in getUserActivityInput) (*mcp.CallToolResult, any, error) {
+	if !s.limiter.Allow(s.rateLimitKey(ctx, nil)) {
+		return nil, nil, ErrRateLimited
+	}
 	limit := in.Limit
 	if limit == 0 {
 		limit = 20

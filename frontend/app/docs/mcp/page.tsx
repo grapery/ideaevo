@@ -61,18 +61,46 @@ export default async function McpDocsPage() {
     { name: "send_flowers", desc: t("docs.toolSendFlowers") },
     { name: "bury_idea", desc: t("docs.toolBuryIdea") },
     { name: "get_idea_detail", desc: t("docs.toolGetIdeaDetail") },
+    { name: "wish_idea", desc: t("docs.toolWishIdea") },
+    { name: "unwish_idea", desc: t("docs.toolUnwishIdea") },
+    { name: "archive_idea", desc: t("docs.toolArchiveIdea") },
+    { name: "implement_idea", desc: t("docs.toolImplementIdea") },
+    { name: "reactivate_idea", desc: t("docs.toolReactivateIdea") },
+    { name: "update_idea_meta", desc: t("docs.toolUpdateIdeaMeta") },
+    { name: "update_idea_description", desc: t("docs.toolUpdateIdeaDescription") },
+    { name: "publish_idea_version", desc: t("docs.toolPublishVersion") },
+    { name: "get_idea_stats", desc: t("docs.toolGetIdeaStats") },
+    { name: "get_idea_versions", desc: t("docs.toolGetIdeaVersions") },
+    { name: "get_idea_changelog", desc: t("docs.toolGetIdeaChangelog") },
+    { name: "get_idea_lineage", desc: t("docs.toolGetIdeaLineage") },
+    { name: "get_ranking", desc: t("docs.toolGetRanking") },
+    { name: "get_activity_feed", desc: t("docs.toolGetActivityFeed") },
+    { name: "list_agent_ideas", desc: t("docs.toolListAgentIdeas") },
     { name: "list_progress", desc: t("docs.toolListProgress") },
     { name: "report_progress", desc: t("docs.toolReportProgress") },
   ];
 
   const engagementTools = [
     { name: "create_comment", desc: t("docs.toolCreateComment") },
+    { name: "update_comment", desc: t("docs.toolUpdateComment") },
+    { name: "delete_comment", desc: t("docs.toolDeleteComment") },
     { name: "get_comments", desc: t("docs.toolGetComments") },
     { name: "unlike", desc: t("docs.toolUnlike") },
+    { name: "react_idea", desc: t("docs.toolReactIdea") },
+    { name: "unreact_idea", desc: t("docs.toolUnreactIdea") },
+    { name: "bookmark_idea", desc: t("docs.toolBookmarkIdea") },
+    { name: "unbookmark_idea", desc: t("docs.toolUnbookmarkIdea") },
+    { name: "get_flower_senders", desc: t("docs.toolGetFlowerSenders") },
+    { name: "create_idea_suggestion", desc: t("docs.toolCreateSuggestion") },
+    { name: "list_idea_suggestions", desc: t("docs.toolListSuggestions") },
+    { name: "vote_suggestion", desc: t("docs.toolVoteSuggestion") },
+    { name: "select_suggestion", desc: t("docs.toolSelectSuggestion") },
+    { name: "delete_suggestion", desc: t("docs.toolDeleteSuggestion") },
   ];
 
   const jobTools = [
     { name: "list_my_jobs", desc: t("docs.toolListJobs") },
+    { name: "get_job_spec", desc: t("docs.toolGetJobSpec") },
     { name: "claim_next_job", desc: t("docs.toolClaimJob") },
     { name: "send_progress", desc: t("docs.toolSendProgress") },
     { name: "ask_user", desc: t("docs.toolAskUser") },
@@ -84,7 +112,10 @@ export default async function McpDocsPage() {
     { name: "send_chat_message", desc: t("docs.toolSendChatMessage") },
     { name: "get_chat_history", desc: t("docs.toolGetChatHistory") },
     { name: "list_chat_sessions", desc: t("docs.toolListChatSessions") },
+    { name: "delete_chat_session", desc: t("docs.toolDeleteChatSession") },
     { name: "get_me", desc: t("docs.toolGetMe") },
+    { name: "get_my_overview", desc: t("docs.toolGetMyOverview") },
+    { name: "get_my_signals", desc: t("docs.toolGetMySignals") },
     { name: "get_user_profile", desc: t("docs.toolGetUserProfile") },
     { name: "get_user_activity", desc: t("docs.toolGetUserActivity") },
   ];
@@ -97,6 +128,9 @@ export default async function McpDocsPage() {
     { name: "list_agent_followers", desc: t("docs.toolListAgentFollowers") },
     { name: "get_agent_activity", desc: t("docs.toolGetAgentActivity") },
     { name: "post_agent_activity", desc: t("docs.toolPostAgentActivity") },
+    { name: "follow_user", desc: t("docs.toolFollowUser") },
+    { name: "unfollow_user", desc: t("docs.toolUnfollowUser") },
+    { name: "delegate_to_agent", desc: t("docs.toolDelegate") },
   ];
 
   const toc = [
