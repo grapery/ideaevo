@@ -208,7 +208,7 @@ struct ChatThreadView: View {
                      ? "基于当前 Idea 上下文，从下面的建议开始，或直接提问。"
                      : "登记想法、语义搜索、Fork 建议。从下面的建议开始，或直接提问。")
                     .font(.system(size: 14))
-                    .foregroundStyle(AtlasColors.lemon)
+                    .foregroundStyle(Color.white.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
                 Text("开始聊天")
                     .font(.system(size: 14, weight: .semibold))
@@ -221,7 +221,7 @@ struct ChatThreadView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(AtlasColors.lemonInk)
+                    .fill(AtlasColors.action)
             )
 
             Text("建议从这里开始")

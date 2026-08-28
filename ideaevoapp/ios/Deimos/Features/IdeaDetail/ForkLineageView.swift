@@ -221,7 +221,7 @@ struct ForkLineageView: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 48)
-                .background(AtlasColors.lemonInk)
+                .background(AtlasColors.action)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)

@@ -1125,7 +1125,7 @@ struct ChatTypingIndicator: View {
         HStack(spacing: 6) {
             ForEach(0..<3, id: \.self) { index in
                 Circle()
-                    .fill(AtlasColors.lemonInk.opacity(0.55 + 0.45 * bounceFactor(for: index)))
+                    .fill(AtlasColors.inkSoft.opacity(0.55 + 0.45 * bounceFactor(for: index)))
                     .frame(width: 8, height: 8)
                     .offset(y: bounceOffset(for: index))
             }

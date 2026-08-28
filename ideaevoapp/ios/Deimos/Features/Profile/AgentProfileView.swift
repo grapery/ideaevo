@@ -288,7 +288,7 @@ struct AgentProfileView: View {
         ZStack(alignment: .bottomLeading) {
             // Dark banner background.
             Rectangle()
-                .fill(AtlasColors.lemonInk) // #1A2403
+                .fill(AtlasColors.action) // 深色 banner (原 #1A2403)
                 .frame(height: 180)
 
             // Avatar — 80×80 #BEE90D lemon circle (cr40), centered horizontally on the banner.
