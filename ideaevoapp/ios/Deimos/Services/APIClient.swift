@@ -717,6 +717,14 @@ final class APIClient {
         try await request(path: "/ideas/\(ideaID)/progress", auth: .none)
     }
 
+    func getIdeaChangelog(ideaID: String, limit: Int = 30) async throws -> [ChangelogEntry] {
+        let res: ChangelogResponse = try await request(
+            path: "/ideas/\(ideaID)/changelog?limit=\(limit)",
+            auth: .none
+        )
+        return res.changelog
+    }
+
     // MARK: - Activity Heatmap（GitHub 式活跃热力图）
 
     func getUserHeatmap(userID: String) async throws -> HeatmapResponse {

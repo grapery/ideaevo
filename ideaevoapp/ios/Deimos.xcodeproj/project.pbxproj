@@ -43,6 +43,7 @@
 		B5D1E2F3A4B5478990AC0001 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B5D1E2F3A4B5478990AC0002 /* LaunchScreen.storyboard */; };
 		B6A2B3C4D5E6478990ABCDEF6 /* Reaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B2C3D4E5F6478990ABCDEF6 /* Reaction.swift */; };
 		2C57BC6CF6EE64AEDB9E2BBE /* Suggestion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 018E1EBC534C216B5512F6CA /* Suggestion.swift */; };
+		E46BB86FCF319A2A4F6D5CC5 /* VersionHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5466C3C508FF9391C07B848 /* VersionHistoryView.swift */; };
 		B7006E0FD8DD4966B7349253 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17853EA0F18B4EAA9E67D5B3 /* KeychainStore.swift */; };
 		B717C318C69842E1A0563B33 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EBA63AFF8744CE4A3D5BADF /* User.swift */; };
 		B7A2B3C4D5E6478990ABCDEF7 /* OAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B2C3D4E5F6478990ABCDEF7 /* OAuthService.swift */; };
@@ -135,6 +136,7 @@
 		A5B2C3D4E5F6478990ABCDEF5 /* AppPreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferencesStore.swift; sourceTree = "<group>"; };
 		A6B2C3D4E5F6478990ABCDEF6 /* Reaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reaction.swift; sourceTree = "<group>"; };
 		018E1EBC534C216B5512F6CA /* Suggestion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Suggestion.swift; sourceTree = "<group>"; };
+		B5466C3C508FF9391C07B848 /* VersionHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionHistoryView.swift; sourceTree = "<group>"; };
 		A7B2C3D4E5F6478990ABCDEF7 /* OAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthService.swift; sourceTree = "<group>"; };
 		A7E4B8C9D0F1415892AB7C01 /* Deimos.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Deimos.entitlements; sourceTree = "<group>"; };
 		A8B2C3D4E5F6478990ABCDEF8 /* ReactionStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReactionStrip.swift; sourceTree = "<group>"; };
@@ -190,6 +192,7 @@
 				D1B2C3D4E5F6478990ABCDF22 /* IdeaOwnerEditView.swift */,
 				D1B2C3D4E5F6478990ABCDF23 /* ForkLineageView.swift */,
 				D1B2C3D4E5F6478990ABCDF24 /* VersionCompareView.swift */,
+				B5466C3C508FF9391C07B848 /* VersionHistoryView.swift */,
 				B41AA512D5A2A5343EEFE79B /* PublishIdeaView.swift */,
 			);
 			path = IdeaDetail;
@@ -562,6 +565,7 @@
 				F5A2B3C4D5E6478990ABCDEF5 /* AppPreferencesStore.swift in Sources */,
 				B6A2B3C4D5E6478990ABCDEF6 /* Reaction.swift in Sources */,
 				2C57BC6CF6EE64AEDB9E2BBE /* Suggestion.swift in Sources */,
+				E46BB86FCF319A2A4F6D5CC5 /* VersionHistoryView.swift in Sources */,
 				B7A2B3C4D5E6478990ABCDEF7 /* OAuthService.swift in Sources */,
 				B8A2B3C4D5E6478990ABCDEF8 /* ReactionStrip.swift in Sources */,
 				B9A2B3C4D5E6478990ABCDEF9 /* ForkSheet.swift in Sources */,

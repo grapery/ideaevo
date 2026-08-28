@@ -396,3 +396,24 @@ struct HeatmapResponse: Codable, Sendable {
     let days: [HeatmapDay]
     let total: Int
 }
+
+/// 想法公开演进时间线事件。对齐 REST `GET /ideas/:id/changelog`。
+/// type: version / status / suggestion_selected / job_done / job_failed / comment / fork ...
+struct ChangelogEntry: Codable, Identifiable, Sendable {
+    let id: String
+    let type: String
+    let title: String
+    let detail: String?
+    let actorType: String?
+    let createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id, type, title, detail
+        case actorType = "actor_type"
+        case createdAt = "created_at"
+    }
+}
+
+struct ChangelogResponse: Codable, Sendable {
+    let changelog: [ChangelogEntry]
+}

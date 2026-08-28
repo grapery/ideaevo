@@ -1173,9 +1173,41 @@ struct IdeaDetailView: View {
         // ardot S04 (`237:264` README): 350×118, fill #F8F9FB, stroke #EEF1F3, cr16, itemSpacing 6, padding 14.
         // Title "README · 产品说明" 14pt Semibold ink; body 按 is_markdown 决定渲染方式。
         return VStack(alignment: .leading, spacing: 6) {
-            Text("README · 产品说明")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AtlasColors.ink)
+            HStack(spacing: 6) {
+                Text("README · 产品说明")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                if let current = viewModel.versions.first(where: \.isCurrent) {
+                    Text("v\(current.version)")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(AtlasColors.ink)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1.5)
+                        .background(
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(AtlasColors.surfaceSecondary)
+                        )
+                }
+                Spacer()
+                if !viewModel.versions.isEmpty {
+                    Button {
+                        versionRoute = VersionCompareRoute(
+                            ideaID: idea.id,
+                            versionID: viewModel.versions.first(where: \.isCurrent)?.id
+                                ?? viewModel.versions.first?.id ?? idea.id,
+                            compareVersionID: nil
+                        )
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("版本历史 \(viewModel.versions.count)")
+                            DeimosIconView(icon: .chevronRight, size: 9, color: AtlasColors.linkBlue)
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AtlasColors.linkBlue)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
             if idea.isMarkdown {
                 MarkdownBody(markdown: body, textColor: AtlasColors.ink)
             } else {
