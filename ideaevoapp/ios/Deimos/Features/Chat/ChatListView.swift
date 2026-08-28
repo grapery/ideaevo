@@ -246,7 +246,7 @@ struct ChatListView: View {
                 } else if viewModel.sessions.isEmpty {
                     sessionsEmptyState
                 } else {
-                    LazyVStack(alignment: .leading, spacing: 0) {
+                    LazyVStack(alignment: .leading, spacing: 6) {
                         ForEach(viewModel.filteredSessions) { chatSession in
                             sessionCard(chatSession)
                         }
@@ -346,9 +346,15 @@ struct ChatListView: View {
                         .foregroundStyle(AtlasColors.inkFaint)
                 }
             }
-            .padding(.vertical, 6)
-            .frame(minHeight: 44)
-            .background(AtlasColors.canvas)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 52)
+            .background(AtlasColors.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(pinned ? AtlasColors.ink.opacity(0.55) : AtlasColors.cardStroke, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .contentShape(Rectangle())
             .onTapGesture {
                 selectedSession = ChatSessionRoute(id: chatSession.id, title: chatSession.displayTitle)

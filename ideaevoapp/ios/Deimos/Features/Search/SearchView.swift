@@ -246,12 +246,25 @@ struct SearchView: View {
         .frame(maxHeight: .infinity)
     }
 
+    static let suggestedTerms = ["MCP", "RAG", "自动化", "监控面板", "浏览器插件", "数据可视化"]
+
     private var recentSection: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 if viewModel.recentQueries.isEmpty {
                     AtlasDesignedEmptyStates.searchIdle()
-                        .padding(.top, 80)
+                        .padding(.top, 60)
+
+                    // 空态引导: 热门方向一键即搜, 降低空搜索页的"空白感"
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("试试搜索")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(AtlasColors.ink)
+                        FlowChips(items: SearchView.suggestedTerms) { term in
+                            viewModel.applyRecent(term)
+                        }
+                    }
+                    .padding(.top, 28)
                 } else {
                     HStack {
                         Text("最近搜索")

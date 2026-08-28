@@ -366,18 +366,18 @@ struct ActivityScreen: View {
                 .foregroundStyle(AtlasColors.ink)
                 .padding(.bottom, 4)
 
-            VStack(spacing: 0) {
+            VStack(spacing: 8) {
                 ForEach(Array(viewModel.filteredActivities.enumerated()), id: \.element.id) { index, activity in
                     Group {
                         if let ideaID = activity.ideaID {
                             Button {
                                 selectedRoute = IdeaRoute(id: ideaID)
                             } label: {
-                                ActivityCell(activity: activity)
+                                activityCard(activity)
                             }
                             .buttonStyle(.plain)
                         } else {
-                            ActivityCell(activity: activity)
+                            activityCard(activity)
                         }
                     }
                     .onAppear {
@@ -386,11 +386,6 @@ struct ActivityScreen: View {
                                 await viewModel.loadMore()
                             }
                         }
-                    }
-
-                    if index < viewModel.filteredActivities.count - 1 {
-                        Divider()
-                            .padding(.leading, 40)
                     }
                 }
             }
@@ -408,6 +403,20 @@ struct ActivityScreen: View {
                 .background(AtlasColors.settingsGroupFill)
             }
         }
+    }
+
+    /// 动态行卡片容器: 白底描边圆角, 替代 Divider 分隔的裸行。
+    private func activityCard(_ activity: ActivityView) -> some View {
+        ActivityCell(activity: activity)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AtlasColors.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(AtlasColors.cardStroke, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     @ViewBuilder

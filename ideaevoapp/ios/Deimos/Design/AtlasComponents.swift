@@ -2570,3 +2570,85 @@ extension Idea {
         statusColor.opacity(0.16)
     }
 }
+
+
+// MARK: - AtlasSwipeRow (通用左滑操作行)
+
+/// 左滑露出操作按钮的行容器（自绘手势, 供 LazyVStack 使用——List 才能用系统 swipeActions）。
+/// actions 从右到左依次排列；行内容自带背景与裁剪。
+struct AtlasSwipeAction: Identifiable {
+    let id: String
+    let title: String
+    let icon: DeimosIcon
+    let color: Color
+    let action: () -> Void
+
+    init(id: String, title: String, icon: DeimosIcon, color: Color, action: @escaping () -> Void) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.color = color
+        self.action = action
+    }
+}
+
+struct AtlasSwipeRow<Content: View>: View {
+    let actions: [AtlasSwipeAction]
+    @ViewBuilder let content: () -> Content
+
+    @State private var offset: CGFloat = 0
+    @GestureState private var dragOffset: CGFloat = 0
+
+    private var actionWidth: CGFloat { 72 }
+    private var totalWidth: CGFloat { actionWidth * CGFloat(max(actions.count, 1)) }
+
+    var body: some View {
+        if actions.isEmpty {
+            content()
+        } else {
+            ZStack(alignment: .trailing) {
+                HStack(spacing: 0) {
+                    ForEach(actions) { swipe in
+                        Button {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) { offset = 0 }
+                            swipe.action()
+                        } label: {
+                            VStack(spacing: 2) {
+                                DeimosIconView(icon: swipe.icon, size: 16, color: .white)
+                                Text(swipe.title)
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(.white)
+                            }
+                            .frame(width: actionWidth)
+                            .frame(maxHeight: .infinity)
+                            .background(swipe.color)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                content()
+                    .frame(maxWidth: .infinity)
+                    .offset(x: effectiveOffset)
+                    .gesture(
+                        DragGesture(minimumDistance: 12)
+                            .updating($dragOffset) { value, state, _ in
+                                let proposed = offset + value.translation.width
+                                state = min(0, max(-totalWidth, proposed)) - offset
+                            }
+                            .onEnded { value in
+                                let proposed = offset + value.translation.width
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                                    offset = proposed < -44 ? -totalWidth : 0
+                                }
+                            }
+                    )
+            }
+            .clipped()
+        }
+    }
+
+    private var effectiveOffset: CGFloat {
+        min(0, max(-totalWidth, offset + dragOffset))
+    }
+}

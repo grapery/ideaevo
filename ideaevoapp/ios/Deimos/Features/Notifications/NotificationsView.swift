@@ -121,7 +121,7 @@ struct NotificationsView: View {
                     let todayItems = filteredItems.filter { Calendar.current.isDateInToday($0.createdAt) }
                     let earlierItems = filteredItems.filter { !Calendar.current.isDateInToday($0.createdAt) }
 
-                    LazyVStack(alignment: .leading, spacing: 0) {
+                    LazyVStack(alignment: .leading, spacing: 6) {
                         if !todayItems.isEmpty {
                             Text("今天")
                                 .font(.system(size: 12, weight: .semibold))
@@ -129,7 +129,7 @@ struct NotificationsView: View {
                                 .padding(.bottom, 6)
                         }
                         ForEach(Array(todayItems.enumerated()), id: \.element.id) { index, item in
-                            notificationCell(item)
+                            notificationRow(item)
                                 .onAppear {
                                     if index == todayItems.count - 1, earlierItems.isEmpty {
                                         Task { await viewModel.loadMore() }
@@ -145,7 +145,7 @@ struct NotificationsView: View {
                                 .padding(.bottom, 6)
                         }
                         ForEach(Array(earlierItems.enumerated()), id: \.element.id) { index, item in
-                            notificationCell(item)
+                            notificationRow(item)
                                 .onAppear {
                                     if index == earlierItems.count - 1 {
                                         Task { await viewModel.loadMore() }
@@ -177,6 +177,31 @@ struct NotificationsView: View {
             AgentProfileView(agentID: route.id)
         }
         .task { await viewModel.load() }
+    }
+
+    /// 通知行: 白卡描边; 未读行左滑「已读」。
+    private func notificationRow(_ item: AppNotification) -> some View {
+        let swipeActions: [AtlasSwipeAction] = item.isRead ? [] : [
+            .init(
+                id: "read",
+                title: "已读",
+                icon: .check,
+                color: AtlasColors.success
+            ) {
+                Task { await viewModel.markRead(id: item.id) }
+            }
+        ]
+        return AtlasSwipeRow(actions: swipeActions) {
+            notificationCell(item)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(AtlasColors.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(item.isRead ? AtlasColors.cardStroke : AtlasColors.brandOrange.opacity(0.35), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
     }
 
     /// S09 notification row (ardot 715405210175453 `2:498`): 34pt avatar (or tinted icon
