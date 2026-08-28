@@ -113,7 +113,7 @@ struct MyAgentsView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 48)
-                        .background(Capsule(style: .continuous).fill(AtlasColors.lemonSoft))
+                        .background(Capsule(style: .continuous).fill(AtlasColors.action))
                     }
                     .buttonStyle(.plain)
                 }
