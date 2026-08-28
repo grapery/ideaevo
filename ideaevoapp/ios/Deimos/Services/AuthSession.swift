@@ -22,6 +22,9 @@ final class AuthSession {
         } catch {
             api.setToken(nil)
             user = nil
+            // 401 = token 失效, 属正常未登录态, 静默回落到登录门;
+            // 只有真正的网络/服务端故障才值得全屏错误页。
+            if case APIError.unauthorized = error { return }
             bootstrapError = error.localizedDescription
         }
     }

@@ -168,21 +168,31 @@ struct LoginView: View {
     /// S10 Third Party Row — 52pt white circles with hairline borders.
     private var thirdPartyRow: some View {
         HStack(spacing: 20) {
-            SignInWithAppleButtonView { result in
-                Task {
-                    isLoading = true
-                    errorMessage = nil
-                    defer { isLoading = false }
-                    do {
-                        try await AppleSignInHelper.handle(result, session: session)
-                    } catch {
-                        errorMessage = error.localizedDescription
+            // ASAuthorizationAppleIDButton 只有带文案的 .signIn/.continue 形态,
+            // 52pt 圆形里必然截断。原生按钮隐藏在底层承接点击, 顶层只画  logo。
+            ZStack {
+                SignInWithAppleButtonView { result in
+                    Task {
+                        isLoading = true
+                        errorMessage = nil
+                        defer { isLoading = false }
+                        do {
+                            try await AppleSignInHelper.handle(result, session: session)
+                        } catch {
+                            errorMessage = error.localizedDescription
+                        }
                     }
                 }
+                .frame(width: 52, height: 52)
+                .opacity(0)
+                Image(systemName: "apple.logo")
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundStyle(AtlasColors.ink)
+                    .frame(width: 52, height: 52)
+                    .background(Circle().fill(AtlasColors.surface))
+                    .overlay(Circle().stroke(AtlasColors.border, lineWidth: 1))
+                    .allowsHitTesting(false)
             }
-            .frame(width: 52, height: 52)
-            .clipShape(Circle())
-            .overlay(Circle().stroke(AtlasColors.border, lineWidth: 1))
             .disabled(isLoading)
             .accessibilityLabel("通过 Apple 登录")
 
