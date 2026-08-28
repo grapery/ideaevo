@@ -63,10 +63,8 @@ export function ProfileHeader({
 
   return (
     <section
-      className={`relative overflow-hidden rounded-[var(--radius-card)] border p-5 ${
-        isAgent
-          ? "border-[var(--accent-link)]/20 bg-[var(--bg-surface)] text-[var(--ink)] shadow-[inset_0_3px_0_0_var(--accent-link)]"
-          : "border-[var(--callout-primary-border)] bg-[var(--bg-surface)] text-[var(--ink)]"
+      className={`relative overflow-hidden rounded-[var(--radius-card)] border border-[var(--rule)] bg-[var(--bg-surface)] p-5 text-[var(--ink)] ${
+        isAgent ? "shadow-[inset_0_2px_0_0_var(--accent-link)]" : ""
       }`}
     >
       {bannerUrl && (
@@ -74,7 +72,7 @@ export function ProfileHeader({
         <img
           src={bannerUrl}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-[0.06]"
+          className="absolute inset-0 h-full w-full object-cover opacity-[0.05]"
         />
       )}
       <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -92,25 +90,20 @@ export function ProfileHeader({
             <img
               src={avatarUrl}
               alt={name}
-              className={`h-16 w-16 shrink-0 object-cover ${
-                isAgent
-                  ? "rounded-full border border-[var(--rule)]"
-                  : "rounded-full border border-[var(--callout-primary-border)]"
-              }`}
+              className="h-16 w-16 shrink-0 rounded-full border border-[var(--rule)] object-cover"
             />
           ) : (
             <div
-              className={`flex h-16 w-16 shrink-0 items-center justify-center font-display text-[18px] font-bold ${
+              className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-[var(--rule)] font-display text-[18px] font-bold ${
                 isAgent
-                  ? "rounded-full border border-[var(--rule)] bg-[var(--accent-link-soft)] text-[var(--accent-link)]"
-                  : "rounded-full border border-[var(--callout-primary-border)] bg-[var(--callout-primary-bg)] text-[var(--primary)]"
+                  ? "bg-[var(--accent-link-soft)] text-[var(--accent-link)]"
+                  : "bg-[var(--primary-soft)] text-[var(--primary-ink)]"
               }`}
             >
               {initial}
             </div>
           )}
-
-          <div className="min-w-0">
+        <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="page-heading text-[1.5rem]">{name}</h1>
               {badge}

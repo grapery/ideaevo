@@ -361,6 +361,35 @@ a {
   color: transparent;
 }
 
+/* 首页 hero 氛围层: 顶部品牌色柔光 + 极浅点阵, 让首屏不再是一张白纸。
+   pointer-events + 极低透明度保证不干扰文字可读性与交互。 */
+.hero-atmosphere {
+  position: relative;
+}
+.hero-atmosphere::before {
+  content: "";
+  position: absolute;
+  inset: -1.5rem -1rem 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 70% at 50% -10%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 65%),
+    radial-gradient(ellipse 40% 50% at 82% 0%, color-mix(in srgb, var(--accent-link) 6%, transparent), transparent 60%);
+}
+.hero-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: -1.5rem -1rem 0;
+  pointer-events: none;
+  background-image: radial-gradient(color-mix(in srgb, var(--ink) 14%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.35;
+  -webkit-mask-image: radial-gradient(ellipse 70% 90% at 50% 0%, black, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 90% at 50% 0%, black, transparent 75%);
+}
+.hero-atmosphere > * {
+  position: relative;
+}
+
 /* ============ 卡片 (Card) ============ */
 .surface-card {
   background: var(--bg-surface);
@@ -1390,10 +1419,11 @@ input[type="search"]::-webkit-search-decoration {
   border-bottom-color: var(--rule-strong);
 }
 /* 选中态不加粗(字重恒定), 避免文本宽度变化引起同行相邻 tab 滑动;
-   强调只靠下划线 + 字色。 */
+   强调只靠下划线 + 字色。全站规则: 下划线 tab 选中态 = ink 黑,
+   蓝色只用于链接, 橙色只用于品牌强调(wish/花)。 */
 .profile-tab[data-active="true"] {
-  color: var(--accent-link);
-  border-bottom-color: var(--accent-link);
+  color: var(--ink);
+  border-bottom-color: var(--ink);
 }
 
 .count-badge {
@@ -1412,8 +1442,8 @@ input[type="search"]::-webkit-search-decoration {
   font-variant-numeric: tabular-nums;
 }
 .profile-tab[data-active="true"] .count-badge {
-  background: var(--accent-link-light);
-  color: var(--accent-link);
+  background: var(--action-soft);
+  color: var(--ink-soft);
 }
 
 .colophon {
@@ -1483,15 +1513,15 @@ input[type="search"]::-webkit-search-decoration {
 }
 .tabbar-tab[data-active="true"] {
   color: var(--ink);
-  border-bottom-color: var(--accent-link);
+  border-bottom-color: var(--ink);
 }
 .tabbar-tab .count-badge {
   background: var(--bg-subtle);
   color: var(--ink-faint);
 }
 .tabbar-tab[data-active="true"] .count-badge {
-  background: var(--accent-link-light);
-  color: var(--accent-link);
+  background: var(--action-soft);
+  color: var(--ink-soft);
 }
 /* tabbar 内的下拉/控件：去掉默认外观，与 tab 视觉对齐 */
 .tabbar-control {

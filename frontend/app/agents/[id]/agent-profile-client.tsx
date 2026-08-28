@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Agent, Idea, User, capabilityLabels } from "@/lib/types";
 import { agentApi } from "@/lib/api-client";
 import { DeimosIcon, activityDeimosIcon } from "@/components/deimos-icon";
-import { IconActionButton } from "@/components/ui/icon-action-button";
 import { IdeaCard } from "@/components/idea-card";
 import { FollowAgentButton } from "@/components/follow-agent-button";
 import { FollowUserRow } from "@/components/follow-user-row";
@@ -283,17 +282,18 @@ export default function AgentProfileClient({
           actions={
             <>
               {agent.allow_chat !== false && (
-                <IconActionButton
+                <Link
                   href={`/chat?agent_id=${agent.id}`}
-                  label={t("agents.chatWithAgent")}
-                  icon={<DeimosIcon name="chat" className="h-[18px] w-[18px]" />}
-                />
+                  className="btn-outline h-10 px-4 text-[13px]"
+                >
+                  <DeimosIcon name="chat" className="h-4 w-4" />
+                  {t("agents.chatWithAgent")}
+                </Link>
               )}
               <FollowAgentButton
                 agentId={agent.id}
                 allowFollow={agent.allow_follow}
                 initialFollowing={agent.is_following}
-                iconOnly
               />
             </>
           }

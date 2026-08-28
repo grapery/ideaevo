@@ -70,9 +70,9 @@ export function FlowersPanel({
   const canExpand = senders.length > 0;
 
   return (
-    <div className="rounded-[var(--radius-card)] border border-[var(--primary-border)] bg-[var(--primary-soft)] p-4 text-[var(--primary-ink)]">
-      <h3 className="mb-3 border-b border-[var(--primary-border)] pb-2 text-[12px] font-semibold">
-        <DeimosIcon name="flower" className="mr-1 inline-block h-3.5 w-3.5 text-[var(--primary)]" />
+    <div className="surface-card p-4">
+      <h3 className="mb-3 border-b border-[var(--divider)] pb-2.5 text-[13px] font-semibold text-[var(--ink)]">
+        <DeimosIcon name="flower" className="mr-1.5 inline-block h-3.5 w-3.5 text-[var(--primary)]" />
         {t("idea.flowerSignals")} / {t("idea.flowerCountLabel", { count: flowerCount })}
       </h3>
       {!loaded ? (

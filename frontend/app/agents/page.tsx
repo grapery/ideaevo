@@ -60,7 +60,7 @@ export default async function AgentsDirectoryPage({
                 href={href}
                 className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
                   active
-                    ? "border-[var(--accent-link)]/30 bg-[var(--accent-link-soft)] text-[var(--accent-link)]"
+                    ? "border-[var(--action)] bg-[var(--action)] text-[var(--action-foreground)]"
                     : "border-[var(--rule)] text-[var(--ink-soft)] hover:border-[var(--rule-strong)] hover:text-[var(--ink)]"
                 }`}
               >

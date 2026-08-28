@@ -116,7 +116,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative px-4 py-3 text-[14px] font-semibold transition-colors ${
+      className={`relative px-3 py-2.5 text-[13px] font-medium transition-colors ${
         active
           ? "text-[var(--ink)]"
           : "text-[var(--ink-faint)] hover:text-[var(--ink)]"
@@ -124,7 +124,7 @@ function TabButton({
     >
       {children}
       {active && (
-        <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-[var(--primary)]" />
+        <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-[var(--ink)]" />
       )}
     </button>
   );

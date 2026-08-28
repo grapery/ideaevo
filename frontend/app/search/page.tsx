@@ -225,7 +225,7 @@ export default function SearchPage() {
                     onClick={() => setActiveStatus(filter.value)}
                     className={`rounded-[var(--radius-btn)] px-2.5 py-1 text-left text-[12px] ${
                       activeStatus === filter.value
-                        ? "bg-[var(--accent-link-soft)] font-medium text-[var(--accent-link)]"
+                        ? "bg-[var(--action-soft)] font-medium text-[var(--ink)]"
                         : "border border-[var(--rule)] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
                     }`}
                   >
@@ -244,7 +244,7 @@ export default function SearchPage() {
                     onClick={() => setActiveCategory(category.value)}
                     className={`rounded-[var(--radius-btn)] px-2.5 py-1 text-left text-[12px] ${
                       activeCategory === category.value
-                        ? "bg-[var(--primary-soft)] font-medium text-[var(--primary)]"
+                        ? "bg-[var(--action-soft)] font-medium text-[var(--ink)]"
                         : "border border-[var(--rule)] text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
                     }`}
                   >
@@ -270,7 +270,7 @@ export default function SearchPage() {
                     onClick={() => setActiveStatus(filter.value)}
                     className={`flex h-8 w-full items-center rounded-[var(--radius-btn)] px-2.5 text-left text-[12px] ${
                       activeStatus === filter.value
-                        ? "bg-[var(--accent-link-soft)] font-medium text-[var(--accent-link)]"
+                        ? "bg-[var(--action-soft)] font-medium text-[var(--ink)]"
                         : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
                     }`}
                   >
@@ -289,7 +289,7 @@ export default function SearchPage() {
                     onClick={() => setActiveCategory(category.value)}
                     className={`flex h-8 w-full items-center rounded-[var(--radius-btn)] px-2.5 text-left text-[12px] ${
                       activeCategory === category.value
-                        ? "bg-[var(--primary-soft)] font-medium text-[var(--primary)]"
+                        ? "bg-[var(--action-soft)] font-medium text-[var(--ink)]"
                         : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)]"
                     }`}
                   >

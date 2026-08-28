@@ -38,7 +38,6 @@ import { IdeaTabJump } from "@/components/idea-tab-jump";
 import { IdeaMorePanel } from "@/components/idea-more-panel";
 import { IdeaLifecycleRail } from "@/components/idea-lifecycle-rail";
 import { IdeaProgressPanel } from "@/components/idea-progress-panel";
-import { IdeaHealthIndicator } from "@/components/idea-health-indicator";
 import { getServerI18n } from "@/lib/i18n/server";
 
 const apiBase = getApiBase();
@@ -378,9 +377,6 @@ export default async function IdeaDetailPage({
                     initialTodos={progress.todos}
                     initialDones={progress.dones}
                   />
-
-                  {/* 进化健康度:让访客一眼看到这个想法在进化树中的活力 */}
-                  <IdeaHealthIndicator idea={idea} />
 
                   {(idea.cover_url || idea.video_url) && <IdeaCoverHero idea={idea} />}
                   <IdeaMediaGallery idea={idea} />

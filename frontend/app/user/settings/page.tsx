@@ -597,7 +597,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={saveProfile}
                     disabled={savingProfile}
-                    className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
+                    className="btn-primary px-5 py-2 text-sm font-medium disabled:opacity-50"
                   >
                     {savingProfile ? t("common.saving") : t("settings.save")}
                   </button>
@@ -751,7 +751,7 @@ export default function SettingsPage() {
                         type="button"
                         onClick={changePwd}
                         disabled={savingPwd || !oldPwd || !newPwd}
-                        className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
+                        className="btn-primary px-5 py-2 text-sm font-medium disabled:opacity-50"
                       >
                         {savingPwd ? t("settings.changing") : t("settings.changePassword")}
                       </button>
@@ -945,7 +945,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={savePrefs}
                     disabled={!prefsLoaded || prefsSaving}
-                    className="btn-outline px-5 py-2 text-sm font-medium disabled:opacity-50"
+                    className="btn-primary px-5 py-2 text-sm font-medium disabled:opacity-50"
                   >
                     {prefsSaving
                       ? t("common.saving")
@@ -1154,7 +1154,7 @@ function ApiKeyBrowserBinding() {
               setInputKey("");
             }
           }}
-          className="btn-outline px-5 py-2 text-sm font-medium"
+          className="btn-primary px-5 py-2 text-sm font-medium"
         >
           {t("common.confirm")}
         </button>

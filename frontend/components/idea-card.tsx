@@ -139,14 +139,6 @@ export function IdeaCard({
   }
 
   if (variant === "market") {
-    const lifecycleLabel =
-      idea.status === "implemented"
-        ? t("idea.implemented")
-        : idea.status === "archived"
-          ? t("market.archived")
-          : idea.status === "buried"
-            ? t("market.buried")
-            : t("market.active");
     const implementationLabel = idea.impl_status === "implemented"
       ? t("idea.implemented")
       : idea.impl_status === "in_progress"
@@ -162,117 +154,111 @@ export function IdeaCard({
         onClick={goDetail}
         onKeyDown={onCardKeyDown}
         aria-label={`${t("idea.body")}: ${idea.title}`}
-        className={`group relative min-h-[170px] cursor-pointer overflow-hidden surface-card px-5 py-4 hover:border-[var(--rule-strong)] hover:bg-[var(--bg-hover)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
+        className={`group relative cursor-pointer overflow-hidden surface-card px-5 py-4 hover:border-[var(--rule-strong)] hover:bg-[var(--bg-hover)] hover:shadow-[var(--shadow-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-link)] focus-visible:outline-offset-2 ${
           highlighted
-            ? "min-h-[190px] border-[var(--rule-strong)] bg-[var(--bg-subtle)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:rounded-r-full before:bg-[var(--action)]"
+            ? "border-[var(--rule-strong)] bg-[var(--bg-subtle)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:rounded-r-full before:bg-[var(--action)]"
             : ""
         }`}
       >
-        <div className="flex items-center gap-4 text-[11px] font-medium">
-          <Link
-            href={creatorHref}
-            onClick={(event) => event.stopPropagation()}
-            className={isPersonal ? "text-[var(--primary)] hover:underline" : "text-[var(--accent-link)] hover:underline"}
-          >
-            {isPersonal ? t("idea.humanPublished") : t("idea.agentBadge")} · {creatorName}
-          </Link>
-          <span className="inline-flex items-center gap-1 text-[var(--ink-soft)]">
-            <DeimosIcon name="lifecycle" className="h-3 w-3" />
-            {/* active 是列表默认态，不作为前缀噪声；非默认生命周期才展示 */}
-            {idea.status === "active" ? implementationLabel : `${lifecycleLabel} / ${implementationLabel}`}
-          </span>
-        </div>
-
-        <div className="mt-3 flex items-start gap-3">
+        {/* 行 1：图标 + 标题 + 时间 */}
+        <div className="flex items-center gap-3">
           <WireframeAvatar
             kind="idea"
             entityId={idea.id}
             avatarUrl={idea.icon_url}
             name={idea.title}
-            size={42}
-            className="mt-0.5"
+            size={40}
+            className="h-10 w-10 shrink-0 rounded-[10px]"
           />
-          <h3 className="font-display line-clamp-2 text-[20px] font-bold leading-[28px] tracking-[-0.02em] text-[var(--ink)] group-hover:text-[var(--accent-link)]">
+          <h3
+            className={`min-w-0 flex-1 truncate text-[16px] font-semibold leading-snug tracking-[-0.01em] group-hover:text-[var(--accent-link)] ${
+              isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink)]"
+            }`}
+            title={idea.title}
+          >
             {idea.title}
           </h3>
+          <time className="shrink-0 text-[12px] text-[var(--ink-faint)]" dateTime={idea.created_at}>
+            {formatRelativeTime(idea.created_at, locale, t)}
+          </time>
         </div>
-        <p className="mt-1.5 line-clamp-2 text-[13px] leading-[20px] text-[var(--ink-soft)]">
+
+        {/* 行 2：描述预览 */}
+        <p
+          className={`mt-2 line-clamp-2 text-[13px] leading-[21px] ${
+            isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink-soft)]"
+          }`}
+        >
           {stripMarkdownPreview(idea.description)}
         </p>
 
-        <div className="mt-3 flex min-h-[20px] flex-wrap gap-1.5">
-          {tags.map((tag) => (
-            <span key={tag} className="tag-pill">
-              #{tag}
-            </span>
-          ))}
-        </div>
+        {/* 行 3：创建者 / 状态 / 标签 + 互动信号 */}
+        <div className="mt-3 flex min-h-[24px] flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--rule-light)] pt-2.5 text-[12px]">
+          <Link
+            href={creatorHref}
+            onClick={(event) => event.stopPropagation()}
+            className={`inline-flex min-w-0 items-center gap-1.5 ${
+              isPersonal ? "text-[var(--primary)]" : "text-[var(--accent-link)]"
+            } hover:underline`}
+          >
+            <WireframeAvatar
+              name={creatorName}
+              avatarUrl={creatorAvatar}
+              entityId={creatorEntityId}
+              kind={creatorKind}
+              size={16}
+              className="shrink-0"
+            />
+            <span className="max-w-[140px] truncate">{creatorName}</span>
+            {!isPersonal && (
+              <span className="badge-pill text-[9px] uppercase tracking-wide text-[var(--ink-faint)]">
+                AI
+              </span>
+            )}
+          </Link>
 
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-[12px] text-[var(--ink-soft)]">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onEngagementItem("LIKE");
-            }}
-            aria-label={`${t("idea.statLikes")} ${idea.like_count}`}
-            className="inline-flex items-center gap-1 hover:text-[var(--accent-link)]"
-          >
-            <DeimosIcon name="heart" className="h-3.5 w-3.5" />
-            {idea.like_count}
-          </button>
-          <button
-            type="button"
-            onClick={sendWish}
-            disabled={inactive || wishing}
-            aria-label={`${t("idea.statWishes")} ${idea.wish_count ?? 0}`}
-            className="inline-flex items-center gap-1 hover:text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <DeimosIcon name="wish" className="h-3.5 w-3.5" />
-            {idea.wish_count ?? 0}
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onEngagementItem("Fork");
-            }}
-            aria-label={`${t("idea.statForks")} ${idea.fork_count}`}
-            className="inline-flex items-center gap-1 hover:text-[var(--accent-link)]"
-          >
-            <DeimosIcon name="fork" className="h-3.5 w-3.5" />
-            {idea.fork_count}
-          </button>
-          {idea.comment_count > 0 && (
+          {idea.status !== "active" && <StatusBadge status={idea.status} />}
+          <span className="inline-flex items-center gap-1 text-[var(--ink-faint)]">
+            <DeimosIcon name="tool" className="h-3 w-3" />
+            {implementationLabel}
+          </span>
+
+          {tags.length > 0 && (
+            <span className="hidden min-w-0 items-center gap-1.5 lg:inline-flex">
+              {tags.slice(0, 2).map((tag) => (
+                <span key={tag} className="tag-pill">
+                  #{tag}
+                </span>
+              ))}
+            </span>
+          )}
+
+          <span className="ml-auto flex items-center gap-3 text-[var(--ink-faint)]">
+            <span className="inline-flex items-center gap-1 tabular-nums" aria-label={`${t("idea.statLikes")} ${idea.like_count}`}>
+              <DeimosIcon name="heart" className="h-3.5 w-3.5" />
+              {idea.like_count}
+            </span>
             <button
               type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onEngagementItem("comment");
-              }}
-              aria-label={`${t("idea.statComments")} ${idea.comment_count}`}
-              className="inline-flex items-center gap-1 hover:text-[var(--accent-link)]"
+              onClick={sendWish}
+              disabled={inactive || wishing}
+              aria-label={`${t("idea.statWishes")} ${idea.wish_count ?? 0}`}
+              className="inline-flex items-center gap-1 tabular-nums transition-colors hover:text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <DeimosIcon name="comment" className="h-3.5 w-3.5" />
-              {idea.comment_count}
+              <DeimosIcon name="wish" className="h-3.5 w-3.5" />
+              {idea.wish_count ?? 0}
             </button>
-          )}
-          {(idea.suggestion_count ?? 0) > 0 && (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                router.push(detailHref + "?tab=suggestions");
-              }}
-              aria-label={t("market.suggestionChip", { count: idea.suggestion_count ?? 0 })}
-              title={t("market.suggestionChip", { count: idea.suggestion_count ?? 0 })}
-              className="inline-flex items-center gap-1 hover:text-[var(--primary)]"
-            >
-              <DeimosIcon name="lifecycle" className="h-3.5 w-3.5" />
-              {idea.suggestion_count}
-            </button>
-          )}
-          <span className="ml-auto text-[var(--ink-faint)]">{formatRelativeTime(idea.created_at, locale, t)}</span>
+            <span className="inline-flex items-center gap-1 tabular-nums" aria-label={`${t("idea.statForks")} ${idea.fork_count}`}>
+              <DeimosIcon name="fork" className="h-3.5 w-3.5" />
+              {idea.fork_count}
+            </span>
+            {idea.comment_count > 0 && (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <DeimosIcon name="comment" className="h-3.5 w-3.5" />
+                {idea.comment_count}
+              </span>
+            )}
+          </span>
         </div>
       </article>
     );
@@ -410,22 +396,24 @@ export function IdeaCard({
       </div>
 
       <p
-        className={`mt-1.5 text-[13px] line-clamp-2 min-h-[42px] leading-relaxed ${
+        className={`mt-1.5 text-[13px] line-clamp-2 leading-relaxed ${
           isBuried ? "text-[var(--ink-faint)]" : "text-[var(--ink-soft)]"
         }`}
       >
         {stripMarkdownPreview(idea.description)}
       </p>
 
-      <div className="mt-2.5 min-h-[24px] flex flex-wrap gap-1.5">
-        {tags.map((tag) => (
-          <span key={tag} className="tag-pill">
-            #{tag}
-          </span>
-        ))}
-      </div>
+      {tags.length > 0 && (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {tags.map((tag) => (
+            <span key={tag} className="tag-pill">
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )}
 
-      <div className="mt-3 pt-3 border-t border-[var(--divider)] flex items-center justify-between gap-3">
+      <div className="mt-3 border-t border-[var(--divider)] pt-3 flex items-center justify-between gap-3">
         <EngagementBar
           likes={idea.like_count}
           wishes={idea.wish_count ?? 0}

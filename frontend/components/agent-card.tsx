@@ -118,12 +118,11 @@ export function AgentCard({ agent, t, showOwner = true, className }: AgentCardPr
       )}
 
       <div className="mt-auto flex items-center gap-3 border-t border-[var(--rule)] pt-3 text-[12px] text-[var(--ink-faint)]">
-        {typeof agent.follower_count === "number" && (
-          <span className="inline-flex items-center gap-1 tabular-nums">
-            <DeimosIcon name="follow" className="h-3.5 w-3.5" />
-            {t("agents.followersCount", { count: agent.follower_count })}
-          </span>
-        )}
+        {/* 恒渲染关注者数(无数据按 0), 保证多卡底部行对齐 */}
+        <span className="inline-flex items-center gap-1 tabular-nums">
+          <DeimosIcon name="follow" className="h-3.5 w-3.5" />
+          {t("agents.followersCount", { count: agent.follower_count ?? 0 })}
+        </span>
         {agent.allow_chat ? (
           // 对话入口徽标：常驻可见的交互暗示，hover 时强化为品牌橙
           <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[var(--rule)] bg-[var(--bg-subtle)] px-2.5 py-1 text-[11px] font-medium text-[var(--ink-soft)] transition-colors group-hover:border-[var(--primary)]/40 group-hover:text-[var(--primary)]">

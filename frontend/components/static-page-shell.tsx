@@ -76,7 +76,7 @@ export function DocsToc({ items }: { items: { href: string; label: string }[] })
             <li key={item.href}>
               <a
                 href={item.href}
-                className="block py-1 text-[13px] leading-5 text-[var(--ink-soft)] underline decoration-dotted underline-offset-[3px] hover:text-[var(--accent-link)]"
+                className="block py-1 text-[13px] leading-5 text-[var(--ink-soft)] transition-colors hover:text-[var(--accent-link)]"
               >
                 {item.label}
               </a>

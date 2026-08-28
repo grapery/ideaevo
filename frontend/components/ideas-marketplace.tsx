@@ -104,7 +104,7 @@ export function IdeasMarketplace({
             onClick={() => updateParams(item.status, initialSort)}
             className={`flex h-8 w-full items-center justify-between rounded-[var(--radius-btn)] px-2.5 text-left ${
               active
-                ? "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]"
+                ? "bg-[var(--action-soft)] font-semibold text-[var(--ink)]"
                 : "text-[var(--ink-soft)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
             }`}
           >
@@ -152,7 +152,7 @@ export function IdeasMarketplace({
     <div className="page-shell-full">
       <div className="page-container page-pad">
         {basePath === "/" ? (
-          <section className="pb-1 pt-8 text-center sm:pt-12">
+          <section className="hero-atmosphere pb-1 pt-8 text-center sm:pt-12">
             <h1 className="font-display text-3xl sm:text-[36px] font-bold leading-tight tracking-tight text-[var(--ink)]">
               {t("market.title")}
             </h1>
@@ -284,10 +284,10 @@ export function IdeasMarketplace({
               <button
                 type="button"
                 onClick={() => updateParams("", initialSort)}
-                className="flex h-8 w-full items-center justify-between rounded-[var(--radius-btn)] bg-[var(--primary-soft)] px-2.5 text-left text-[12px] font-semibold text-[var(--primary)]"
+                className="flex h-8 w-full items-center justify-between rounded-[var(--radius-btn)] px-2.5 text-left text-[12px] text-[var(--ink)] hover:bg-[var(--bg-subtle)]"
               >
                 <span>{t("market.allIdeas")}</span>
-                <span className="font-mono tabular-nums">{stats.ideaCount.toLocaleString()}</span>
+                <span className="font-mono tabular-nums text-[var(--ink-faint)]">{stats.ideaCount.toLocaleString()}</span>
               </button>
               {categoryGroups.map((category) => (
                 <button
@@ -342,7 +342,7 @@ export function IdeasMarketplace({
                   onClick={() => updateParams(filter.value, initialSort)}
                   className={`relative shrink-0 px-3 text-[13px] font-medium transition-colors ${
                     initialStatus === filter.value
-                      ? "text-[var(--accent-link)] after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:rounded-full after:bg-[var(--accent-link)]"
+                      ? "text-[var(--ink)] after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:rounded-full after:bg-[var(--ink)]"
                       : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
                   }`}
                 >
@@ -362,8 +362,8 @@ export function IdeasMarketplace({
                 }
                 className={`flex shrink-0 items-center gap-1 rounded-[var(--radius-pill)] border px-2.5 py-0.5 text-[12px] font-medium transition-colors ${
                   initialImplStatus === "in_progress"
-                    ? "border-[var(--accent-link)]/40 bg-[var(--accent-link-soft)] text-[var(--accent-link)]"
-                    : "border-[var(--rule)] text-[var(--ink-soft)] hover:border-[var(--accent-link)]/40 hover:text-[var(--accent-link)]"
+                    ? "border-[var(--ink)]/30 bg-[var(--action-soft)] text-[var(--ink)]"
+                    : "border-[var(--rule)] text-[var(--ink-soft)] hover:border-[var(--rule-strong)] hover:text-[var(--ink)]"
                 }`}
               >
                 <DeimosIcon name="tool" className="h-3 w-3" />
@@ -408,14 +408,16 @@ export function IdeasMarketplace({
           </div>
 
           <aside className="hidden space-y-3 xl:block">
-            {(trending.length > 0 || ideas.length > 0) && (
+            {/* 热度榜单：仅用真实加权分数据渲染。ranking 请求失败/为空时隐藏本卡，
+                不用普通想法列表兜底硬造数字（会产生 +0 之类的误导展示）。 */}
+            {trending.length > 0 && (
             <section className="surface-card overflow-hidden">
               <div className="flex h-10 items-center gap-1.5 border-b border-[var(--rule-light)] px-3.5">
                 <DeimosIcon name="pulse" className="h-3.5 w-3.5 text-[var(--accent-link)]" />
                 <p className="text-[13px] font-semibold text-[var(--ink)]">{t("market.trending")}</p>
               </div>
               <div>
-                {(trending.length > 0 ? trending.slice(0, 5) : ideas.slice(0, 5)).map((item, index) => (
+                {trending.slice(0, 5).map((item, index) => (
                   <Link
                     key={item.id}
                     href={`/ideas/${item.id}`}
@@ -424,9 +426,10 @@ export function IdeasMarketplace({
                     <span className="font-mono text-[11px] tabular-nums text-[var(--ink-faint)]">
                       {String(index + 1).padStart(2, "0")}
                     </span>
-                    <span className="truncate text-[var(--ink)]">{item.title}</span>
+                    <span className="truncate text-[var(--ink)]" title={item.title}>{item.title}</span>
+                    {/* weighted_score 是全量加权分而非增量，展示纯分值、不加 “+” 前缀 */}
                     <span className="font-mono text-[11px] tabular-nums text-[var(--accent-link)]">
-                      +{"score" in item ? Math.max(0, Math.round(item.score)) : Math.max(item.like_count, item.flower_count)}
+                      {Math.max(0, Math.round(item.score))}
                     </span>
                   </Link>
                 ))}

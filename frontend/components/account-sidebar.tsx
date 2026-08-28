@@ -97,9 +97,9 @@ export function AccountSidebar({
   const { t } = useI18n();
 
   const itemClass = (active: boolean) =>
-    `flex min-h-10 w-full shrink-0 items-center justify-between rounded-[6px] px-3 py-2 text-left text-[13px] transition-colors ${
+    `flex min-h-10 w-full shrink-0 items-center justify-between rounded-[var(--radius-btn)] px-3 py-2 text-left text-[13px] transition-colors ${
       active
-        ? "border border-[var(--accent-link)] bg-[var(--primary-soft)] font-medium text-[var(--primary)]"
+        ? "border border-[var(--rule)] bg-[var(--action-soft)] font-medium text-[var(--ink)]"
         : "border border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--ink)]"
     }`;
 

@@ -201,10 +201,10 @@ export function Header() {
 
         <Link
           href="/chat"
-          className="hidden h-8 items-center gap-2 rounded-[var(--radius-btn)] bg-[var(--panel-inverse)] px-4 text-[12px] font-semibold text-white hover:opacity-90 lg:inline-flex"
+          className="btn-outline hidden h-8 items-center gap-2 px-3.5 text-[12px] lg:inline-flex"
         >
           {t("header.ask")}
-          <span className="font-code text-[10px] text-white/60">⌘K</span>
+          <span className="font-code text-[10px] text-[var(--ink-faint)]">⌘K</span>
         </Link>
 
         <Link href="/ideas/new" className="btn-primary h-8 px-4 text-[12px]">

@@ -1,9 +1,11 @@
 import { headers } from "next/headers";
+import Link from "next/link";
 import { UserProfile } from "@/lib/types";
 import UserPageClient from "./client";
-import Link from "next/link";
 import { getServerI18n } from "@/lib/i18n/server";
 import { getApiBase } from "@/lib/api-base";
+import { PageShell } from "@/components/page-shell";
+import { EmptyState } from "@/components/empty-state";
 
 export default async function UserPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,10 +31,20 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
 
   if (!profile) {
     return (
-      <div className="max-w-lg mx-auto mt-20 text-center">
-        <h2 className="text-xl font-bold text-[var(--title)] mb-4">{t("idea.userNotFound")}</h2>
-        <Link href="/" className="text-[var(--primary)] hover:underline">{t("common.backHome")}</Link>
-      </div>
+      <PageShell>
+        <div className="mx-auto max-w-lg py-10">
+          <EmptyState
+            icon="agent"
+            title={t("idea.userNotFound")}
+            hint={t("idea.userNotFoundHint")}
+            action={
+              <Link href="/" className="btn-primary btn-sm">
+                {t("common.backHome")}
+              </Link>
+            }
+          />
+        </div>
+      </PageShell>
     );
   }
 
