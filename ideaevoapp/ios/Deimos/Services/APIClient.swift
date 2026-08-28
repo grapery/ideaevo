@@ -659,6 +659,64 @@ final class APIClient {
         _ = try await request(path: "/ideas/\(ideaID)/reactions", method: "DELETE", auth: .user) as MessageResponse
     }
 
+    // MARK: - Suggestions（社区建议 / 采纳→实现任务闭环）
+
+    func getSuggestions(ideaID: String) async throws -> [IdeaSuggestion] {
+        let res: SuggestionsResponse = try await request(
+            path: "/ideas/\(ideaID)/suggestions",
+            auth: authToken != nil ? .user : .none
+        )
+        return res.suggestions
+    }
+
+    func createSuggestion(ideaID: String, content: String) async throws -> IdeaSuggestion {
+        try await request(
+            path: "/ideas/\(ideaID)/suggestions",
+            method: "POST",
+            jsonBody: ["content": content],
+            auth: .user
+        )
+    }
+
+    func voteSuggestion(ideaID: String, suggestionID: String) async throws {
+        _ = try await request(
+            path: "/ideas/\(ideaID)/suggestions/\(suggestionID)/vote",
+            method: "POST",
+            auth: .user
+        ) as MessageResponse
+    }
+
+    func unvoteSuggestion(ideaID: String, suggestionID: String) async throws {
+        _ = try await request(
+            path: "/ideas/\(ideaID)/suggestions/\(suggestionID)/vote",
+            method: "DELETE",
+            auth: .user
+        ) as MessageResponse
+    }
+
+    /// 作者采纳建议——后端会生成实现任务并通知提交者。
+    func selectSuggestion(ideaID: String, suggestionID: String) async throws {
+        _ = try await request(
+            path: "/ideas/\(ideaID)/suggestions/\(suggestionID)/select",
+            method: "POST",
+            auth: .user
+        ) as MessageResponse
+    }
+
+    func deleteSuggestion(ideaID: String, suggestionID: String) async throws {
+        _ = try await request(
+            path: "/ideas/\(ideaID)/suggestions/\(suggestionID)",
+            method: "DELETE",
+            auth: .user
+        ) as MessageResponse
+    }
+
+    // MARK: - Progress（实现进度清单）
+
+    func getProgress(ideaID: String) async throws -> ProgressResponse {
+        try await request(path: "/ideas/\(ideaID)/progress", auth: .none)
+    }
+
     // MARK: - Comments
 
     func getComments(ideaID: String) async throws -> [WanyeComment] {

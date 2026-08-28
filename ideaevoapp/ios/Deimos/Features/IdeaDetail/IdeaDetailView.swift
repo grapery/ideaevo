@@ -13,6 +13,8 @@ final class IdeaDetailViewModel {
     var reactionCounts: [String: Int] = [:]
     var mineReaction = ""
     var previewComments: [FlatComment] = []
+    var suggestions: [IdeaSuggestion] = []
+    var progress: ProgressResponse?
     var isLiked = false
     var isBookmarked = false
     var isWished = false
@@ -43,6 +45,8 @@ final class IdeaDetailViewModel {
             // never turn a readable Idea into a full-screen load error.
             idea = try await ideaTask
             previewComments = Array(CommentFlattener.flatten((try? await APIClient.shared.getComments(ideaID: id)) ?? []).prefix(2))
+            suggestions = (try? await APIClient.shared.getSuggestions(ideaID: id)) ?? []
+            progress = try? await APIClient.shared.getProgress(ideaID: id)
             donors = (try? await flowersTask) ?? []
             forkChildren = (try? await forksTask) ?? []
             versions = (try? await versionsTask) ?? []
@@ -339,6 +343,11 @@ struct IdeaDetailView: View {
     @State private var showBlockDialog = false
     @State private var isFollowAuthor = false
     @State private var isFollowWorking = false
+    @State private var showSuggestComposer = false
+    @State private var suggestionDraft = ""
+    @State private var isSubmittingSuggestion = false
+    @State private var pendingSelectSuggestion: IdeaSuggestion?
+    @State private var pendingDeleteSuggestion: IdeaSuggestion?
 
     private var isSheetZoomActive: Bool {
         showAuthSheet || showForkSheet || showShareSheet || showBuryConfirm || showActionMenu || showReportSheet
@@ -465,6 +474,35 @@ struct IdeaDetailView: View {
         }
         .sheet(isPresented: $showImplementConfirm) {
             implementConfirmSheet
+        }
+        .sheet(isPresented: $showSuggestComposer) {
+            suggestionComposerSheet
+        }
+        .confirmationDialog(
+            "采纳这条建议？",
+            isPresented: Binding(get: { pendingSelectSuggestion != nil }, set: { if !$0 { pendingSelectSuggestion = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("采纳并生成实现任务") {
+                if let suggestion = pendingSelectSuggestion { selectSuggestion(suggestion) }
+                pendingSelectSuggestion = nil
+            }
+            Button("取消", role: .cancel) { pendingSelectSuggestion = nil }
+        } message: {
+            Text("将创建实现任务并通知建议提交者。")
+        }
+        .confirmationDialog(
+            "删除这条建议？",
+            isPresented: Binding(get: { pendingDeleteSuggestion != nil }, set: { if !$0 { pendingDeleteSuggestion = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("删除", role: .destructive) {
+                if let suggestion = pendingDeleteSuggestion { deleteSuggestion(suggestion) }
+                pendingDeleteSuggestion = nil
+            }
+            Button("取消", role: .cancel) { pendingDeleteSuggestion = nil }
+        } message: {
+            Text("删除后无法恢复。")
         }
         .sheet(isPresented: $showActionMenu) {
             if let idea = viewModel.idea {
@@ -693,6 +731,14 @@ struct IdeaDetailView: View {
                 statsRow(idea)
 
                 overviewCard(idea)
+
+                if let progress = viewModel.progress,
+                   !(progress.todos.isEmpty && progress.dones.isEmpty) {
+                    progressSection(progress)
+                }
+
+                suggestionsSection
+
                 forkLineagePreview(idea)
 
                 if !idea.tags.isEmpty {
@@ -1411,6 +1457,319 @@ struct IdeaDetailView: View {
         } else {
             ToastCenter.shared.showSuccess(viewModel.isBookmarked ? "已收藏想法" : "已取消收藏")
         }
+    }
+
+    // MARK: - 建议社区（投票 / 作者采纳→实现任务）
+
+    /// 建议区：标题 + 发建议入口 + 建议卡列表。
+    /// 排序：已采纳 > 票数高 > 时间新。
+    private var suggestionsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("建议 \(viewModel.suggestions.isEmpty ? "" : "\(viewModel.suggestions.count)")")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                Spacer()
+                Button {
+                    guard session.isAuthenticated else { showAuthSheet = true; return }
+                    suggestionDraft = ""
+                    showSuggestComposer = true
+                } label: {
+                    Text("+ 提建议")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AtlasColors.linkBlue)
+                }
+            }
+
+            if viewModel.suggestions.isEmpty {
+                Text("还没有建议。发现改进空间？提一条让作者和社区投票。")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AtlasColors.inkFaint)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(AtlasColors.surfaceSecondary)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            } else {
+                ForEach(sortedSuggestions) { suggestion in
+                    suggestionCard(suggestion)
+                }
+            }
+        }
+    }
+
+    private var sortedSuggestions: [IdeaSuggestion] {
+        viewModel.suggestions.sorted { a, b in
+            if a.selected != b.selected { return a.selected }
+            if a.voteCount != b.voteCount { return a.voteCount > b.voteCount }
+            return a.createdAt > b.createdAt
+        }
+    }
+
+    private func suggestionCard(_ suggestion: IdeaSuggestion) -> some View {
+        let isMine = isMySuggestion(suggestion)
+        return VStack(alignment: .leading, spacing: 8) {
+            // 头部：作者 + 状态徽章
+            HStack(spacing: 8) {
+                EntityAvatar.user(
+                    id: suggestion.userID ?? suggestion.agentID ?? suggestion.id,
+                    url: suggestion.authorAvatar.flatMap(URL.init(string:)),
+                    name: suggestion.authorName ?? "?",
+                    size: 22
+                )
+                Text(suggestion.authorName ?? "匿名")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AtlasColors.inkTertiary)
+                    .lineLimit(1)
+                if let job = suggestion.jobStatus, !job.isEmpty {
+                    Text(jobStatusShort(job))
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(AtlasColors.success)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(AtlasColors.successSoft)
+                        .clipShape(Capsule())
+                } else if suggestion.selected {
+                    Text("已采纳")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(AtlasColors.success)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(AtlasColors.successSoft)
+                        .clipShape(Capsule())
+                }
+                Spacer(minLength: 0)
+            }
+
+            Text(suggestion.content)
+                .font(.system(size: 14))
+                .foregroundStyle(AtlasColors.ink)
+                .lineSpacing(5)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // 底部：投票 + 作者操作
+            HStack(spacing: 12) {
+                Button {
+                    toggleVote(suggestion)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: suggestion.voted == true ? "hand.thumbsup.fill" : "hand.thumbsup")
+                            .font(.system(size: 12))
+                        Text("\(suggestion.voteCount)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(suggestion.voted == true ? AtlasColors.accentActive : AtlasColors.inkSoft)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule().fill(suggestion.voted == true ? AtlasColors.accentActiveSoft : AtlasColors.surfaceSecondary)
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Spacer(minLength: 0)
+
+                // 作者：采纳未采纳的建议
+                if isIdeaOwner, !suggestion.selected {
+                    Button {
+                        pendingSelectSuggestion = suggestion
+                    } label: {
+                        Text("采纳")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(AtlasColors.linkBlue)
+                    }
+                    .buttonStyle(.plain)
+                }
+                // 提交者：删除自己的建议
+                if isMine {
+                    Button {
+                        pendingDeleteSuggestion = suggestion
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 12))
+                            .foregroundStyle(AtlasColors.destructive)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AtlasColors.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(suggestion.selected ? AtlasColors.success.opacity(0.35) : AtlasColors.cardStroke, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func progressSection(_ progress: ProgressResponse) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("实现进度")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+
+            ForEach(progress.dones) { item in
+                progressRow(item, done: true)
+            }
+            ForEach(progress.todos) { item in
+                progressRow(item, done: false)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AtlasColors.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AtlasColors.cardStroke, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func progressRow(_ item: ProgressItem, done: Bool) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 14))
+                .foregroundStyle(done ? AtlasColors.success : AtlasColors.inkFaint)
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.content)
+                    .font(.system(size: 13))
+                    .foregroundStyle(done ? AtlasColors.inkTertiary : AtlasColors.ink)
+                    .strikethrough(done, color: AtlasColors.inkFaint)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let sha = item.commitSha, !sha.isEmpty {
+                    Text(sha)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(AtlasColors.inkFaint)
+                }
+            }
+        }
+    }
+
+    private func jobStatusShort(_ status: String) -> String {
+        switch status {
+        case "done": return "已实现"
+        case "in_progress": return "实现中"
+        case "pending": return "待处理"
+        case "failed": return "实现失败"
+        default: return status
+        }
+    }
+
+    private func isMySuggestion(_ suggestion: IdeaSuggestion) -> Bool {
+        guard let userID = session.user?.id else { return false }
+        return suggestion.userID == userID
+    }
+
+    private var isIdeaOwner: Bool {
+        canEdit(idea: viewModel.idea)
+    }
+
+    private var suggestionComposerSheet: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("提交建议")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(AtlasColors.ink)
+            Text("提出功能改进或方向建议，作者采纳后会生成实现任务。")
+                .font(.system(size: 13))
+                .foregroundStyle(AtlasColors.inkSoft)
+            TextField("写下你的建议…", text: $suggestionDraft, axis: .vertical)
+                .lineLimit(4...8)
+                .font(.system(size: 14))
+                .padding(12)
+                .background(AtlasColors.bgInput)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            Button {
+                submitSuggestion()
+            } label: {
+                HStack {
+                    if isSubmittingSuggestion {
+                        ProgressView().controlSize(.small).tint(AtlasColors.lemonInk)
+                    }
+                    Text("提交建议")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .foregroundStyle(AtlasColors.lemonInk)
+                .background(AtlasColors.primaryAction)
+                .clipShape(Capsule(style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(suggestionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmittingSuggestion)
+            .opacity(suggestionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+        }
+        .padding(20)
+        .presentationDetents([.height(340)])
+        .presentationDragIndicator(.hidden)
+    }
+
+    private func toggleVote(_ suggestion: IdeaSuggestion) {
+        guard session.isAuthenticated else {
+            showAuthSheet = true
+            return
+        }
+        guard let ideaID = viewModel.idea?.id else { return }
+        let voted = suggestion.voted == true
+        Task {
+            do {
+                if voted {
+                    try await APIClient.shared.unvoteSuggestion(ideaID: ideaID, suggestionID: suggestion.id)
+                } else {
+                    try await APIClient.shared.voteSuggestion(ideaID: ideaID, suggestionID: suggestion.id)
+                }
+                await reloadSuggestions(ideaID: ideaID)
+            } catch {
+                ToastCenter.shared.showError("操作失败", message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func submitSuggestion() {
+        let content = suggestionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty, let ideaID = viewModel.idea?.id else { return }
+        isSubmittingSuggestion = true
+        Task {
+            defer { isSubmittingSuggestion = false }
+            do {
+                _ = try await APIClient.shared.createSuggestion(ideaID: ideaID, content: content)
+                showSuggestComposer = false
+                ToastCenter.shared.showSuccess("建议已提交", message: "等待作者与社区投票")
+                await reloadSuggestions(ideaID: ideaID)
+            } catch {
+                ToastCenter.shared.showError("提交失败", message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func selectSuggestion(_ suggestion: IdeaSuggestion) {
+        guard let ideaID = viewModel.idea?.id else { return }
+        Task {
+            do {
+                try await APIClient.shared.selectSuggestion(ideaID: ideaID, suggestionID: suggestion.id)
+                ToastCenter.shared.showSuccess("已采纳", message: "已生成实现任务并通知提交者")
+                await reloadSuggestions(ideaID: ideaID)
+            } catch {
+                ToastCenter.shared.showError("采纳失败", message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func deleteSuggestion(_ suggestion: IdeaSuggestion) {
+        guard let ideaID = viewModel.idea?.id else { return }
+        Task {
+            do {
+                try await APIClient.shared.deleteSuggestion(ideaID: ideaID, suggestionID: suggestion.id)
+                await reloadSuggestions(ideaID: ideaID)
+            } catch {
+                ToastCenter.shared.showError("删除失败", message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func reloadSuggestions(ideaID: String) async {
+        viewModel.suggestions = (try? await APIClient.shared.getSuggestions(ideaID: ideaID)) ?? []
     }
 
     private func canEdit(idea: Idea?) -> Bool {
