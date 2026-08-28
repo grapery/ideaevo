@@ -480,7 +480,9 @@ struct HomeView: View {
                 ForEach(Array(viewModel.visibleIdeas.enumerated()), id: \.element.id) { index, idea in
                     IdeaCoverCard(
                         idea: idea,
-                        coverImageURL: idea.coverLink,
+                        // 只传真实内容图; coverLink 会兜底 icon 头像链,
+                        // 让每张卡都渲染 150pt 大图位。无图的卡走内联徽章布局。
+                        coverImageURL: idea.primaryImageURL,
                         iconNamespace: ideaIconNamespace,
                         onTap: {
                             if suppressNextIdeaTap {

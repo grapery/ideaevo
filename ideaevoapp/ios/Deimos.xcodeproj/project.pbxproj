@@ -10,6 +10,7 @@
 		0459406988B04BF6B093717F /* ChatThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB6299BA5A0844CCAA5A8C46 /* ChatThreadView.swift */; };
 		083F3FDC9CB86F44B8E315C4 /* KeyboardSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2291D5B7B3DA63BA9B5A4FBC /* KeyboardSupport.swift */; };
 		099F6EBF1D214FBCB429A3C1 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 174B5FEAE3944B498693339A /* RootView.swift */; };
+		0BF29671B0024B5DA13676B1 /* AtlasFormKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9182596B80490A82C2ECBB /* AtlasFormKit.swift */; };
 		0CAFB1A6648B50410AC025EA /* BlocklistStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E4B16DA4F1CFEED81033B4B /* BlocklistStore.swift */; };
 		22B945D7D1E29B661FE4F309 /* Pagination.swift in Sources */ = {isa = PBXBuildFile; fileRef = C312BEBA6A02E854AADF07F3 /* Pagination.swift */; };
 		24C55338E2325FA76613882A /* AtlasMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 961D1927E5BE29DCF657ACD6 /* AtlasMetrics.swift */; };
@@ -29,7 +30,6 @@
 		870097D926754CDC96256684 /* AgentProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0751ABE62BF84D8F96FF4F31 /* AgentProfileView.swift */; };
 		87A13849A3A16ABD89ADCA84 /* WeChatSimulatorStubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A109D5C8C59C72E6181BC88 /* WeChatSimulatorStubs.swift */; };
 		8A079C1869134DE3AF8816DD /* AtlasComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71FB70CFE5B84970A36C46E0 /* AtlasComponents.swift */; };
-		0BF29671B0024B5DA13676B1 /* AtlasFormKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9182596B80490A82C2ECBB /* AtlasFormKit.swift */; };
 		8AC9506F352349769CFFFD6E /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E149597947D484591B7DB79 /* MainTabView.swift */; };
 		92680AFC1C3D4F9E87143435 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9569FB3522CC41FE93256424 /* ChatListView.swift */; };
 		96BA5A1FC576EF25E6185716 /* ChatIdeaSuggestion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D4D838C1C0F0B2D49E70C7A /* ChatIdeaSuggestion.swift */; };
@@ -89,7 +89,6 @@
 		0751ABE62BF84D8F96FF4F31 /* AgentProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentProfileView.swift; sourceTree = "<group>"; };
 		0CB658A7F4F7B05140803BB6 /* EntityAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityAvatar.swift; sourceTree = "<group>"; };
 		0EA14BAAC04042518B92162E /* AtlasColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasColors.swift; sourceTree = "<group>"; };
-		6D9182596B80490A82C2ECBB /* AtlasFormKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasFormKit.swift; sourceTree = "<group>"; };
 		174B5FEAE3944B498693339A /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		17853EA0F18B4EAA9E67D5B3 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		1834B2F433D7401699E0C44D /* AuthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSession.swift; sourceTree = "<group>"; };
@@ -111,6 +110,7 @@
 		4D372364BA3943C8A3EEEDD2 /* DeimosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeimosApp.swift; sourceTree = "<group>"; };
 		56681CE848FA43B3A20B7272 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		6AC62CE625CFA7411FF0C95B /* ComplianceScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComplianceScreens.swift; sourceTree = "<group>"; };
+		6D9182596B80490A82C2ECBB /* AtlasFormKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasFormKit.swift; sourceTree = "<group>"; };
 		6E4B16DA4F1CFEED81033B4B /* BlocklistStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlocklistStore.swift; sourceTree = "<group>"; };
 		71FB70CFE5B84970A36C46E0 /* AtlasComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasComponents.swift; sourceTree = "<group>"; };
 		7A11C0FFEE00A6ED17045E01 /* AgentEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentEditorView.swift; sourceTree = "<group>"; };
@@ -134,6 +134,7 @@
 		A5B2C3D4E5F6478990ABCDEF5 /* AppPreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferencesStore.swift; sourceTree = "<group>"; };
 		A6B2C3D4E5F6478990ABCDEF6 /* Reaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reaction.swift; sourceTree = "<group>"; };
 		A7B2C3D4E5F6478990ABCDEF7 /* OAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthService.swift; sourceTree = "<group>"; };
+		A7E4B8C9D0F1415892AB7C01 /* Deimos.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Deimos.entitlements; sourceTree = "<group>"; };
 		A8B2C3D4E5F6478990ABCDEF8 /* ReactionStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReactionStrip.swift; sourceTree = "<group>"; };
 		A9B2C3D4E5F6478990ABCDEF9 /* ForkSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForkSheet.swift; sourceTree = "<group>"; };
 		AA2B3C4D5E6478990ABCDEFA /* WeChatPhoneBindView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeChatPhoneBindView.swift; sourceTree = "<group>"; };
@@ -150,7 +151,6 @@
 		B0F6BD89AA7B4431B4A4F775 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B1830047577F2040BE723ACD /* DeimosIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeimosIcons.swift; sourceTree = "<group>"; };
 		B41AA512D5A2A5343EEFE79B /* PublishIdeaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublishIdeaView.swift; sourceTree = "<group>"; };
-		A7E4B8C9D0F1415892AB7C01 /* Deimos.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Deimos.entitlements; sourceTree = "<group>"; };
 		B5D1E2F3A4B5478990AC0002 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		B875A023C30441B588706E6B /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		BF617EED5ECA4C8F93F8AC9D /* IdeaDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeaDetailView.swift; sourceTree = "<group>"; };
@@ -251,6 +251,14 @@
 			path = Deimos;
 			sourceTree = "<group>";
 		};
+		4B04CBED0814D64139BB86A2 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				210E6677AAE9127514F2F8EF /* AppleSignInNonce.swift */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
 		5528D7E3CFB243318D981B21 /* Design */ = {
 			isa = PBXGroup;
 			children = (
@@ -272,6 +280,14 @@
 				2291D5B7B3DA63BA9B5A4FBC /* KeyboardSupport.swift */,
 			);
 			path = Design;
+			sourceTree = "<group>";
+		};
+		559271532E1AEE7064AAD477 /* Search */ = {
+			isa = PBXGroup;
+			children = (
+				2D92AAF288737FD6C84FB87A /* SearchView.swift */,
+			);
+			path = Search;
 			sourceTree = "<group>";
 		};
 		5BA6BA0D07884FC89D4AB76F /* Profile */ = {
@@ -397,6 +413,14 @@
 			path = Pods;
 			sourceTree = "<group>";
 		};
+		D8E065DD7B1979B576B2EA70 /* Compliance */ = {
+			isa = PBXGroup;
+			children = (
+				6AC62CE625CFA7411FF0C95B /* ComplianceScreens.swift */,
+			);
+			path = Compliance;
+			sourceTree = "<group>";
+		};
 		DDBA9C7192FB415793B9A676 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
@@ -407,30 +431,6 @@
 				D1B2C3D4E5F6478990ABCDF21 /* AccountLinkViews.swift */,
 			);
 			path = Auth;
-			sourceTree = "<group>";
-		};
-		D8E065DD7B1979B576B2EA70 /* Compliance */ = {
-			isa = PBXGroup;
-			children = (
-				6AC62CE625CFA7411FF0C95B /* ComplianceScreens.swift */,
-			);
-			path = Compliance;
-			sourceTree = "<group>";
-		};
-		559271532E1AEE7064AAD477 /* Search */ = {
-			isa = PBXGroup;
-			children = (
-				2D92AAF288737FD6C84FB87A /* SearchView.swift */,
-			);
-			path = Search;
-			sourceTree = "<group>";
-		};
-		4B04CBED0814D64139BB86A2 /* Utils */ = {
-			isa = PBXGroup;
-			children = (
-				210E6677AAE9127514F2F8EF /* AppleSignInNonce.swift */,
-			);
-			path = Utils;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -609,8 +609,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = Deimos/Resources/Deimos.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -689,8 +689,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = Deimos/Resources/Deimos.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				GENERATE_INFOPLIST_FILE = NO;

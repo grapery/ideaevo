@@ -49,14 +49,14 @@ struct AtlasToastBanner: View {
 
     private var backgroundColor: Color {
         switch item.kind {
-        case .success: return AtlasColors.lemonSoft
+        case .success: return AtlasColors.successSoft
         case .error: return Color(hex: 0xF8EDEF)
         }
     }
 
     private var iconCircleColor: Color {
         switch item.kind {
-        case .success: return AtlasColors.lemonStrong
+        case .success: return AtlasColors.success
         case .error: return AtlasColors.destructive
         }
     }
@@ -77,7 +77,7 @@ struct AtlasToastBanner: View {
 
     private var messageColor: Color {
         switch item.kind {
-        case .success: return AtlasColors.lemonInk
+        case .success: return AtlasColors.success
         case .error: return AtlasColors.destructive
         }
     }

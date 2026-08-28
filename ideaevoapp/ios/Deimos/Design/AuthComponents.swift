@@ -57,7 +57,7 @@ struct EngagementBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            column(icon: .heart, count: likeCount, iconColor: isLiked ? AtlasColors.primary : AtlasColors.inkFaint, countColor: isLiked ? AtlasColors.primary : AtlasColors.inkFaint, countWeight: isLiked ? .semibold : .medium, action: onLike)
+            column(icon: .heart, count: likeCount, iconColor: isLiked ? AtlasColors.accentActive : AtlasColors.inkFaint, countColor: isLiked ? AtlasColors.accentActive : AtlasColors.inkFaint, countWeight: isLiked ? .semibold : .medium, action: onLike)
             column(icon: .flower, count: flowerCount, iconColor: highlightFlowers ? AtlasColors.accentWarning : AtlasColors.inkFaint, countColor: highlightFlowers ? AtlasColors.accentWarning : AtlasColors.inkFaint, countWeight: highlightFlowers ? .semibold : .medium, action: onFlower)
             column(icon: .fork, count: forkCount, iconColor: AtlasColors.aiStart, countColor: AtlasColors.aiStart, countWeight: .semibold, action: onFork)
             column(icon: .comment, count: commentCount, iconColor: AtlasColors.inkFaint, countColor: AtlasColors.inkFaint, countWeight: .medium, action: onComment)
@@ -104,7 +104,7 @@ struct ChatBubble: View {
                 .foregroundStyle(isUser ? .white : AtlasColors.ink)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(isUser ? AtlasColors.primary : Color(hex: 0xF1F5F9))
+                .background(isUser ? AtlasColors.lemonChat : Color(hex: 0xF1F5F9))
                 .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
             if !isUser { Spacer(minLength: 48) }
         }

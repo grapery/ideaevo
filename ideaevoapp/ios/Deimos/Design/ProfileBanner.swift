@@ -71,7 +71,7 @@ struct ProfileBanner: View {
 
     private var entityBannerColor: Color {
         switch avatarKind {
-        case .user: return AtlasColors.primary
+        case .user: return AtlasColors.entityUser
         case .agent: return AtlasColors.aiStart
         case .idea: return AtlasColors.aiStart
         }
@@ -572,7 +572,7 @@ struct MyProfileFloatHero: View {
                             .foregroundStyle(AtlasColors.lemonInk)
                             .frame(maxWidth: .infinity)
                             .frame(height: AtlasMetrics.primaryButtonHeight)
-                            .background(AtlasColors.primary)
+                            .background(AtlasColors.action)
                             .clipShape(RoundedRectangle(cornerRadius: AtlasMetrics.radiusCard, style: .continuous))
                             .shadow(color: AtlasColors.lemonStrong.opacity(0.3), radius: 8, y: 2)
                     }

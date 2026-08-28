@@ -844,7 +844,7 @@ struct IdeaMiniStatsRow: View {
         HStack(spacing: 14) {
             miniStat(.fork, forkCount, iconColor ?? AtlasColors.aiStart)
             miniStat(.flower, flowerCount, iconColor ?? AtlasColors.accentWarning)
-            miniStat(.heart, likeCount, iconColor ?? AtlasColors.primary)
+            miniStat(.heart, likeCount, iconColor ?? AtlasColors.accentActive)
             miniStat(.comment, commentCount, iconColor ?? textColor)
         }
     }
@@ -1630,7 +1630,7 @@ struct IdeaCell: View {
                     .padding(.top, 2)
 
                 HStack(spacing: 20) {
-                    statItem(.heart, idea.likeCount, AtlasColors.primary)
+                    statItem(.heart, idea.likeCount, AtlasColors.accentActive)
                     statItem(.flower, idea.flowerCount, AtlasColors.accentWarning)
                     statItem(.comment, idea.commentCount, AtlasColors.inkFaint)
                     statItem(.fork, idea.forkCount, AtlasColors.aiStart)
@@ -1721,7 +1721,7 @@ struct IdeaFlatRow: View {
                     Spacer(minLength: 0)
                     flatStat(.flower, idea.flowerCount, AtlasColors.accentWarning)
                     Spacer(minLength: 0)
-                    flatStat(.heart, idea.likeCount, AtlasColors.primary)
+                    flatStat(.heart, idea.likeCount, AtlasColors.accentActive)
                     Spacer(minLength: 0)
                     flatStat(.comment, idea.commentCount, AtlasColors.inkFaint)
                 }
@@ -2017,7 +2017,7 @@ struct SegmentControl: View {
                             .font(.system(size: 15, weight: selection == index ? .semibold : .regular))
                             .foregroundStyle(selection == index ? AtlasColors.ink : AtlasColors.inkFaint)
                         Capsule()
-                            .fill(selection == index ? AtlasColors.primary : .clear)
+                            .fill(selection == index ? AtlasColors.action : .clear)
                             .frame(width: 32, height: 3)
                     }
                 }
@@ -2061,7 +2061,7 @@ struct AtlasFilterChip: View {
                 .foregroundStyle(isSelected ? Color.white : AtlasColors.inkSoft)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(isSelected ? AtlasColors.primary : AtlasColors.surfaceSecondary)
+                .background(isSelected ? AtlasColors.action : AtlasColors.surfaceSecondary)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -2109,7 +2109,7 @@ struct IdeaCoverCard: View {
     /// 归档 gray · 埋没 dangerSoft/destructive.
     private var statusBadge: (text: String, fill: Color, foreground: Color) {
         switch idea.status {
-        case "implemented": return (idea.statusLabel, AtlasColors.lemon, AtlasColors.lemonInk)
+        case "implemented": return (idea.statusLabel, AtlasColors.linkBlueSoft, AtlasColors.linkBlue)
         case "active": return (idea.statusLabel, AtlasColors.successSoft, AtlasColors.success)
         case "buried": return (idea.statusLabel, AtlasColors.dangerSoft, AtlasColors.destructive)
         default: return (idea.statusLabel, AtlasColors.surfaceSecondary, AtlasColors.inkSoft)
@@ -2119,7 +2119,34 @@ struct IdeaCoverCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 10) {
-                cover
+                if hasCoverImage {
+                    cover
+                } else {
+                    // 无封面时不渲染灰色占位块, 徽章内联在标题上方 (对齐 web 列表卡)
+                    HStack(spacing: 6) {
+                        Text(statusBadge.text)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(statusBadge.foreground)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(statusBadge.fill)
+                            )
+                        if !idea.category.isEmpty {
+                            Text(idea.category)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(AtlasColors.inkTertiary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(AtlasColors.surfaceSecondary)
+                                )
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
 
                 Text(idea.displayTitle)
                     .font(.system(size: 16, weight: .semibold))
@@ -2166,8 +2193,12 @@ struct IdeaCoverCard: View {
         .buttonStyle(.plain)
     }
 
+    private var hasCoverImage: Bool {
+        (coverImageURL ?? idea.primaryImageURL) != nil
+    }
+
     /// 150pt cover — image when available, lemonSoft fallback; status badge top-left,
-    /// category chip (white 0.92) top-right.
+    /// category chip (white 0.92) top-right. 无封面时由 body 渲染内联徽章行。
     @ViewBuilder
     private var cover: some View {
         ZStack(alignment: .top) {

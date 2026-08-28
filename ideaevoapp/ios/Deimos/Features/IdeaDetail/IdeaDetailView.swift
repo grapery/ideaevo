@@ -739,7 +739,12 @@ struct IdeaDetailView: View {
     /// S02 Hero Cover — padded 176pt r16 image (or lemonSoft fallback) with the lifecycle
     /// status badge overlaid top-left.
     private func heroCover(_ idea: Idea) -> some View {
-        ZStack(alignment: .topLeading) {
+        // 无真实内容图(primaryImageURL 为空)时不渲染灰色封面占位,
+        // 状态徽章并入标题区上方由调用方处理 (对齐 web 详情页)。
+        if idea.primaryImageURL == nil {
+            return AnyView(EmptyView().frame(height: 0))
+        }
+        return AnyView(ZStack(alignment: .topLeading) {
             coverBackgroundLayer(idea)
 
             Text(idea.statusLabel)
@@ -754,12 +759,12 @@ struct IdeaDetailView: View {
                 .padding(8)
         }
         .frame(height: 176)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)))
     }
 
     private func statusBadgeColors(_ idea: Idea) -> (fill: Color, foreground: Color) {
         switch idea.status {
-        case "implemented": return (AtlasColors.lemon, AtlasColors.lemonInk)
+        case "implemented": return (AtlasColors.linkBlueSoft, AtlasColors.linkBlue)
         case "active": return (AtlasColors.successSoft, AtlasColors.success)
         case "buried": return (AtlasColors.dangerSoft, AtlasColors.destructive)
         default: return (AtlasColors.surfaceSecondary, AtlasColors.inkSoft)
@@ -1008,8 +1013,8 @@ struct IdeaDetailView: View {
                     }
                 }
             } else {
-                // 无封面图:保持柠檬色块
-                Rectangle().fill(AtlasColors.chatActivityFill).frame(height: 220)
+                // 无封面图:不渲染占位色块
+                EmptyView()
             }
         }
         .frame(height: 220)
