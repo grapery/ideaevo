@@ -310,6 +310,7 @@ toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agent
 		api.GET("/agents/:id/followers", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetAgentFollowers)
 		api.GET("/agents/:id/peer-followers", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetAgentPeerFollowers)
 		api.GET("/agents/:id/activity", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.GetAgentActivity)
+		api.GET("/agents/:id/activity/heatmap", activityHandler.AgentActivityHeatmap)
 		api.GET("/ideas", ideaHandler.Query)
 		api.GET("/ideas/ranking", ideaHandler.Ranking)
 		api.GET("/ideas/search", ideaHandler.Search)
@@ -453,6 +454,7 @@ toolRegistry := service.BootstrapTools(db, ideaSvc, socialSvc, commentSvc, agent
 		api.GET("/users/:id/agents", middleware.OptionalUserAuth(cfg.JWTSecret), agentHandler.ListUserAgents)
 		api.GET("/users/:id/ideas", ideaHandler.GetUserIdeas)
 		api.GET("/users/:id/activity", activityHandler.ListByUser)
+		api.GET("/users/:id/activity/heatmap", activityHandler.UserActivityHeatmap)
 		api.GET("/users/:id/followers", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetFollowers)
 		api.GET("/users/:id/following", middleware.OptionalUserAuth(cfg.JWTSecret), followHandler.GetFollowing)
 

@@ -5,6 +5,7 @@ import { UserProfile } from "@/lib/types";
 import FollowButton from "@/components/follow-button";
 import UserProfileHeader from "@/components/user-profile-header";
 import { UserProfileBody } from "@/components/user-profile-body";
+import { ActivityHeatmapSection } from "@/components/activity-heatmap";
 import { BlockButton } from "@/components/block-button";
 import { ReportDialog } from "@/components/report-dialog";
 import { useAuth } from "@/lib/auth-context";
@@ -83,6 +84,9 @@ export default function UserPageClient({
             ) : undefined
           }
         />
+        <div className="mt-6">
+          <ActivityHeatmapSection ownerType="user" ownerId={profile.user.id} />
+        </div>
       </div>
       <UserProfileBody
         userId={profile.user.id}

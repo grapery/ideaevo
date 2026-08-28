@@ -211,6 +211,12 @@ func (h *ActivityHandler) List(c *gin.Context) {
 	if action := c.Query("action"); action != "" {
 		query = query.Where("action = ?", action)
 	}
+	// 聊天内部事件（建会话/发消息/分叉会话）不进 feed，保持计数与渲染一致
+	query = query.Where("action NOT IN ?", heatmapExclude)
+	query, ok = applyDateFilter(c, query)
+	if !ok {
+		return
+	}
 
 	query.Count(&total)
 	if err := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&activities).Error; err != nil {
@@ -219,6 +225,20 @@ func (h *ActivityHandler) List(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"activities": hydrateActivities(h.db, h.socialSvc, activities), "total": total})
+}
+
+// applyDateFilter 给动态查询加 ?date=YYYY-MM-DD 按天过滤（热力图点击查看当天 feed 用）。
+// 返回 ok=false 表示日期非法已写 400 响应，调用方应直接 return。
+func applyDateFilter(c *gin.Context, query *gorm.DB) (*gorm.DB, bool) {
+	date := c.Query("date")
+	if date == "" {
+		return query, true
+	}
+	if _, err := time.Parse("2006-01-02", date); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "date 参数需为 YYYY-MM-DD"})
+		return nil, false
+	}
+	return query.Where("DATE(created_at) = ?", date), true
 }
 
 // ListByUser 返回某用户的动态聚合：包含该用户本人 + 其拥有的所有 Agent 的活动。
@@ -251,6 +271,12 @@ func (h *ActivityHandler) ListByUser(c *gin.Context) {
 	var total int64
 
 	query := h.db.Model(&model.ActivityLog{}).Where("actor_id IN ?", actorIDs)
+	// 聊天内部事件不进 feed（与热力图口径一致）
+	query = query.Where("action NOT IN ?", heatmapExclude)
+	query, ok = applyDateFilter(c, query)
+	if !ok {
+		return
+	}
 	query.Count(&total)
 	if err := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&activities).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -258,6 +284,62 @@ func (h *ActivityHandler) ListByUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"activities": hydrateActivities(h.db, h.socialSvc, activities), "total": total})
+}
+
+// heatmapDay 热力图的单日计数（GitHub contributions 式）。
+type heatmapDay struct {
+	Date  string `json:"date"`
+	Count int64  `json:"count"`
+}
+
+// heatmapExclude 聊天内部事件不计入热力图（与前端 ActivityList 的 hiddenActions
+// 对齐，保证方块计数与点击后的当天 feed 行数一致）。
+var heatmapExclude = []string{"create_session", "send_message", "fork_session"}
+
+// UserActivityHeatmap GET /users/:id/activity/heatmap
+// 近一年该用户（含其拥有的 Agent）的每日活动计数，供 GitHub 式热力图渲染。
+func (h *ActivityHandler) UserActivityHeatmap(c *gin.Context) {
+	userID := c.Param("id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing user id"})
+		return
+	}
+	var agentIDs []string
+	h.db.Model(&model.Agent{}).Where("owner_user_id = ?", userID).Pluck("id", &agentIDs)
+	actorIDs := append([]string{userID}, agentIDs...)
+	h.respondHeatmap(c, "actor_id IN ?", actorIDs)
+}
+
+// AgentActivityHeatmap GET /agents/:id/activity/heatmap
+// 近一年该 Agent（作为 actor）的每日活动计数。
+func (h *ActivityHandler) AgentActivityHeatmap(c *gin.Context) {
+	agentID := c.Param("id")
+	if agentID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing agent id"})
+		return
+	}
+	h.respondHeatmap(c, "actor_type = ? AND actor_id = ?", "agent", agentID)
+}
+
+func (h *ActivityHandler) respondHeatmap(c *gin.Context, cond string, args ...any) {
+	since := time.Now().AddDate(-1, 0, 0)
+	var days []heatmapDay
+	if err := h.db.Model(&model.ActivityLog{}).
+		Select("DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COUNT(*) AS count").
+		Where(cond, args...).
+		Where("action NOT IN ?", heatmapExclude).
+		Where("created_at >= ?", since).
+		Group("DATE_FORMAT(created_at, '%Y-%m-%d')").
+		Order("date ASC").
+		Scan(&days).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	var total int64
+	for _, d := range days {
+		total += d.Count
+	}
+	c.JSON(http.StatusOK, gin.H{"days": days, "total": total})
 }
 
 func (h *ActivityHandler) Stats(c *gin.Context) {

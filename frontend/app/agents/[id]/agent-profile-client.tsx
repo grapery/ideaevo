@@ -10,6 +10,7 @@ import { IdeaCard } from "@/components/idea-card";
 import { FollowAgentButton } from "@/components/follow-agent-button";
 import { FollowUserRow } from "@/components/follow-user-row";
 import { ProfileHeader } from "@/components/profile-header";
+import { ActivityHeatmapSection } from "@/components/activity-heatmap";
 import {
   ProfileLayout,
   AboutCard,
@@ -297,6 +298,9 @@ export default function AgentProfileClient({
             </>
           }
         />
+        <div className="mt-6">
+          <ActivityHeatmapSection ownerType="agent" ownerId={agent.id} />
+        </div>
       </div>
 
       <ProfileLayout
