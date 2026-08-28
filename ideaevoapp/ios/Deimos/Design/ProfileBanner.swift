@@ -728,3 +728,156 @@ struct IdeaProvenanceCard: View {
         .atlasElevatedCard()
     }
 }
+
+
+// MARK: - Activity Heatmap (GitHub 式活跃热力图)
+
+/// 近半年活跃热力图卡: 列=周, 行=周一~周日, 品牌橙 4 档色阶。
+/// 数据为稀疏日期序列, 渲染时转 [date: count] 查表。
+struct ActivityHeatmapCard: View {
+    let days: [HeatmapDay]
+    let total: Int
+
+    private static let weekWindow = 26
+    private static let cellGap: CGFloat = 2.5
+    private static let dayLabels = ["一", "", "三", "", "五", "", "日"]
+
+    private var countsByDate: [String: Int] {
+        Dictionary(days.map { ($0.date, $0.count) }, uniquingKeysWith: +)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("活跃热力图")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AtlasColors.ink)
+                Text("· 近半年 \(total) 次活动")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AtlasColors.inkFaint)
+                Spacer()
+                legend
+            }
+
+            GeometryReader { proxy in
+                let columns = weekColumns
+                let gap = Self.cellGap
+                let cell = max(6, (proxy.size.width - CGFloat(columns.count - 1) * gap) / CGFloat(columns.count))
+                let leadingBlanks = leadingBlankCount(columns.count)
+                HStack(alignment: .top, spacing: gap) {
+                    // 周几标尺
+                    VStack(alignment: .leading, spacing: gap) {
+                        ForEach(0..<7, id: \.self) { row in
+                            Text(Self.dayLabels[row])
+                                .font(.system(size: 8))
+                                .foregroundStyle(AtlasColors.inkFaint)
+                                .frame(width: 10, height: cell, alignment: .center)
+                        }
+                    }
+                    .padding(.trailing, 2)
+
+                    ForEach(0..<columns.count, id: \.self) { col in
+                        VStack(spacing: gap) {
+                            ForEach(0..<7, id: \.self) { row in
+                                let index = col * 7 + row - leadingBlanks
+                                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                    .fill(cellColor(for: index))
+                                    .frame(width: cell, height: cell)
+                            }
+                        }
+                    }
+                }
+            }
+            .frame(height: 7 * 13 + 6 * Self.cellGap + 1)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AtlasColors.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AtlasColors.cardStroke, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var legend: some View {
+        HStack(spacing: 3) {
+            Text("少")
+                .font(.system(size: 9))
+                .foregroundStyle(AtlasColors.inkFaint)
+            ForEach(0..<4, id: \.self) { level in
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(heatColor(level))
+                    .frame(width: 8, height: 8)
+            }
+            Text("多")
+                .font(.system(size: 9))
+                .foregroundStyle(AtlasColors.inkFaint)
+        }
+    }
+
+    /// 从本周回推 weekWindow 周, 每列 7 天 (对齐周一)。
+    private var weekColumns: [[Date?]] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        // 回退到本周周一
+        let weekday = (calendar.component(.weekday, from: today) + 5) % 7
+        let thisMonday = calendar.date(byAdding: .day, value: -weekday, to: today)!
+        var columns: [[Date?]] = []
+        for week in stride(from: Self.weekWindow - 1, through: 0, by: -1) {
+            let monday = calendar.date(byAdding: .day, value: -(week * 7), to: thisMonday)!
+            var col: [Date?] = []
+            for dayOffset in 0..<7 {
+                if let date = calendar.date(byAdding: .day, value: dayOffset, to: monday) {
+                    col.append(date <= today ? date : nil)
+                } else {
+                    col.append(nil)
+                }
+            }
+            columns.append(col)
+        }
+        return columns
+    }
+
+    /// 第一列里需要置灰的未来日数量(仅最后一列可能不满)。
+    private func leadingBlankCount(_ columnCount: Int) -> Int { 0 }
+
+    private func cellColor(for index: Int) -> Color {
+        guard index >= 0 else { return AtlasColors.fill.opacity(0.5) }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let weekday = (calendar.component(.weekday, from: today) + 5) % 7
+        let thisMonday = calendar.date(byAdding: .day, value: -weekday, to: today)!
+        let week = index / 7, row = index % 7
+        guard let date = calendar.date(byAdding: .day, value: week * 7 + row, to: thisMonday),
+              date <= today else {
+            return AtlasColors.fill.opacity(0.5) // 未来格留空
+        }
+        let key = DateFormatter.dateKey(date)
+        let count = countsByDate[key] ?? 0
+        switch count {
+        case 0: return AtlasColors.fill
+        case 1: return AtlasColors.brandOrange.opacity(0.35)
+        case 2...3: return AtlasColors.brandOrange.opacity(0.65)
+        default: return AtlasColors.brandOrange
+        }
+    }
+
+    private func heatColor(_ level: Int) -> Color {
+        switch level {
+        case 0: return AtlasColors.fill
+        case 1: return AtlasColors.brandOrange.opacity(0.35)
+        case 2: return AtlasColors.brandOrange.opacity(0.65)
+        default: return AtlasColors.brandOrange
+        }
+    }
+}
+
+extension DateFormatter {
+    static func dateKey(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.string(from: date)
+    }
+}

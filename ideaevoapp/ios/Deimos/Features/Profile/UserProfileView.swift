@@ -28,6 +28,7 @@ final class UserProfileViewModel {
     var ideas: [Idea] = []
     var agents: [Agent] = []
     var activities: [ActivityView] = []
+    var heatmap: HeatmapResponse?
     var isLoading = true
     var isLoadingAgents = false
     var isLoadingActivity = false
@@ -35,6 +36,7 @@ final class UserProfileViewModel {
     var selectedTab: UserProfileTab = .activity
     private var agentsLoaded = false
     private var activityLoaded = false
+    private var heatmapLoaded = false
 
     func load(userID: String) async {
         isLoading = true
@@ -77,6 +79,12 @@ final class UserProfileViewModel {
         } catch {
             activities = []
         }
+    }
+
+    func loadHeatmapIfNeeded(userID: String) async {
+        guard !heatmapLoaded else { return }
+        heatmapLoaded = true
+        heatmap = try? await APIClient.shared.getUserHeatmap(userID: userID)
     }
 
     func toggleFollow(userID: String) async throws {
@@ -136,6 +144,7 @@ struct UserProfileView: View {
                     }
                 } else if let envelope = viewModel.envelope {
                     profileContent(envelope)
+                        .task { await viewModel.loadHeatmapIfNeeded(userID: userID) }
                         .contextMenu {
                             if !isSelf {
                                 Button("分享主页") {
@@ -265,6 +274,10 @@ struct UserProfileView: View {
                         }
                     }
 
+                    if let heatmap = viewModel.heatmap {
+                        ActivityHeatmapCard(days: heatmap.days, total: heatmap.total)
+                    }
+
                     // S26 Segmented (ardot 715405210175453 `4:297`): surfaceSecondary
                     // r14 container (pad 4, gap 6); selected seg lemon with lemonInk
                     // SemiBold-12 label.
@@ -310,7 +323,7 @@ struct UserProfileView: View {
                     tabContent
                 }
                 .padding(.horizontal, AtlasMetrics.pageX)
-                .padding(.top, 48)
+                .padding(.top, 88)
             }
             .padding(.bottom, 40)
         }
@@ -319,14 +332,21 @@ struct UserProfileView: View {
     private var publicHero: some View {
         ZStack(alignment: .bottomLeading) {
             Rectangle()
-                .fill(AtlasColors.lemonSoft)
-                .frame(height: 140)
-            Circle()
-                .fill(AtlasColors.lemon)
-                .frame(width: 80, height: 80)
-                .offset(x: AtlasMetrics.pageX)
+                .fill(AtlasColors.surfaceSecondary)
+                .frame(height: 120)
+            if let envelope = viewModel.envelope {
+                EntityAvatar.user(
+                    id: envelope.profile.user.id,
+                    url: envelope.profile.user.avatarLink,
+                    name: envelope.profile.user.name,
+                    size: 84
+                )
+                .overlay(Circle().stroke(AtlasColors.surface, lineWidth: 3))
+                .offset(x: AtlasMetrics.pageX, y: 40)
+            }
         }
         .frame(maxWidth: .infinity)
+        .ignoresSafeArea(edges: .top)
     }
 
     @ViewBuilder
@@ -510,7 +530,7 @@ private struct PublicUserStatsBand: View {
         .frame(height: 56)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(highlight ? AtlasColors.chatActivityFill : AtlasColors.chatAssistantBubble)
+                .fill(highlight ? AtlasColors.brandOrangeSoft : AtlasColors.chatAssistantBubble)
         )
     }
 

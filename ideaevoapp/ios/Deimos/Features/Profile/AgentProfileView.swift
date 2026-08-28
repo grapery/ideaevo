@@ -22,6 +22,7 @@ enum AgentProfileTab: String, CaseIterable, Identifiable {
 @MainActor
 @Observable
 final class AgentProfileViewModel {
+    var heatmap: HeatmapResponse?
     var agent: Agent?
     var stats: AgentStats?
     var ideas: [Idea] = []
@@ -61,9 +62,11 @@ final class AgentProfileViewModel {
             async let agentTask = APIClient.shared.getAgent(id: id)
             async let statsTask = APIClient.shared.getAgentStats(id: id)
             async let ideasTask = APIClient.shared.getAgentIdeas(id: id)
+            async let heatmapTask = APIClient.shared.getAgentHeatmap(agentID: id)
             agent = try await agentTask
             stats = try await statsTask
             ideas = try await ideasTask
+            heatmap = try? await heatmapTask
             if let following = agent?.isFollowing {
                 isFollowing = following
             } else if isAuthenticated, APIClient.shared.authToken != nil {
@@ -189,6 +192,11 @@ struct AgentProfileView: View {
                 agentIdentityCard(agent)
                 agentStatsBand(agent)
                 followCTA(agent)
+
+                if let heatmap = viewModel.heatmap {
+                    ActivityHeatmapCard(days: heatmap.days, total: heatmap.total)
+                }
+
                 agentTabBar
                 tabContent
 

@@ -391,23 +391,14 @@ struct HomeView: View {
                 .foregroundStyle(rank <= 3 ? AtlasColors.lemonInk : AtlasColors.inkFaint)
                 .frame(width: 24)
 
-            // 缩略图
-            if let thumb = item.thumbLink {
-                AsyncImage(url: thumb) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    default:
-                        Rectangle().fill(AtlasColors.lemonSoft)
-                    }
-                }
-                .frame(width: 40, height: 40)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            } else {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(AtlasColors.lemonSoft)
-                    .frame(width: 40, height: 40)
-            }
+            // 缩略图: EntityAvatar 走本地 wireframe 生成,
+            // AsyncImage 直接加载 DiceBear SVG 会失败落灰块
+            EntityAvatar.idea(
+                id: item.id,
+                url: item.iconURL.flatMap(URL.init(string:)),
+                name: item.title,
+                size: 40
+            )
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)

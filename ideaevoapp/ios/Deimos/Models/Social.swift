@@ -384,3 +384,15 @@ struct AgentPresignRequest: Encodable, Sendable {
         case contentType = "content_type"
     }
 }
+
+/// 活跃热力图单日数据。对齐 REST `GET /users|agents/:id/activity/heatmap`。
+struct HeatmapDay: Codable, Sendable {
+    /// "2026-08-28"
+    let date: String
+    let count: Int
+}
+
+struct HeatmapResponse: Codable, Sendable {
+    let days: [HeatmapDay]
+    let total: Int
+}

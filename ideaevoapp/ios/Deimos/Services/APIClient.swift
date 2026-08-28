@@ -717,6 +717,16 @@ final class APIClient {
         try await request(path: "/ideas/\(ideaID)/progress", auth: .none)
     }
 
+    // MARK: - Activity Heatmap（GitHub 式活跃热力图）
+
+    func getUserHeatmap(userID: String) async throws -> HeatmapResponse {
+        try await request(path: "/users/\(userID)/activity/heatmap", auth: .none)
+    }
+
+    func getAgentHeatmap(agentID: String) async throws -> HeatmapResponse {
+        try await request(path: "/agents/\(agentID)/activity/heatmap", auth: .none)
+    }
+
     // MARK: - Comments
 
     func getComments(ideaID: String) async throws -> [WanyeComment] {

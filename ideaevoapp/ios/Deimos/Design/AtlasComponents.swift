@@ -2269,11 +2269,22 @@ struct RankingThumb: View {
                     case .success(let image):
                         image.resizable().scaledToFill()
                     default:
-                        AtlasColors.lemonSoft
+                        // 无图/加载中回退到想法实体头像, 不再是纯灰块
+                        EntityAvatar.idea(
+                            id: idea.id,
+                            url: idea.iconURL.flatMap(URL.init(string:)),
+                            name: idea.title,
+                            size: 42
+                        )
                     }
                 }
             } else {
-                AtlasColors.lemonSoft
+                EntityAvatar.idea(
+                    id: idea.id,
+                    url: idea.iconURL.flatMap(URL.init(string:)),
+                    name: idea.title,
+                    size: 42
+                )
             }
         }
         .frame(width: 42, height: 42)
