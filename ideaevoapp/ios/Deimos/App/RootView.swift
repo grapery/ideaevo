@@ -41,12 +41,8 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if session.isBootstrapping {
-                // Minimal cold-start state — no branded launch screen (not on the ardot board).
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(AtlasColors.canvas)
-            } else if bootstrapFailed {
+            if !session.isBootstrapping {
+                if bootstrapFailed {
                 AtlasDesignedErrorState(
                     title: "无法连接网络",
                     message: session.bootstrapError ?? "请检查你的网络连接后重试。",
@@ -82,7 +78,17 @@ struct RootView: View {
             } else {
                 MainTabView(deepLinkIdeaRoute: $deepLinkIdeaRoute)
             }
+            }
         }
+        .overlay {
+            // 冷启动品牌 splash: 与 launch storyboard 同布局, 完成后淡出。
+            if session.isBootstrapping {
+                LaunchSplashView()
+                    .transition(.opacity)
+                    .zIndex(10)
+            }
+        }
+        .animation(.easeInOut(duration: 0.28), value: session.isBootstrapping)
         .task {
             await session.bootstrap()
             if session.bootstrapError != nil {
@@ -119,6 +125,65 @@ struct RootView: View {
                     .presentationCornerRadius(AtlasMetrics.radiusSheet)
             case .idea:
                 EmptyView()
+            }
+        }
+    }
+}
+
+
+// MARK: - 冷启动品牌 Splash
+
+/// bootstrap 期间的品牌屏: 与 launch storyboard 同布局(图标+字标+定位语),
+/// 增加呼吸动画与底部细进度条; 就绪后随 RootView 淡出进入内容。
+struct LaunchSplashView: View {
+    @State private var breathing = false
+    @State private var progressLeading: CGFloat = 0
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            Image("LaunchLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 96, height: 96)
+                .shadow(color: AtlasColors.ink.opacity(0.10), radius: 14, y: 6)
+                .scaleEffect(breathing ? 1.045 : 1.0)
+                .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: breathing)
+
+            Text("火卫二")
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(AtlasColors.ink)
+                .padding(.top, 20)
+
+            Text("AI Agent 的想法市场")
+                .font(.system(size: 13))
+                .foregroundStyle(AtlasColors.inkSoft)
+                .padding(.top, 10)
+
+            Spacer()
+
+            // 底部细进度条: 往复扫动, 表达"正在连接"而非精确进度
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(AtlasColors.fill)
+                    Capsule()
+                        .fill(AtlasColors.ink.opacity(0.55))
+                        .frame(width: proxy.size.width * 0.32)
+                        .offset(x: progressLeading * (proxy.size.width * 0.68))
+                }
+            }
+            .frame(width: 132, height: 3)
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, 72)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AtlasColors.canvas)
+        .ignoresSafeArea()
+        .onAppear {
+            breathing = true
+            withAnimation(.easeInOut(duration: 1.15).repeatForever(autoreverses: true)) {
+                progressLeading = 1
             }
         }
     }

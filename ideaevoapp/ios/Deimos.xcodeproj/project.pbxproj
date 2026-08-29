@@ -40,7 +40,6 @@
 		AA314597A2794A29BDED4A4B /* AuthComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4186736E17DA4B58AD5F3592 /* AuthComponents.swift */; };
 		AB65D57CCFA24A05B80FB447 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B875A023C30441B588706E6B /* LoginView.swift */; };
 		B12386F9E184134F25F86FEF /* ComplianceScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC62CE625CFA7411FF0C95B /* ComplianceScreens.swift */; };
-		B5D1E2F3A4B5478990AC0001 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B5D1E2F3A4B5478990AC0002 /* LaunchScreen.storyboard */; };
 		B6A2B3C4D5E6478990ABCDEF6 /* Reaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B2C3D4E5F6478990ABCDEF6 /* Reaction.swift */; };
 		2C57BC6CF6EE64AEDB9E2BBE /* Suggestion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 018E1EBC534C216B5512F6CA /* Suggestion.swift */; };
 		E46BB86FCF319A2A4F6D5CC5 /* VersionHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5466C3C508FF9391C07B848 /* VersionHistoryView.swift */; };
@@ -155,7 +154,6 @@
 		B0F6BD89AA7B4431B4A4F775 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B1830047577F2040BE723ACD /* DeimosIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeimosIcons.swift; sourceTree = "<group>"; };
 		B41AA512D5A2A5343EEFE79B /* PublishIdeaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublishIdeaView.swift; sourceTree = "<group>"; };
-		B5D1E2F3A4B5478990AC0002 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		B875A023C30441B588706E6B /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		BF617EED5ECA4C8F93F8AC9D /* IdeaDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeaDetailView.swift; sourceTree = "<group>"; };
 		C1B2C3D4E5F6478990ABCDF10 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
@@ -236,7 +234,6 @@
 			isa = PBXGroup;
 			children = (
 				941F2EB111B84DBEB37A61A7 /* Assets.xcassets */,
-				B5D1E2F3A4B5478990AC0002 /* LaunchScreen.storyboard */,
 				A7E4B8C9D0F1415892AB7C01 /* Deimos.entitlements */,
 			);
 			path = Resources;
@@ -494,7 +491,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				C59C79D5E1EB435F8CE96366 /* Assets.xcassets in Resources */,
-				B5D1E2F3A4B5478990AC0001 /* LaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

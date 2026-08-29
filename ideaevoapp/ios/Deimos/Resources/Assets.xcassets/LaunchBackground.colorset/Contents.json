@@ -3,18 +3,10 @@
     {
       "color" : {
         "color-space" : "srgb",
-        "components" : {
-          "alpha" : "1.000",
-          "blue" : "0.247",
-          "green" : "1.000",
-          "red" : "0.847"
-        }
+        "components" : { "alpha" : "1.000", "blue" : "0.980", "green" : "0.980", "red" : "0.980" }
       },
       "idiom" : "universal"
     }
   ],
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
-  }
+  "info" : { "author" : "xcode", "version" : 1 }
 }
